@@ -19,7 +19,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1b1 | Root workspace & tooling | done |
 | 1b2 | `packages/core` skeleton | done |
 | 1b3 | `packages/ui` skeleton | done |
-| 1b4 | `apps/extension` skeleton | planned |
+| 1b4 | `apps/extension` skeleton | done |
 | 1c1 | `core/parse` — remark pipeline + frontmatter + sanitize schema | pending |
 | 1c2 | `core/render` — mdast → HTML string + ToC | pending |
 | 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | pending |
@@ -191,6 +191,38 @@ cần mở lại câu hỏi này.
   vỡ lúc runtime, và hôm nay không cổng nào bắt được.
 - Nếu về sau `packages/ui` được publish hay bundle độc lập thì mới cần chuyển
   sang `peerDependencies`; trong phase 1-5 nó chỉ dùng nội bộ workspace.
+
+### Khung build extension — sự thật đã đo ở 1b4, và ba món nợ
+
+Build extension là **hai lệnh vite**, không một:
+`build` = `pnpm clean && vite build && vite build --config vite.content.config.ts`.
+
+- `vite.config.ts` — app + worker, ESM, có plugin react, `emptyOutDir: false`.
+- `vite.content.config.ts` — **chỉ** content, `format: 'iife'`,
+  `inlineDynamicImports: true`, KHÔNG plugin react, `emptyOutDir: false`.
+- Lý do tách, đã đo thật: một khối `rollupOptions.output` chung khiến Rollup
+  tách chunk vendor mà `content.js` phải `import` → `dist/content.js` ra
+  `import{t as e}from"./react.js"`. MV3 `content_scripts` **không nạp ES
+  module**, nên đó là lỗi runtime, không phải chuyện gọn gàng.
+- Trạng thái hiện tại: `dist/content.js` 85 byte, vỏ IIFE, 0 `import`,
+  **gz 104/61440**.
+
+**Ba món nợ bắt buộc chép vào `INVARIANTS` của phase con tương ứng:**
+
+1. **1g1** — `worker` vẫn nằm trong build ESM chung với app. Nếu app và worker
+   cùng import `@md-reader/core` thì `worker.js` sẽ có
+   `import{...}from"./yjs.js"` (đã tái tạo được). MV3 service worker nạp được
+   import tương đối **chỉ khi** manifest khai `"background": { "type":
+   "module" }`. Quên là lỗi y hệt content script.
+2. **1g2** — entry HTML `app` sinh `dist/src/app/index.html`, giữ nguyên path
+   nguồn, không phẳng như hai JS entry. Phải rewrite hoặc chuyển
+   `index.html` lên gốc `src/`.
+3. **1h1 + 1h2** — `src/content/index.ts` hiện là placeholder ghi
+   `document.documentElement.dataset.mdReaderPlaceholder`. **1h1 phải THAY
+   TRỌN thân file**, không thêm code bên cạnh. **1h2 phải có cổng grep
+   `mdReaderPlaceholder` trong `dist/content.js` và FAIL nếu còn** — chuỗi đó
+   đã được xác nhận sống sót minify. Ngoài ra `pnpm dev` không watch content;
+   phải chạy `dev:content` song song.
 
 ### Dependency được phép trong phase 1
 
