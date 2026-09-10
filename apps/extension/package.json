@@ -1,0 +1,27 @@
+{
+  "name": "@md-reader/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yjs": "13.6.32",
+    "y-indexeddb": "9.0.12",
+    "@md-reader/core": "workspace:*",
+    "@md-reader/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.2.2",
+    "@vitejs/plugin-react": "6.1.1",
+    "@types/chrome": "0.2.9",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}
