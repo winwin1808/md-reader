@@ -21,10 +21,14 @@ Verify a built md-reader change is actually ready to ship: real test runs, not a
 6. **Boundary check — blocker if violated.** Grep the diff for forbidden imports:
    - `packages/core` importing `react`, `chrome.*`, or touching `document`/`window`
    - `packages/ui` importing `chrome.*`
+   - `packages/core` importing a Yjs *provider* (`y-indexeddb`, `y-websocket`, …) — core takes a bound `Y.Doc`, it never chooses a provider
+   - `apps/extension/content/**` importing `yjs`, any provider, `mermaid`, or `@excalidraw/*`
    - anything importing across packages by relative path instead of the workspace package name
-7. **Scoped code review** of the diff introduced by this plan (`git diff` against the branch point): check correctness (logic errors, unhandled edge cases actually reachable from the plan's stated inputs) and simplification/reuse (duplicated logic, dead code, opportunities to use something already in `packages/core`). Report findings, most severe first, each naming an exact file and line.
-8. **Decide:**
-   - All tests green, build green, no boundary violation, AND no unresolved correctness finding → set the plan's `Status:` to `reviewed`, report that in one line, then **auto-chain**: immediately invoke the `Skill` tool with `skill: ship-and-handover`, passing this plan's path.
+7. **Bundle budget — blocker if exceeded.** Report the gzipped size of the content-script bundle from the actual build output. Budget is 60KB gz. State the number; never estimate it.
+8. **Y.Doc schema check** — if the diff touches the Y.Doc schema (`source` / `meta` / `history` shape), it must ship a migration function and a test against a fixture doc of the previous `formatVersion`. Missing either is a blocker.
+9. **Scoped code review** of the diff introduced by this plan (`git diff` against the branch point): check correctness (logic errors, unhandled edge cases actually reachable from the plan's stated inputs) and simplification/reuse (duplicated logic, dead code, opportunities to use something already in `packages/core`). Report findings, most severe first, each naming an exact file and line.
+10. **Decide:**
+   - All tests green, build green, no boundary violation, no budget overrun, AND no unresolved correctness finding → set the plan's `Status:` to `reviewed`, report that in one line, then **auto-chain**: immediately invoke the `Skill` tool with `skill: ship-and-handover`, passing this plan's path.
    - Otherwise → leave `Status: built`, list every blocker explicitly, and **stop here — this is the pipeline's one deliberate halt**. Do not attempt fixes yourself, do not auto-chain. Tell the user the pipeline is paused and that re-running `build-from-plan` on this same plan file (still `Status: built`) is how it resumes once they've decided how to address the blockers.
 
 ## Self-check
