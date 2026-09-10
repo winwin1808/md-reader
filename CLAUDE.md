@@ -60,9 +60,12 @@ Chi tiết ở `docs/DESIGN.md` §7. Bản rút gọn:
 
 ```
 main
- └── phase-N                    branch tích hợp cả phase, kết thúc bằng MR
-      └── phase-N/<sub>-<slug>  branch một phase con, merge --no-ff vào phase-N
+ └── phase-N                     branch tích hợp cả phase, kết thúc bằng MR
+      └── phase-N-<sub>-<slug>   branch một phase con, merge --no-ff vào phase-N
 ```
+
+Gạch ngang, không gạch chéo — `phase-1` và `phase-1/x` không cùng tồn tại
+được trong git.
 
 `review-before-ship` so diff với điểm rẽ nhánh của **phase con**. MR mở ở cuối
 phase và **không tự merge** — đó là quyết định của người.
@@ -109,7 +112,8 @@ Mỗi phase là một vòng pipeline riêng và phải ship được thứ dùng
 không được chứa task vượt ra ngoài phase hiện tại — thứ lỡ ra ngoài ghi xuống
 mục "Deferred to phase N". Nội dung chi tiết từng phase ở `docs/DESIGN.md` §4.
 
-Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 38 phase con trên 6 phase.
+Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 phase
+(phase 1 được chia lại thành 18 sau khi design kiểm điều kiện sizing).
 
 | # | Phase | Ship được gì |
 |---|---|---|

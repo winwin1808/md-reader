@@ -231,17 +231,31 @@ Không đạt thì chia tiếp. Đây không phải hướng dẫn, đây là đ
 Ship: *click link `.md` → đọc đẹp ngay; kéo file vào app page → đọc được và
 lần sau mở lại vẫn còn.*
 
+Bảng dưới đã được `design-from-intent` chia lại (2026-09-10): sáu phase con
+gốc — 1b, 1c, 1d, 1f, 1g, 1h — vượt rõ điều kiện sizing ở trên (1b một mình
+đã ~19 file), nên chúng được tách thành các đơn vị ≤5 file. Chi tiết interface
+từng phase con ở `docs/superpowers/specs/2026-09-10-phase-1-design.md`.
+
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
 | 1a | Spike CSP/mermaid | Có câu trả lời thật, ghi vào §5.1. Harness vứt đi, không commit code sản phẩm |
-| 1b | Scaffold monorepo | `pnpm -r test` xanh với 1 test smoke mỗi package; tsconfig base, vitest, 3 package rỗng |
-| 1c | `core/parse` + `core/render` | mdast + GFM + frontmatter + sanitize → HTML string, có snapshot test |
-| 1d | `core/doc` | Y.Doc schema đầy đủ, import/export text, `originHash`, `formatVersion`, history append, **test hội tụ 2 replica** |
-| 1e | `core/format` | Auto-format round-trip ổn định (format 2 lần ra cùng kết quả) |
-| 1f | `ui` cơ bản | `ThemeProvider` + token light/dark/system, `Viewer`, `Toc`, code highlight |
-| 1g | Extension shell | Manifest MV3, service worker, app page kéo-thả mở file, `y-indexeddb`, danh sách gần đây |
-| 1h | Content script | Match `.md`, Shadow DOM, render read-only, nút "Mở trong MD Reader", **đo bundle gz** |
-| 1i | Mermaid | Lazy ở app page + đường degrade theo kết quả 1a |
+| 1b1 | Root workspace & tooling | `pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`, `vitest.workspace.ts`; `pnpm -r test` chạy được |
+| 1b2 | `packages/core` skeleton | `@md-reader/core` + 1 test smoke (node), khai sẵn toàn bộ dep của core |
+| 1b3 | `packages/ui` skeleton | `@md-reader/ui` + vitest jsdom + 1 test smoke import qua tên workspace |
+| 1b4 | `apps/extension` skeleton | `@md-reader/extension` + `vite.config.ts` đa entry (app/worker/content) + 1 test smoke |
+| 1c1 | `core/parse` | remark + GFM + frontmatter tách khỏi cây + `sanitizeSchema`, có snapshot test |
+| 1c2 | `core/render` + ToC | mdast → hast → HTML string đã sanitize, highlight tập ngôn ngữ hạn chế, `extractToc` |
+| 1d1 | `core/doc` schema | Ba key Y.Doc, `formatVersion`, import/export text, `originHash`, hook `migrateDoc` |
+| 1d2 | `core/doc` history | `appendHistory` append-only, `sourceClientIds`, **test hội tụ 2 replica** |
+| 1e | `core/format` | Auto-format round-trip ổn định (format 2 lần ra cùng kết quả), không mất nội dung |
+| 1f1 | `ui` theme | `ThemeProvider` controlled + token CSS light/dark/system |
+| 1f2 | `ui` Viewer + Toc | `Viewer` (HTML đã sanitize), `Toc` cây lồng, CSS highlight ăn token |
+| 1g1 | Extension shell | Manifest MV3 quyền tối thiểu, service worker, routing thuần test được |
+| 1g2 | App page shell | React root + Y.Doc + `y-indexeddb` + theme bridge `chrome.storage.sync`, debounce 120ms |
+| 1g3 | Kéo-thả & recent | `DropZone`, registry IndexedDB, `RecentList`, mở file không ghi đè doc đã lưu |
+| 1h1 | Content script | Match `.md`, Shadow DOM, render read-only, nút "Mở trong MD Reader", degrade khi CSS bị chặn |
+| 1h2 | Cổng ngân sách | Đo gz thật của `content.js` trong build, **vượt 60KB thì fail build** |
+| 1i | Mermaid | Lazy `import('mermaid')` ở app page + đường degrade; content script chỉ placeholder |
 
 ### Phase 2 — Export
 
@@ -463,14 +477,18 @@ nên đẩy đi. Chúng chạy trong main loop. Chỉ `build` và `review` mới
 
 ```
 main
- └── phase-1                    ← branch tích hợp của cả phase
-      ├── phase-1/1a-spike-csp  ← branch nhỏ, một phase con
-      ├── phase-1/1b-scaffold
-      └── …                     mỗi cái merge --no-ff vào phase-1 khi review xanh
+ └── phase-1                     ← branch tích hợp của cả phase
+      ├── phase-1-1a-spike-csp   ← branch nhỏ, một phase con
+      ├── phase-1-1b1-workspace
+      └── …                      mỗi cái merge --no-ff vào phase-1 khi review xanh
 ```
 
+Tên phase con dùng **gạch ngang**, không gạch chéo: git không cho tồn tại
+đồng thời ref `phase-1` và `phase-1/<gì đó>` — một ref không thể vừa là file
+vừa là thư mục. Bản nháp đầu ghi `phase-N/<id>` và không tạo được branch nào.
+
 - `capture-intent` tạo `phase-N` từ `main`.
-- `plan-from-design` tạo `phase-N/<id>-<slug>` từ `phase-N`.
+- `plan-from-design` tạo `phase-N-<id>-<slug>` từ `phase-N`.
 - `review-before-ship` so diff với **điểm rẽ nhánh của phase con**, không phải
   với `main` — đây là lý do mỗi phase con có branch riêng.
 - Review xanh → merge `--no-ff` vào `phase-N`, rồi vòng lại
