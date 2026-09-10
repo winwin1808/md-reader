@@ -17,7 +17,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 |---|---|---|
 | 1a | Spike CSP/mermaid (harness vứt đi) | done |
 | 1b1 | Root workspace & tooling | done |
-| 1b2 | `packages/core` skeleton | pending |
+| 1b2 | `packages/core` skeleton | done |
 | 1b3 | `packages/ui` skeleton | pending |
 | 1b4 | `apps/extension` skeleton | pending |
 | 1c1 | `core/parse` — remark pipeline + frontmatter + sanitize schema | pending |
@@ -137,11 +137,11 @@ state của DropZone**, đây là yêu cầu của spec chứ không phải tu�
 Import chéo package **chỉ** bằng tên workspace (§2.4). Trong cùng package thì
 đường dẫn tương đối.
 
-`CLAUDE.md` ghi lệnh test là `pnpm --filter core test`. 1b1 phải xác minh
-pnpm giải được filter bỏ scope; nếu không, 1b1 thêm script root
-`"test:core": "pnpm --filter @md-reader/core test"` (và `test:ui`,
-`test:extension`) rồi sửa lệnh trong `CLAUDE.md` §Stack cho khớp thực tế. Không
-đổi tên package để lách.
+**Đã giải quyết ở 1b2.2 (đo thật):** `pnpm --filter core test` CHẠY ĐƯỢC —
+pnpm giải được tên bỏ scope (`core` → `@md-reader/core`). Lệnh trong
+`CLAUDE.md` §Stack đúng nguyên trạng, không cần sửa. Root vẫn có
+`test:core` / `test:ui` / `test:extension` làm đường thay thế. Không stage nào
+cần mở lại câu hỏi này.
 
 ### Toolchain đã chốt ở 1b1 (đo thật, không đoán)
 
@@ -158,6 +158,24 @@ pnpm giải được filter bỏ scope; nếu không, 1b1 thêm script root
   document/window" thành lỗi biên dịch chứ không phải lời nhắc.
 - `vitest.workspace.ts` là đường deprecated, tồn tại chỉ vì trạng thái
   zero-package. **1b2 phải thử chuyển lại `test.projects` và xoá file đó.**
+
+### Đã xác minh bằng chạy thật ở 1b2 — không stage nào cần kiểm lại
+
+- **12 version unified pin cố định tương thích nhau.** Reviewer dựng nguyên
+  pipeline `unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter)
+  .use(remarkRehype).use(rehypeSlug).use(rehypeHighlight).use(rehypeSanitize)
+  .use(rehypeStringify)`, `tsc --noEmit` 0 lỗi và runtime ra HTML đúng. Cùng
+  một thế hệ unified v11. 1c1/1c2 nối pipeline này được ngay.
+- **`exports` trỏ thẳng `./src/index.ts` resolve được.** Đã giả lập một package
+  consumer: cả `tsc --noEmit` (`moduleResolution: bundler`) và
+  `vite build`/esbuild đều resolve `@md-reader/core` đúng. Không cần field
+  `types`. 1b3/1b4 sẽ không vỡ vì chuyện này.
+- **Hàng rào DOM có hiệu lực thật**: đặt `document.title` vào một file dưới
+  `packages/core/src/` → `TS2584 Cannot find name 'document'`. Ràng buộc §2.4
+  là lỗi biên dịch, không phải lời nhắc.
+- **Mỗi package tự cấp `vitest.config.ts`** nên môi trường không đè nhau:
+  core dùng `node`, `packages/ui` (1b3) dùng `jsdom`, không có setting global
+  nào để phải ghi đè.
 
 ### Dependency được phép trong phase 1
 
