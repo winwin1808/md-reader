@@ -66,3 +66,50 @@ export function extractToc(tree: Root): TocEntry[] {
 
   return toc
 }
+
+import { unified } from 'unified'
+import remarkRehype from 'remark-rehype'
+import rehypeSlug from 'rehype-slug'
+import rehypeHighlight from 'rehype-highlight'
+import rehypeSanitize from 'rehype-sanitize'
+import rehypeStringify from 'rehype-stringify'
+import type { ParseResult } from '../parse/index.js'
+import { sanitizeSchema } from '../parse/index.js'
+
+export function renderToHtml(parsed: ParseResult, options?: RenderOptions): RenderResult {
+  const highlight = options?.highlight ?? true
+  const allowRawHtml = options?.allowRawHtml ?? false
+
+  const toc = extractToc(parsed.tree)
+
+  const processor = unified()
+  
+  processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml })
+  processor.use(rehypeSlug)
+
+  if (highlight !== false) {
+    processor.use(rehypeHighlight)
+  }
+
+  const schema = allowRawHtml
+    ? {
+        ...sanitizeSchema,
+        attributes: {
+          ...sanitizeSchema.attributes,
+          '*': [...(sanitizeSchema.attributes?.['*'] ?? []), 'style', 'className'],
+        }
+      }
+    : sanitizeSchema
+
+  processor.use(rehypeSanitize, schema)
+  processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
+
+  try {
+    const hast = processor.runSync(parsed.tree)
+    const html = processor.stringify(hast)
+    return { html: String(html), toc }
+  } catch (error) {
+    console.error('Render error:', error)
+    return { html: '', toc }
+  }
+}
