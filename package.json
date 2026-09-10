@@ -2,9 +2,16 @@
   "name": "md-reader",
   "private": true,
   "packageManager": "pnpm@10.10.0",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  },
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "test:core": "pnpm --filter @md-reader/core test",
+    "test:ui": "pnpm --filter @md-reader/ui test",
+    "test:extension": "pnpm --filter @md-reader/extension test"
   }
 }
