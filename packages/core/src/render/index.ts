@@ -97,7 +97,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
         ...sanitizeSchema,
         attributes: {
           ...sanitizeSchema.attributes,
-          '*': [...(sanitizeSchema.attributes?.['*'] ?? []), 'style', 'className'],
+          '*': [...(sanitizeSchema.attributes?.['*'] ?? []), 'style', 'className', 'data-info'],
         }
       }
     : sanitizeSchema

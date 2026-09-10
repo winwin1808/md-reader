@@ -133,6 +133,21 @@ const x = 1;
     expect(result.html).toContain('Hello safe HTML')
   })
 
+  test('allowRawHtml: true -> handles > in attributes', () => {
+    const markdown = '<div><span title=">">hello</span></div>'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: true })
+    expect(result.html).toContain('<span title=">">hello</span>')
+  })
+
+  test('allowRawHtml: true -> handles single and double quotes in attributes', () => {
+    const markdown = '<div><span data-info=\'single > quote\'>test</span><span data-info="double > quote">test</span></div>'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: true })
+    expect(result.html).toContain('<span data-info="single > quote">test</span>')
+    expect(result.html).toContain('<span data-info="double > quote">test</span>')
+  })
+
   test('allowRawHtml: true -> still removes script and handler', () => {
     const markdown = '<div onclick="alert(1)">Hello<script>alert(2)</script></div>'
     const parsed = parseMarkdown(markdown)
