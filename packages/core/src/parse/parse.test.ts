@@ -33,6 +33,14 @@ describe('parseMarkdown', () => {
     expect(result.tree.children).toEqual([])
     expect(result.frontmatter).toEqual({})
     expect(result.raw).toBe('')
+    expect(result.tree.position).toBeDefined()
+  })
+
+  it('handles array yaml frontmatter', () => {
+    const md = '---\n- item1\n- item2\n---\n# Content'
+    const result = parseMarkdown(md)
+    expect(result.frontmatter).toEqual({})
+    expect(result.tree.children[0]?.type).toBe('heading')
   })
 
   it('parses GFM by default (tables)', () => {
@@ -79,5 +87,12 @@ describe('sanitizeSchema', () => {
     const hasSpanLanguage = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^language-'))
     expect(hasSpanHljs).toBe(true)
     expect(hasSpanLanguage).toBe(true)
+  })
+
+  it('allows SVG attributes on SVG tags', () => {
+    expect(sanitizeSchema.attributes?.svg).toContain('viewBox')
+    expect(sanitizeSchema.attributes?.path).toContain('d')
+    expect(sanitizeSchema.attributes?.circle).toContain('fill')
+    expect(sanitizeSchema.attributes?.rect).toContain('width')
   })
 })

@@ -1,5 +1,15 @@
 import { defaultSchema } from 'rehype-sanitize'
 
+const svgAttributes = [
+  'viewBox', 'd', 'fill', 'fillRule', 'stroke', 'strokeWidth',
+  'strokeLinecap', 'strokeLinejoin', 'strokeDasharray', 'strokeDashoffset',
+  'width', 'height', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
+  'cx', 'cy', 'r', 'rx', 'ry', 'points', 'transform',
+  'xmlns', 'xmlnsXlink', 'textAnchor', 'dominantBaseline',
+  'fontSize', 'fontFamily', 'fontWeight', 'dx', 'dy',
+  'markerWidth', 'markerHeight', 'refX', 'refY', 'orient'
+]
+
 export const sanitizeSchema: typeof defaultSchema = {
   ...defaultSchema,
   clobberPrefix: '',
@@ -36,5 +46,19 @@ export const sanitizeSchema: typeof defaultSchema = {
     h4: [...(defaultSchema.attributes?.h4 ?? []), 'id'],
     h5: [...(defaultSchema.attributes?.h5 ?? []), 'id'],
     h6: [...(defaultSchema.attributes?.h6 ?? []), 'id'],
+    svg: svgAttributes,
+    g: svgAttributes,
+    path: svgAttributes,
+    rect: svgAttributes,
+    circle: svgAttributes,
+    ellipse: svgAttributes,
+    line: svgAttributes,
+    polyline: svgAttributes,
+    polygon: svgAttributes,
+    text: svgAttributes,
+    tspan: svgAttributes,
+    defs: svgAttributes,
+    marker: svgAttributes,
+    foreignObject: svgAttributes,
   },
 }

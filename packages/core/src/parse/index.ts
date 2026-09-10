@@ -35,7 +35,7 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
     const yamlNode = tree.children[0] as any // actually yaml node type isn't in default mdast
     try {
       const parsed = yaml.parse(yamlNode.value)
-      if (parsed && typeof parsed === 'object') {
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         frontmatter = parsed
       }
     } catch (err: unknown) {
@@ -44,14 +44,6 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
       }
     }
     tree.children.shift()
-  }
-
-  if (source === '') {
-    return {
-      tree: { type: 'root', children: [] },
-      frontmatter: {},
-      raw: ''
-    }
   }
 
   return {
