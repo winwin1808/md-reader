@@ -16,7 +16,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | # | Phase con | Status |
 |---|---|---|
 | 1a | Spike CSP/mermaid (harness vứt đi) | done |
-| 1b1 | Root workspace & tooling | planned |
+| 1b1 | Root workspace & tooling | done |
 | 1b2 | `packages/core` skeleton | pending |
 | 1b3 | `packages/ui` skeleton | pending |
 | 1b4 | `apps/extension` skeleton | pending |
@@ -142,6 +142,22 @@ pnpm giải được filter bỏ scope; nếu không, 1b1 thêm script root
 `"test:core": "pnpm --filter @md-reader/core test"` (và `test:ui`,
 `test:extension`) rồi sửa lệnh trong `CLAUDE.md` §Stack cho khớp thực tế. Không
 đổi tên package để lách.
+
+### Toolchain đã chốt ở 1b1 (đo thật, không đoán)
+
+- `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` · node v22.23.0.
+  TS7 nhận `tsconfig.base.json` không lỗi option nào; `declaration: true` +
+  `noEmit: true` **không** xung đột trên TS7 (đã chạy `tsc` xác nhận).
+- `tsconfig.base.json` cố ý **không** khai `paths` và `lib` chỉ có `["ES2022"]`
+  — không có `DOM`.
+- **Ràng buộc bắt buộc chép vào `INVARIANTS` của 1b3 và 1b4:** hai package đó
+  phải tự khai `"lib": ["ES2022", "DOM", "DOM.Iterable"]` trong tsconfig của
+  mình. `builder` bị cấm đọc DESIGN.md nên nếu plan không chép dòng này, nó sẽ
+  không biết và typecheck sẽ vỡ ở file React/`chrome.*` đầu tiên. `packages/core`
+  thì KHÔNG được thêm `DOM` — đó là thứ giữ ràng buộc "core không dùng
+  document/window" thành lỗi biên dịch chứ không phải lời nhắc.
+- `vitest.workspace.ts` là đường deprecated, tồn tại chỉ vì trạng thái
+  zero-package. **1b2 phải thử chuyển lại `test.projects` và xoá file đó.**
 
 ### Dependency được phép trong phase 1
 
