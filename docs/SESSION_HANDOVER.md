@@ -1,61 +1,88 @@
 # Session Handover — md-reader
 
-Cập nhật lần cuối: 2026-09-10
+Cập nhật: 2026-09-10. Branch đang đứng: `phase-1`.
 
-## Trạng thái hiện tại
+## Đang ở đâu
 
-Repo mới dựng khung. Chưa có phase nào chạy, chưa có dòng code sản phẩm nào.
+Phase 1 (Nền tảng & Trình đọc) đang chạy. **Khối scaffold xong hết** — 5/18
+phase con merged vào `phase-1`. Chưa mở MR.
 
-Đã có:
+| # | Phase con | Trạng thái |
+|---|---|---|
+| 1a | Spike CSP/mermaid | ✅ done |
+| 1b1 | Root workspace & tooling | ✅ done |
+| 1b2 | `packages/core` skeleton | ✅ done |
+| 1b3 | `packages/ui` skeleton | ✅ done |
+| 1b4 | `apps/extension` skeleton | ✅ done |
+| 1c1 | `core/parse` | ⬜ **pending — chạy tiếp từ đây** |
+| 1c2 → 1i | 12 phase con còn lại | ⬜ pending |
 
-- **`docs/DESIGN.md`** (493 dòng) — design end-to-end, approved. Nguồn chân lý
-  về kiến trúc. §4 chia 38 phase con, §7 mô hình agent + ngân sách context,
-  §8 mô hình git/MR.
-- `CLAUDE.md` — 8 ràng buộc khoá cứng + luật agent + luật git, tóm tắt từ DESIGN.md.
-- `.claude/skills/` — 6 skill, pipeline dạng **vòng lặp** phase/phase con.
-- `.claude/agents/` — `builder` · `spiker` · `reviewer` · `guard`.
-- `docs/superpowers/{intent,specs,plans}/` — rỗng.
-- `pnpm-workspace.yaml`, `package.json` (pnpm 10.10.0), `.gitignore`.
+Bảng đầy đủ + interface từng phase con:
+`docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
 
-Chưa có: `packages/`, `apps/`, `node_modules`, `tsconfig.base.json`.
-Phase con 1b tạo chúng.
-
-## Test counts
-
-Chưa có test nào.
-
-## Việc tiếp theo
+## Chạy tiếp thế nào
 
 ```
-git checkout -b phase-1
-claude
-/capture-intent      → chọn phase 1
+Skill: plan-from-design
+args:  docs/superpowers/specs/2026-09-10-phase-1-design.md 1c1
 ```
 
-Pipeline tự chạy: design cả phase 1 → rồi lặp plan→build→review qua 9 phase
-con 1a…1i → hết thì mở MR `phase-1` → `main`.
+Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
+`capture-intent` hay `design-from-intent` — hai stage đó chạy một lần mỗi
+phase và đã xong.
 
-**Phase con 1a là spike CSP/mermaid, chạy TRƯỚC cả scaffold.** Nó dùng harness
-vứt đi ở `spike/csp-mermaid/` (~30 dòng, không build, không test), thử mermaid
-trên ≥5 trang có CSP khác nhau, ghi bảng kết quả thẳng vào DESIGN.md §5.1, rồi
-bị xoá ở 1b. Lý do đặt trước: câu trả lời định hình content script, đợi tới lúc
-có extension thật thì đã viết theo hướng có thể sai.
+## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
-## Điểm dễ làm sai nhất
+```
+pnpm --filter core test        1 test file, 1 passed
+pnpm --filter ui test          1 test file, 2 passed
+pnpm --filter extension test   1 test file, 1 passed
+pnpm -r typecheck              exit 0
+pnpm -r build                  exit 0
+dist/content.js                85 B, vỏ IIFE, 0 import, gz 104/61440
+```
 
-1. **Y.Doc schema phải đúng ngay phase con 1d** (DESIGN §2.1) kể cả khi phase 1
-   chưa có editor và Yjs lúc này thuần overhead. Gồm `originHash` và
-   `formatVersion` — cả hai chỉ *dùng* ở phase 5 nhưng phải *tồn tại* từ 1d.
-2. **Coordinator đọc file source là hỏng ngân sách context.** `build-from-plan`
-   và `review-before-ship` không được `Read` gì dưới `packages/` hay `apps/`.
-3. **Envelope gửi builder phải copy nguyên văn từ plan**, đặc biệt khối
-   `INVARIANTS` — builder bị cấm đọc DESIGN.md nên đó là toàn bộ ràng buộc nó
-   có. `INVARIANTS` chung chung dán vào mọi task là plan viết sai.
+Toolchain đã pin: `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` ·
+`vite@8.2.2` · `react@19.3.0` (một bản duy nhất, dùng chung ui + extension) ·
+`yjs@13.6.32` · unified v11 (12 dep, đã xác minh tương thích bằng cách dựng
+nguyên pipeline).
 
-## Điểm cần nhớ
+**Dependency của cả ba package đã khai trọn từ phase con skeleton.** 1c1 trở
+đi KHÔNG được chạm `package.json` nào — nếu thấy thiếu dep thì đó là lỗi plan.
 
-- `review-before-ship` là chỗ dừng duy nhất, và chỉ dừng khi có blocker thật.
-- Blocker cứng, không phải góp ý: vi phạm ranh giới package · content script
-  vượt 60KB gz hoặc dính yjs/mermaid/excalidraw · đổi Y.Doc schema mà thiếu
-  migration + fixture test.
-- MR cuối phase **không tự merge**.
+## Ba món nợ đang mở — đọc trước khi làm phase con liên quan
+
+Chi tiết ở spec, mục "Khung build extension — sự thật đã đo ở 1b4":
+
+1. **1g1** — manifest PHẢI khai `"background": { "type": "module" }`. `worker`
+   nằm trong build ESM chung với app, nên `worker.js` sẽ có `import` tương
+   đối; MV3 service worker chỉ nạp được nếu khai `type: module`.
+2. **1g2** — entry HTML sinh `dist/src/app/index.html` giữ path nguồn, không
+   phẳng. Phải rewrite hoặc chuyển `index.html` lên gốc `src/`.
+3. **1h1 + 1h2** — `apps/extension/src/content/index.ts` là **placeholder**.
+   1h1 phải THAY TRỌN thân file. 1h2 phải có cổng grep `mdReaderPlaceholder`
+   trong `dist/content.js` và FAIL nếu còn (chuỗi đó sống sót minify — đã
+   xác nhận).
+
+Thêm: **1h1 phải xác nhận lại kết luận spike 1a bằng tay trên Chrome branded.**
+Bằng chứng hiện có đến từ Chromium unbranded, vì binary branded từ chối
+`--load-extension`.
+
+## Hai chỗ tài liệu gốc đã sửa trong phiên này
+
+- **Phase 1 chia lại 9 → 18 phase con.** 1b/1c/1d/1f/1g/1h vượt rõ điều kiện
+  ≤5 file / ≤1 test file của §4 (1b một mình ~19 file). `DESIGN.md` §4 và
+  `CLAUDE.md` đã khớp; toàn dự án 47 phase con.
+- **`DESIGN.md` §8: branch phase con đổi từ `phase-1/1a-…` sang
+  `phase-1-1a-…`.** Git không cho ref `phase-1` và `phase-1/x` cùng tồn tại,
+  nên sơ đồ cũ không tạo được branch nào.
+
+## Kết luận spike 1a (đã ghi vào DESIGN.md §5.1)
+
+Chọn **nhánh (a)**: style inline trong Shadow DOM, `adoptedStyleSheets`, và
+SVG mermaid **không** bị CSP trang chủ chặn ở cả 5 chính sách đã thử, kể cả
+`default-src 'none'`. 0 `securitypolicyviolation` trên 6/6 URL.
+
+**Nhưng điều đó KHÔNG đảo quyết định A1/A2 của spec:** content script vẫn
+không render mermaid ở phase 1, và lý do là ngân sách 60KB gz — không phải
+CSP. Nhánh degrade (b) vẫn phải cài ở 1h1 làm lưới an toàn.
