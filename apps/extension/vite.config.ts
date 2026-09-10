@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     target: 'chrome120',
     modulePreload: false,
-    emptyOutDir: true,
+    emptyOutDir: false,
     rollupOptions: {
       // content script build riêng ở vite.content.config.ts — MV3 không nạp ES module
       input: {
