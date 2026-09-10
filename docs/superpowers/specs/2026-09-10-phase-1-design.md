@@ -137,11 +137,11 @@ state của DropZone**, đây là yêu cầu của spec chứ không phải tu�
 Import chéo package **chỉ** bằng tên workspace (§2.4). Trong cùng package thì
 đường dẫn tương đối.
 
-`CLAUDE.md` ghi lệnh test là `pnpm --filter core test`. 1b1 phải xác minh
-pnpm giải được filter bỏ scope; nếu không, 1b1 thêm script root
-`"test:core": "pnpm --filter @md-reader/core test"` (và `test:ui`,
-`test:extension`) rồi sửa lệnh trong `CLAUDE.md` §Stack cho khớp thực tế. Không
-đổi tên package để lách.
+**Đã giải quyết ở 1b2.2 (đo thật):** `pnpm --filter core test` CHẠY ĐƯỢC —
+pnpm giải được tên bỏ scope (`core` → `@md-reader/core`). Lệnh trong
+`CLAUDE.md` §Stack đúng nguyên trạng, không cần sửa. Root vẫn có
+`test:core` / `test:ui` / `test:extension` làm đường thay thế. Không stage nào
+cần mở lại câu hỏi này.
 
 ### Toolchain đã chốt ở 1b1 (đo thật, không đoán)
 
