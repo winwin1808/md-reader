@@ -9,8 +9,4 @@ build/
 coverage/
 .vite/
 .worktrees/
-spike/csp-mermaid/mermaid.min.js
-spike/csp-mermaid/fixture.html
-spike/csp-mermaid/node_modules/
-spike/csp-mermaid/results.json
-spike/csp-mermaid/.chromium/
+spike/
