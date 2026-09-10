@@ -183,4 +183,23 @@ const x = 1;
     
     expect(result.html).not.toContain('javascript:')
   })
+
+  test('highlight: block contains class hljs and language-*', () => {
+    const result = renderToHtml(parseMarkdown('```ts\nconst x = 1\n```'))
+    expect(result.html).toMatch(/<code[^>]*class="[^"]*hljs language-ts[^"]*"[^>]*>/)
+  })
+
+  test('ToC ID collision sync: duplicates get unique suffixes and sync perfectly with html', () => {
+    const markdown = '# Heading\n# Heading\n# Heading'
+    const result = renderToHtml(parseMarkdown(markdown))
+    
+    expect(result.toc).toHaveLength(3)
+    expect(result.toc[0]!.id).toBe('heading')
+    expect(result.toc[1]!.id).toBe('heading-1')
+    expect(result.toc[2]!.id).toBe('heading-2')
+    
+    expect(result.html).toContain('<h1 id="heading">')
+    expect(result.html).toContain('<h1 id="heading-1">')
+    expect(result.html).toContain('<h1 id="heading-2">')
+  })
 })

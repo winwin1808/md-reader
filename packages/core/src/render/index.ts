@@ -96,17 +96,39 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     processor.use(rehypeHighlight)
   }
 
+  const codeAttributes = (sanitizeSchema.attributes?.code || []).filter(
+    (attr: any) => !(Array.isArray(attr) && attr[0] === 'className')
+  )
+  const spanAttributes = (sanitizeSchema.attributes?.span || []).filter(
+    (attr: any) => !(Array.isArray(attr) && attr[0] === 'className')
+  )
+
+  const baseSchema: typeof sanitizeSchema = {
+    ...sanitizeSchema,
+    attributes: {
+      ...sanitizeSchema.attributes,
+      code: [
+        ...codeAttributes,
+        ['className', 'hljs', /^hljs-/, /^language-/],
+      ],
+      span: [
+        ...spanAttributes,
+        ['className', 'hljs', /^hljs-/, /^language-/],
+      ],
+    },
+  }
+
   const schema = allowRawHtml
     ? {
-        ...sanitizeSchema,
+        ...baseSchema,
         attributes: {
-          ...sanitizeSchema.attributes,
-          '*': [...(sanitizeSchema.attributes?.['*'] ?? []), 'style', 'className', 'data-info'],
+          ...baseSchema.attributes,
+          '*': [...((baseSchema.attributes as any)['*'] ?? []), 'style', 'className', 'data-info'],
         }
       }
-    : sanitizeSchema
+    : baseSchema
 
-  processor.use(rehypeSanitize, schema)
+  processor.use(rehypeSanitize, schema as any)
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
   try {
