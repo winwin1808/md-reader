@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && vite build && vite build --config vite.content.config.ts",
     "dev": "vite build --watch",
-    "build": "vite build && vite build --config vite.content.config.ts",
+    "dev:content": "vite build --config vite.content.config.ts --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
