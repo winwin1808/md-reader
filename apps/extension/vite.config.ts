@@ -8,10 +8,10 @@ export default defineConfig({
     modulePreload: false,
     emptyOutDir: true,
     rollupOptions: {
+      // content script build riêng ở vite.content.config.ts — MV3 không nạp ES module
       input: {
         // 1g2: app: 'src/app/index.html'
         // 1g1: worker: 'src/worker/index.ts'
-        // 1h1: content: 'src/content/index.ts'
         placeholder: 'src/shared/version.ts',
       },
       output: {
