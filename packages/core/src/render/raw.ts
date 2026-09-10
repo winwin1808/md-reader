@@ -2,7 +2,7 @@ export function parseRawHtmlToHast(html: string): any[] {
   const root = { type: 'root', children: [] as any[] };
   const stack: any[] = [root];
   
-  const tagRegex = /<\/?([a-zA-Z0-9\-]+)([^>]*?)(\/?)>/g;
+  const tagRegex = /<\/?([a-zA-Z0-9\-]+)((?:\s+[a-zA-Z0-9_:-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/g;
   let lastIndex = 0;
   let match;
   
@@ -27,7 +27,7 @@ export function parseRawHtmlToHast(html: string): any[] {
       }
     } else {
       const properties: Record<string, any> = {};
-      const attrRegex = /([a-zA-Z0-9\-]+)(?:\s*=\s*(?:'([^']*)'|"([^"]*)"|([^\s>]+)))?/g;
+      const attrRegex = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:'([^']*)'|"([^"]*)"|([^\s"'>]+)))?/g;
       let attrMatch;
       while ((attrMatch = attrRegex.exec(attrsStr)) !== null) {
         let attrName = attrMatch[1];
