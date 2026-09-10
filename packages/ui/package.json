@@ -1,0 +1,25 @@
+{
+  "name": "@md-reader/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@md-reader/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "jsdom": "30.0.1"
+  }
+}
