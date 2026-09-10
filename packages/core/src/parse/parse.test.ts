@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseMarkdown } from './index'
+import { parseMarkdown, sanitizeSchema } from './index'
 
 describe('parseMarkdown', () => {
   it('parses basic markdown', () => {
@@ -46,5 +46,38 @@ describe('parseMarkdown', () => {
     const result = parseMarkdown(md, { gfm: false })
     // Without GFM, a table is parsed as a paragraph usually
     expect(result.tree.children[0]?.type).not.toBe('table')
+  })
+})
+
+describe('sanitizeSchema', () => {
+  it('extends default schema with required configuration', () => {
+    expect(sanitizeSchema.clobberPrefix).toBe('')
+    
+    const tags = sanitizeSchema.tagNames ?? []
+    expect(tags).toContain('svg')
+    expect(tags).toContain('path')
+    expect(tags).toContain('rect')
+    expect(tags).toContain('circle')
+    
+    expect(sanitizeSchema.attributes?.h1).toContain('id')
+    expect(sanitizeSchema.attributes?.h6).toContain('id')
+    
+    const codeClasses = sanitizeSchema.attributes?.code?.filter(
+      attr => Array.isArray(attr) && attr[0] === 'className'
+    )
+    expect(codeClasses?.length).toBeGreaterThan(0)
+    const hasCodeHljs = codeClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^hljs-'))
+    const hasCodeLanguage = codeClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^language-'))
+    expect(hasCodeHljs).toBe(true)
+    expect(hasCodeLanguage).toBe(true)
+    
+    const spanClasses = sanitizeSchema.attributes?.span?.filter(
+      attr => Array.isArray(attr) && attr[0] === 'className'
+    )
+    expect(spanClasses?.length).toBeGreaterThan(0)
+    const hasSpanHljs = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^hljs-'))
+    const hasSpanLanguage = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^language-'))
+    expect(hasSpanHljs).toBe(true)
+    expect(hasSpanLanguage).toBe(true)
   })
 })

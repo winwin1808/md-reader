@@ -60,3 +60,5 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
     raw: source
   }
 }
+
+export { sanitizeSchema } from './sanitize-schema.js'
