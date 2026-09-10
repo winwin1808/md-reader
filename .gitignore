@@ -10,3 +10,6 @@ coverage/
 .vite/
 .worktrees/
 spike/
+
+# Cursor rules do codegraph sinh ra — dự án này dùng Claude Code
+.cursor/
