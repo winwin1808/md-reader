@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderToHtml > renders complex markdown fixture with heading, table, task list, code block, link, image 1`] = `
+"<h1 id="title">Title</h1>
+<table>
+<thead>
+<tr>
+<th>A</th>
+<th>B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled> Task 1</li>
+<li class="task-list-item"><input type="checkbox" checked disabled> Task 2</li>
+</ul>
+<pre><code>No lang
+</code></pre>
+<pre><code class="hljs language-ts"><span class="hljs-keyword">const</span> x = <span class="hljs-number">1</span>;
+</code></pre>
+<p><a href="https://example.com">Link</a>
+<img src="https://example.com/img.png" alt="Image"></p>"
+`;
