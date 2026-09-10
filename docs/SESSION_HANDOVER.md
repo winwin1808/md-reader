@@ -4,8 +4,7 @@ Cập nhật: 2026-09-10 (phiên 2). Branch đang đứng: `phase-1`.
 
 ## Đang ở đâu
 
-Phase 1 (Nền tảng & Trình đọc) đang chạy. **Khối scaffold xong hết** — 5/18
-phase con merged vào `phase-1`. Chưa mở MR.
+Phase 1 (Nền tảng & Trình đọc) đang chạy. **6/18 phase con merged vào `phase-1`**. Chưa mở MR.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -14,8 +13,9 @@ phase con merged vào `phase-1`. Chưa mở MR.
 | 1b2 | `packages/core` skeleton | ✅ done |
 | 1b3 | `packages/ui` skeleton | ✅ done |
 | 1b4 | `apps/extension` skeleton | ✅ done |
-| 1c1 | `core/parse` | ⬜ **pending — chạy tiếp từ đây** |
-| 1c2 → 1i | 12 phase con còn lại | ⬜ pending |
+| 1c1 | `core/parse` | ✅ done |
+| 1c2 | `core/render` — mdast → HTML string + ToC | ⬜ **pending — chạy tiếp từ đây** |
+| 1d1 → 1i | 11 phase con còn lại | ⬜ pending |
 
 Bảng đầy đủ + interface từng phase con:
 `docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
@@ -23,30 +23,17 @@ Bảng đầy đủ + interface từng phase con:
 ## Chạy tiếp thế nào
 
 ```
-/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1c1
+/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1c2
 ```
 
 Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
 `capture-intent` hay `design-from-intent` — hai stage đó chạy một lần mỗi
 phase và đã xong.
 
-**Lưu ý về 1c1:** phiên này có mở branch `phase-1-1c1-core-parse` rồi **xoá
-lại vì chưa ghi commit nào** — chưa có plan cho 1c1, `plan-from-design` sẽ tạo
-branch mới từ đầu. Không có việc dở dang nào phải dọn.
-
-Hướng chia task đã cân cho 1c1 (chưa ghi thành plan, cứ coi là gợi ý):
-`parseMarkdown` + frontmatter + error handling một task (3 file, 1 test file),
-`sanitizeSchema` một task riêng (3 file, 1 test file) — tách vì mỗi task chỉ
-được một file test mới, và schema kiểm được bằng assertion cấu trúc thay vì
-phải chạy pipeline render (render là 1c2). Kiểu của schema nên viết
-`typeof defaultSchema` từ `rehype-sanitize`, KHÔNG import
-`hast-util-sanitize` — nó là transitive dep, không được khai trong
-`packages/core/package.json`.
-
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-pnpm --filter core test        1 test file, 1 passed
+pnpm --filter core test        2 test files, 13 passed
 pnpm --filter ui test          1 test file, 2 passed
 pnpm --filter extension test   1 test file, 1 passed
 pnpm -r typecheck              exit 0
