@@ -1,30 +1,35 @@
 ---
 name: design-from-intent
-description: Use when an md-reader intent.md file (from capture-intent) is ready to become a design — auto-chained stage 2 of the intent→design→plan→build→review→ship pipeline. Picks the recommended approach itself (no per-section approval) and auto-chains into plan-from-design. Do NOT use if no intent.md exists yet (use capture-intent first), or once a spec already exists for this topic (use plan-from-design instead).
+description: Use when an md-reader phase intent (from capture-intent) is ready to become a phase design spec — auto-chained stage 2. Runs once per phase, covering all its sub-phases. Resolves open questions itself and auto-chains into plan-from-design for the FIRST sub-phase.
 ---
 
 # Design From Intent
 
-Turn an intent document into a written design spec for md-reader — stage 2 of the auto-chained pipeline. You decide the approach yourself and keep moving; you do not stop for section-by-section approval (that trade-off was chosen deliberately for pipeline speed — anyone reviewing later reads the spec's own written rationale). You do not write code or an implementation plan; that is `plan-from-design`'s job.
+Turn a phase intent into a written design spec covering **all sub-phases of that phase** — stage 2 of the auto-chained pipeline. You decide the approach yourself and keep moving; you do not stop for section-by-section approval. You do not write code or task plans.
+
+**Run this in the main loop, not a subagent.** You need all of `DESIGN.md` in context to avoid breaking a locked constraint — that is the work, not overhead to delegate away.
 
 ## Procedure
 
-1. **Load the intent file** — use the path passed in, or ask if not given. Read the `Status:` and `Phase:` lines.
-2. **Gate check:** if `Status:` is not `draft` or `ready-for-design`, stop and tell the user the current status and that this skill only runs on those two states.
-3. **Re-read `CLAUDE.md`'s locked architecture.** The package boundaries, the parser choice, the doc-model/ops decision, the chart plan, the theme mechanism and the export mechanisms are already decided — design *within* them. If the intent genuinely cannot be satisfied without breaking one, do not quietly break it: stop, state which constraint is in conflict and why, and ask.
-4. **Resolve open questions yourself** — for anything in the intent's `Open questions` section or otherwise unresolved, make the most plausible call given the intent's stated problem/outcome/constraints, and record the assumption in the spec's Open Questions section rather than asking. Do not block on asking the user.
-5. **Consider 2-3 approaches internally**, pick the one you'd recommend, and write the spec directly in that approach — no back-and-forth.
-6. **Write the design sections** (architecture, components, data flow, error handling, testing) at whatever depth the topic needs, without pausing for approval between them. State explicitly, per component, which package it lands in and why that respects the boundary rules.
-7. **Write the spec** to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (same `<topic>` slug as the intent file), following the structure Problem / Proposed outcome / sectioned design / Constraints / Open questions. Include a short "Approach chosen" note naming the 1-2 alternatives not picked and why, so a later human read still has that context.
-   - Header: `Author: <name>. Status: designed. Phase: <n> — <phase name>`
-   - Add a line under the header: `Intent: docs/superpowers/intent/<intent-filename>.md`
-8. **Update the source intent file**: change its `Status:` to `designed`, add a line under its header: `Design: docs/superpowers/specs/<spec-filename>.md`.
-9. **Self-review** the spec: no placeholders (TBD/TODO), no internal contradictions, focused enough for one implementation plan, no ambiguous requirement left un-picked.
-10. **Auto-chain.** Report the spec path in one line, then immediately invoke the `Skill` tool with `skill: plan-from-design`, passing this spec's path. Do not wait for the user to review it first — the pipeline continues automatically.
+1. **Load the intent file** — path passed in, or ask. Read `Status:` and `Phase:`.
+2. **Gate check:** if `Status:` is not `draft` or `ready-for-design`, stop and report the current status.
+3. **Read `docs/DESIGN.md` in full.** §2 (locked architecture), §4 (this phase's sub-phases), §5 (risks), §7 (agent/context model). Design *within* these. If the intent genuinely cannot be satisfied without breaking one, do not quietly break it — stop, name the conflicting constraint, and ask.
+4. **Resolve every open question yourself.** Make the most plausible call from the intent's problem/outcome/constraints, and record it as a stated assumption in the spec. Do not block on asking.
+5. **Consider 2-3 approaches internally**, pick one, write directly in it.
+6. **Write one design section per sub-phase**, each covering: what it builds, exact interfaces it produces (names and types — later sub-phases will consume these verbatim), what it consumes from earlier sub-phases, error handling, and what its tests must prove. State which package each piece lands in and why that respects §2.4.
+7. **Check each sub-phase against the §4 sizing rule** (≤5 files, ≤300 diff lines, ≤1 new test file). Any sub-phase that clearly exceeds it must be split here, in the spec, and `DESIGN.md` §4 updated to match. Do not push an oversized sub-phase downstream — it will blow the context budget in `build-from-plan`.
+8. **Write the spec** to `docs/superpowers/specs/YYYY-MM-DD-phase-<n>-design.md`:
+   - Header: `Author: <name>. Status: designed. Phase: <n>`
+   - `Intent: docs/superpowers/intent/<file>.md`
+   - A `## Sub-phase queue` list with a status per sub-phase, all starting `pending`. This list is what drives the loop in later stages.
+   - An `## Approach chosen` note naming the 1-2 alternatives rejected and why.
+9. **Update the intent file**: `Status: designed`, add `Design: docs/superpowers/specs/<file>.md`.
+10. **Self-review**: no placeholders, no contradictions, no ambiguous requirement left un-picked, no interface named two different ways in two sections.
+11. **Auto-chain.** Report the spec path in one line, then invoke `Skill` with `skill: plan-from-design`, passing the spec path and the **first `pending` sub-phase id**.
 
-## Self-check before writing the spec file
+## Self-check before writing
 
-- Every design decision traces back to something stated in the intent file or in `CLAUDE.md` — not invented beyond them.
-- No component is placed in a package that would force a forbidden import (`packages/core` never touches `chrome.*`, React or `document`; `packages/ui` never touches `chrome.*`).
-- The spec's `Status:` line reads exactly `designed`.
-- Both files (intent and spec) cross-reference each other's path.
+- Every decision traces to the intent or to `DESIGN.md` — not invented past them.
+- No component sits in a package that would force a forbidden import (§2.4).
+- Interfaces are written as real signatures, not prose descriptions.
+- `Status:` reads exactly `designed`.

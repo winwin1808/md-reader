@@ -9,18 +9,63 @@ thuộc bss-code.
 
 ## Cách làm việc trong repo này
 
-Pipeline SDLC tự nối chuỗi 6 stage trong `.claude/skills/`:
+Pipeline SDLC tự nối chuỗi trong `.claude/skills/`. **Nó là một vòng lặp, không
+phải đường thẳng** — intent+design chạy một lần mỗi *phase*, còn
+plan→build→review lặp lại theo từng *phase con*:
 
 ```
-capture-intent → design-from-intent → plan-from-design → build-from-plan
-               → review-before-ship → ship-and-handover
+capture-intent ──► design-from-intent
+                        │
+                        ▼
+              ┌─► plan-from-design ──► build-from-plan ──► review-before-ship
+              │                                                   │
+              └──────── còn phase con pending ◄───────────────────┤
+                                                                  │
+                                            hết phase con ────────┴──► ship-and-handover ──► MR
 ```
 
-`capture-intent` là stage DUY NHẤT hỏi người dùng. Từ đó mỗi stage tự invoke
-stage kế tiếp trong cùng session — không subagent, không song song. Chỗ dừng
-duy nhất là `review-before-ship` khi gặp blocker thật.
+`capture-intent` là stage DUY NHẤT hỏi người dùng. Chỗ dừng duy nhất là
+`review-before-ship` khi gặp blocker thật.
 
-Bắt đầu một phase mới = gọi `capture-intent`.
+Bắt đầu một phase mới = gọi `capture-intent`. Chạy tiếp một phase con dở =
+gọi `build-from-plan` với đường dẫn plan.
+
+## Agent & ngân sách context
+
+Chi tiết ở `docs/DESIGN.md` §7. Bản rút gọn:
+
+- `build-from-plan` và `review-before-ship` **fan-out ra subagent**;
+  `design-from-intent` và `plan-from-design` chạy trong main loop (chúng cần
+  cả DESIGN.md trong đầu — đó là việc, không phải overhead).
+- Agent trong `.claude/agents/`: `builder` (sonnet, một task TDD, ≤30 dòng) ·
+  `spiker` (sonnet, một câu hỏi spike) · `reviewer` (sonnet, diff một phase
+  con, ≤40 dòng) · `guard` (haiku, kiểm cơ học, ≤15 dòng).
+- **Mọi lần spawn phải pin `model`.** Không bao giờ để rơi về model coordinator.
+- **Coordinator không bao giờ `Read` file dưới `packages/` hay `apps/`**, không
+  chạy full test suite, không chạy full `git diff`. Cần biết code thật thì hỏi
+  `guard`.
+- `builder` **bị cấm đọc `DESIGN.md` và `CLAUDE.md`** — 3-6 dòng ràng buộc nó
+  cần đã được chép sẵn vào khối `INVARIANTS` trong envelope của plan.
+- Ngân sách: không cửa sổ nào vượt **30%**.
+
+## Kích cỡ phase con — điều kiện, không phải gợi ý
+
+`plan-from-design` phải kiểm trước khi ghi plan; không đạt thì chia nhỏ tiếp:
+
+- ≤ 5 file bị chạm
+- ≤ 300 dòng diff dự kiến
+- ≤ 1 file test mới
+
+## Git
+
+```
+main
+ └── phase-N                    branch tích hợp cả phase, kết thúc bằng MR
+      └── phase-N/<sub>-<slug>  branch một phase con, merge --no-ff vào phase-N
+```
+
+`review-before-ship` so diff với điểm rẽ nhánh của **phase con**. MR mở ở cuối
+phase và **không tự merge** — đó là quyết định của người.
 
 ## Ràng buộc khoá cứng — không stage nào được đổi
 
@@ -64,6 +109,8 @@ Mỗi phase là một vòng pipeline riêng và phải ship được thứ dùng
 không được chứa task vượt ra ngoài phase hiện tại — thứ lỡ ra ngoài ghi xuống
 mục "Deferred to phase N". Nội dung chi tiết từng phase ở `docs/DESIGN.md` §4.
 
+Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 38 phase con trên 6 phase.
+
 | # | Phase | Ship được gì |
 |---|---|---|
 | 1 | Nền tảng & Trình đọc | Click link `.md` đọc đẹp ngay; kéo file vào app page, lần sau mở vẫn còn |
@@ -80,3 +127,7 @@ mục "Deferred to phase N". Nội dung chi tiết từng phase ở `docs/DESIGN
   `docs/SESSION_HANDOVER.md`, workspace config tối thiểu. Doc-model chốt là
   **Yjs từ phase 1** (thay cho CM6 ChangeSet ở bản nháp đầu). Chưa có
   `packages/` hay `apps/` — phase 1 tạo chúng. Chưa phase nào chạy.
+- 2026-09-10 — Pipeline chuyển thành vòng lặp phase/phase con + fan-out
+  subagent. Thêm `.claude/agents/` (builder, spiker, reviewer, guard),
+  DESIGN.md §4 chia 38 phase con, §7 mô hình agent/ngân sách context,
+  §8 mô hình git/MR. Spike CSP chốt dùng harness vứt đi (phase con 1a).

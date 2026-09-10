@@ -1,25 +1,28 @@
 ---
 name: ship-and-handover
-description: Use when an md-reader implementation plan has Status reviewed and is ready to ship — commits, updates CLAUDE.md's Status section and docs/SESSION_HANDOVER.md. This is stage 6, the terminal stage of the intent→design→plan→build→review→ship auto-chain pipeline. Do NOT use before review-before-ship has set Status to reviewed.
+description: Use when every sub-phase of an md-reader phase is done and the phase branch is ready to become an MR — stage 6, the terminal stage of the auto-chain. Opens the MR, reconciles CLAUDE.md Status and docs/SESSION_HANDOVER.md. Do NOT merge the MR yourself.
 ---
 
 # Ship And Handover
 
-Close out an md-reader change: commit, and reconcile the two living state documents (`CLAUDE.md`'s `## Status` section, `docs/SESSION_HANDOVER.md`) so the next session starts accurate. Stage 6 — the terminal stage of the auto-chained pipeline; nothing invokes another skill after this. You do not re-run tests or re-review — that already happened.
+Close out a **phase**: open its MR and reconcile the two living state documents so the next session starts accurate. Stage 6 — terminal; nothing invokes another skill after this. You do not re-run tests or re-review; that happened per sub-phase.
 
 ## Procedure
 
-1. **Load the plan file** — use the path passed in, or ask if not given. Read the `Status:` and `Phase:` lines.
-2. **Gate check:** if `Status:` is not `reviewed`, stop and report the current status.
-3. **Commit any remaining uncommitted changes** from the build stage, following this repo's commit message style (`type(scope): summary`, e.g. `feat(core):`, `feat(ui):`, `docs:`).
-4. **Update `CLAUDE.md`'s `## Status` section**: add a dated line describing what shipped, in the same terse style as the existing entries (what package, what's now true, what's still open). Do not rewrite unrelated parts of the file — in particular, never edit the locked-architecture sections here; a change to those is its own intent.
-5. **If the phase is now complete**, say so explicitly in that Status line and name the next phase from the phase table.
-6. **Update `docs/SESSION_HANDOVER.md`**: what shipped, current test counts, what the next session should pick up, and anything now stale in the handover doc.
-7. **Set the plan's `Status:` to `shipped`.**
-8. **Report the full pipeline summary**: intent path → spec path → plan path → final commit hash(es), confirm both living docs are reconciled, and state that the pipeline is complete. Stop — do not invoke any further skill.
+1. **Load the spec file** — path passed in, or ask. Read `Phase:` and the `## Sub-phase queue`.
+2. **Gate check:** every sub-phase in the queue must read `done`. If any is not, stop and name it.
+3. **Verify the phase branch state**: `git log --oneline main..phase-<n>` and `git status`. Nothing uncommitted should remain. Commit anything left in this repo's style (`type(scope): summary`).
+4. **Open the MR** for `phase-<n>` → `main` (`gh pr create`, or report the exact command if `gh` is unavailable). Title: `Phase <n> — <phase name>`. Body: what shipped per sub-phase, final test counts, and anything deliberately deferred.
+   **Do not merge it.** Merging is the human's decision.
+5. **Update `CLAUDE.md`'s `## Status`**: add a dated line — what phase shipped, what is now true, what is still open — in the same terse style as existing entries. Name the next phase. Never touch the locked-constraint sections; changing those is its own intent.
+6. **Update `docs/DESIGN.md`** only if a sub-phase settled something the document still records as unknown (a spike answer, a re-cut sub-phase list). Nothing else.
+7. **Update `docs/SESSION_HANDOVER.md`**: what shipped, current test counts, the MR link, what the next session picks up, what is now stale.
+8. **Set the spec's `Status:` to `shipped`.**
+9. **Report the full pipeline summary**: intent → spec → each sub-phase plan → MR link. Confirm the living docs are reconciled. Stop — invoke nothing further.
 
 ## Self-check
 
-- `CLAUDE.md`'s Status section and `docs/SESSION_HANDOVER.md` do not contradict each other after the edit.
-- The commit(s) actually contain the changes being described as shipped — verify with `git show --stat` before claiming done.
-- The locked-architecture sections of `CLAUDE.md` are byte-identical to before unless an intent explicitly changed them.
+- `CLAUDE.md` Status and `docs/SESSION_HANDOVER.md` do not contradict each other after the edit.
+- The MR actually contains the commits being described — verify with `git log --oneline main..phase-<n>` before claiming done.
+- The locked sections of `DESIGN.md` and `CLAUDE.md` are unchanged unless an intent explicitly changed them.
+- The MR is open, not merged.
