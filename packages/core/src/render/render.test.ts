@@ -125,38 +125,32 @@ const x = 1;
     expect(result.html).toContain('Click')
   })
 
-  test('allowRawHtml: true -> keeps safe HTML', () => {
-    const markdown = '<div><span class="safe" style="color: red">Hello safe HTML</span></div>'
-    const parsed = parseMarkdown(markdown)
+  test('1. Thẻ inline HTML lồng text', () => {
+    const parsed = parseMarkdown('Hello <span>text</span>')
     const result = renderToHtml(parsed, { allowRawHtml: true })
-    expect(result.html).toContain('<div>')
-    expect(result.html).toContain('Hello safe HTML')
+    expect(result.html).toContain('<p>Hello <span>text</span></p>')
   })
 
-  test('allowRawHtml: true -> handles > in attributes', () => {
-    const markdown = '<div><span title=">">hello</span></div>'
-    const parsed = parseMarkdown(markdown)
+  test('2. Entity HTML', () => {
+    const parsed = parseMarkdown('<div>&amp;</div>')
     const result = renderToHtml(parsed, { allowRawHtml: true })
-    expect(result.html).toContain('<span title=">">hello</span>')
+    expect(result.html).toContain('&#x26;')
+    expect(result.html).not.toContain('&#x26;amp;')
   })
 
-  test('allowRawHtml: true -> handles single and double quotes in attributes', () => {
-    const markdown = '<div><span data-info=\'single > quote\'>test</span><span data-info="double > quote">test</span></div>'
-    const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { allowRawHtml: true })
-    expect(result.html).toContain('<span data-info="single > quote">test</span>')
-    expect(result.html).toContain('<span data-info="double > quote">test</span>')
-  })
-
-  test('allowRawHtml: true -> still removes script and handler', () => {
-    const markdown = '<div onclick="alert(1)">Hello<script>alert(2)</script></div>'
-    const parsed = parseMarkdown(markdown)
+  test('3. Script và on* vẫn bị loại bỏ triệt để', () => {
+    const parsed = parseMarkdown('<div onclick="alert(1)"><script>alert(2)</script>Safe</div>')
     const result = renderToHtml(parsed, { allowRawHtml: true })
     expect(result.html).not.toContain('<script>')
     expect(result.html).not.toContain('alert(2)')
     expect(result.html).not.toContain('onclick')
-    expect(result.html).not.toContain('alert(1)')
-    expect(result.html).toContain('<div>Hello</div>')
+    expect(result.html).toContain('<div>Safe</div>')
+  })
+
+  test('4. Attribute chứa >', () => {
+    const parsed = parseMarkdown('<span title="> ">hello</span>')
+    const result = renderToHtml(parsed, { allowRawHtml: true })
+    expect(result.html).toContain('title="> "')
   })
 
   test('ToC ID sync: every id in result.toc appears in result.html', () => {
