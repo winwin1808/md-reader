@@ -350,6 +350,41 @@ ghi thẳng vào chính mục này, cộng một câu kết luận chọn (a) ha
 stage nào được giả định mermaid chạy trong content script trước khi bảng đó có
 số liệu thật.
 
+**Kết quả spike 1a (1a.1 + 1a.2), đo tự động bằng Puppeteer + Chromium thật,
+load unpacked extension, đọc `data-spike-result` từ `documentElement`. mermaid
+là bản thật (vendor từ npm, không stub). 6/6 URL đo được, 0 dòng "không xác
+định".**
+
+| Trang | CSP quan sát được | Shadow DOM + style inline render đúng? | mermaid render đúng? | Ghi chú |
+|---|---|---|---|---|
+| /none | (không có header) | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-self | default-src 'self'; style-src 'self' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /locked | default-src 'none'; script-src 'self'; style-src 'self'; font-src 'none'; img-src 'none' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-nonce | style-src 'nonce-spike123' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-inline | default-src 'self'; style-src 'self' 'unsafe-inline' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| file:///…/fixture.html | (không có — file://) | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; file:// không có CSP header (khác biệt cố ý so với 4 route http); extension chạy với --allow-file-access-from-files; 0 securitypolicyviolation |
+
+**Giới hạn của bằng chứng này, đọc trước khi bám vào nó.** Probe chạy trên
+**Chromium unbranded** (tải qua `@puppeteer/browsers`), không phải "Google
+Chrome" branded: binary branded từ chối `--load-extension` /
+`--disable-extensions-except` ("is not allowed in Google Chrome, ignoring"),
+nên không tự động hoá được. Chromium và Chrome dùng cùng engine và cùng cách
+thực thi CSP, nhưng đây vẫn là suy rộng chứ không phải đo trực tiếp trên bản
+người dùng chạy. Phase con 1h1 phải xác nhận lại **một lần bằng tay** trên
+Chrome branded trước khi coi nhánh (a) là chốt cho sản phẩm.
+
+`adoptedStyleSheets` cũng render đúng ở cả 6 trang (24px, không có trong bảng
+trên vì spec chỉ yêu cầu 5 cột). Không trang nào phát sinh
+`securitypolicyviolation`, kể cả `/locked` với `default-src 'none'`.
+
+**Kết luận: chọn nhánh (a) — render mermaid trong Shadow DOM với style inline
+hoá.** Style inline trong Shadow DOM, `adoptedStyleSheets`, và SVG do mermaid
+sinh ra đều không bị CSP của trang chủ chặn ở bất kỳ chính sách nào đã thử,
+kể cả chính sách khoá chặt nhất (`default-src 'none'`). Nhánh (b) (degrade
+sang placeholder) không cần kích hoạt cho các trang đã thử; vẫn giữ làm lưới
+an toàn theo INVARIANTS vì spike chỉ phủ 5 chính sách CSP đại diện, không phải
+mọi CSP có thể gặp trong thực tế.
+
 ### 5.2 File `.md` bị server trả về dạng download
 
 `Content-Disposition: attachment` thì Chrome tải xuống, content script không
