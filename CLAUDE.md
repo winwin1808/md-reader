@@ -131,6 +131,15 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
   `docs/SESSION_HANDOVER.md`, workspace config tối thiểu. Doc-model chốt là
   **Yjs từ phase 1** (thay cho CM6 ChangeSet ở bản nháp đầu). Chưa có
   `packages/` hay `apps/` — phase 1 tạo chúng. Chưa phase nào chạy.
+- 2026-09-10 — **Phase 1 chạy được 5/18 phase con**, merged vào `phase-1`,
+  chưa MR: `1a` spike CSP (kết luận nhánh (a), ghi vào DESIGN.md §5.1) ·
+  `1b1` root workspace (typescript 7.0.2, vitest 5.0.0) · `1b2`
+  `@md-reader/core` · `1b3` `@md-reader/ui` (react 19.3.0) · `1b4`
+  `@md-reader/extension` (vite 8.2.2, build **hai lệnh** — content script
+  IIFE riêng, vì output chung kéo React vào content.js dạng ES module).
+  Cả ba package xanh: core 1 · ui 2 · extension 1 test; typecheck + build
+  exit 0; `dist/content.js` gz 104/61440. Phase con kế tiếp: **1c1
+  `core/parse`**. Món nợ đang mở + cách chạy tiếp ở `docs/SESSION_HANDOVER.md`.
 - 2026-09-10 — Pipeline chuyển thành vòng lặp phase/phase con + fan-out
   subagent. Thêm `.claude/agents/` (builder, spiker, reviewer, guard),
   DESIGN.md §4 chia 38 phase con, §7 mô hình agent/ngân sách context,
