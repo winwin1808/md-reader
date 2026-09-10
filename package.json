@@ -1,7 +1,7 @@
 {
   "name": "md-reader",
   "private": true,
-  "packageManager": "pnpm@9.12.0",
+  "packageManager": "pnpm@10.10.0",
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
