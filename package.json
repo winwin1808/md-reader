@@ -1,6 +1,7 @@
 {
   "name": "md-reader",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
     "typescript": "^7.0.2",
