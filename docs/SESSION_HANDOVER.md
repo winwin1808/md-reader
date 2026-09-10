@@ -1,6 +1,6 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-10. Branch đang đứng: `phase-1`.
+Cập nhật: 2026-09-10 (phiên 2). Branch đang đứng: `phase-1`.
 
 ## Đang ở đâu
 
@@ -23,13 +23,25 @@ Bảng đầy đủ + interface từng phase con:
 ## Chạy tiếp thế nào
 
 ```
-Skill: plan-from-design
-args:  docs/superpowers/specs/2026-09-10-phase-1-design.md 1c1
+/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1c1
 ```
 
 Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
 `capture-intent` hay `design-from-intent` — hai stage đó chạy một lần mỗi
 phase và đã xong.
+
+**Lưu ý về 1c1:** phiên này có mở branch `phase-1-1c1-core-parse` rồi **xoá
+lại vì chưa ghi commit nào** — chưa có plan cho 1c1, `plan-from-design` sẽ tạo
+branch mới từ đầu. Không có việc dở dang nào phải dọn.
+
+Hướng chia task đã cân cho 1c1 (chưa ghi thành plan, cứ coi là gợi ý):
+`parseMarkdown` + frontmatter + error handling một task (3 file, 1 test file),
+`sanitizeSchema` một task riêng (3 file, 1 test file) — tách vì mỗi task chỉ
+được một file test mới, và schema kiểm được bằng assertion cấu trúc thay vì
+phải chạy pipeline render (render là 1c2). Kiểu của schema nên viết
+`typeof defaultSchema` từ `rehype-sanitize`, KHÔNG import
+`hast-util-sanitize` — nó là transitive dep, không được khai trong
+`packages/core/package.json`.
 
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
@@ -49,6 +61,18 @@ nguyên pipeline).
 
 **Dependency của cả ba package đã khai trọn từ phase con skeleton.** 1c1 trở
 đi KHÔNG được chạm `package.json` nào — nếu thấy thiếu dep thì đó là lỗi plan.
+
+## CodeGraph đã bật (2026-09-10)
+
+`codegraph init -i` đã chạy: **14 file, 32 node, 37 edge**, backend
+`node:sqlite` (WAL + FTS5). Xác nhận sống qua MCP bằng `codegraph_status`.
+
+- Chỉ `.codegraph/.gitignore` được commit. `codegraph.db` là index local từng
+  máy nên nó tự ignore — mỗi máy tự chạy `codegraph init -i` một lần.
+- `.cursor/` (rules codegraph sinh cho Cursor) đã đưa vào `.gitignore`; repo
+  này dùng Claude Code, `CLAUDE.md` đã có mục CodeGraph.
+- Index sẽ còn rất nhỏ cho tới khi 1c1 trở đi thêm code thật (hiện chỉ có 3
+  `constant`: `CORE_VERSION`, `UI_VERSION`, `EXTENSION_VERSION`).
 
 ## Ba món nợ đang mở — đọc trước khi làm phase con liên quan
 

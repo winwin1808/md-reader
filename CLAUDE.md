@@ -139,7 +139,8 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
   IIFE riêng, vì output chung kéo React vào content.js dạng ES module).
   Cả ba package xanh: core 1 · ui 2 · extension 1 test; typecheck + build
   exit 0; `dist/content.js` gz 104/61440. Phase con kế tiếp: **1c1
-  `core/parse`**. Món nợ đang mở + cách chạy tiếp ở `docs/SESSION_HANDOVER.md`.
+  `core/parse`** (chưa có plan). CodeGraph đã bật cho repo (14 file, 32 node).
+  Món nợ đang mở + cách chạy tiếp ở `docs/SESSION_HANDOVER.md`.
 - 2026-09-10 — Pipeline chuyển thành vòng lặp phase/phase con + fan-out
   subagent. Thêm `.claude/agents/` (builder, spiker, reviewer, guard),
   DESIGN.md §4 chia 38 phase con, §7 mô hình agent/ngân sách context,
