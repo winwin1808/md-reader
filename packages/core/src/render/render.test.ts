@@ -76,4 +76,83 @@ describe('renderToHtml', () => {
     expect(result.toc).toHaveLength(1)
     expect(result.toc[0]!.id).toBe('hello-world')
   })
+
+  test('renders complex markdown fixture with heading, table, task list, code block, link, image', () => {
+    const markdown = `
+# Title
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+- [ ] Task 1
+- [x] Task 2
+
+\`\`\`
+No lang
+\`\`\`
+
+\`\`\`ts
+const x = 1;
+\`\`\`
+
+[Link](https://example.com)
+![Image](https://example.com/img.png)
+`
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { highlight: true, allowRawHtml: false })
+    
+    expect(result.html).toContain('<h1 id="title">Title</h1>')
+    expect(result.html).toContain('<table>')
+    expect(result.html).toMatchSnapshot()
+  })
+
+  test('highlight: false -> <pre><code> does not have hljs classes', () => {
+    const markdown = '```js\nconsole.log(1)\n```'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { highlight: false })
+    expect(result.html).toContain('<pre><code class="language-js">console.log(1)\n</code></pre>')
+    expect(result.html).not.toContain('hljs')
+  })
+
+  test('allowRawHtml: false -> removes <script> and on* attributes', () => {
+    const markdown = '<script>alert("hack")</script>\n<button onclick="alert(1)">Click</button>'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: false })
+    expect(result.html).not.toContain('<script>')
+    expect(result.html).not.toContain('onclick')
+    expect(result.html).not.toContain('alert(1)')
+    expect(result.html).toContain('Click')
+  })
+
+  test('ToC ID sync: every id in result.toc appears in result.html', () => {
+    const markdown = `
+# H1
+## H2
+### H3
+## H2 again
+`
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed)
+
+    const checkTocIds = (items: typeof result.toc) => {
+      for (const item of items) {
+        expect(result.html).toContain(`id="${item.id}"`)
+        if (item.children) {
+          checkTocIds(item.children)
+        }
+      }
+    }
+    
+    checkTocIds(result.toc)
+    expect(result.toc.length).toBeGreaterThan(0)
+  })
+
+  test('Error handling: link javascript:... is sanitized, href removed or changed', () => {
+    const markdown = '[hack](javascript:alert(1))'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: false })
+    
+    expect(result.html).not.toContain('javascript:')
+  })
 })
