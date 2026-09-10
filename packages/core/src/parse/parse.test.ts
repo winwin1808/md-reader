@@ -96,3 +96,71 @@ describe('sanitizeSchema', () => {
     expect(sanitizeSchema.attributes?.rect).toContain('width')
   })
 })
+
+import rehypeSanitize from 'rehype-sanitize'
+import rehypeStringify from 'rehype-stringify'
+import { unified } from 'unified'
+import type { Node } from 'hast'
+
+describe('actual sanitization', () => {
+  const sanitizeHtml = (node: Node) => {
+    const processor = unified()
+      .use(rehypeSanitize, sanitizeSchema)
+      .use(rehypeStringify)
+    
+    return processor.stringify(
+      processor.runSync({ type: 'root', children: [node] } as any)
+    )
+  }
+
+  it('keeps both hljs-* and language-* classes for code', () => {
+    const result = sanitizeHtml({
+      type: 'element',
+      tagName: 'code',
+      properties: { className: ['hljs-keyword', 'hljs-title', 'language-ts', 'bad-class'] },
+      children: []
+    } as any)
+    expect(result).toBe('<code class="hljs-keyword hljs-title language-ts"></code>')
+  })
+
+  it('keeps viewBox, d, fill for svg', () => {
+    const result = sanitizeHtml({
+      type: 'element',
+      tagName: 'svg',
+      properties: { viewBox: '0 0 100 100' },
+      children: [{
+        type: 'element',
+        tagName: 'path',
+        properties: { d: 'M0 0', fill: 'red' },
+        children: []
+      }]
+    } as any)
+    expect(result).toBe('<svg viewBox="0 0 100 100"><path d="M0 0" fill="red"></path></svg>')
+  })
+
+  it('removes unsafe tags and handlers', () => {
+    const root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'script',
+          properties: {},
+          children: [{ type: 'text', value: 'alert(1)' }]
+        },
+        {
+          type: 'element',
+          tagName: 'div',
+          properties: { onclick: 'alert(2)' },
+          children: [{ type: 'text', value: 'test' }]
+        }
+      ]
+    }
+    const processor = unified()
+      .use(rehypeSanitize, sanitizeSchema)
+      .use(rehypeStringify)
+    
+    const result = processor.stringify(processor.runSync(root as any))
+    expect(result).toBe('<div>test</div>')
+  })
+})

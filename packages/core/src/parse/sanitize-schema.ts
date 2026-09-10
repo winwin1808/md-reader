@@ -10,6 +10,14 @@ const svgAttributes = [
   'markerWidth', 'markerHeight', 'refX', 'refY', 'orient'
 ]
 
+const codeAttributes = (defaultSchema.attributes?.code ?? []).filter(
+  (attr) => !(Array.isArray(attr) && attr[0] === 'className')
+)
+
+const spanAttributes = (defaultSchema.attributes?.span ?? []).filter(
+  (attr) => !(Array.isArray(attr) && attr[0] === 'className')
+)
+
 export const sanitizeSchema: typeof defaultSchema = {
   ...defaultSchema,
   clobberPrefix: '',
@@ -33,11 +41,11 @@ export const sanitizeSchema: typeof defaultSchema = {
   attributes: {
     ...defaultSchema.attributes,
     code: [
-      ...(defaultSchema.attributes?.code ?? []),
+      ...codeAttributes,
       ['className', /^hljs-/, /^language-/],
     ],
     span: [
-      ...(defaultSchema.attributes?.span ?? []),
+      ...spanAttributes,
       ['className', /^hljs-/, /^language-/],
     ],
     h1: [...(defaultSchema.attributes?.h1 ?? []), 'id'],
