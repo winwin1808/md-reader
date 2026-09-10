@@ -18,7 +18,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1a | Spike CSP/mermaid (harness vứt đi) | done |
 | 1b1 | Root workspace & tooling | done |
 | 1b2 | `packages/core` skeleton | done |
-| 1b3 | `packages/ui` skeleton | planned |
+| 1b3 | `packages/ui` skeleton | done |
 | 1b4 | `apps/extension` skeleton | pending |
 | 1c1 | `core/parse` — remark pipeline + frontmatter + sanitize schema | pending |
 | 1c2 | `core/render` — mdast → HTML string + ToC | pending |
@@ -176,6 +176,21 @@ cần mở lại câu hỏi này.
 - **Mỗi package tự cấp `vitest.config.ts`** nên môi trường không đè nhau:
   core dùng `node`, `packages/ui` (1b3) dùng `jsdom`, không có setting global
   nào để phải ghi đè.
+
+### Ràng buộc React một-bản-duy-nhất (phát sinh từ review 1b3)
+
+`packages/ui` khai `react`/`react-dom` ở `dependencies`, không
+`peerDependencies`. Hôm nay đúng — pnpm dedup ra một bản vì version khớp tuyệt
+đối — nhưng nó **không tự bảo vệ**. Vì thế:
+
+- **1b4 và 1g2 PHẢI pin `react` và `react-dom` đúng `19.3.0`**, giống hệt
+  `packages/ui`. Chép dòng này vào `INVARIANTS` của chúng.
+- **1g2 phải có một cổng cơ học**: sau khi build app page, xác nhận chỉ có
+  MỘT bản React trong `node_modules` mà extension resolve tới
+  (`pnpm why react` hoặc đếm số bản trong bundle). Hai bản React = hook/context
+  vỡ lúc runtime, và hôm nay không cổng nào bắt được.
+- Nếu về sau `packages/ui` được publish hay bundle độc lập thì mới cần chuyển
+  sang `peerDependencies`; trong phase 1-5 nó chỉ dùng nội bộ workspace.
 
 ### Dependency được phép trong phase 1
 
