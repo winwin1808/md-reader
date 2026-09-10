@@ -20,7 +20,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1b2 | `packages/core` skeleton | done |
 | 1b3 | `packages/ui` skeleton | done |
 | 1b4 | `apps/extension` skeleton | done |
-| 1c1 | `core/parse` — remark pipeline + frontmatter + sanitize schema | planned |
+| 1c1 | `core/parse` — remark pipeline + frontmatter + sanitize schema | done |
 | 1c2 | `core/render` — mdast → HTML string + ToC | pending |
 | 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | pending |
 | 1d2 | `core/doc` — history append + test hội tụ 2 replica | pending |
