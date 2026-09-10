@@ -15,7 +15,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 
 | # | Phase con | Status |
 |---|---|---|
-| 1a | Spike CSP/mermaid (harness vứt đi) | pending |
+| 1a | Spike CSP/mermaid (harness vứt đi) | done |
 | 1b1 | Root workspace & tooling | pending |
 | 1b2 | `packages/core` skeleton | pending |
 | 1b3 | `packages/ui` skeleton | pending |
