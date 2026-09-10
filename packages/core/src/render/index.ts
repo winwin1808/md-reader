@@ -67,6 +67,7 @@ export function extractToc(tree: Root): TocEntry[] {
   return toc
 }
 
+import { rehypeRawPlugin } from './raw.js'
 import { unified } from 'unified'
 import remarkRehype from 'remark-rehype'
 import rehypeSlug from 'rehype-slug'
@@ -100,6 +101,10 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
         }
       }
     : sanitizeSchema
+
+  if (allowRawHtml) {
+    processor.use(rehypeRawPlugin)
+  }
 
   processor.use(rehypeSanitize, schema)
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })

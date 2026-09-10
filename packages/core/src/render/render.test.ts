@@ -125,6 +125,25 @@ const x = 1;
     expect(result.html).toContain('Click')
   })
 
+  test('allowRawHtml: true -> keeps safe HTML', () => {
+    const markdown = '<div><span class="safe" style="color: red">Hello safe HTML</span></div>'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: true })
+    expect(result.html).toContain('<div>')
+    expect(result.html).toContain('Hello safe HTML')
+  })
+
+  test('allowRawHtml: true -> still removes script and handler', () => {
+    const markdown = '<div onclick="alert(1)">Hello<script>alert(2)</script></div>'
+    const parsed = parseMarkdown(markdown)
+    const result = renderToHtml(parsed, { allowRawHtml: true })
+    expect(result.html).not.toContain('<script>')
+    expect(result.html).not.toContain('alert(2)')
+    expect(result.html).not.toContain('onclick')
+    expect(result.html).not.toContain('alert(1)')
+    expect(result.html).toContain('<div>Hello</div>')
+  })
+
   test('ToC ID sync: every id in result.toc appears in result.html', () => {
     const markdown = `
 # H1
