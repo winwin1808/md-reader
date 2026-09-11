@@ -47,9 +47,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  const originalBodyNodes = Array.from(childNodes)
-  document.body.innerHTML = ''
-
+  // Do not clear document.body, just overlay the button!
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
   document.body.appendChild(rootEl)
@@ -62,8 +60,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   shadow.appendChild(link)
 
   const restore = () => {
-    document.body.innerHTML = ''
-    originalBodyNodes.forEach(node => document.body.appendChild(node))
+    rootEl.remove()
   }
 
   try {

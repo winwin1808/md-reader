@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "pnpm clean && vite build && vite build --config vite.content.config.ts",
+    "build": "pnpm clean && vite build && vite build --config vite.content.config.ts && node scripts/check-size.js",
     "dev": "vite build --watch",
     "dev:content": "vite build --config vite.content.config.ts --watch",
     "test": "vitest run",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@md-reader/core": "workspace:*",
     "@md-reader/ui": "workspace:*",
+    "preact": "^10.29.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "y-indexeddb": "9.0.12",
