@@ -5,12 +5,14 @@ import { ThemeProvider, useTheme } from './ThemeProvider'
 import React from 'react'
 
 const TestComponent = () => {
-  const { mode, resolved, setMode } = useTheme()
+  const { mode, resolved, setMode, colorTheme, setColorTheme } = useTheme()
   return (
     <div>
       <span data-testid="mode">{mode}</span>
       <span data-testid="resolved">{resolved}</span>
+      <span data-testid="color-theme">{colorTheme}</span>
       <button onClick={() => setMode('dark')}>Set Dark</button>
+      {setColorTheme && <button onClick={() => setColorTheme('navy')}>Set Navy</button>}
     </div>
   )
 }
@@ -27,6 +29,40 @@ describe('ThemeProvider', () => {
     cleanup()
   })
 
+  it('renders with default black color theme', () => {
+    const { container } = render(
+      <ThemeProvider mode="light">
+        <TestComponent />
+      </ThemeProvider>
+    )
+    
+    expect(container.firstChild).toHaveAttribute('data-color-theme', 'black')
+  })
+
+  it('renders with provided color theme', () => {
+    const { container } = render(
+      <ThemeProvider mode="light" colorTheme="green">
+        <TestComponent />
+      </ThemeProvider>
+    )
+    
+    expect(container.firstChild).toHaveAttribute('data-color-theme', 'green')
+    expect(screen.getByTestId('color-theme')).toHaveTextContent('green')
+  })
+
+  it('calls onColorThemeChange when setColorTheme is called', () => {
+    const onColorThemeChange = vi.fn()
+    render(
+      <ThemeProvider mode="light" colorTheme="black" onColorThemeChange={onColorThemeChange}>
+        <TestComponent />
+      </ThemeProvider>
+    )
+
+    screen.getByText('Set Navy').click()
+    expect(onColorThemeChange).toHaveBeenCalledWith('navy')
+  })
+
+  // ... copy the rest of existing tests
   it('renders with light mode', () => {
     const { container } = render(
       <ThemeProvider mode="light">
@@ -125,7 +161,7 @@ describe('ThemeProvider', () => {
       </ThemeProvider>
     )
 
-    screen.getByRole('button').click()
+    screen.getByText('Set Dark').click()
     expect(onModeChange).toHaveBeenCalledWith('dark')
   })
 
