@@ -10,7 +10,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 | 2a-opt | UI Layout & Settings | done |
 | 2a-ux | Typography, Spacing & ToC Polish | done |
 | 2b | HTML self-contained | done |
-| 2c | mdast → docx | planned |
+| 2c | mdast → docx | done |
 | 2d | SVG → PNG | pending |
 | 2e | Print CSS + PDF | pending |
 | 2f | ExportDialog | pending |
