@@ -49,12 +49,16 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme'])
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd'])
   })
   
   it('loads colorTheme and renders ThemePicker', async () => {
     await act(async () => {
       render(<App />)
+    })
+    // open settings modal
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     })
     
     const navyBtn = screen.getByRole('button', { name: 'Select navy theme' })
@@ -81,6 +85,10 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
+    // open settings modal
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    })
     
     // The black button should be selected since fallback is black
     const blackBtn = screen.getByRole('button', { name: 'Select black theme' })
