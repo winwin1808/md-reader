@@ -31,7 +31,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1g2 | Extension — app page shell: Y.Doc + `y-indexeddb` + theme bridge | done |
 | 1g3 | Extension — kéo-thả mở file + registry + danh sách gần đây | done |
 | 1h1 | Content script — detect + Shadow DOM + render read-only + nút mở app | done |
-| 1h2 | Content script — cổng ngân sách 60KB gz | pending |
+| 1h2 | Content script — cổng ngân sách 60KB gz | done |
 | 1i | Mermaid — lazy ở app page + đường degrade | pending |
 
 ## Approach chosen
