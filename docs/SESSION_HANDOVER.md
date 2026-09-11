@@ -1,10 +1,10 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-10 (phiên 2). Branch đang đứng: `phase-1`.
+Cập nhật: 2026-09-11 (phiên 3). Branch đang đứng: `phase-1`.
 
 ## Đang ở đâu
 
-Phase 1 (Nền tảng & Trình đọc) đang chạy. **7/18 phase con merged vào `phase-1`**. Chưa mở MR.
+Phase 1 (Nền tảng & Trình đọc) đang chạy. **8/18 phase con merged vào `phase-1`**. Chưa mở MR.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -15,8 +15,9 @@ Phase 1 (Nền tảng & Trình đọc) đang chạy. **7/18 phase con merged và
 | 1b4 | `apps/extension` skeleton | ✅ done |
 | 1c1 | `core/parse` | ✅ done |
 | 1c2 | `core/render` — mdast → HTML string + ToC | ✅ done |
-| 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | ⬜ **pending — chạy tiếp từ đây** |
-| 1d2 → 1i | 10 phase con còn lại | ⬜ pending |
+| 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | ✅ done |
+| 1d2 | `core/doc` — history append + test hội tụ 2 replica | ⬜ **pending — chạy tiếp từ đây** |
+| 1e → 1i | 9 phase con còn lại | ⬜ pending |
 
 Bảng đầy đủ + interface từng phase con:
 `docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
@@ -24,7 +25,7 @@ Bảng đầy đủ + interface từng phase con:
 ## Chạy tiếp thế nào
 
 ```
-/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1d1
+/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1d2
 ```
 
 Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
@@ -34,12 +35,12 @@ phase và đã xong.
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-pnpm --filter core test        3 test files, 28 passed
+pnpm --filter core test        4 test files, 43 passed
 pnpm --filter ui test          1 test file, 2 passed
 pnpm --filter extension test   1 test file, 1 passed
 pnpm -r typecheck              exit 0
 pnpm -r build                  exit 0
-dist/content.js                85 B, vỏ IIFE, 0 import, gz 90/61440
+dist/content.js                85 B, vỏ IIFE, 0 import, gz 104/61440
 ```
 
 Toolchain đã pin: `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` ·
