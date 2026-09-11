@@ -18,28 +18,14 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;')
 }
 
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64')
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const len = bytes.byteLength
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]!)
   }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-  let base64 = ''
-  const len = bytes.length
-  for (let i = 0; i < len; i += 3) {
-    const b0 = bytes[i]
-    const b1 = i + 1 < len ? bytes[i + 1] : 0
-    const b2 = i + 2 < len ? bytes[i + 2] : 0
-
-    const c0 = b0 >> 2
-    const c1 = ((b0 & 3) << 4) | (b1 >> 4)
-    const c2 = ((b1 & 15) << 2) | (b2 >> 6)
-    const c3 = b2 & 63
-
-    base64 += chars[c0] + chars[c1]
-    base64 += i + 1 < len ? chars[c2] : '='
-    base64 += i + 2 < len ? chars[c3] : '='
-  }
-  return base64
+  return typeof btoa === 'function' ? btoa(binary) : ''
 }
 
 async function defaultFetchImage(url: string): Promise<{ base64: string; mimeType: string } | null> {
@@ -51,13 +37,10 @@ async function defaultFetchImage(url: string): Promise<{ base64: string; mimeTyp
     if (!response.ok) {
       return null
     }
-    const contentType =
-      (response.headers && typeof response.headers.get === 'function'
-        ? response.headers.get('content-type')
-        : (response.headers as Record<string, string> | undefined)?.['content-type']) || 'application/octet-stream'
-    const mimeType = contentType.split(';')[0].trim() || 'application/octet-stream'
+    const contentType = response.headers.get('content-type') ?? 'application/octet-stream'
+    const mimeType = (contentType.split(';')[0] ?? '').trim() || 'application/octet-stream'
     const arrayBuffer = await response.arrayBuffer()
-    const base64 = uint8ArrayToBase64(new Uint8Array(arrayBuffer))
+    const base64 = arrayBufferToBase64(arrayBuffer)
     return { base64, mimeType }
   } catch {
     return null
@@ -74,7 +57,7 @@ export async function exportToHtml(options: ExportHtmlOptions): Promise<string> 
   const urlsToFetch = new Set<string>()
   let match: RegExpExecArray | null
   while ((match = imgTagRegex.exec(html)) !== null) {
-    const attrs = match[1]
+    const attrs = match[1] ?? ''
     const srcMatch = srcAttrRegex.exec(attrs)
     if (srcMatch) {
       const url = srcMatch[2] ?? srcMatch[3]
