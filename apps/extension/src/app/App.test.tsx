@@ -9,9 +9,10 @@ import * as ui from '@md-reader/ui'
 // Mock dependencies
 vi.mock('y-indexeddb', () => {
   return {
-    IndexeddbPersistence: vi.fn().mockImplementation(() => {
+    IndexeddbPersistence: vi.fn().mockImplementation(function() {
       return {
         destroy: vi.fn(),
+        once: vi.fn(),
       }
     }),
   }
@@ -123,7 +124,7 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd'])
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd', 'fontScale'])
   })
   
   it('loads colorTheme and renders ThemePicker', async () => {
@@ -199,5 +200,81 @@ describe('App', () => {
     expect(screen.getByRole('progressbar')).toBeDefined()
     expect(container.querySelector('.a4-document-container')).not.toBeNull()
     expect(container.querySelector('.a4-document-container .md-viewer')).not.toBeNull()
+  })
+
+  it('renders TopToolbar, handles fontScale changes, and toggles reading mode', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Guide\n\n## Section 1\n\nContent'),
+    } as any)
+
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+
+    const { container } = renderResult
+
+    // TopToolbar should render the document title
+    expect(screen.getByText('guide')).toBeDefined()
+
+    // Default fontScale is md on container
+    expect(container.querySelector('[data-font-scale="md"]')).not.toBeNull()
+
+    // Sidebar ToC should be visible initially when tocOpen is true
+    expect(container.querySelector('.sidebar-toc')).not.toBeNull()
+
+    // Font scale increase: click "Tăng cỡ chữ"
+    const incBtn = screen.getByTitle('Tăng cỡ chữ')
+    await act(async () => {
+      fireEvent.click(incBtn)
+    })
+    expect(container.querySelector('[data-font-scale="lg"]')).not.toBeNull()
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({ fontScale: 'lg' })
+
+    // ToC toggle button: click "Mục lục" to close
+    const tocBtn = screen.getByTitle('Mục lục')
+    await act(async () => {
+      fireEvent.click(tocBtn)
+    })
+    expect(container.querySelector('.sidebar-toc')).toBeNull()
+
+    // Click "Mục lục" again to re-open
+    await act(async () => {
+      fireEvent.click(tocBtn)
+    })
+    expect(container.querySelector('.sidebar-toc')).not.toBeNull()
+
+    // Reading mode button in TopToolbar
+    const readingModeBtn = screen.getByTitle('Chế độ tập trung')
+    expect(readingModeBtn).toBeDefined()
+
+    await act(async () => {
+      fireEvent.click(readingModeBtn)
+    })
+
+    // Container should now have reading-mode class
+    expect(container.querySelector('.reading-mode')).not.toBeNull()
+
+    // Floating exit reading mode button should appear
+    const exitBtn = screen.getByText('Thoát đọc tập trung ✕')
+    expect(exitBtn).toBeDefined()
+    expect(exitBtn.className).toContain('exit-reading-mode-btn')
+    expect(exitBtn.className).toContain('md-no-print')
+
+    // Sidebar ToC should be hidden in reading mode even though tocOpen is true
+    expect(container.querySelector('.sidebar-toc')).toBeNull()
+
+    // Click exit button
+    await act(async () => {
+      fireEvent.click(exitBtn)
+    })
+
+    // reading-mode class removed and sidebar-toc restored
+    expect(container.querySelector('.reading-mode')).toBeNull()
+    expect(screen.queryByText('Thoát đọc tập trung ✕')).toBeNull()
+    expect(container.querySelector('.sidebar-toc')).not.toBeNull()
   })
 })
