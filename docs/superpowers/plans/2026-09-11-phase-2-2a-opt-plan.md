@@ -1,5 +1,5 @@
 # Plan: Phase 2 — Sub-phase 2a-opt
-Author: Antigravity. Status: built. Phase: 2. Sub-phase: 2a-opt
+Author: Antigravity. Status: reviewed. Phase: 2. Sub-phase: 2a-opt
 Spec: docs/superpowers/specs/2026-09-11-phase-2-design.md
 BranchPoint: HEAD
 
