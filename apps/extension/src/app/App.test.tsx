@@ -124,7 +124,7 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd', 'fontScale'])
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd', 'fontScale', 'fontFamily'])
   })
   
   it('loads colorTheme and renders ThemePicker', async () => {
@@ -320,5 +320,49 @@ describe('App', () => {
       fireEvent.click(closeBtn)
     })
     expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+  })
+
+  it('loads fontFamily, shows options in SettingsModal, and selecting font family updates storage and data-font-family', async () => {
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+    const { container } = renderResult
+
+    // Initial data-font-family attribute should be 'sans'
+    expect(container.querySelector('[data-font-family="sans"]')).not.toBeNull()
+
+    // Open settings modal
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    })
+
+    // Font family options should be shown (e.g., serif button or option)
+    const serifOption = screen.getByRole('button', { name: 'Serif' })
+    expect(serifOption).toBeDefined()
+
+    // Select serif font family
+    await act(async () => {
+      fireEvent.click(serifOption)
+    })
+
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ fontFamily: 'serif' }))
+    expect(container.querySelector('[data-font-family="serif"]')).not.toBeNull()
+  })
+
+  it('loads fontFamily from chrome.storage if already stored', async () => {
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({
+      theme: 'dark',
+      colorTheme: 'green',
+      fontFamily: 'mono',
+    })
+
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+    const { container } = renderResult
+
+    expect(container.querySelector('[data-font-family="mono"]')).not.toBeNull()
   })
 })

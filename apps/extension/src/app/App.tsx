@@ -14,7 +14,7 @@ import {
   TopToolbar,
   DocumentSearch,
 } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme, ExportFormat, FontScale } from '@md-reader/ui'
+import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily } from '@md-reader/ui'
 import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
@@ -26,6 +26,7 @@ export function App(): React.JSX.Element {
   const [colorTheme, setColorTheme] = useState<ColorTheme | null>(null)
   const [autoFormatMd, setAutoFormatMd] = useState<boolean>(true)
   const [fontScale, setFontScale] = useState<FontScale>('md')
+  const [fontFamily, setFontFamily] = useState<FontFamily>('sans')
   const [tocOpen, setTocOpen] = useState<boolean>(true)
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
@@ -96,16 +97,18 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const result = await chrome.storage.sync.get(['theme', 'colorTheme', 'autoFormatMd', 'fontScale'])
+        const result = await chrome.storage.sync.get(['theme', 'colorTheme', 'autoFormatMd', 'fontScale', 'fontFamily'])
         setTheme((result.theme as ThemeMode) || 'system')
         setColorTheme((result.colorTheme as ColorTheme) || 'black')
         setAutoFormatMd(result.autoFormatMd !== undefined ? (result.autoFormatMd as boolean) : true)
         setFontScale((result.fontScale as FontScale) || 'md')
+        setFontFamily((result.fontFamily as FontFamily) || 'sans')
       } catch (err) {
         setTheme('system')
         setColorTheme('black')
         setAutoFormatMd(true)
         setFontScale('md')
+        setFontFamily('sans')
       }
     }
     fetchSettings()
@@ -218,7 +221,7 @@ export function App(): React.JSX.Element {
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale}>
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={fontFamily}>
         <ReadingProgress />
         <TopToolbar
           title={docTitle || 'Tài liệu không tên'}
@@ -239,6 +242,11 @@ export function App(): React.JSX.Element {
                 themePicker={<ThemePicker currentTheme={colorTheme} onSelect={handleColorThemeChange} />}
                 autoFormat={autoFormatMd}
                 onAutoFormatChange={handleAutoFormatChange}
+                fontFamily={fontFamily}
+                onFontFamilyChange={(newFont) => {
+                  setFontFamily(newFont)
+                  chrome.storage?.sync?.set?.({ fontFamily: newFont })
+                }}
               />
             </div>
           }
