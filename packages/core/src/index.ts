@@ -12,4 +12,13 @@ export type { HighlightLanguage } from './render/languages.js'
 export { FORMAT_VERSION, DOC_KEYS, UnsupportedFormatVersionError } from './doc/schema.js'
 export type { DocMeta, HistoryEntry } from './doc/schema.js'
 export { hashText } from './doc/hash.js'
-export { createDoc, getSource, getMeta, getHistory, readMeta } from './doc/doc.js'
+export {
+  createDoc,
+  getSource,
+  getMeta,
+  getHistory,
+  readMeta,
+  importText,
+  exportText,
+  migrateDoc,
+} from './doc/doc.js'

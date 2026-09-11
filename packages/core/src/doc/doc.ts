@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { DOC_KEYS, FORMAT_VERSION, type DocMeta, type HistoryEntry } from './schema.js'
+import { DOC_KEYS, FORMAT_VERSION, UnsupportedFormatVersionError, type DocMeta, type HistoryEntry } from './schema.js'
 
 export function createDoc(init?: {
   title?: string
@@ -16,9 +16,11 @@ export function createDoc(init?: {
     meta.set('originHash', init?.originHash ?? null)
     meta.set('createdAt', Date.now())
     meta.set('actors', {})
+    const source = getSource(doc)
     if (init?.source) {
-      getSource(doc).insert(0, init.source)
+      source.insert(0, init.source)
     }
+    getHistory(doc)
   })
   return doc
 }
@@ -57,3 +59,43 @@ export function readMeta(doc: Y.Doc): DocMeta {
     actors,
   }
 }
+
+/** Thay toàn bộ Y.Text bằng text, trong MỘT transaction. Set originPath/originHash. */
+export function importText(
+  doc: Y.Doc,
+  text: string,
+  opts: { originPath?: string | null; originHash: string },
+): void {
+  doc.transact(() => {
+    const source = getSource(doc)
+    if (source.length > 0) {
+      source.delete(0, source.length)
+    }
+    source.insert(0, text)
+    const meta = getMeta(doc)
+    if (opts.originPath !== undefined) {
+      meta.set('originPath', opts.originPath)
+    }
+    meta.set('originHash', opts.originHash)
+  })
+}
+
+export function exportText(doc: Y.Doc): string {
+  return getSource(doc).toString()
+}
+
+/**
+ * Hook migration của §5.4. v1 là no-op; nó tồn tại để phase sau có chỗ bám và
+ * để test fixture cũ có hàm gọi.
+ */
+export function migrateDoc(doc: Y.Doc): { from: number; to: number } {
+  const meta = getMeta(doc)
+  const currentVersion = (typeof meta.get('formatVersion') === 'number'
+    ? meta.get('formatVersion')
+    : FORMAT_VERSION) as number
+  if (currentVersion > FORMAT_VERSION) {
+    throw new UnsupportedFormatVersionError(currentVersion, FORMAT_VERSION)
+  }
+  return { from: currentVersion, to: FORMAT_VERSION }
+}
+
