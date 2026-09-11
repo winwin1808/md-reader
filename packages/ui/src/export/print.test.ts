@@ -18,7 +18,6 @@ describe('printDocument', () => {
 
   it('does not throw when window is undefined', () => {
     const originalWindow = globalThis.window
-    // @ts-expect-error testing SSR / non-browser environment
     delete (globalThis as { window?: unknown }).window
 
     expect(() => printDocument()).not.toThrow()
@@ -28,7 +27,6 @@ describe('printDocument', () => {
 
   it('does not throw when window.print is undefined', () => {
     const originalPrint = window.print
-    // @ts-expect-error testing missing print function
     delete (window as { print?: unknown }).print
 
     expect(() => printDocument()).not.toThrow()
