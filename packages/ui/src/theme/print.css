@@ -1,0 +1,60 @@
+@page {
+  size: auto;
+  margin: 20mm 15mm 20mm 15mm;
+}
+
+@media print {
+  .sidebar-toc,
+  nav.md-toc,
+  .settings-btn,
+  button,
+  dialog,
+  [role="dialog"],
+  input,
+  .md-no-print {
+    display: none !important;
+  }
+
+  body,
+  .app-layout,
+  .main-content {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #000000 !important;
+  }
+
+  table,
+  pre,
+  code,
+  img,
+  blockquote {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  pre,
+  code {
+    border: 1px solid #d0d7de !important;
+    background-color: #f6f8fa !important;
+    color: #1f2328 !important;
+  }
+
+  pre code {
+    border: none !important;
+  }
+}
