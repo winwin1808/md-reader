@@ -19,13 +19,13 @@ function extractDimensions(svgString: string): { width?: number; height?: number
     const doc = parser.parseFromString(svgString, 'image/svg+xml')
     const svg = doc.querySelector('svg')
     if (svg) {
-      const wAttr = svg.getAttribute('width')
-      const hAttr = svg.getAttribute('height')
-      if (wAttr) {
+      const wAttr = svg.getAttribute('width')?.trim()
+      const hAttr = svg.getAttribute('height')?.trim()
+      if (wAttr && !wAttr.endsWith('%')) {
         const val = parseFloat(wAttr)
         if (!Number.isNaN(val) && val > 0) width = val
       }
-      if (hAttr) {
+      if (hAttr && !hAttr.endsWith('%')) {
         const val = parseFloat(hAttr)
         if (!Number.isNaN(val) && val > 0) height = val
       }
