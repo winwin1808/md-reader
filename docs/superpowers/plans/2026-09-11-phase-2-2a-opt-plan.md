@@ -1,11 +1,11 @@
 # Plan: Phase 2 — Sub-phase 2a-opt
-Author: Antigravity. Status: building. Phase: 2. Sub-phase: 2a-opt
+Author: Antigravity. Status: built. Phase: 2. Sub-phase: 2a-opt
 Spec: docs/superpowers/specs/2026-09-11-phase-2-design.md
 BranchPoint: HEAD
 
 ## Tasks
 
-### [ ] 2a-opt-1 — Settings Popover UI
+### [x] 2a-opt-1 — Settings Popover UI
 FILES       packages/ui/src/components/SettingsModal.tsx, packages/ui/src/components/SettingsModal.test.tsx, packages/ui/src/index.ts
 INTERFACES  
 ```ts
@@ -22,7 +22,7 @@ INVARIANTS
 TEST        `pnpm --filter @md-reader/ui test src/components/SettingsModal.test.tsx`
 COMMIT      feat(ui): add SettingsModal component
 
-### [ ] 2a-opt-2 — App Layout and Settings Integration
+### [x] 2a-opt-2 — App Layout and Settings Integration
 FILES       apps/extension/src/app/App.tsx, apps/extension/src/app/app.css, apps/extension/src/app/App.test.tsx
 INTERFACES  
 - Cập nhật `App.tsx` sử dụng grid/flex layout có 2 cột: Cột trái (hoặc chính giữa) chứa `Viewer`, cột phải chứa `Toc`.
@@ -50,3 +50,5 @@ COMMIT      feat(extension): respect autoFormatMd setting in content script
 - **2a-opt-3 (fix)**: Mocked chrome.storage.sync.get to resolve issue in jsdom environment.
 - **2a-opt-2 (fix)**: Cast autoFormatMd as boolean to resolve typecheck error on initialization.
 - **2a-opt-3 (fix)**: Cast chrome.storage.sync.get to any in vi.mocked to bypass strict mock type checking.
+- **2a-opt-2 (fix 2)**: Wrapped parse in useMemo before the conditional return, deleted dead DocViewer.tsx
+- **2a-opt-1 (fix 2)**: Modal dialog uses var(--md-bg) and var(--md-fg); trigger and close buttons inherit color.
