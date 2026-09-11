@@ -1,0 +1,49 @@
+/* Black Theme (Default) */
+[data-theme='light'][data-color-theme='black'] {
+  --md-bg: #fffff0; /* Ivory */
+  --md-fg: #000000;
+}
+[data-theme='dark'][data-color-theme='black'] {
+  --md-bg: #1e1e1e; /* Obsidian */
+  --md-fg: #ffffff;
+}
+
+/* Navy Theme */
+[data-theme='light'][data-color-theme='navy'] {
+  --md-bg: #e6f2ff;
+  --md-fg: #000080;
+}
+[data-theme='dark'][data-color-theme='navy'] {
+  --md-bg: #000040;
+  --md-fg: #e6f2ff;
+}
+
+/* Green Theme */
+[data-theme='light'][data-color-theme='green'] {
+  --md-bg: #e6ffe6;
+  --md-fg: #008000;
+}
+[data-theme='dark'][data-color-theme='green'] {
+  --md-bg: #004000;
+  --md-fg: #e6ffe6;
+}
+
+/* Orange Theme */
+[data-theme='light'][data-color-theme='orange'] {
+  --md-bg: #fff0e6;
+  --md-fg: #ff8c00;
+}
+[data-theme='dark'][data-color-theme='orange'] {
+  --md-bg: #804000;
+  --md-fg: #fff0e6;
+}
+
+/* Pink Theme */
+[data-theme='light'][data-color-theme='pink'] {
+  --md-bg: #ffe6f2;
+  --md-fg: #ff1493;
+}
+[data-theme='dark'][data-color-theme='pink'] {
+  --md-bg: #800040;
+  --md-fg: #ffe6f2;
+}

@@ -1,31 +1,30 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import './tokens.css'
+import './color-themes.css'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type ColorTheme = 'navy' | 'green' | 'orange' | 'pink' | 'black'
 
 export interface ThemeContextValue {
   mode: ThemeMode
   resolved: 'light' | 'dark'
   setMode: (mode: ThemeMode) => void
+  colorTheme: ColorTheme
+  setColorTheme: (theme: ColorTheme) => void
 }
 
 export interface ThemeProviderProps {
   mode: ThemeMode
+  colorTheme?: ColorTheme
   onModeChange?: (mode: ThemeMode) => void
+  onColorThemeChange?: (theme: ColorTheme) => void
   children: React.ReactNode
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
-function getSystemMode(): 'light' | 'dark' {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return 'light'
-}
-
 export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
-  const { mode, onModeChange, children } = props
+  const { mode, colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
   const [resolvedSystemMode, setResolvedSystemMode] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
@@ -40,7 +39,6 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleChange as EventListener)
     } else if ('addListener' in mediaQuery) {
-      // Fallback for older browsers
       ;(mediaQuery as any).addListener(handleChange)
     }
 
@@ -63,15 +61,23 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     }
   }
 
+  const setColorTheme = (newTheme: ColorTheme) => {
+    if (onColorThemeChange) {
+      onColorThemeChange(newTheme)
+    }
+  }
+
   const value = {
     mode,
     resolved,
-    setMode
+    setMode,
+    colorTheme,
+    setColorTheme
   }
 
   return (
     <ThemeContext.Provider value={value}>
-      <div data-theme={resolved}>
+      <div data-theme={resolved} data-color-theme={colorTheme}>
         {children}
       </div>
     </ThemeContext.Provider>
