@@ -26,5 +26,15 @@
       ],
       "run_at": "document_idle"
     }
+  ],
+  "action": {
+    "default_title": "Open MD Reader",
+    "default_popup": ""
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["app.html", "app.css"],
+      "matches": ["*://*/*", "file:///*"]
+    }
   ]
 }
