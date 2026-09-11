@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { rasterizeSvg, RasterizeOptions, RasterizedImage } from './rasterize'
+import { rasterizeSvg } from './rasterize'
+import type { RasterizeOptions, RasterizedImage } from './rasterize'
 import * as exportModule from './index'
 import * as uiModule from '../index'
 
