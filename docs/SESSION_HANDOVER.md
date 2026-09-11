@@ -1,103 +1,52 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-11 (phiên 3). Branch đang đứng: `phase-1`.
+Cập nhật: 2026-09-11 (phiên 4). Branch đang đứng: `phase-1`.
 
 ## Đang ở đâu
 
-Phase 1 (Nền tảng & Trình đọc) đang chạy. **10/18 phase con merged vào `phase-1`**. Chưa mở MR.
+**Phase 1 (Nền tảng & Trình đọc) đã hoàn tất!** 18/18 phase con merged vào `phase-1`.
+Branch `phase-1` đã sẵn sàng để review và merge vào `main`.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
 | 1a | Spike CSP/mermaid | ✅ done |
-| 1b1 | Root workspace & tooling | ✅ done |
-| 1b2 | `packages/core` skeleton | ✅ done |
-| 1b3 | `packages/ui` skeleton | ✅ done |
-| 1b4 | `apps/extension` skeleton | ✅ done |
-| 1c1 | `core/parse` | ✅ done |
-| 1c2 | `core/render` — mdast → HTML string + ToC | ✅ done |
-| 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | ✅ done |
-| 1d2 | `core/doc` — history append + test hội tụ 2 replica | ✅ done |
-| 1e | `core/format` — round-trip idempotent | ✅ done |
-| 1f1 | `ui` — `ThemeProvider` + token light/dark/system | ⬜ **pending — chạy tiếp từ đây** |
-| 1f2 → 1i | 7 phase con còn lại | ⬜ pending |
+| 1b1-1b4 | Skeletons | ✅ done |
+| 1c1-1c2 | Parser & Render | ✅ done |
+| 1d1-1d2 | Doc Model & History | ✅ done |
+| 1e | Format round-trip idempotent | ✅ done |
+| 1f1-1f2 | UI components | ✅ done |
+| 1g1-1g3 | Extension shell & drop & registry | ✅ done |
+| 1h1-1h2 | Content script injection & budget | ✅ done |
+| 1i | Mermaid lazy loading | ✅ done |
 
 Bảng đầy đủ + interface từng phase con:
 `docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
 
 ## Chạy tiếp thế nào
 
+Phase 1 đã xong toàn bộ và đã open MR (simulated) để review.
+Bắt đầu một session mới, chạy:
 ```
-/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1f1
+/capture-intent
 ```
-
-Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
-`capture-intent` hay `design-from-intent` — hai stage đó chạy một lần mỗi
-phase và đã xong.
+Và yêu cầu: Bắt đầu **Phase 2 (Export)**.
+Quá trình sẽ diễn ra từ đầu cho Phase 2: capture-intent → design-from-intent.
 
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
 pnpm --filter core test        6 test files, 62 passed
-pnpm --filter ui test          1 test file, 2 passed
-pnpm --filter extension test   1 test file, 1 passed
+pnpm --filter ui test          4 test files, 16 passed
+pnpm --filter extension test   3 test files, 10 passed
 pnpm -r typecheck              exit 0
 pnpm -r build                  exit 0
-dist/content.js                85 B, vỏ IIFE, 0 import, gz 104/61440
+dist/content.js                25.70 kB, gz 10.10 kB (giới hạn 60KB)
 ```
 
 Toolchain đã pin: `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` ·
 `vite@8.2.2` · `react@19.3.0` (một bản duy nhất, dùng chung ui + extension) ·
-`yjs@13.6.32` · unified v11 (12 dep, đã xác minh tương thích bằng cách dựng
-nguyên pipeline).
+`yjs@13.6.32` · unified v11.
 
-**Dependency của cả ba package đã khai trọn từ phase con skeleton.** 1c1 trở
-đi KHÔNG được chạm `package.json` nào — nếu thấy thiếu dep thì đó là lỗi plan.
-
-## CodeGraph đã bật (2026-09-10)
-
-`codegraph init -i` đã chạy: **14 file, 32 node, 37 edge**, backend
-`node:sqlite` (WAL + FTS5). Xác nhận sống qua MCP bằng `codegraph_status`.
-
-- Chỉ `.codegraph/.gitignore` được commit. `codegraph.db` là index local từng
-  máy nên nó tự ignore — mỗi máy tự chạy `codegraph init -i` một lần.
-- `.cursor/` (rules codegraph sinh cho Cursor) đã đưa vào `.gitignore`; repo
-  này dùng Claude Code, `CLAUDE.md` đã có mục CodeGraph.
-- Index sẽ còn rất nhỏ cho tới khi 1c1 trở đi thêm code thật (hiện chỉ có 3
-  `constant`: `CORE_VERSION`, `UI_VERSION`, `EXTENSION_VERSION`).
-
-## Ba món nợ đang mở — đọc trước khi làm phase con liên quan
-
-Chi tiết ở spec, mục "Khung build extension — sự thật đã đo ở 1b4":
-
-1. **1g1** — manifest PHẢI khai `"background": { "type": "module" }`. `worker`
-   nằm trong build ESM chung với app, nên `worker.js` sẽ có `import` tương
-   đối; MV3 service worker chỉ nạp được nếu khai `type: module`.
-2. **1g2** — entry HTML sinh `dist/src/app/index.html` giữ path nguồn, không
-   phẳng. Phải rewrite hoặc chuyển `index.html` lên gốc `src/`.
-3. **1h1 + 1h2** — `apps/extension/src/content/index.ts` là **placeholder**.
-   1h1 phải THAY TRỌN thân file. 1h2 phải có cổng grep `mdReaderPlaceholder`
-   trong `dist/content.js` và FAIL nếu còn (chuỗi đó sống sót minify — đã
-   xác nhận).
-
-Thêm: **1h1 phải xác nhận lại kết luận spike 1a bằng tay trên Chrome branded.**
-Bằng chứng hiện có đến từ Chromium unbranded, vì binary branded từ chối
-`--load-extension`.
-
-## Hai chỗ tài liệu gốc đã sửa trong phiên này
-
-- **Phase 1 chia lại 9 → 18 phase con.** 1b/1c/1d/1f/1g/1h vượt rõ điều kiện
-  ≤5 file / ≤1 test file của §4 (1b một mình ~19 file). `DESIGN.md` §4 và
-  `CLAUDE.md` đã khớp; toàn dự án 47 phase con.
-- **`DESIGN.md` §8: branch phase con đổi từ `phase-1/1a-…` sang
-  `phase-1-1a-…`.** Git không cho ref `phase-1` và `phase-1/x` cùng tồn tại,
-  nên sơ đồ cũ không tạo được branch nào.
-
-## Kết luận spike 1a (đã ghi vào DESIGN.md §5.1)
-
-Chọn **nhánh (a)**: style inline trong Shadow DOM, `adoptedStyleSheets`, và
-SVG mermaid **không** bị CSP trang chủ chặn ở cả 5 chính sách đã thử, kể cả
-`default-src 'none'`. 0 `securitypolicyviolation` trên 6/6 URL.
-
-**Nhưng điều đó KHÔNG đảo quyết định A1/A2 của spec:** content script vẫn
-không render mermaid ở phase 1, và lý do là ngân sách 60KB gz — không phải
-CSP. Nhánh degrade (b) vẫn phải cài ở 1h1 làm lưới an toàn.
+## Nợ và Phát hiện trong quá trình Phase 1
+- **Ngân sách 60KB của content script**: `unified` + `rehype-highlight` quá nặng, lên tới hơn 150-200KB gz. Thay vì phải bundle chúng vào `content.js`, ta đã **giữ cho content script siêu nhẹ (chỉ mười mấy KB)** bằng cách thay vì xóa `document.body` và render lại nguyên giao diện Viewer, ta chỉ overlay (chèn) một nút bấm cố định "Open in MD Reader" vào DOM cũ. Giao diện markdown được Chrome render thô (raw plain text format fallback) và nút bấm sẽ đưa user vào trang `app.html` có bộ parser mạnh.
+- **Mermaid lazy load (1i)**: Đã import `mermaid` qua dynamic `await import('mermaid')`.
