@@ -48,3 +48,5 @@ COMMIT      feat(extension): respect autoFormatMd setting in content script
 - **2a-opt-2**: DocViewer logic was inlined into App.tsx to use the new layout and classes.
 - **2a-opt-3**: Modified the IIFE to be async to await chrome.storage.sync.get.
 - **2a-opt-3 (fix)**: Mocked chrome.storage.sync.get to resolve issue in jsdom environment.
+- **2a-opt-2 (fix)**: Cast autoFormatMd as boolean to resolve typecheck error on initialization.
+- **2a-opt-3 (fix)**: Cast chrome.storage.sync.get to any in vi.mocked to bypass strict mock type checking.
