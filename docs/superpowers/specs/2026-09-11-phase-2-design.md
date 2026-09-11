@@ -8,7 +8,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 |---|---|---|
 | 2a | Typography & Themes | done |
 | 2a-opt | UI Layout & Settings | done |
-| 2a-ux | Typography, Spacing & ToC Polish | pending |
+| 2a-ux | Typography, Spacing & ToC Polish | done |
 | 2b | HTML self-contained | pending |
 | 2c | mdast → docx | pending |
 | 2d | SVG → PNG | pending |
