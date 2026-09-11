@@ -3,6 +3,8 @@ import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import { IndexeddbPersistence } from 'y-indexeddb'
+import * as core from '@md-reader/core'
+import * as ui from '@md-reader/ui'
 
 // Mock dependencies
 vi.mock('y-indexeddb', () => {
@@ -36,6 +38,66 @@ describe('App', () => {
         },
       },
     } as any
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url')
+    window.URL.revokeObjectURL = vi.fn()
+  })
+
+  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
+    const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
+    const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
+    const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
+    let lastDownloaded = ''
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      lastDownloaded = this.download
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    const exportBtn = screen.getByTitle('Xuất tài liệu')
+    expect(exportBtn).toBeDefined()
+
+    // 1. Trigger PDF export
+    await act(async () => {
+      fireEvent.click(exportBtn)
+    })
+    const pdfOption = screen.getByText('Tài liệu PDF (.pdf)')
+    await act(async () => {
+      fireEvent.click(pdfOption)
+    })
+    expect(printSpy).toHaveBeenCalled()
+
+    // 2. Trigger HTML export
+    await act(async () => {
+      fireEvent.click(exportBtn)
+    })
+    const htmlOption = screen.getByText('HTML Độc lập (.html)')
+    await act(async () => {
+      fireEvent.click(htmlOption)
+    })
+    expect(htmlSpy).toHaveBeenCalledWith(expect.objectContaining({
+      cssContent: '',
+      title: 'document',
+    }))
+    expect(clickSpy).toHaveBeenCalled()
+    expect(lastDownloaded).toBe('document.html')
+    expect(window.URL.createObjectURL).toHaveBeenCalled()
+    expect(window.URL.revokeObjectURL).toHaveBeenCalled()
+
+    // 3. Trigger DOCX export
+    await act(async () => {
+      fireEvent.click(exportBtn)
+    })
+    const docxOption = screen.getByText('Microsoft Word (.docx)')
+    await act(async () => {
+      fireEvent.click(docxOption)
+    })
+    expect(docxSpy).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'document',
+    }))
+    expect(lastDownloaded).toBe('document.docx')
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {
