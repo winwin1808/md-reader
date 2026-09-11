@@ -6,27 +6,27 @@ BranchPoint: HEAD
 ## Tasks
 
 ### [ ] 2a-opt-1 — Settings Popover UI
-FILES       packages/ui/src/components/SettingsPopover.tsx, packages/ui/src/components/SettingsPopover.test.tsx, packages/ui/src/index.ts
+FILES       packages/ui/src/components/SettingsModal.tsx, packages/ui/src/components/SettingsModal.test.tsx, packages/ui/src/index.ts
 INTERFACES  
 ```ts
-export interface SettingsPopoverProps {
+export interface SettingsModalProps {
   // Pass in the ThemePicker element or render it inside
   themePicker: React.ReactNode
   autoFormat: boolean
   onAutoFormatChange: (val: boolean) => void
 }
-export function SettingsPopover(props: SettingsPopoverProps): React.JSX.Element
+export function SettingsModal(props: SettingsModalProps): React.JSX.Element
 ```
 INVARIANTS  
-- Component có một nút bấm Icon (dùng SVG bánh răng). Khi bấm mở ra popover/dropdown chứa `themePicker` và một checkbox/switch cho `Auto-format .md files`.
-TEST        `pnpm --filter @md-reader/ui test src/components/SettingsPopover.test.tsx`
-COMMIT      feat(ui): add SettingsPopover component
+- Component có một nút bấm Icon (dùng SVG bánh răng). Khi bấm mở ra modal (hộp thoại) chứa `themePicker` và một checkbox/switch cho `Auto-format .md files`.
+TEST        `pnpm --filter @md-reader/ui test src/components/SettingsModal.test.tsx`
+COMMIT      feat(ui): add SettingsModal component
 
 ### [ ] 2a-opt-2 — App Layout and Settings Integration
 FILES       apps/extension/src/app/App.tsx, apps/extension/src/app/app.css, apps/extension/src/app/App.test.tsx
 INTERFACES  
 - Cập nhật `App.tsx` sử dụng grid/flex layout có 2 cột: Cột trái (hoặc chính giữa) chứa `Viewer`, cột phải chứa `Toc`.
-- Import và đặt `SettingsPopover` ở góc trên cùng. Load/lưu state `autoFormatMd` từ `chrome.storage.sync`.
+- Import và đặt `SettingsModal` ở góc trên cùng. Load/lưu state `autoFormatMd` từ `chrome.storage.sync`.
 - Nếu chưa có `autoFormatMd`, mặc định là `true`.
 INVARIANTS  
 - `app.css` thêm class cho layout (`.app-layout`, `.main-content`, `.sidebar-toc`). Design gọn gàng hiện đại, có khoảng trắng tốt (padding/max-width). ToC nên sticky (cố định khi cuộn).
