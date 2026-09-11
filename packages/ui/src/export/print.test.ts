@@ -65,4 +65,28 @@ describe('print.css', () => {
     const viewerContent = fs.readFileSync(viewerCssPath, 'utf8')
     expect(viewerContent).toContain("@import './theme/print.css';")
   })
+
+  it('resets background and text color to black-on-white for .md-viewer and children', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    expect(content).toContain('.md-viewer')
+    expect(content).toContain('.md-viewer *')
+    expect(content).toContain('.md-viewer table tr')
+    expect(content).toMatch(/body[\s\S]*?\.app-layout[\s\S]*?\.main-content[\s\S]*?\.md-viewer\s*\{[^}]*background:\s*#ffffff\s*!important/i)
+    expect(content).toMatch(/body[\s\S]*?\.app-layout[\s\S]*?\.main-content[\s\S]*?\.md-viewer[\s\S]*?\.md-viewer\s*\*[\s\S]*?\{[^}]*background-color:\s*transparent\s*!important/i)
+    expect(content).toMatch(/color:\s*#000000\s*!important/i)
+  })
+
+  it('ensures links, table text, blockquotes, and normal paragraphs print with high contrast', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    expect(content).toMatch(/a[\s\S]*?\{[^}]*color:\s*#000000\s*!important/)
+    expect(content).toMatch(/blockquote[\s\S]*?\{[^}]*color:\s*#000000\s*!important/)
+    expect(content).toMatch(/table[\s\S]*?\{[^}]*color:\s*#000000\s*!important/)
+  })
+
+  it('keeps pre/code blocks readable with light background and dark text', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#f6f8fa\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#1f2328\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d0d7de\s*!important/)
+  })
 })
