@@ -61,4 +61,33 @@ describe('SettingsModal', () => {
     fireEvent.click(closeBtn);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+
+  it('applies polished styling to trigger button, backdrop, and modal container', () => {
+    render(
+      <SettingsModal 
+        themePicker={<div data-testid="theme-picker" />} 
+        autoFormat={false} 
+        onAutoFormatChange={() => {}} 
+      />
+    );
+
+    const gearButton = screen.getByRole('button', { name: /settings/i });
+    expect(gearButton.style.borderRadius).toBe('10px');
+    expect(gearButton.style.boxShadow).toBe('0 4px 12px rgba(0,0,0,0.08)');
+    expect(gearButton.style.backdropFilter).toBe('blur(8px)');
+    expect(gearButton.style.cursor).toBe('pointer');
+
+    fireEvent.click(gearButton);
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.style.backgroundColor).toBe('rgba(0, 0, 0, 0.45)');
+    expect(dialog.style.backdropFilter).toBe('blur(8px)');
+
+    const modalContainer = dialog.firstChild as HTMLElement;
+    expect(modalContainer.style.borderRadius).toBe('16px');
+    expect(modalContainer.style.border).toBe('1px solid var(--md-border)');
+    expect(modalContainer.style.boxShadow).toBe('0 24px 48px -12px rgba(0,0,0,0.25)');
+    expect(modalContainer.style.padding).toBe('24px 28px');
+    expect(modalContainer.style.minWidth).toBe('340px');
+  });
 });
