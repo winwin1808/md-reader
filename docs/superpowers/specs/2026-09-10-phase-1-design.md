@@ -1,5 +1,5 @@
 # Design: Phase 1 — Nền tảng & Trình đọc
-Author: haonq. Status: designed. Phase: 1
+Author: haonq. Status: shipped. Phase: 1
 Intent: docs/superpowers/intent/2026-09-10-phase-1-nen-tang-va-trinh-doc.md
 
 Spec này nằm trong khuôn `docs/DESIGN.md`. Chỗ nào spec này im lặng thì
