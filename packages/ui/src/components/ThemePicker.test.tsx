@@ -1,10 +1,11 @@
 import React from 'react'
-import { describe, test, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, test, expect, vi } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { ThemePicker } from './ThemePicker'
 import type { ColorTheme } from '../theme/ThemeProvider'
 
 describe('ThemePicker', () => {
+  afterEach(cleanup)
   const themes: ColorTheme[] = ['navy', 'green', 'orange', 'pink', 'black']
 
   test('renders 5 buttons for 5 themes', () => {
@@ -19,7 +20,9 @@ describe('ThemePicker', () => {
     const handleSelect = vi.fn()
     render(<ThemePicker currentTheme="black" onSelect={handleSelect} />)
     
-    // ThemePicker dummy currently returns null, so buttons will be empty
-    // But if implemented, it should call onSelect
+    const navyButton = screen.getByRole('button', { name: 'Select navy theme' })
+    fireEvent.click(navyButton)
+    
+    expect(handleSelect).toHaveBeenCalledWith('navy')
   })
 })
