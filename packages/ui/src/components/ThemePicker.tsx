@@ -32,7 +32,7 @@ export function ThemePicker(props: ThemePickerProps): React.JSX.Element {
             height: '30px',
             borderRadius: '50%',
             backgroundColor: THEME_COLORS[theme],
-            border: 'none',
+            border: currentTheme === theme ? '2px solid rgb(59, 130, 246)' : '2px solid transparent',
             cursor: 'pointer',
             padding: 0,
             boxShadow: currentTheme === theme ? '0 0 0 2px var(--md-bg), 0 0 0 4px var(--md-link)' : 'none',
