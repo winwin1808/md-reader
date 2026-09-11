@@ -35,10 +35,10 @@ function extractDimensions(svgString: string): { width?: number; height?: number
         if (viewBox) {
           const parts = viewBox.trim().split(/[\s,]+/).map(Number)
           if (parts.length === 4) {
-            if (width === undefined && !Number.isNaN(parts[2]) && parts[2] > 0) {
+            if (width === undefined && !Number.isNaN(parts[2]) && parts[2]! > 0) {
               width = parts[2]
             }
-            if (height === undefined && !Number.isNaN(parts[3]) && parts[3] > 0) {
+            if (height === undefined && !Number.isNaN(parts[3]) && parts[3]! > 0) {
               height = parts[3]
             }
           }
