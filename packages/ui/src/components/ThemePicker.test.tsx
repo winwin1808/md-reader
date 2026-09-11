@@ -6,7 +6,7 @@ import type { ColorTheme } from '../theme/ThemeProvider'
 
 describe('ThemePicker', () => {
   afterEach(cleanup)
-  const themes: ColorTheme[] = ['navy', 'green', 'orange', 'pink', 'black']
+
 
   test('renders 5 buttons for 5 themes', () => {
     const handleSelect = vi.fn()
