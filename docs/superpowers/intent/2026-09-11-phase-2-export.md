@@ -1,5 +1,5 @@
 # Intent: Phase 2 — Export & Themes
-Author: Antigravity. Status: draft. Phase: 2
+Author: Antigravity. Status: designed. Phase: 2
 
 ## Problem
 Hiện tại app chưa có typography đẹp và các bộ theme màu sắc. Người dùng cần giao diện đọc đẹp, dễ dàng chọn các theme màu sắc kết hợp chế độ sáng/tối (light/dark) mà không cần tự code CSS.
@@ -33,3 +33,4 @@ Hiện tại app chưa có typography đẹp và các bộ theme màu sắc. Ng�
 | 2e | Print CSS + PDF | `@page`, ngắt trang, `window.print()` |
 | 2f | `ExportDialog` | Nối đường trên vào UI có nút Export |
 | 2g | E2E khói | Playwright: mở file → xuất đủ 3 định dạng |
+Design: docs/superpowers/specs/2026-09-11-phase-2-design.md
