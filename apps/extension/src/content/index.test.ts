@@ -31,7 +31,7 @@ describe('Content script entry point', () => {
   })
 
   it('detects markdown in pre and mounts shadow dom', async () => {
-    document.body.innerHTML = '<pre># Hello</pre>'
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
     
     await import('./index')
 
@@ -45,7 +45,7 @@ describe('Content script entry point', () => {
   })
 
   it('restores body on render error', async () => {
-    document.body.innerHTML = '<pre># Hello</pre>'
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
     
     const { createRoot } = await import('react-dom/client')
     vi.mocked(createRoot).mockImplementation(() => {
