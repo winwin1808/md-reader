@@ -3,7 +3,6 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import {
   ThemeProvider,
-  ThemePicker,
   SettingsModal,
   Viewer,
   Toc,
@@ -218,6 +217,8 @@ export function App(): React.JSX.Element {
 
   if (!theme || !colorTheme) return <div>Loading...</div>
 
+  const themeMode = theme
+
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
@@ -239,8 +240,11 @@ export function App(): React.JSX.Element {
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
               <SettingsModal
-                themePicker={<ThemePicker currentTheme={colorTheme} onSelect={handleColorThemeChange} />}
-                autoFormat={autoFormatMd}
+                mode={themeMode}
+                colorTheme={colorTheme}
+                autoFormatMd={autoFormatMd}
+                onModeChange={handleModeChange}
+                onColorThemeChange={handleColorThemeChange}
                 onAutoFormatChange={handleAutoFormatChange}
                 fontFamily={fontFamily}
                 onFontFamilyChange={(newFont) => {
