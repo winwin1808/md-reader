@@ -44,6 +44,7 @@ describe('App', () => {
   })
 
   it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
+    vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
@@ -78,13 +79,17 @@ describe('App', () => {
       fireEvent.click(htmlOption)
     })
     expect(htmlSpy).toHaveBeenCalledWith(expect.objectContaining({
-      cssContent: '',
+      cssContent: expect.stringContaining('740px'),
       title: 'document',
     }))
     expect(clickSpy).toHaveBeenCalled()
     expect(lastDownloaded).toBe('document.html')
     expect(window.URL.createObjectURL).toHaveBeenCalled()
-    expect(window.URL.revokeObjectURL).toHaveBeenCalled()
+    expect(window.URL.revokeObjectURL).not.toHaveBeenCalled()
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(1)
 
     // 3. Trigger DOCX export
     await act(async () => {
@@ -98,6 +103,13 @@ describe('App', () => {
       title: 'document',
     }))
     expect(lastDownloaded).toBe('document.docx')
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
+
+    vi.useRealTimers()
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {

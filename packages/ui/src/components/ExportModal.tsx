@@ -157,7 +157,10 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                   key={opt.format}
                   type="button"
                   disabled={isExporting}
-                  onClick={() => onExport(opt.format)}
+                  onClick={() => {
+                    setIsOpen(false)
+                    onExport(opt.format)
+                  }}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
