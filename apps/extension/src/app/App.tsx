@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme } from '@md-reader/ui'
-import { parseMarkdown, renderToHtml } from '@md-reader/core'
+import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc, ExportModal, printDocument, getDefaultExportCss } from "@md-reader/ui"
+import type { ThemeMode, ColorTheme, ExportFormat } from '@md-reader/ui'
+import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { addRecentFile } from './registry'
@@ -15,6 +15,7 @@ export function App(): React.JSX.Element {
   const [autoFormatMd, setAutoFormatMd] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
+  const [docTitle, setDocTitle] = useState<string>('')
   // Re-render when doc text changes to hide placeholder
   const [hasContent, setHasContent] = useState(false)
 
@@ -29,21 +30,32 @@ export function App(): React.JSX.Element {
     }
     
     const text = doc.getText('source')
+    const meta = doc.getMap('meta')
+    const updateTitle = () => {
+      const name = (meta.get('name') as string) || ''
+      if (name) {
+        setDocTitle(name.replace(/\.[^/.]+$/, ''))
+      }
+    }
     const observer = () => {
       setHasContent(text.length > 0)
       setContent(text.toString())
+      updateTitle()
     }
     text.observe(observer)
+    meta.observe(updateTitle)
     // Wait for initial sync from IDB
     if (persistence) {
       persistence.once('synced', () => {
         setHasContent(text.length > 0)
         setContent(text.toString())
+        updateTitle()
       })
     }
 
     return () => {
       text.unobserve(observer)
+      meta.unobserve(updateTitle)
       if (persistence) {
         persistence.destroy()
       }
@@ -82,6 +94,7 @@ export function App(): React.JSX.Element {
           ytext.insert(0, text)
           const name = fileUrl.split('/').pop() || 'Untitled.md'
           doc.getMap('meta').set('name', name)
+          setDocTitle(name.replace(/\.[^/.]+$/, ''))
           
           addRecentFile({
             id: fileUrl,
@@ -123,18 +136,51 @@ export function App(): React.JSX.Element {
     }
   }
 
-  const { html, toc } = useMemo(() => {
-    if (!content) return { html: '', toc: [] }
+  const { html, toc, parseResult } = useMemo(() => {
+    if (!content) return { html: '', toc: [], parseResult: { ast: { type: 'root', children: [] } as any } }
     const parsed = parseMarkdown(content)
     const rendered = renderToHtml(parsed)
-    return { html: rendered.html, toc: rendered.toc }
+    return {
+      html: rendered.html,
+      toc: rendered.toc,
+      parseResult: { ast: parsed.tree, ...parsed },
+    }
   }, [content])
+
+  const handleExport = async (format: ExportFormat) => {
+    const title = docTitle || 'document'
+    if (format === 'pdf') {
+      printDocument()
+    } else if (format === 'html') {
+      const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
+      const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${title}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } else if (format === 'docx') {
+      const blob = await mdastToDocx({ mdast: parseResult.ast, title })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${title}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }
+  }
 
   if (!theme || !colorTheme) return <div>Loading...</div>
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
-      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000 }}>
+      <div style={{ position: 'fixed', top: '16px', right: '16px', display: 'flex', gap: '10px', zIndex: 100 }}>
+        <ExportModal onExport={handleExport} />
         <SettingsModal
           themePicker={<ThemePicker currentTheme={colorTheme} onSelect={handleColorThemeChange} />}
           autoFormat={autoFormatMd}
