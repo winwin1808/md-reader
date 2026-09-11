@@ -56,7 +56,7 @@ export function App(): React.JSX.Element {
         const result = await chrome.storage.sync.get(['theme', 'colorTheme', 'autoFormatMd'])
         setTheme((result.theme as ThemeMode) || 'system')
         setColorTheme((result.colorTheme as ColorTheme) || 'black')
-        setAutoFormatMd(result.autoFormatMd !== undefined ? result.autoFormatMd : true)
+        setAutoFormatMd(result.autoFormatMd !== undefined ? (result.autoFormatMd as boolean) : true)
       } catch (err) {
         setTheme('system')
         setColorTheme('black')
