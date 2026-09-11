@@ -75,7 +75,7 @@ describe('Content script entry point', () => {
   })
   it('does nothing if autoFormatMd is false', async () => {
     document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
-    vi.mocked(chrome.storage.sync.get).mockResolvedValueOnce({ autoFormatMd: false })
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ autoFormatMd: false })
     
     await import('./index')
 
