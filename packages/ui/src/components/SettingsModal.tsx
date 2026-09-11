@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
+import type { ColorTheme } from '../theme/ThemeProvider';
+import { ThemePicker } from './ThemePicker';
+
+export type FontFamily = 'sans' | 'serif' | 'mono';
 
 export interface SettingsModalProps {
-  themePicker: React.ReactNode;
-  autoFormat: boolean;
-  onAutoFormatChange: (val: boolean) => void;
+  mode: 'light' | 'dark' | 'system';
+  colorTheme: ColorTheme;
+  autoFormatMd: boolean;
+  fontFamily?: FontFamily;
+  onModeChange: (mode: 'light' | 'dark' | 'system') => void;
+  onColorThemeChange: (colorTheme: ColorTheme) => void;
+  onAutoFormatChange: (autoFormat: boolean) => void;
+  onFontFamilyChange?: (fontFamily: FontFamily) => void;
+  themePicker?: React.ReactNode;
+  autoFormat?: boolean;
 }
 
-export function SettingsModal({
-  themePicker,
-  autoFormat,
-  onAutoFormatChange,
-}: SettingsModalProps): React.JSX.Element {
+export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
+  const {
+    colorTheme,
+    autoFormatMd,
+    fontFamily = 'sans',
+    onColorThemeChange,
+    onAutoFormatChange,
+    onFontFamilyChange,
+    themePicker,
+    autoFormat,
+  } = props;
+
+
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -93,13 +112,51 @@ export function SettingsModal({
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              {themePicker}
+              {themePicker ?? (
+                colorTheme && onColorThemeChange ? (
+                  <ThemePicker currentTheme={colorTheme} onSelect={onColorThemeChange} />
+                ) : null
+              )}
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Kiểu phông chữ</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {([
+                  { key: 'sans', label: 'Sans-serif' },
+                  { key: 'serif', label: 'Serif' },
+                  { key: 'mono', label: 'Monospace' },
+                ] as const).map((opt) => {
+                  const isSelected = fontFamily === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => onFontFamilyChange?.(opt.key)}
+                      aria-pressed={isSelected}
+                      style={{
+                        flex: 1,
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid var(--md-link, #0969da)' : '1px solid var(--md-border, #d0d7de)',
+                        background: isSelected ? 'var(--md-surface-subtle, rgba(125, 125, 125, 0.1))' : 'transparent',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: isSelected ? 600 : 400,
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={autoFormat}
+                checked={typeof autoFormatMd === 'boolean' ? autoFormatMd : Boolean(autoFormat)}
                 onChange={(e) => onAutoFormatChange(e.target.checked)}
               />
               Auto-format .md files

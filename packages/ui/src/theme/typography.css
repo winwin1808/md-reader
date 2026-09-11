@@ -1,3 +1,21 @@
+:root {
+  --md-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --md-font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+  --md-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+[data-font-family="sans"] .md-viewer {
+  font-family: var(--md-font-sans) !important;
+}
+
+[data-font-family="serif"] .md-viewer {
+  font-family: var(--md-font-serif) !important;
+}
+
+[data-font-family="mono"] .md-viewer {
+  font-family: var(--md-font-mono) !important;
+}
+
 .md-viewer {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   font-size: calc(1.0625rem * var(--md-font-scale-ratio, 1));
