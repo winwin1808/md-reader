@@ -16,7 +16,7 @@ describe('Viewer', () => {
 
   it('does not throw when IntersectionObserver is undefined', () => {
     const html = '<h1 id="test">Test</h1>'
-    expect(() => render(<Viewer html={html} />)).not.toThrow()
+    expect(() => render(<Viewer html={html} onActiveHeadingChange={() => {}} />)).not.toThrow()
   })
 })
 
