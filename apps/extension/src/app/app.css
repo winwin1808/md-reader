@@ -90,3 +90,32 @@
     display: none;
   }
 }
+
+/* Font scale rules */
+[data-font-scale="sm"] .md-viewer { font-size: 14.5px !important; }
+[data-font-scale="md"] .md-viewer { font-size: 17px !important; }
+[data-font-scale="lg"] .md-viewer { font-size: 19.5px !important; }
+[data-font-scale="xl"] .md-viewer { font-size: 22px !important; }
+
+/* Floating exit reading mode button */
+.exit-reading-mode-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background-color: var(--md-accent, #3b82f6);
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.exit-reading-mode-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
