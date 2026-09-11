@@ -60,7 +60,8 @@ export function SettingsModal({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--md-bg)',
+              color: 'var(--md-fg)',
               padding: '24px',
               borderRadius: '8px',
               minWidth: '300px',

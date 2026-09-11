@@ -123,16 +123,14 @@ export function App(): React.JSX.Element {
     }
   }
 
-  if (!theme || !colorTheme) return <div>Loading...</div>
-
-  let html = ''
-  let toc: any[] = []
-  if (content) {
+  const { html, toc } = useMemo(() => {
+    if (!content) return { html: '', toc: [] }
     const parsed = parseMarkdown(content)
     const rendered = renderToHtml(parsed)
-    html = rendered.html
-    toc = rendered.toc
-  }
+    return { html: rendered.html, toc: rendered.toc }
+  }, [content])
+
+  if (!theme || !colorTheme) return <div>Loading...</div>
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>

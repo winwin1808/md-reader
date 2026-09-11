@@ -1,11 +1,11 @@
 # Plan: Phase 2 — Sub-phase 2a-opt
-Author: Antigravity. Status: built. Phase: 2. Sub-phase: 2a-opt
+Author: Antigravity. Status: building. Phase: 2. Sub-phase: 2a-opt
 Spec: docs/superpowers/specs/2026-09-11-phase-2-design.md
 BranchPoint: HEAD
 
 ## Tasks
 
-### [x] 2a-opt-1 — Settings Popover UI
+### [ ] 2a-opt-1 — Settings Popover UI
 FILES       packages/ui/src/components/SettingsModal.tsx, packages/ui/src/components/SettingsModal.test.tsx, packages/ui/src/index.ts
 INTERFACES  
 ```ts
@@ -22,7 +22,7 @@ INVARIANTS
 TEST        `pnpm --filter @md-reader/ui test src/components/SettingsModal.test.tsx`
 COMMIT      feat(ui): add SettingsModal component
 
-### [x] 2a-opt-2 — App Layout and Settings Integration
+### [ ] 2a-opt-2 — App Layout and Settings Integration
 FILES       apps/extension/src/app/App.tsx, apps/extension/src/app/app.css, apps/extension/src/app/App.test.tsx
 INTERFACES  
 - Cập nhật `App.tsx` sử dụng grid/flex layout có 2 cột: Cột trái (hoặc chính giữa) chứa `Viewer`, cột phải chứa `Toc`.
