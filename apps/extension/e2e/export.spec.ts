@@ -64,11 +64,14 @@ describe('E2E smoke test for themes and export formats', () => {
     const placeholder = screen.getByTestId('app-placeholder')
     fireEvent.drop(placeholder.parentElement!, { dataTransfer: { files: [file] } })
 
-    // Verify Table of Contents renders links
+    // Verify Table of Contents renders links and Viewer renders document
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Title' })).toBeDefined()
       expect(screen.getByRole('link', { name: 'Subtitle' })).toBeDefined()
     })
+    expect(screen.getByRole('heading', { level: 1, name: 'Title' })).toBeDefined()
+    expect(screen.getByRole('heading', { level: 2, name: 'Subtitle' })).toBeDefined()
+    expect(screen.getByText('Paragraph text.')).toBeDefined()
     expect(screen.getByRole('link', { name: 'Title' }).getAttribute('href')).toBe('#title')
     expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#subtitle')
 
@@ -78,6 +81,8 @@ describe('E2E smoke test for themes and export formats', () => {
 
     const navyThemeBtn = screen.getByRole('button', { name: /navy/i })
     fireEvent.click(navyThemeBtn)
+
+    expect(document.querySelector('[data-color-theme="navy"]')).not.toBeNull()
 
     expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(
       expect.objectContaining({ colorTheme: 'navy' })
@@ -110,6 +115,8 @@ describe('E2E smoke test for themes and export formats', () => {
     expect(htmlSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringMatching(/my-doc(\.md)?/),
+        html: expect.stringContaining('Title'),
+        cssContent: expect.any(String),
       })
     )
     expect(lastDownloaded).toMatch(/my-doc(\.md)?\.html/)
@@ -131,6 +138,7 @@ describe('E2E smoke test for themes and export formats', () => {
     expect(docxSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringMatching(/my-doc(\.md)?/),
+        mdast: expect.objectContaining({ type: 'root' }),
       })
     )
     expect(lastDownloaded).toMatch(/my-doc(\.md)?\.docx/)
