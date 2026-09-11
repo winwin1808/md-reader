@@ -18,6 +18,34 @@ describe('Viewer', () => {
     const html = '<h1 id="test">Test</h1>'
     expect(() => render(<Viewer html={html} onActiveHeadingChange={() => {}} />)).not.toThrow()
   })
+
+  it('mounts MermaidBlock for code.language-mermaid elements', async () => {
+    const html = `
+      <pre>
+        <code class="language-mermaid">graph TD; A-->B;</code>
+      </pre>
+      <pre>
+        <code class="language-js">const a = 1;</code>
+      </pre>
+    `
+    const { container, unmount } = render(<Viewer html={html} />)
+    
+    // Check that pre tag containing mermaid is hidden
+    const pres = container.querySelectorAll('pre')
+    expect(pres[0]?.style.display).toBe('none') // The mermaid one should be hidden
+    expect(pres[1]?.style.display).not.toBe('none') // The js one should remain visible
+
+    const wrapper = pres[0]?.nextElementSibling as HTMLElement
+    expect(wrapper?.tagName).toBe('DIV')
+    
+    // Check MermaidBlock is mounted by checking loading state opacity
+    const innerPre = wrapper.querySelector('pre')
+    expect(innerPre?.style.opacity).toBe('0.5')
+    expect(innerPre?.textContent?.trim()).toBe('graph TD; A-->B;')
+
+    // Test unmount restores the pre tag
+    unmount()
+  })
 })
 
 describe('Toc', () => {
