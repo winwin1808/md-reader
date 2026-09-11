@@ -21,10 +21,10 @@ describe('App', () => {
   })
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.clearAllMocks();
     
     // Mock chrome storage
-    global.chrome = {
+    (window as any).chrome = {
       storage: {
         sync: {
           get: vi.fn().mockResolvedValue({ theme: 'dark' }),
@@ -45,11 +45,11 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect(global.chrome.storage.sync.get).toHaveBeenCalledWith('theme')
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith('theme')
   })
 
   it('falls back to system theme when storage throws', async () => {
-    global.chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
+    (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
       render(<App />)
