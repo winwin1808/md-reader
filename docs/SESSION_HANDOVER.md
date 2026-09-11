@@ -4,7 +4,7 @@ Cập nhật: 2026-09-11 (phiên 3). Branch đang đứng: `phase-1`.
 
 ## Đang ở đâu
 
-Phase 1 (Nền tảng & Trình đọc) đang chạy. **9/18 phase con merged vào `phase-1`**. Chưa mở MR.
+Phase 1 (Nền tảng & Trình đọc) đang chạy. **10/18 phase con merged vào `phase-1`**. Chưa mở MR.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -17,8 +17,9 @@ Phase 1 (Nền tảng & Trình đọc) đang chạy. **9/18 phase con merged và
 | 1c2 | `core/render` — mdast → HTML string + ToC | ✅ done |
 | 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | ✅ done |
 | 1d2 | `core/doc` — history append + test hội tụ 2 replica | ✅ done |
-| 1e | `core/format` — round-trip idempotent | ⬜ **pending — chạy tiếp từ đây** |
-| 1f1 → 1i | 8 phase con còn lại | ⬜ pending |
+| 1e | `core/format` — round-trip idempotent | ✅ done |
+| 1f1 | `ui` — `ThemeProvider` + token light/dark/system | ⬜ **pending — chạy tiếp từ đây** |
+| 1f2 → 1i | 7 phase con còn lại | ⬜ pending |
 
 Bảng đầy đủ + interface từng phase con:
 `docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
@@ -26,7 +27,7 @@ Bảng đầy đủ + interface từng phase con:
 ## Chạy tiếp thế nào
 
 ```
-/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1e
+/plan-from-design docs/superpowers/specs/2026-09-10-phase-1-design.md 1f1
 ```
 
 Nó tự chain plan → build → review → phase con kế tiếp. Không cần chạy lại
@@ -36,7 +37,7 @@ phase và đã xong.
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-pnpm --filter core test        5 test files, 47 passed
+pnpm --filter core test        6 test files, 62 passed
 pnpm --filter ui test          1 test file, 2 passed
 pnpm --filter extension test   1 test file, 1 passed
 pnpm -r typecheck              exit 0
