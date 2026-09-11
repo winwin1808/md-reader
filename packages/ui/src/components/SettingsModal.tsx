@@ -24,6 +24,9 @@ export function SettingsModal({
           cursor: 'pointer',
           padding: '8px',
           color: 'inherit',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          borderRadius: '10px',
+          backdropFilter: 'blur(8px)',
         }}
       >
         <svg
@@ -52,7 +55,9 @@ export function SettingsModal({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -63,9 +68,11 @@ export function SettingsModal({
             style={{
               background: 'var(--md-bg)',
               color: 'var(--md-fg)',
-              padding: '24px',
-              borderRadius: '8px',
-              minWidth: '300px',
+              padding: '24px 28px',
+              borderRadius: '16px',
+              border: '1px solid var(--md-border)',
+              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
+              minWidth: '340px',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
