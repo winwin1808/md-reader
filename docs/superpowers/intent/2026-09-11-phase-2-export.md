@@ -6,6 +6,8 @@ Hiện tại app chưa có typography đẹp và các bộ theme màu sắc. Ng�
 Đồng thời, người dùng không có cách nào xuất tài liệu ra để chia sẻ cho người khác không dùng extension.
 
 ## Proposed outcome
+- Bổ sung bộ Typography chuẩn và 5 bộ Theme màu (Midnight Navy, Evergreen, Burnt Sienna, Deep Rose, Obsidian/Ivory).
+- Tối ưu UI hiện tại (2a-opt): Bố cục layout có sidebar chứa Table of Content, gom tất cả tuỳ chọn màu sắc/light-dark vào 1 nút Settings (icon). Có tuỳ chọn bật/tắt tự động format file .md.
 - Bổ sung bộ Typography chuẩn và 5 bộ Theme màu (Midnight Navy, Evergreen, Burnt Sienna, Deep Rose, Obsidian/Ivory) người dùng có thể chọn trực tiếp.
 - Nút Export cho phép xuất 3 định dạng:
   - HTML self-contained: Gói gọn toàn bộ CSS của Theme đang chọn và nhúng toàn bộ ảnh (để xem offline không bị lỗi mất ảnh).
@@ -27,6 +29,7 @@ Hiện tại app chưa có typography đẹp và các bộ theme màu sắc. Ng�
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
 | 2a | Typography & Themes | Bổ sung typography cho Viewer, UI chọn 5 theme màu, lưu trạng thái theme. |
+| 2a-opt | UI Layout & Settings | Layout 2 cột (Viewer + ToC), gom Settings vào popover, tuỳ chọn auto-format |
 | 2b | HTML self-contained | Inline CSS, SVG đã render, ảnh base64; mở offline vẫn đúng |
 | 2c | mdast → docx | Heading, đoạn, list, table, code, link, ảnh |
 | 2d | SVG → PNG | Raster hoá chart để nhúng docx |

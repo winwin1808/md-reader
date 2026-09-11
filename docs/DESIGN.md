@@ -264,6 +264,7 @@ Ship: *giao diện typography đẹp (5 themes), một tài liệu bất kỳ ra
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
 | 2a | Typography & Themes | Bổ sung typography cho Viewer, UI chọn 5 theme màu, lưu trạng thái theme. |
+| 2a-opt | UI Layout & Settings | Layout 2 cột (Viewer + ToC), gom Settings vào popover, tuỳ chọn auto-format |
 | 2b | HTML self-contained | Inline CSS, SVG đã render, ảnh base64; mở offline vẫn đúng |
 | 2c | mdast → docx | Heading, đoạn, list, table, code, link, ảnh |
 | 2d | SVG → PNG | Raster hoá chart để nhúng docx |
