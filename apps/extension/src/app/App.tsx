@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { ThemeProvider, ThemeMode } from '@md-reader/ui'
+import { ThemeProvider } from "@md-reader/ui"
+import type { ThemeMode } from '@md-reader/ui'
 
 export function App(): React.JSX.Element {
   const [initialTheme, setInitialTheme] = useState<ThemeMode | null>(null)
