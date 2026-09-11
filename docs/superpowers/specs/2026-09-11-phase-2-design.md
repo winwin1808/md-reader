@@ -6,7 +6,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 2a | Typography & Themes | pending |
+| 2a | Typography | 2a | Typography & Themes | pending | Themes | planned |
 | 2b | HTML self-contained | pending |
 | 2c | mdast → docx | pending |
 | 2d | SVG → PNG | pending |
