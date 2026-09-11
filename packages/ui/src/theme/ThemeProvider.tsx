@@ -26,7 +26,7 @@ function getSystemMode(): 'light' | 'dark' {
 
 export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
   const { mode, onModeChange, children } = props
-  const [resolvedSystemMode, setResolvedSystemMode] = useState<'light' | 'dark'>(() => getSystemMode())
+  const [resolvedSystemMode, setResolvedSystemMode] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
     if (mode !== 'system') return

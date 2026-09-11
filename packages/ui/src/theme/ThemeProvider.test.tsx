@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, act } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ThemeProvider, useTheme } from './ThemeProvider'
@@ -68,6 +68,39 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('resolved')).toHaveTextContent('dark')
   })
 
+  it('updates resolved mode when matchMedia change event fires', () => {
+    type ChangeListener = (e: any) => void
+    let listener: ChangeListener | null = null
+
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false,
+      addEventListener: vi.fn((event, cb) => {
+        if (event === 'change') listener = cb
+      }),
+      removeEventListener: vi.fn(),
+    }))
+
+    const { container } = render(
+      <ThemeProvider mode="system">
+        <TestComponent />
+      </ThemeProvider>
+    )
+
+    // Initial state
+    expect(container.firstChild).toHaveAttribute('data-theme', 'light')
+    expect(screen.getByTestId('resolved')).toHaveTextContent('light')
+
+    // Simulate system theme changing to dark
+    act(() => {
+      if (listener) {
+        listener({ matches: true })
+      }
+    })
+
+    expect(container.firstChild).toHaveAttribute('data-theme', 'dark')
+    expect(screen.getByTestId('resolved')).toHaveTextContent('dark')
+  })
+
   it('resolves system mode to light when matchMedia is undefined', () => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -97,7 +130,6 @@ describe('ThemeProvider', () => {
   })
 
   it('throws error when useTheme is used outside provider', () => {
-    // Suppress console.error for expected error boundary log
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     
     expect(() => {
