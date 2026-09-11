@@ -5,13 +5,13 @@ import { ThemePicker } from './ThemePicker';
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
 export interface SettingsModalProps {
-  mode: 'light' | 'dark' | 'system';
-  colorTheme: ColorTheme;
-  autoFormatMd: boolean;
+  mode?: 'light' | 'dark' | 'system';
+  colorTheme?: ColorTheme;
+  autoFormatMd?: boolean;
   fontFamily?: FontFamily;
-  onModeChange: (mode: 'light' | 'dark' | 'system') => void;
-  onColorThemeChange: (colorTheme: ColorTheme) => void;
-  onAutoFormatChange: (autoFormat: boolean) => void;
+  onModeChange?: (mode: 'light' | 'dark' | 'system') => void;
+  onColorThemeChange?: (colorTheme: ColorTheme) => void;
+  onAutoFormatChange?: (autoFormat: boolean) => void;
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
   themePicker?: React.ReactNode;
   autoFormat?: boolean;
@@ -157,7 +157,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
               <input
                 type="checkbox"
                 checked={typeof autoFormatMd === 'boolean' ? autoFormatMd : Boolean(autoFormat)}
-                onChange={(e) => onAutoFormatChange(e.target.checked)}
+                onChange={(e) => onAutoFormatChange?.(e.target.checked)}
               />
               Auto-format .md files
             </label>
