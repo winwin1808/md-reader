@@ -1,0 +1,100 @@
+.md-viewer {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.md-viewer h1,
+.md-viewer h2,
+.md-viewer h3,
+.md-viewer h4,
+.md-viewer h5,
+.md-viewer h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.md-viewer p,
+.md-viewer blockquote,
+.md-viewer ul,
+.md-viewer ol,
+.md-viewer dl,
+.md-viewer table,
+.md-viewer pre,
+.md-viewer details {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.md-viewer a {
+  color: var(--md-link);
+  text-decoration: none;
+}
+.md-viewer a:hover {
+  text-decoration: underline;
+}
+
+.md-viewer blockquote {
+  padding: 0 1em;
+  color: var(--md-blockquote-fg, var(--md-fg));
+  border-left: 0.25em solid var(--md-border);
+}
+
+.md-viewer code,
+.md-viewer tt {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  background-color: var(--md-code-bg);
+  border-radius: 6px;
+}
+
+.md-viewer pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: var(--md-code-bg);
+  border-radius: 6px;
+}
+
+.md-viewer pre code {
+  padding: 0;
+  margin: 0;
+  font-size: 100%;
+  word-break: normal;
+  white-space: pre;
+  background: transparent;
+  border: 0;
+}
+
+.md-viewer table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.md-viewer table th,
+.md-viewer table td {
+  padding: 6px 13px;
+  border: 1px solid var(--md-border);
+}
+
+.md-viewer table tr {
+  background-color: var(--md-bg);
+  border-top: 1px solid var(--md-border);
+}
+.md-viewer table tr:nth-child(2n) {
+  background-color: var(--md-code-bg);
+}
+
+.md-viewer hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 24px 0;
+  background-color: var(--md-border);
+  border: 0;
+}

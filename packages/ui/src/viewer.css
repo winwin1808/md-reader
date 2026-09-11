@@ -1,3 +1,4 @@
+@import './theme/typography.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);

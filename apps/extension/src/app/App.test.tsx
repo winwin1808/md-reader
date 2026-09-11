@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, act, cleanup } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import { IndexeddbPersistence } from 'y-indexeddb'
@@ -31,7 +31,7 @@ describe('App', () => {
           set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: vi.fn().mockResolvedValue({ theme: 'dark' }),
+          get: vi.fn().mockResolvedValue({ theme: 'dark', colorTheme: 'green' }),
           set: vi.fn().mockResolvedValue(undefined),
         },
       },
@@ -49,10 +49,30 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith('theme')
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme'])
+  })
+  
+  it('loads colorTheme and renders ThemePicker', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+    
+    const navyBtn = screen.getByRole('button', { name: 'Select navy theme' })
+    expect(navyBtn).toBeDefined()
+    
+    // the green one should be selected
+    const greenBtn = screen.getByRole('button', { name: 'Select green theme' })
+    expect(greenBtn.style.border).toContain('2px solid rgb(59, 130, 246)')
+    
+    // changing color theme
+    await act(async () => {
+      fireEvent.click(navyBtn)
+    })
+    
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ colorTheme: 'navy' }))
   })
 
-  it('falls back to system theme when storage throws', async () => {
+  it('falls back to system theme and black colorTheme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
@@ -61,6 +81,10 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
+    
+    // The black button should be selected since fallback is black
+    const blackBtn = screen.getByRole('button', { name: 'Select black theme' })
+    expect(blackBtn.style.border).toContain('2px solid rgb(59, 130, 246)')
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
