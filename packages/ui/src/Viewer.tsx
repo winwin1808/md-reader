@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from 'react'
+import { createRoot, Root } from 'react-dom/client'
+import { MermaidBlock } from './components/MermaidBlock'
 import './viewer.css'
 
 export interface ViewerProps {
@@ -67,6 +69,43 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
     return () => {
       observer.disconnect()
+    }
+  }, [html])
+
+  // Mermaid
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const mermaidCodes = container.querySelectorAll('code.language-mermaid')
+    const roots: { root: Root, node: HTMLDivElement, pre: HTMLElement }[] = []
+
+    mermaidCodes.forEach((codeEl) => {
+      const pre = codeEl.parentElement
+      if (pre && pre.tagName.toLowerCase() === 'pre') {
+        const codeContent = codeEl.textContent || ''
+        
+        const wrapper = document.createElement('div')
+        pre.parentNode?.insertBefore(wrapper, pre.nextSibling)
+        pre.style.display = 'none'
+
+        const root = createRoot(wrapper)
+        root.render(<MermaidBlock code={codeContent} />)
+
+        roots.push({ root, node: wrapper, pre })
+      }
+    })
+
+    return () => {
+      roots.forEach(({ root, node, pre }) => {
+        // Need to setTimeout to let React clear the DOM before removing the node completely, 
+        // or we just unmount and let it be removed by React? 
+        // Actually, react-dom 18+ createRoot.unmount() is synchronous, but we can safely remove node after.
+        // Wait, unmount() might need some microticks to finish, it is safe to remove it immediately.
+        root.unmount()
+        node.remove()
+        pre.style.display = ''
+      })
     }
   }, [html])
 

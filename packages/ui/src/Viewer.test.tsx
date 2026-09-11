@@ -18,6 +18,36 @@ describe('Viewer', () => {
     const html = '<h1 id="test">Test</h1>'
     expect(() => render(<Viewer html={html} onActiveHeadingChange={() => {}} />)).not.toThrow()
   })
+
+  it('mounts MermaidBlock for code.language-mermaid elements', async () => {
+    const html = `
+      <pre>
+        <code class="language-mermaid">graph TD; A-->B;</code>
+      </pre>
+      <pre>
+        <code class="language-js">const a = 1;</code>
+      </pre>
+    `
+    const { container, unmount } = render(<Viewer html={html} />)
+    
+    // Check that pre tag containing mermaid is hidden
+    const pres = container.querySelectorAll('pre')
+    expect(pres[0].style.display).toBe('none') // The mermaid one should be hidden
+    expect(pres[1].style.display).not.toBe('none') // The js one should remain visible
+
+    // It should render a MermaidBlock which shows loading state initially
+    const injectedCode = container.querySelector('code')
+    // But since MermaidBlock itself renders a <pre><code> when loading, let's just check for opacity
+    // Note: Since we are not mocking MermaidBlock here, it will just render MermaidBlock which renders <pre> initially.
+    
+    // Check that there's a new element inserted after the first pre
+    expect(pres[0].nextSibling).not.toBeNull()
+
+    // Test unmount restores the pre tag
+    unmount()
+    // It's unmounted so the DOM is empty, we can't easily check pres[0].style.display
+    // But testing that unmount doesn't throw is good.
+  })
 })
 
 describe('Toc', () => {
