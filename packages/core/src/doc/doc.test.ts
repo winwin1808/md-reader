@@ -12,6 +12,9 @@ import {
   getMeta,
   getHistory,
   readMeta,
+  importText,
+  exportText,
+  migrateDoc,
 } from './doc.js'
 import * as CoreExports from '../index.js'
 
@@ -43,9 +46,26 @@ describe('hashText', () => {
     const helloHash = await hashText('hello')
     expect(helloHash).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824')
   })
+
+  it('matches standard SHA-256 hex values', async () => {
+    expect(await hashText('')).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    )
+    expect(await hashText('hello world')).toBe(
+      'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
+    )
+  })
 })
 
 describe('createDoc & accessors', () => {
+  it('initializes exactly 3 keys (source, meta, history) and formatVersion === 1', () => {
+    const doc = createDoc()
+    expect(Array.from(doc.share.keys()).sort()).toEqual(['history', 'meta', 'source'])
+    expect(doc.share.size).toBe(3)
+    const meta = readMeta(doc)
+    expect(meta.formatVersion).toBe(1)
+  })
+
   it('creates doc with defaults when no options provided', () => {
     const doc = createDoc()
     expect(doc).toBeInstanceOf(Y.Doc)
@@ -92,10 +112,12 @@ describe('createDoc & accessors', () => {
 })
 
 describe('readMeta resilience', () => {
-  it('fills safe defaults for an empty or foreign Y.Doc', () => {
+  it('runs on a plain new Y.Doc() without throwing and returns valid defaults for all fields', () => {
     const doc = new Y.Doc()
-    const meta = readMeta(doc)
-
+    let meta!: ReturnType<typeof readMeta>
+    expect(() => {
+      meta = readMeta(doc)
+    }).not.toThrow()
     expect(meta).toEqual({
       title: 'Untitled',
       formatVersion: FORMAT_VERSION,
@@ -128,6 +150,61 @@ describe('readMeta resilience', () => {
   })
 })
 
+describe('importText and exportText', () => {
+  it('round-trips character-by-character for unicode, emojis, newlines, and whitespace', () => {
+    const testCases = [
+      'Xin chào thế giới! 🌟🚀 Tiếng Việt có dấu: á, ơ, ư, ê, đ.',
+      'Line 1\nLine 2\n\nLine 4 with trailing newline\n',
+      'CRLF line 1\r\nCRLF line 2\r\n',
+      '   leading and trailing spaces \t \n  ',
+    ]
+    for (const text of testCases) {
+      const doc = createDoc()
+      importText(doc, text, { originHash: 'test-hash', originPath: 'test.md' })
+      expect(exportText(doc)).toBe(text)
+    }
+  })
+
+  it('second importText cleanly replaces all previous content in a single transaction', () => {
+    const doc = createDoc({ source: 'original legacy content that should be replaced completely' })
+    let txCount = 0
+    doc.on('afterTransaction', () => {
+      txCount++
+    })
+
+    const newText = 'brand new content completely replacing the old'
+    importText(doc, newText, { originHash: 'hash-v2' })
+
+    expect(exportText(doc)).toBe(newText)
+    expect(txCount).toBe(1)
+    const meta = readMeta(doc)
+    expect(meta.originHash).toBe('hash-v2')
+  })
+})
+
+describe('migrateDoc', () => {
+  it('returns { from: 1, to: 1 } for normal v1 doc', () => {
+    const doc = createDoc()
+    const result = migrateDoc(doc)
+    expect(result).toEqual({ from: 1, to: 1 })
+  })
+
+  it('throws UnsupportedFormatVersionError when formatVersion is 2', () => {
+    const doc = createDoc()
+    getMeta(doc).set('formatVersion', 2)
+    expect(() => migrateDoc(doc)).toThrow(UnsupportedFormatVersionError)
+    try {
+      migrateDoc(doc)
+      expect.unreachable('should have thrown UnsupportedFormatVersionError')
+    } catch (e) {
+      expect(e).toBeInstanceOf(UnsupportedFormatVersionError)
+      const err = e as UnsupportedFormatVersionError
+      expect(err.foundVersion).toBe(2)
+      expect(err.maxSupportedVersion).toBe(1)
+    }
+  })
+})
+
 describe('re-exports from @md-reader/core', () => {
   it('exports all schema, hash, and doc functions', () => {
     expect(CoreExports.FORMAT_VERSION).toBe(1)
@@ -139,5 +216,9 @@ describe('re-exports from @md-reader/core', () => {
     expect(CoreExports.getMeta).toBeDefined()
     expect(CoreExports.getHistory).toBeDefined()
     expect(CoreExports.readMeta).toBeDefined()
+    expect(CoreExports.importText).toBeDefined()
+    expect(CoreExports.exportText).toBeDefined()
+    expect(CoreExports.migrateDoc).toBeDefined()
   })
 })
+
