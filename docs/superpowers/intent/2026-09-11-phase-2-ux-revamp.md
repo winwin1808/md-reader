@@ -1,5 +1,6 @@
 # Intent: Phase 2 — Trải nghiệm Đọc A4 & UX/UI Chuyên nghiệp
-Author: Antigravity. Status: draft. Phase: 2
+Author: Antigravity. Status: designed. Phase: 2
+Design: docs/superpowers/specs/2026-09-11-phase-2-ux-revamp-design.md
 
 ## Problem
 Giao diện đọc Markdown hiện tại mới chỉ là trình render HTML thông thường, chưa mang lại cảm giác như đang cầm đọc một tài liệu A4 chuyên nghiệp. Người dùng gặp các hạn chế sau khi đọc tài liệu dài:
