@@ -5,7 +5,7 @@ import { ThemeProvider, useTheme } from './ThemeProvider'
 import React from 'react'
 
 const TestComponent = () => {
-  const { mode, resolved, setMode, colorTheme, setColorTheme } = useTheme() as any // Cast since we might test properties not yet fully typed in useTheme in old version
+  const { mode, resolved, setMode, colorTheme, setColorTheme } = useTheme()
   return (
     <div>
       <span data-testid="mode">{mode}</span>
