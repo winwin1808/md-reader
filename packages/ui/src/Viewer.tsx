@@ -12,9 +12,15 @@ export interface ViewerProps {
 export function Viewer(props: ViewerProps): React.JSX.Element {
   const { html, className = '', onActiveHeadingChange } = props
   const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Use a ref to store onActiveHeadingChange to avoid re-triggering observer on every render
+  const onChangeRef = useRef(onActiveHeadingChange)
+  useEffect(() => {
+    onChangeRef.current = onActiveHeadingChange
+  }, [onActiveHeadingChange])
 
   useEffect(() => {
-    if (!onActiveHeadingChange) return
+    if (!onChangeRef.current) return
     if (typeof IntersectionObserver === 'undefined') return
 
     const container = containerRef.current
@@ -25,10 +31,33 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
     if (headingsWithId.length === 0) return
 
+    let activeId: string | null = null
     const observer = new IntersectionObserver((entries) => {
-      const intersecting = entries.find(entry => entry.isIntersecting)
-      if (intersecting) {
-        onActiveHeadingChange(intersecting.target.id)
+      let newActiveId = activeId
+      let changed = false
+
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          newActiveId = entry.target.id
+          changed = true
+        } else if (entry.target.id === activeId && entry.boundingClientRect.top > 0) {
+          // Scrolled up, heading exited downwards
+          const idx = headingsWithId.findIndex(h => h.id === activeId)
+          if (idx > 0) {
+            const prev = headingsWithId[idx - 1]; if (prev) newActiveId = prev.id
+            changed = true
+          } else {
+            newActiveId = null
+            changed = true
+          }
+        }
+      })
+
+      if (changed) {
+        activeId = newActiveId
+        if (onChangeRef.current) {
+          onChangeRef.current(activeId)
+        }
       }
     }, {
       rootMargin: '0px 0px -80% 0px'
@@ -39,7 +68,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     return () => {
       observer.disconnect()
     }
-  }, [html, onActiveHeadingChange])
+  }, [html])
 
   return (
     <div
