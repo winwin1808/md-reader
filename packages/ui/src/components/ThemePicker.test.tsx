@@ -25,4 +25,22 @@ describe('ThemePicker', () => {
     
     expect(handleSelect).toHaveBeenCalledWith('navy')
   })
+
+  test('renders 30px x 30px swatches with active ring styling', () => {
+    const handleSelect = vi.fn()
+    render(<ThemePicker currentTheme="navy" onSelect={handleSelect} />)
+
+    const navyButton = screen.getByRole('button', { name: 'Select navy theme' })
+    const greenButton = screen.getByRole('button', { name: 'Select green theme' })
+
+    expect(navyButton.style.width).toBe('30px')
+    expect(navyButton.style.height).toBe('30px')
+    expect(navyButton.style.border).toContain('2px solid rgb(59, 130, 246)')
+    expect(navyButton.style.boxShadow).toBe('0 0 0 2px var(--md-bg), 0 0 0 4px var(--md-link)')
+
+    expect(greenButton.style.width).toBe('30px')
+    expect(greenButton.style.height).toBe('30px')
+    expect(greenButton.style.border).toBe('2px solid transparent')
+    expect(greenButton.style.boxShadow).toBe('none')
+  })
 })

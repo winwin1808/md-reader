@@ -28,15 +28,14 @@ export function ThemePicker(props: ThemePickerProps): React.JSX.Element {
           aria-label={`Select ${theme} theme`}
           title={`Select ${theme} theme`}
           style={{
-            width: '24px',
-            height: '24px',
+            width: '30px',
+            height: '30px',
             borderRadius: '50%',
             backgroundColor: THEME_COLORS[theme],
-            border: currentTheme === theme ? '2px solid #3b82f6' : '2px solid transparent',
-            outline: currentTheme === theme ? '2px solid white' : 'none',
+            border: currentTheme === theme ? '2px solid rgb(59, 130, 246)' : '2px solid transparent',
             cursor: 'pointer',
             padding: 0,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+            boxShadow: currentTheme === theme ? '0 0 0 2px var(--md-bg), 0 0 0 4px var(--md-link)' : 'none',
           }}
         />
       ))}
