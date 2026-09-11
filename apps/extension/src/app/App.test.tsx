@@ -277,4 +277,48 @@ describe('App', () => {
     expect(screen.queryByText('Thoát đọc tập trung ✕')).toBeNull()
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
   })
+
+  it('opens DocumentSearch via toolbar button and closes via Escape or close button', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Guide\n\nContent'),
+    } as any)
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Search input should not be visible initially
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+
+    // Click search button on TopToolbar
+    const searchBtn = screen.getByTitle(/tìm kiếm/i)
+    await act(async () => {
+      fireEvent.click(searchBtn)
+    })
+
+    // DocumentSearch input should be rendered
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+
+    // Press Escape to close
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Escape' })
+    })
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+
+    // Re-open via Cmd+F shortcut
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'f', metaKey: true })
+    })
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+
+    // Click close button to close
+    const closeBtn = screen.getByTitle(/đóng/i)
+    await act(async () => {
+      fireEvent.click(closeBtn)
+    })
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+  })
 })

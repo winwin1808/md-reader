@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import {
@@ -12,6 +12,7 @@ import {
   getDefaultExportCss,
   ReadingProgress,
   TopToolbar,
+  DocumentSearch,
 } from "@md-reader/ui"
 import type { ThemeMode, ColorTheme, ExportFormat, FontScale } from '@md-reader/ui'
 import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
@@ -27,6 +28,7 @@ export function App(): React.JSX.Element {
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocOpen, setTocOpen] = useState<boolean>(true)
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
@@ -34,7 +36,21 @@ export function App(): React.JSX.Element {
   // Re-render when doc text changes to hide placeholder
   const [hasContent, setHasContent] = useState(false)
 
+  const docContainerRef = useRef<HTMLDivElement | null>(null)
   const doc = useMemo(() => new Y.Doc(), [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setIsSearchOpen(true)
+      } else if (e.key === 'Escape' && isSearchOpen) {
+        setIsSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isSearchOpen])
 
   useEffect(() => {
     let persistence: IndexeddbPersistence | null = null
@@ -201,6 +217,7 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+      <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
       <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale}>
         <ReadingProgress />
         <TopToolbar
@@ -214,6 +231,7 @@ export function App(): React.JSX.Element {
           }}
           isReadingMode={isReadingMode}
           onToggleReadingMode={() => setIsReadingMode(!isReadingMode)}
+          onOpenSearch={() => setIsSearchOpen(true)}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
@@ -239,7 +257,7 @@ export function App(): React.JSX.Element {
           {hasContent && (
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
-                <div className="a4-document-container">
+                <div ref={docContainerRef} className="a4-document-container">
                   <Viewer html={html} />
                 </div>
               </div>
