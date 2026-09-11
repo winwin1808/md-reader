@@ -1,4 +1,5 @@
 @import './theme/typography.css';
+@import './theme/print.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);

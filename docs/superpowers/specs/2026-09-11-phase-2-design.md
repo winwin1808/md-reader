@@ -12,7 +12,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 | 2b | HTML self-contained | done |
 | 2c | mdast → docx | done |
 | 2d | SVG → PNG | done |
-| 2e | Print CSS + PDF | planned |
+| 2e | Print CSS + PDF | done |
 | 2f | ExportDialog | pending |
 | 2g | E2E khói | pending |
 
