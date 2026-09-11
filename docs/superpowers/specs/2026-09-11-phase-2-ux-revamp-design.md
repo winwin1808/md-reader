@@ -10,7 +10,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-ux-revamp.md
 | 2i | Top Toolbar & Reading Mode | done |
 | 2j | In-document Search | done |
 | 2k | Elements: Code copy & Tables | done |
-| 2l | ToC Navigation & Font Family | planned |
+| 2l | ToC Navigation & Font Family | done |
 | 2m | E2E UX & Reading Smoke | pending |
 
 ## Approach chosen
