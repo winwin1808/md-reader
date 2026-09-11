@@ -1,6 +1,8 @@
 .md-viewer {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  line-height: 1.6;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--md-fg);
   word-wrap: break-word;
 }
 
@@ -10,22 +12,92 @@
 .md-viewer h4,
 .md-viewer h5,
 .md-viewer h6 {
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  line-height: 1.25;
+  scroll-margin-top: 80px;
 }
 
-.md-viewer p,
-.md-viewer blockquote,
-.md-viewer ul,
-.md-viewer ol,
+.md-viewer > *:first-child,
+.md-viewer > h1:first-child {
+  margin-top: 0 !important;
+}
+
+.md-viewer h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-top: 2.75rem;
+  margin-bottom: 1rem;
+}
+
+.md-viewer h2 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--md-border-subtle, var(--md-border));
+  padding-bottom: 0.35rem;
+}
+
+.md-viewer h3 {
+  font-size: 1.375rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.md-viewer h4 {
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.md-viewer h5 {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--md-fg-muted);
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.md-viewer h6 {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--md-fg-muted);
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.md-viewer p {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
 .md-viewer dl,
-.md-viewer table,
-.md-viewer pre,
 .md-viewer details {
   margin-top: 0;
   margin-bottom: 16px;
+}
+
+.md-viewer ul,
+.md-viewer ol {
+  padding-left: 1.75rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.md-viewer li {
+  margin-bottom: 0.45rem;
+  line-height: 1.65;
 }
 
 .md-viewer a {
@@ -37,28 +109,34 @@
 }
 
 .md-viewer blockquote {
-  padding: 0 1em;
+  margin: 1.75rem 0;
+  padding: 0.85rem 1.35rem;
   color: var(--md-blockquote-fg, var(--md-fg));
-  border-left: 0.25em solid var(--md-border);
+  border-left: 3px solid var(--md-link);
+  background-color: var(--md-surface-subtle, rgba(125, 125, 125, 0.05));
+  border-radius: 0 8px 8px 0;
 }
 
 .md-viewer code,
 .md-viewer tt {
-  padding: 0.2em 0.4em;
+  padding: 0.2em 0.45em;
   margin: 0;
-  font-size: 85%;
+  font-size: 0.875em;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   background-color: var(--md-code-bg);
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .md-viewer pre {
-  padding: 16px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 1.25rem 1.5rem;
   overflow: auto;
   font-size: 85%;
-  line-height: 1.45;
+  line-height: 1.6;
   background-color: var(--md-code-bg);
-  border-radius: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--md-border);
 }
 
 .md-viewer pre code {
@@ -72,14 +150,18 @@
 }
 
 .md-viewer table {
+  margin: 2rem 0;
   border-spacing: 0;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--md-border);
   width: 100%;
 }
 
 .md-viewer table th,
 .md-viewer table td {
-  padding: 6px 13px;
+  padding: 11px 16px;
   border: 1px solid var(--md-border);
 }
 
