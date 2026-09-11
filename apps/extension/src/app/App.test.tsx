@@ -45,7 +45,7 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
-    expect(placeholder.textContent).toBe('App Page')
+    expect(placeholder.textContent).toContain('MD Reader')
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()

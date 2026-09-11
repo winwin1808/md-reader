@@ -5,9 +5,14 @@ import { ThemeProvider } from "@md-reader/ui"
 import type { ThemeMode } from '@md-reader/ui'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
+import { DocViewer } from './DocViewer'
+import { addRecentFile } from './registry'
 
 export function App(): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeMode | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // Re-render when doc text changes to hide placeholder
+  const [hasContent, setHasContent] = useState(false)
 
   const doc = useMemo(() => new Y.Doc(), [])
 
@@ -16,11 +21,19 @@ export function App(): React.JSX.Element {
     try {
       persistence = new IndexeddbPersistence('md-reader', doc)
     } catch (err) {
-      // Fallback to memory-only Y.Doc
       console.warn('Failed to initialize IndexeddbPersistence:', err)
+    }
+    
+    const text = doc.getText('source')
+    const observer = () => setHasContent(text.length > 0)
+    text.observe(observer)
+    // Wait for initial sync from IDB
+    if (persistence) {
+      persistence.once('synced', () => setHasContent(text.length > 0))
     }
 
     return () => {
+      text.unobserve(observer)
       if (persistence) {
         persistence.destroy()
       }
@@ -33,33 +46,66 @@ export function App(): React.JSX.Element {
         const result = await chrome.storage.sync.get('theme')
         setTheme((result.theme as ThemeMode) || 'system')
       } catch (err) {
-        console.warn('Failed to get theme from storage:', err)
         setTheme('system')
       }
     }
     fetchTheme()
   }, [])
 
+  // Handle URL file param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const fileUrl = params.get('file')
+    if (fileUrl) {
+      fetch(fileUrl)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.text()
+        })
+        .then(text => {
+          const ytext = doc.getText('source')
+          ytext.delete(0, ytext.length)
+          ytext.insert(0, text)
+          const name = fileUrl.split('/').pop() || 'Untitled.md'
+          doc.getMap('meta').set('name', name)
+          
+          addRecentFile({
+            id: fileUrl,
+            name,
+            lastOpened: Date.now()
+          }).catch(console.error)
+        })
+        .catch(err => {
+          console.error('Failed to load file from URL:', err)
+          setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+        })
+    }
+  }, [doc])
+
   const handleModeChange = async (mode: ThemeMode) => {
-    setTheme(mode) // Update local state immediately
+    setTheme(mode)
     try {
       await chrome.storage.sync.set({ theme: mode })
     } catch (err) {
-      console.warn('Failed to set theme in storage:', err)
+      // ignore
     }
   }
 
-  if (!theme) {
-    return <div>Loading...</div>
-  }
+  if (!theme) return <div>Loading...</div>
 
   return (
     <ThemeProvider mode={theme} onModeChange={handleModeChange}>
       <FileDrop doc={doc}>
-        <div data-testid="app-placeholder">App Page</div>
-        <RecentFiles />
+        {error && <div style={{ color: 'red', padding: '20px' }}>{error}</div>}
+        <DocViewer doc={doc} />
+        {!hasContent && !error && (
+          <div data-testid="app-placeholder" style={{ padding: '40px', textAlign: 'center' }}>
+            <h2>MD Reader</h2>
+            <p>Drag and drop a Markdown file here, or click "Open in MD Reader" from any Markdown file in Chrome.</p>
+            <RecentFiles />
+          </div>
+        )}
       </FileDrop>
     </ThemeProvider>
   )
 }
-
