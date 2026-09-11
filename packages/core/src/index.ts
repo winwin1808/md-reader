@@ -26,3 +26,6 @@ export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
 
 export { defaultFormatOptions, formatMarkdown } from './format/index.js'
 export type { FormatOptions } from './format/index.js'
+
+export { exportToHtml } from './export/index.js'
+export type { ExportHtmlOptions } from './export/index.js'
