@@ -19,6 +19,7 @@ describe('Toc', () => {
           id: 'heading-1-1',
           text: 'Heading 1.1',
           depth: 2,
+          children: [],
         },
       ],
     },
@@ -26,6 +27,7 @@ describe('Toc', () => {
       id: 'heading-2',
       text: 'Heading 2',
       depth: 1,
+      children: [],
     },
   ]
 
