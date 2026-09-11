@@ -1,5 +1,5 @@
 # Plan: Phase 2 — Sub-phase 2a-ux
-Author: Antigravity. Status: building. Phase: 2. Sub-phase: 2a-ux
+Author: Antigravity. Status: built. Phase: 2. Sub-phase: 2a-ux
 Spec: docs/superpowers/specs/2026-09-11-phase-2-design.md
 BranchPoint: HEAD
 
@@ -12,7 +12,7 @@ BranchPoint: HEAD
 
 ## Tasks
 
-### [ ] 2a-ux-1 — Typography Scale & Reading Rhythm
+### [x] 2a-ux-1 — Typography Scale & Reading Rhythm
 FILES       packages/ui/src/theme/typography.css
 INTERFACES
 - `.md-viewer`: `font-size: 1.0625rem` (17px), `line-height: 1.7`, `color: var(--md-fg)`.
@@ -33,7 +33,7 @@ INTERFACES
 TEST        `pnpm --filter @md-reader/ui test`
 COMMIT      feat(ui): upgrade typography scale to 17px base with golden heading hierarchy
 
-### [ ] 2a-ux-2 — Layout Spacing & Modern ToC Navigation Rail
+### [x] 2a-ux-2 — Layout Spacing & Modern ToC Navigation Rail
 FILES       apps/extension/src/app/app.css, packages/ui/src/Toc.tsx, packages/ui/src/Toc.test.tsx
 INTERFACES
 - `app.css`:
@@ -56,7 +56,7 @@ INTERFACES
 TEST        `pnpm --filter @md-reader/ui test src/Toc.test.tsx && pnpm --filter @md-reader/extension test src/app/App.test.tsx`
 COMMIT      feat(ui): style modern ToC rail and expand layout with 740px measure and 180px bottom padding
 
-### [ ] 2a-ux-3 — Settings Modal & Theme Swatches Polish
+### [x] 2a-ux-3 — Settings Modal & Theme Swatches Polish
 FILES       packages/ui/src/components/SettingsModal.tsx, packages/ui/src/components/ThemePicker.tsx, packages/ui/src/components/SettingsModal.test.tsx, packages/ui/src/components/ThemePicker.test.tsx
 INTERFACES
 - `SettingsModal.tsx`:
