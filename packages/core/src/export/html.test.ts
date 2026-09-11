@@ -182,7 +182,7 @@ describe('exportToHtml', () => {
         title: sampleTitle,
       })
 
-      const expectedBase64 = Buffer.from([1, 2, 3, 4]).toString('base64')
+      const expectedBase64 = 'AQIDBA=='
       expect(result).toContain(`src="data:image/png;base64,${expectedBase64}"`)
     })
 
