@@ -11,8 +11,7 @@ export default defineConfig({
       // content script build riêng ở vite.content.config.ts — MV3 không nạp ES module
       input: {
         // 1g2: app: 'src/app/index.html'
-        // 1g1: worker: 'src/worker/index.ts'
-        placeholder: 'src/shared/version.ts',
+        worker: 'src/worker/index.ts',
       },
       output: {
         format: 'es',
