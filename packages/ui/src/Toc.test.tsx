@@ -68,4 +68,55 @@ describe('Toc', () => {
     fireEvent.click(link)
     expect(onSelect).toHaveBeenCalledWith('heading-2')
   })
+
+  it('renders toggle button for entries with deeper children and truncates anchor text', () => {
+    render(<Toc entries={sampleEntries} />)
+    const toggleBtn = screen.getByRole('button', { name: 'Thu gọn / Mở rộng mục' })
+    expect(toggleBtn).toBeDefined()
+    expect(toggleBtn.textContent).toBe('▼')
+
+    const h1Link = screen.getByRole('link', { name: 'Heading 1' })
+    expect(h1Link.getAttribute('title')).toBe('Heading 1')
+    expect(h1Link.style.textOverflow).toBe('ellipsis')
+    expect(h1Link.style.overflow).toBe('hidden')
+    expect(h1Link.style.whiteSpace).toBe('nowrap')
+
+    const buttons = screen.getAllByRole('button', { name: 'Thu gọn / Mở rộng mục' })
+    expect(buttons).toHaveLength(1)
+  })
+
+  it('toggles section collapse when toggle button is clicked', () => {
+    render(<Toc entries={sampleEntries} />)
+    expect(screen.getByRole('link', { name: 'Heading 1.1' })).toBeDefined()
+
+    const toggleBtn = screen.getByRole('button', { name: 'Thu gọn / Mở rộng mục' })
+    expect(toggleBtn.textContent).toBe('▼')
+
+    // Collapse
+    fireEvent.click(toggleBtn)
+    expect(toggleBtn.textContent).toBe('▶')
+    expect(screen.queryByRole('link', { name: 'Heading 1.1' })).toBeNull()
+
+    // Expand again
+    fireEvent.click(toggleBtn)
+    expect(toggleBtn.textContent).toBe('▼')
+    expect(screen.getByRole('link', { name: 'Heading 1.1' })).toBeDefined()
+  })
+
+  it('supports collapsible hierarchy with flat entries', () => {
+    const flatEntries: TocEntry[] = [
+      { id: 'sec-1', text: 'Section 1', depth: 1, children: [] },
+      { id: 'sec-1-1', text: 'Section 1.1', depth: 2, children: [] },
+      { id: 'sec-2', text: 'Section 2', depth: 1, children: [] },
+    ]
+    render(<Toc entries={flatEntries} />)
+    const toggleBtn = screen.getByRole('button', { name: 'Thu gọn / Mở rộng mục' })
+    expect(toggleBtn.textContent).toBe('▼')
+    expect(screen.getByRole('link', { name: 'Section 1.1' })).toBeDefined()
+
+    fireEvent.click(toggleBtn)
+    expect(toggleBtn.textContent).toBe('▶')
+    expect(screen.queryByRole('link', { name: 'Section 1.1' })).toBeNull()
+  })
 })
+

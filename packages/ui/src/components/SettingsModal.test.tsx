@@ -4,27 +4,39 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
 
+
 describe('SettingsModal', () => {
   afterEach(() => {
     cleanup();
   });
 
+  const defaultProps = {
+    mode: 'light' as const,
+    colorTheme: 'navy' as const,
+    autoFormatMd: false,
+    fontFamily: 'sans' as const,
+    onModeChange: vi.fn(),
+    onColorThemeChange: vi.fn(),
+    onAutoFormatChange: vi.fn(),
+    onFontFamilyChange: vi.fn(),
+  };
+
   it('opens modal, renders elements, and interacts', () => {
     const onAutoFormatChange = vi.fn();
     render(
       <SettingsModal 
-        themePicker={<div data-testid="theme-picker" />} 
-        autoFormat={false} 
+        {...defaultProps}
+        autoFormatMd={false}
         onAutoFormatChange={onAutoFormatChange} 
       />
     );
 
     const gearButton = screen.getByRole('button', { name: /settings/i });
-    expect(screen.queryByTestId('theme-picker')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
 
     fireEvent.click(gearButton);
 
-    expect(screen.getByTestId('theme-picker')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     
     const checkbox = screen.getByLabelText(/auto-format/i);
     expect(checkbox).not.toBeChecked();
@@ -33,12 +45,41 @@ describe('SettingsModal', () => {
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
   });
 
+  it('renders font family options and triggers onFontFamilyChange', () => {
+    const onFontFamilyChange = vi.fn();
+    render(
+      <SettingsModal
+        {...defaultProps}
+        fontFamily="sans"
+        onFontFamilyChange={onFontFamilyChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+
+    expect(screen.getByText('Kiểu phông chữ')).toBeInTheDocument();
+    const sansBtn = screen.getByRole('button', { name: 'Sans-serif' });
+    const serifBtn = screen.getByRole('button', { name: 'Serif' });
+    const monoBtn = screen.getByRole('button', { name: 'Monospace' });
+
+    expect(sansBtn).toBeInTheDocument();
+    expect(serifBtn).toBeInTheDocument();
+    expect(monoBtn).toBeInTheDocument();
+
+    fireEvent.click(serifBtn);
+    expect(onFontFamilyChange).toHaveBeenCalledWith('serif');
+
+    fireEvent.click(monoBtn);
+    expect(onFontFamilyChange).toHaveBeenCalledWith('mono');
+
+    fireEvent.click(sansBtn);
+    expect(onFontFamilyChange).toHaveBeenCalledWith('sans');
+  });
+
   it('uses proper CSS variables for background and text colors', () => {
     render(
       <SettingsModal 
-        themePicker={<div data-testid="theme-picker" />} 
-        autoFormat={false} 
-        onAutoFormatChange={() => {}} 
+        {...defaultProps}
       />
     );
 
@@ -65,9 +106,7 @@ describe('SettingsModal', () => {
   it('applies polished styling to trigger button, backdrop, and modal container', () => {
     render(
       <SettingsModal 
-        themePicker={<div data-testid="theme-picker" />} 
-        autoFormat={false} 
-        onAutoFormatChange={() => {}} 
+        {...defaultProps}
       />
     );
 
