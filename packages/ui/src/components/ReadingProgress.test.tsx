@@ -38,6 +38,8 @@ describe('ReadingProgress', () => {
     const { container } = render(<ReadingProgress />)
     const el = container.firstElementChild as HTMLElement
     expect(el).toBeTruthy()
+    expect(el.className).toContain('reading-progress-bar')
+    expect(el.className).toContain('md-no-print')
     expect(el.style.position).toBe('fixed')
     expect(el.style.top).toBe('0px')
     expect(el.style.left).toBe('0px')
@@ -50,6 +52,8 @@ describe('ReadingProgress', () => {
   it('accepts custom color and className', () => {
     const { container } = render(<ReadingProgress color="#ff0000" className="custom-bar" />)
     const el = container.firstElementChild as HTMLElement
+    expect(el.className).toContain('reading-progress-bar')
+    expect(el.className).toContain('md-no-print')
     expect(el.className).toContain('custom-bar')
     expect(el.style.backgroundColor).toBe('rgb(255, 0, 0)')
   })
@@ -68,10 +72,11 @@ describe('ReadingProgress', () => {
     expect(el.style.width).toBe('50%')
   })
 
-  it('cleans up scroll listener on unmount', () => {
+  it('cleans up scroll and resize listeners on unmount', () => {
     const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
     const { unmount } = render(<ReadingProgress />)
     unmount()
     expect(removeEventListenerSpy).toHaveBeenCalledWith('scroll', expect.any(Function))
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
   })
 })

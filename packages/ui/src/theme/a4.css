@@ -23,6 +23,10 @@
   min-height: 80vh;
 }
 
+.a4-document-container .md-viewer {
+  background-color: transparent !important;
+}
+
 .md-empty-doc {
   text-align: center;
   padding: 64px 24px;
