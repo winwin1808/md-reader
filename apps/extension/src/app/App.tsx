@@ -107,7 +107,7 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
-      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000, background: 'var(--color-bg-subtle)', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000, background: 'rgba(128, 128, 128, 0.1)', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
         <ThemePicker currentTheme={colorTheme} onSelect={handleColorThemeChange} />
       </div>
       <FileDrop doc={doc}>
