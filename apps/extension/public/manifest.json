@@ -13,5 +13,18 @@
   "background": {
     "service_worker": "worker.js",
     "type": "module"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*.md",
+        "*://*/*.markdown",
+        "file:///*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }
