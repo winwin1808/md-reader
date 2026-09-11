@@ -1,5 +1,5 @@
 # Design: Phase 2 — Export & Themes
-Author: Antigravity. Status: designed. Phase: 2
+Author: Antigravity. Status: shipped. Phase: 2
 Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 
 ## Sub-phase queue

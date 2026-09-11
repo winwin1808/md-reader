@@ -1,52 +1,53 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-11 (phiên 4). Branch đang đứng: `phase-1`.
+Cập nhật: 2026-09-11 (phiên 5). Branch đang đứng: `phase-2`.
 
 ## Đang ở đâu
 
-**Phase 1 (Nền tảng & Trình đọc) đã hoàn tất!** 18/18 phase con merged vào `phase-1`.
-Branch `phase-1` đã sẵn sàng để review và merge vào `main`.
+**Phase 2 (Export & Themes) đã hoàn tất!** 9/9 phase con merged vào `phase-2`.
+Branch `phase-2` đã sẵn sàng để review và merge vào `main`.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 1a | Spike CSP/mermaid | ✅ done |
-| 1b1-1b4 | Skeletons | ✅ done |
-| 1c1-1c2 | Parser & Render | ✅ done |
-| 1d1-1d2 | Doc Model & History | ✅ done |
-| 1e | Format round-trip idempotent | ✅ done |
-| 1f1-1f2 | UI components | ✅ done |
-| 1g1-1g3 | Extension shell & drop & registry | ✅ done |
-| 1h1-1h2 | Content script injection & budget | ✅ done |
-| 1i | Mermaid lazy loading | ✅ done |
+| 2a | Typography & 5 Color Themes | ✅ done |
+| 2a-opt | UI Layout & Settings Modal | ✅ done |
+| 2a-ux | UX/UI Polish & Readability Audit | ✅ done |
+| 2b | Standalone HTML Export (ảnh data URL) | ✅ done |
+| 2c | mdast → Microsoft Word (.docx) | ✅ done |
+| 2d | SVG → PNG Canvas Rasterizer | ✅ done |
+| 2e | Print CSS & PDF (`window.print()`) | ✅ done |
+| 2f | ExportModal UI & App Handlers | ✅ done |
+| 2g | E2E Integration Smoke Test | ✅ done |
 
 Bảng đầy đủ + interface từng phase con:
-`docs/superpowers/specs/2026-09-10-phase-1-design.md` §Sub-phase queue.
+`docs/superpowers/specs/2026-09-11-phase-2-design.md` §Sub-phase queue.
 
 ## Chạy tiếp thế nào
 
-Phase 1 đã xong toàn bộ và đã open MR (simulated) để review.
-Bắt đầu một session mới, chạy:
+Phase 2 đã hoàn tất toàn bộ và sẵn sàng mở MR vào `main`:
+- Merge `phase-2` vào `main` (hoặc mở MR `phase-2` → `main`).
+- Bắt đầu session kế tiếp cho **Phase 3 (Trình chiếu / Presentation)** bằng cách chạy:
 ```
 /capture-intent
 ```
-Và yêu cầu: Bắt đầu **Phase 2 (Export)**.
-Quá trình sẽ diễn ra từ đầu cho Phase 2: capture-intent → design-from-intent.
+Và yêu cầu: Bắt đầu **Phase 3 (Trình chiếu / Slides)**.
 
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-pnpm --filter core test        6 test files, 62 passed
-pnpm --filter ui test          4 test files, 16 passed
-pnpm --filter extension test   3 test files, 10 passed
+pnpm --filter core test        8 test files, 82 passed
+pnpm --filter ui test          10 test files, 55 passed
+pnpm --filter extension test   6 test files, 14 passed
+Tổng cộng                      24 test files, 151 passed
 pnpm -r typecheck              exit 0
 pnpm -r build                  exit 0
-dist/content.js                25.70 kB, gz 10.10 kB (giới hạn 60KB)
+dist/content.js                25.77 kB, gz 10.04 kB (giới hạn 61.44 kB / 60KB)
 ```
 
 Toolchain đã pin: `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` ·
-`vite@8.2.2` · `react@19.3.0` (một bản duy nhất, dùng chung ui + extension) ·
-`yjs@13.6.32` · unified v11.
+`vite@8.2.2` · `react@19.3.0` (một bản duy nhất) · `yjs@13.6.32` · `docx@9.5.3`.
 
-## Nợ và Phát hiện trong quá trình Phase 1
-- **Ngân sách 60KB của content script**: `unified` + `rehype-highlight` quá nặng, lên tới hơn 150-200KB gz. Thay vì phải bundle chúng vào `content.js`, ta đã **giữ cho content script siêu nhẹ (chỉ mười mấy KB)** bằng cách thay vì xóa `document.body` và render lại nguyên giao diện Viewer, ta chỉ overlay (chèn) một nút bấm cố định "Open in MD Reader" vào DOM cũ. Giao diện markdown được Chrome render thô (raw plain text format fallback) và nút bấm sẽ đưa user vào trang `app.html` có bộ parser mạnh.
-- **Mermaid lazy load (1i)**: Đã import `mermaid` qua dynamic `await import('mermaid')`.
+## Nợ và Phát hiện trong quá trình Phase 2
+- **Tối ưu UX/UI typography (2a-ux)**: Audit độc lập đã nâng chuẩn readability lên mức cao: cỡ chữ chuẩn 17px, line-height 1.7, độ rộng cột đọc chuẩn measure 740px, ToC dạng thanh chỉ mục hiện đại không bullet points, và khoảng đệm đáy trang 180px tránh cấn mép màn hình.
+- **Tương thích kích thước SVG (2d)**: Các sơ đồ Mermaid sinh thẻ `<svg width="100%" viewBox="0 0 W H">`. Bộ rasterizer đã xử lý fallback ưu tiên viewBox intrinsic dimensions khi gặp thuộc tính phần trăm.
+- **Chrome Blob download revocation (2f)**: Gọi `URL.revokeObjectURL` ngay lập tức khiến Chromium thi thoảng hủy download giữa chừng. Toàn bộ hàm export đã dùng `setTimeout(() => URL.revokeObjectURL(url), 1000)` để đảm bảo download ổn định tuyệt đối.
