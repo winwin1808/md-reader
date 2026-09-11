@@ -5,7 +5,21 @@ export function RecentFiles(): React.JSX.Element {
   const [files, setFiles] = useState<any[]>([]);
 
   useEffect(() => {
-    getRecentFiles().then(setFiles).catch(console.error);
+    const fetchFiles = () => {
+      getRecentFiles().then(setFiles).catch(console.error);
+    };
+    fetchFiles();
+
+    const listener = (changes: any, areaName: string) => {
+      if (areaName === 'local' && changes.recentFiles) {
+        fetchFiles();
+      }
+    };
+    
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(listener);
+      return () => chrome.storage.onChanged.removeListener(listener);
+    }
   }, []);
 
   const handleClick = (file: any) => {
