@@ -26,6 +26,10 @@ describe('App', () => {
     // Mock chrome storage
     (window as any).chrome = {
       storage: {
+        local: {
+          get: vi.fn().mockResolvedValue({ recentFiles: [] }),
+          set: vi.fn().mockResolvedValue(undefined),
+        },
         sync: {
           get: vi.fn().mockResolvedValue({ theme: 'dark' }),
           set: vi.fn().mockResolvedValue(undefined),
