@@ -32,7 +32,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1g3 | Extension — kéo-thả mở file + registry + danh sách gần đây | done |
 | 1h1 | Content script — detect + Shadow DOM + render read-only + nút mở app | done |
 | 1h2 | Content script — cổng ngân sách 60KB gz | done |
-| 1i | Mermaid — lazy ở app page + đường degrade | pending |
+| 1i | Mermaid — lazy ở app page + đường degrade | done |
 
 ## Approach chosen
 
