@@ -35,7 +35,9 @@ describe('Viewer code copy and header enhancement', () => {
     expect(copyBtn?.getAttribute('aria-label')).toBe('Sao chép mã nguồn')
 
     // Click "Copy"
-    fireEvent.click(copyBtn!)
+    await act(async () => {
+      fireEvent.click(copyBtn!)
+    })
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('console.log("hello")')
     expect(copyBtn?.textContent).toBe('Copied ✓')
@@ -64,5 +66,23 @@ describe('Viewer code copy and header enhancement', () => {
 
     const header = container.querySelector('.code-block-header')
     expect(header).toBeNull()
+  })
+
+  it('does not change button text to "Copied ✓" if clipboard write fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    ;(navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('Failed to copy')
+    )
+    const html = '<pre><code class="language-js">console.log("hello")</code></pre>'
+    const { container } = render(<Viewer html={html} />)
+
+    const copyBtn = container.querySelector('.code-copy-btn') as HTMLButtonElement
+    await act(async () => {
+      fireEvent.click(copyBtn)
+    })
+
+    expect(copyBtn.textContent).toBe('Copy')
+    expect(copyBtn.classList.contains('copied')).toBe(false)
+    consoleError.mockRestore()
   })
 })

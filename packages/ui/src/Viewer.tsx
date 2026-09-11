@@ -144,27 +144,26 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       const copyBtn = header.querySelector<HTMLButtonElement>('.code-copy-btn')
       if (copyBtn) {
         let timeoutId: ReturnType<typeof setTimeout> | null = null
-        copyBtn.addEventListener('click', () => {
-          const text = code.textContent || ''
+        copyBtn.addEventListener('click', async () => {
+          const codeText = code.textContent || ''
           try {
-            const p = navigator.clipboard?.writeText(text)
-            if (p && typeof p.catch === 'function') {
-              p.catch(() => {})
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(codeText)
+              copyBtn.textContent = 'Copied ✓'
+              copyBtn.classList.add('copied')
+              if (timeoutId) {
+                clearTimeout(timeoutId)
+              }
+              timeoutId = setTimeout(() => {
+                copyBtn.textContent = 'Copy'
+                copyBtn.classList.remove('copied')
+                timeoutId = null
+              }, 1500)
+              timeouts.push(timeoutId)
             }
-          } catch {
-            // ignore
+          } catch (err) {
+            console.error('Failed to copy code:', err)
           }
-          copyBtn.textContent = 'Copied ✓'
-          copyBtn.classList.add('copied')
-          if (timeoutId) {
-            clearTimeout(timeoutId)
-          }
-          timeoutId = setTimeout(() => {
-            copyBtn.textContent = 'Copy'
-            copyBtn.classList.remove('copied')
-            timeoutId = null
-          }, 1500)
-          timeouts.push(timeoutId)
         })
       }
 
