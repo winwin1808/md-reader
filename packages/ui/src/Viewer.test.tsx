@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { Viewer, Toc } from './index'
+import type { TocEntry } from '@md-reader/core'
 
 describe('Viewer', () => {
   it('renders provided html securely (assumed sanitized by core)', () => {
@@ -26,9 +27,9 @@ describe('Toc', () => {
   })
 
   it('renders nested toc entries and highlights activeId', () => {
-    const entries = [
-      { id: 'h1', text: 'Heading 1', level: 1, children: [
-        { id: 'h2', text: 'Heading 2', level: 2, children: [] }
+    const entries: TocEntry[] = [
+      { id: 'h1', text: 'Heading 1', depth: 1, children: [
+        { id: 'h2', text: 'Heading 2', depth: 2, children: [] }
       ]}
     ]
     render(<Toc entries={entries} activeId="h2" />)
