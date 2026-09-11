@@ -13,8 +13,8 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 | 2c | mdast → docx | done |
 | 2d | SVG → PNG | done |
 | 2e | Print CSS + PDF | done |
-| 2f | ExportDialog | planned |
-| 2g | E2E khói | pending |
+| 2f | ExportDialog | done |
+| 2g | E2E khói | planned |
 
 ## Approach chosen
 
