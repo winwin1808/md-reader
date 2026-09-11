@@ -25,21 +25,26 @@ describe('ExportModal', () => {
     expect(screen.getByText('Tài liệu PDF (.pdf)')).toBeDefined()
   })
 
-  it('calls onExport with "html", "docx", "pdf" when respective options are clicked', () => {
+  it('calls onExport and closes modal with "html", "docx", "pdf" when respective options are clicked', () => {
     const handleExport = vi.fn()
     render(<ExportModal onExport={handleExport} />)
 
     fireEvent.click(screen.getByTitle('Xuất tài liệu'))
-
     fireEvent.click(screen.getByText('HTML Độc lập (.html)'))
     expect(handleExport).toHaveBeenCalledWith('html')
+    expect(screen.queryByRole('dialog')).toBeNull()
 
+    fireEvent.click(screen.getByTitle('Xuất tài liệu'))
     fireEvent.click(screen.getByText('Microsoft Word (.docx)'))
     expect(handleExport).toHaveBeenCalledWith('docx')
+    expect(screen.queryByRole('dialog')).toBeNull()
 
+    fireEvent.click(screen.getByTitle('Xuất tài liệu'))
     fireEvent.click(screen.getByText('Tài liệu PDF (.pdf)'))
     expect(handleExport).toHaveBeenCalledWith('pdf')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
+
 
   it('closes modal when close button (✕) is clicked', () => {
     render(<ExportModal onExport={vi.fn()} />)

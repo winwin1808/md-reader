@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc, ExportModal, printDocument } from "@md-reader/ui"
+import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc, ExportModal, printDocument, getDefaultExportCss } from "@md-reader/ui"
 import type { ThemeMode, ColorTheme, ExportFormat } from '@md-reader/ui'
 import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -152,7 +152,7 @@ export function App(): React.JSX.Element {
     if (format === 'pdf') {
       printDocument()
     } else if (format === 'html') {
-      const exportHtml = await exportToHtml({ html, cssContent: '', title })
+      const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
       const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -161,7 +161,7 @@ export function App(): React.JSX.Element {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } else if (format === 'docx') {
       const blob = await mdastToDocx({ mdast: parseResult.ast, title })
       const url = URL.createObjectURL(blob)
@@ -171,7 +171,7 @@ export function App(): React.JSX.Element {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
   }
 
