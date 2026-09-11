@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { ThemeProvider } from "@md-reader/ui"
-import type { ThemeMode } from '@md-reader/ui'
+import { ThemeProvider, ThemePicker } from "@md-reader/ui"
+import type { ThemeMode, ColorTheme } from '@md-reader/ui'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { DocViewer } from './DocViewer'
@@ -10,6 +10,7 @@ import { addRecentFile } from './registry'
 
 export function App(): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeMode | null>(null)
+  const [colorTheme, setColorTheme] = useState<ColorTheme | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Re-render when doc text changes to hide placeholder
   const [hasContent, setHasContent] = useState(false)
@@ -43,10 +44,12 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const fetchTheme = async () => {
       try {
-        const result = await chrome.storage.sync.get('theme')
+        const result = await chrome.storage.sync.get(['theme', 'colorTheme'])
         setTheme((result.theme as ThemeMode) || 'system')
+        setColorTheme((result.colorTheme as ColorTheme) || 'black')
       } catch (err) {
         setTheme('system')
+        setColorTheme('black')
       }
     }
     fetchTheme()
@@ -91,10 +94,22 @@ export function App(): React.JSX.Element {
     }
   }
 
-  if (!theme) return <div>Loading...</div>
+  const handleColorThemeChange = async (color: ColorTheme) => {
+    setColorTheme(color)
+    try {
+      await chrome.storage.sync.set({ colorTheme: color })
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  if (!theme || !colorTheme) return <div>Loading...</div>
 
   return (
-    <ThemeProvider mode={theme} onModeChange={handleModeChange}>
+    <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000, background: 'var(--color-bg-subtle)', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <ThemePicker currentTheme={colorTheme} onSelect={handleColorThemeChange} />
+      </div>
       <FileDrop doc={doc}>
         {error && <div style={{ color: 'red', padding: '20px' }}>{error}</div>}
         <DocViewer doc={doc} />
