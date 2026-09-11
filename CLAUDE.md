@@ -145,3 +145,4 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
   subagent. Thêm `.claude/agents/` (builder, spiker, reviewer, guard),
   DESIGN.md §4 chia 38 phase con, §7 mô hình agent/ngân sách context,
   §8 mô hình git/MR. Spike CSP chốt dùng harness vứt đi (phase con 1a).
+- 2026-09-11 — **Phase 1 HOÀN TẤT**, 18/18 phase con đã merge vào `phase-1`. Đã dựng xong toàn bộ nền tảng: parser, yjs doc model, UI components, app shell, và content script injection (với ngân sách 10KB gz, vượt xa yêu cầu 60KB). Branch sẵn sàng mở MR. Phase tiếp theo: **Phase 2 (Export)**.
