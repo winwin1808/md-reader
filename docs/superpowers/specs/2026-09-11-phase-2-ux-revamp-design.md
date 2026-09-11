@@ -7,7 +7,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-ux-revamp.md
 | # | Phase con | Trạng thái |
 |---|---|---|
 | 2h | Layout A4 & Progress | done |
-| 2i | Top Toolbar & Reading Mode | planned |
+| 2i | Top Toolbar & Reading Mode | done |
 | 2j | In-document Search | pending |
 | 2k | Elements: Code copy & Tables | pending |
 | 2l | ToC Navigation & Font Family | pending |
