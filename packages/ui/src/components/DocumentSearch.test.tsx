@@ -47,8 +47,8 @@ describe('DocumentSearch', () => {
 
     const marks = container.querySelectorAll('mark.md-search-highlight')
     expect(marks.length).toBe(2)
-    expect(marks[0].classList.contains('md-search-active')).toBe(true)
-    expect(marks[1].classList.contains('md-search-active')).toBe(false)
+    expect(marks[0]!.classList.contains('md-search-active')).toBe(true)
+    expect(marks[1]!.classList.contains('md-search-active')).toBe(false)
     expect(screen.getByText('1 / 2')).toBeDefined()
 
     document.body.removeChild(container)
@@ -80,29 +80,29 @@ describe('DocumentSearch', () => {
 
     const marks = container.querySelectorAll('mark.md-search-highlight')
     expect(marks.length).toBe(3)
-    expect(marks[0].classList.contains('md-search-active')).toBe(true)
+    expect(marks[0]!.classList.contains('md-search-active')).toBe(true)
 
     const nextBtn = screen.getByRole('button', { name: 'Kế tiếp' })
     const prevBtn = screen.getByRole('button', { name: 'Trước' })
 
     fireEvent.click(nextBtn)
     expect(screen.getByText('2 / 3')).toBeDefined()
-    expect(marks[1].classList.contains('md-search-active')).toBe(true)
-    expect(marks[0].classList.contains('md-search-active')).toBe(false)
+    expect(marks[1]!.classList.contains('md-search-active')).toBe(true)
+    expect(marks[0]!.classList.contains('md-search-active')).toBe(false)
 
     fireEvent.click(nextBtn)
     expect(screen.getByText('3 / 3')).toBeDefined()
-    expect(marks[2].classList.contains('md-search-active')).toBe(true)
+    expect(marks[2]!.classList.contains('md-search-active')).toBe(true)
 
     // wrap around
     fireEvent.click(nextBtn)
     expect(screen.getByText('1 / 3')).toBeDefined()
-    expect(marks[0].classList.contains('md-search-active')).toBe(true)
+    expect(marks[0]!.classList.contains('md-search-active')).toBe(true)
 
     // prev wraps to end
     fireEvent.click(prevBtn)
     expect(screen.getByText('3 / 3')).toBeDefined()
-    expect(marks[2].classList.contains('md-search-active')).toBe(true)
+    expect(marks[2]!.classList.contains('md-search-active')).toBe(true)
 
     document.body.removeChild(container)
   })
@@ -200,6 +200,6 @@ describe('DocumentSearch', () => {
     // Only the <p> should have a mark
     const marks = container.querySelectorAll('mark.md-search-highlight')
     expect(marks.length).toBe(1)
-    expect(marks[0].parentElement?.tagName.toLowerCase()).toBe('p')
+    expect(marks[0]!.parentElement?.tagName.toLowerCase()).toBe('p')
   })
 })
