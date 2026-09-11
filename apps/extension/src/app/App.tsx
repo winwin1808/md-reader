@@ -3,6 +3,8 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { ThemeProvider } from "@md-reader/ui"
 import type { ThemeMode } from '@md-reader/ui'
+import { FileDrop } from './FileDrop'
+import { RecentFiles } from './RecentFiles'
 
 export function App(): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeMode | null>(null)
@@ -53,7 +55,11 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={theme} onModeChange={handleModeChange}>
-      <div data-testid="app-placeholder">App Page</div>
+      <FileDrop doc={doc}>
+        <div data-testid="app-placeholder">App Page</div>
+        <RecentFiles />
+      </FileDrop>
     </ThemeProvider>
   )
 }
+
