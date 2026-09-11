@@ -21,6 +21,11 @@ describe('Content script entry point', () => {
     globalThis.chrome = {
       runtime: {
         getURL: vi.fn((path) => `mock-url/${path}`)
+      },
+      storage: {
+        sync: {
+          get: vi.fn().mockResolvedValue({})
+        }
       }
     } as any
   })
@@ -63,6 +68,14 @@ describe('Content script entry point', () => {
 
   it('does nothing if no markdown detected', async () => {
     document.body.innerHTML = '<div>Not markdown</div>'
+    
+    await import('./index')
+
+    expect(document.getElementById('md-reader-root')).toBeNull()
+  })
+  it('does nothing if autoFormatMd is false', async () => {
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    vi.mocked(chrome.storage.sync.get).mockResolvedValueOnce({ autoFormatMd: false })
     
     await import('./index')
 
