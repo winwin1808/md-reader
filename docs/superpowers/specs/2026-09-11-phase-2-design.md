@@ -138,3 +138,16 @@ export async function rasterizeSvg(svgString: string): Promise<{ buffer: ArrayBu
 
 **Consumes:** Ứng dụng đã hoàn chỉnh.
 **Sizing:** 1 file, ~80 dòng.
+
+## 2a-opt — UI Layout & Settings
+
+**Builds:** 
+- `packages/ui/src/components/SettingsPopover.tsx` (gom ThemePicker và switch auto-format vào đây).
+- `apps/extension/src/app/App.tsx` (Sửa layout thành dạng 2 cột: Main content và Sidebar ToC).
+- Cập nhật logic worker/content-script để tôn trọng tuỳ chọn auto-format.
+
+**Consumes:** Viewer, Toc, ThemePicker.
+**Interfaces:**
+- Thêm biến `autoFormatMd: boolean` vào `chrome.storage.sync`.
+- Layout: `<div className="app-container"><main className="content"><Viewer /></main><aside className="sidebar"><Toc /></aside></div>`.
+**Sizing:** 3 file, ~200 dòng.
