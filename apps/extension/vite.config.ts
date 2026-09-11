@@ -10,7 +10,7 @@ export default defineConfig({
     rollupOptions: {
       // content script build riêng ở vite.content.config.ts — MV3 không nạp ES module
       input: {
-        app: 'src/app/index.html',
+        app: 'app.html',
         worker: 'src/worker/index.ts',
       },
       output: {
