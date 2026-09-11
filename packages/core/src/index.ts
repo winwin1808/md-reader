@@ -23,3 +23,6 @@ export {
   migrateDoc,
 } from './doc/doc.js'
 export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
+
+export { defaultFormatOptions, formatMarkdown } from './format/index.js'
+export type { FormatOptions } from './format/index.js'
