@@ -92,6 +92,15 @@ describe('rasterizeSvg', () => {
     expect(result.buffer).toBeInstanceOf(ArrayBuffer)
   })
 
+  it('ignores percentage width/height attributes and uses viewBox dimensions', async () => {
+    const svg = '<svg width="100%" viewBox="0 0 800 400"></svg>'
+    const result = await rasterizeSvg(svg, { scale: 2 })
+
+    expect(result.width).toBe(1600)
+    expect(result.height).toBe(800)
+    expect(result.buffer).toBeInstanceOf(ArrayBuffer)
+  })
+
   it('defaults to 800x600 when neither width/height nor viewBox are provided', async () => {
     const svg = '<svg><path d="M0,0 L10,10"/></svg>'
     const result = await rasterizeSvg(svg, { scale: 2 })
