@@ -25,7 +25,7 @@ cập nhật khớp. 18 phase con, chạy đúng thứ tự này:
 | 1d1 | `core/doc` — schema, import/export, `originHash`, `formatVersion` | done |
 | 1d2 | `core/doc` — history append + test hội tụ 2 replica | done |
 | 1e | `core/format` — round-trip idempotent | done |
-| 1f1 | `ui` — `ThemeProvider` + token light/dark/system | pending |
+| 1f1 | `ui` — `ThemeProvider` + token light/dark/system | done |
 | 1f2 | `ui` — `Viewer` + `Toc` + code highlight CSS | pending |
 | 1g1 | Extension — manifest MV3 + service worker + build đa entry | pending |
 | 1g2 | Extension — app page shell: Y.Doc + `y-indexeddb` + theme bridge | pending |
