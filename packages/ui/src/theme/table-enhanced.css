@@ -1,5 +1,8 @@
 /* Code block header styling */
 .code-block-header {
+  position: sticky;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -67,23 +70,19 @@
   border: 1px solid var(--md-border);
 }
 
-.md-viewer tbody tr:nth-child(even),
-tbody tr:nth-child(even) {
+.md-viewer tbody tr:nth-child(even) {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
-[data-theme="dark"] .md-viewer tbody tr:nth-child(even),
-[data-theme="dark"] tbody tr:nth-child(even) {
+[data-theme="dark"] .md-viewer tbody tr:nth-child(even) {
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-.md-viewer tbody tr:hover,
-tbody tr:hover {
+.md-viewer tbody tr:hover {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="dark"] .md-viewer tbody tr:hover,
-[data-theme="dark"] tbody tr:hover {
+[data-theme="dark"] .md-viewer tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
