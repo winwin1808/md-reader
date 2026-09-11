@@ -106,6 +106,75 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     }
   }, [html])
 
+  // Code block header with copy button
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const pres = container.querySelectorAll('pre')
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+
+    pres.forEach((pre) => {
+      if (pre.classList.contains('mermaid-block') || pre.querySelector('.code-block-header')) {
+        return
+      }
+      const code = pre.querySelector('code')
+      if (!code) return
+      if (code.classList.contains('language-mermaid')) return
+
+      // Extract language
+      let lang = 'text'
+      const match = code.className.match(/language-([a-zA-Z0-9_-]+)/)
+      if (match && match[1]) {
+        lang = match[1]
+      } else {
+        const classes = typeof code.className === 'string' ? code.className.split(/\s+/) : []
+        for (const cls of classes) {
+          if (cls && cls !== 'hljs' && !cls.startsWith('hljs-')) {
+            lang = cls
+            break
+          }
+        }
+      }
+
+      const header = document.createElement('div')
+      header.className = 'code-block-header md-no-print'
+      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" title="Sao chép mã nguồn" aria-label="Sao chép mã nguồn">Copy</button>`
+
+      const copyBtn = header.querySelector<HTMLButtonElement>('.code-copy-btn')
+      if (copyBtn) {
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
+        copyBtn.addEventListener('click', async () => {
+          const codeText = code.textContent || ''
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(codeText)
+              copyBtn.textContent = 'Copied ✓'
+              copyBtn.classList.add('copied')
+              if (timeoutId) {
+                clearTimeout(timeoutId)
+              }
+              timeoutId = setTimeout(() => {
+                copyBtn.textContent = 'Copy'
+                copyBtn.classList.remove('copied')
+                timeoutId = null
+              }, 1500)
+              timeouts.push(timeoutId)
+            }
+          } catch (err) {
+            console.error('Failed to copy code:', err)
+          }
+        })
+      }
+
+      pre.insertBefore(header, pre.firstChild)
+    })
+
+    return () => {
+      timeouts.forEach(t => clearTimeout(t))
+    }
+  }, [html])
+
   return (
     <div
       ref={containerRef}
