@@ -1,10 +1,14 @@
 import React from 'react';
 import '@testing-library/jest-dom/vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SettingsModal } from './SettingsModal';
-import { describe, it, expect, vi } from 'vitest';
 
 describe('SettingsModal', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('opens modal, renders elements, and interacts', () => {
     const onAutoFormatChange = vi.fn();
     render(
@@ -27,5 +31,26 @@ describe('SettingsModal', () => {
     
     fireEvent.click(checkbox);
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
+  });
+
+  it('uses proper CSS variables for background and text colors', () => {
+    render(
+      <SettingsModal 
+        themePicker={<div data-testid="theme-picker" />} 
+        autoFormat={false} 
+        onAutoFormatChange={() => {}} 
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    
+    // The dialog content is the first child of the dialog overlay
+    const dialog = screen.getByRole('dialog');
+    const content = dialog.firstChild as HTMLElement;
+    
+    expect(content).toHaveStyle({
+      background: 'var(--md-bg)',
+      color: 'var(--md-fg)',
+    });
   });
 });
