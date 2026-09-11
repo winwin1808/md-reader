@@ -23,6 +23,7 @@ export function SettingsModal({
           border: 'none',
           cursor: 'pointer',
           padding: '8px',
+          color: 'inherit',
         }}
       >
         <svg
@@ -69,7 +70,17 @@ export function SettingsModal({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ margin: 0, fontSize: '18px' }}>Settings</h2>
-              <button onClick={() => setIsOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>
+              <button
+                onClick={() => setIsOpen(false)}
+                aria-label="Close"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: 'inherit',
+                }}
+              >
                 ✕
               </button>
             </div>

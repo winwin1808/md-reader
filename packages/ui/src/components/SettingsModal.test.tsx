@@ -52,5 +52,13 @@ describe('SettingsModal', () => {
       background: 'var(--md-bg)',
       color: 'var(--md-fg)',
     });
+
+    const closeBtn = screen.getByRole('button', { name: /close/i });
+    expect(closeBtn).toHaveStyle({
+      color: 'var(--md-fg)',
+    });
+
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
