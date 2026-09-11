@@ -1,6 +1,6 @@
 .md-viewer {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: 1.0625rem;
+  font-size: calc(1.0625rem * var(--md-font-scale-ratio, 1));
   line-height: 1.7;
   color: var(--md-fg);
   word-wrap: break-word;
@@ -21,7 +21,7 @@
 }
 
 .md-viewer h1 {
-  font-size: 2.25rem;
+  font-size: calc(2.25rem * var(--md-font-scale-ratio, 1));
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -30,7 +30,7 @@
 }
 
 .md-viewer h2 {
-  font-size: 1.75rem;
+  font-size: calc(1.75rem * var(--md-font-scale-ratio, 1));
   line-height: 1.25;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -41,7 +41,7 @@
 }
 
 .md-viewer h3 {
-  font-size: 1.375rem;
+  font-size: calc(1.375rem * var(--md-font-scale-ratio, 1));
   line-height: 1.35;
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -50,7 +50,7 @@
 }
 
 .md-viewer h4 {
-  font-size: 1.125rem;
+  font-size: calc(1.125rem * var(--md-font-scale-ratio, 1));
   line-height: 1.4;
   font-weight: 600;
   margin-top: 1.5rem;
@@ -58,7 +58,7 @@
 }
 
 .md-viewer h5 {
-  font-size: 1rem;
+  font-size: calc(1rem * var(--md-font-scale-ratio, 1));
   line-height: 1.5;
   font-weight: 600;
   text-transform: uppercase;
@@ -69,7 +69,7 @@
 }
 
 .md-viewer h6 {
-  font-size: 0.875rem;
+  font-size: calc(0.875rem * var(--md-font-scale-ratio, 1));
   line-height: 1.5;
   font-weight: 600;
   color: var(--md-fg-muted);

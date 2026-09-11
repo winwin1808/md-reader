@@ -90,3 +90,9 @@
     display: none;
   }
 }
+
+/* Font scale rules */
+[data-font-scale="sm"] { --md-font-scale-ratio: 0.85; }
+[data-font-scale="md"] { --md-font-scale-ratio: 1; }
+[data-font-scale="lg"] { --md-font-scale-ratio: 1.15; }
+[data-font-scale="xl"] { --md-font-scale-ratio: 1.3; }

@@ -1,0 +1,25 @@
+.reading-mode .top-toolbar {
+  display: none !important;
+}
+
+.reading-mode .sidebar-toc,
+.reading-mode nav.md-toc {
+  display: none !important;
+}
+
+.exit-reading-mode-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--md-border);
+  background: var(--md-bg);
+  color: var(--md-fg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
