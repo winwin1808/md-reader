@@ -18,7 +18,7 @@ export function ContentApp({ markdown }: { markdown: string }) {
           </div>
         )}
         <button
-          onClick={() => window.open(chrome.runtime.getURL('app.html'))}
+          onClick={() => window.open(chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href)))}
           style={{
             position: 'fixed',
             bottom: '20px',
