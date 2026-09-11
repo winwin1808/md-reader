@@ -1,0 +1,43 @@
+/*
+CSS custom properties on [data-theme='light'] and [data-theme='dark']
+--md-bg, --md-fg, --md-fg-muted, --md-border, --md-link, --md-code-bg, --md-code-fg, --md-selection
+--md-hljs-* (keyword, string, comment, number, function, tag, attr).
+*/
+
+[data-theme='light'] {
+  --md-bg: #ffffff;
+  --md-fg: #24292f;
+  --md-fg-muted: #57606a;
+  --md-border: #d0d7de;
+  --md-link: #0969da;
+  --md-code-bg: #f6f8fa;
+  --md-code-fg: #24292f;
+  --md-selection: #b3d4fc;
+
+  --md-hljs-keyword: #cf222e;
+  --md-hljs-string: #0a3069;
+  --md-hljs-comment: #6e7781;
+  --md-hljs-number: #0550ae;
+  --md-hljs-function: #8250df;
+  --md-hljs-tag: #116329;
+  --md-hljs-attr: #0550ae;
+}
+
+[data-theme='dark'] {
+  --md-bg: #0d1117;
+  --md-fg: #c9d1d9;
+  --md-fg-muted: #8b949e;
+  --md-border: #30363d;
+  --md-link: #58a6ff;
+  --md-code-bg: #161b22;
+  --md-code-fg: #c9d1d9;
+  --md-selection: #3392ff44;
+
+  --md-hljs-keyword: #ff7b72;
+  --md-hljs-string: #a5d6ff;
+  --md-hljs-comment: #8b949e;
+  --md-hljs-number: #79c0ff;
+  --md-hljs-function: #d2a8ff;
+  --md-hljs-tag: #7ee787;
+  --md-hljs-attr: #79c0ff;
+}
