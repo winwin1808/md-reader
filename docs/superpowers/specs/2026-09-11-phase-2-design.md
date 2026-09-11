@@ -6,7 +6,9 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-export.md
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 2a | Typography | 2a | Typography & Themes | pending | Themes | planned |
+| 2a | Typography & Themes | done |
+| 2a-opt | UI Layout & Settings | done |
+| 2a-ux | Typography, Spacing & ToC Polish | pending |
 | 2b | HTML self-contained | pending |
 | 2c | mdast → docx | pending |
 | 2d | SVG → PNG | pending |
@@ -151,3 +153,13 @@ export async function rasterizeSvg(svgString: string): Promise<{ buffer: ArrayBu
 - Thêm biến `autoFormatMd: boolean` vào `chrome.storage.sync`.
 - Layout: `<div className="app-container"><main className="content"><Viewer /></main><aside className="sidebar"><Toc /></aside></div>`.
 **Sizing:** 3 file, ~200 dòng.
+
+## 2a-ux — Typography, Spacing & ToC Polish
+
+**Builds:**
+- `packages/ui/src/theme/typography.css`: 17px base, 1.7 line-height, H1-H6 scale (36px, 28px, 22px, 18px, 16px, 14px), 24px paragraph spacing, scroll-margin-top.
+- `apps/extension/src/app/app.css`: 740px measure column, 260px ToC, 56px gap, 180px bottom overscroll breathing room.
+- `packages/ui/src/Toc.tsx`: Modern navigation rail without bullet points, depth indentation, active left border indicator, hover background.
+- `packages/ui/src/components/SettingsModal.tsx`: Backdrop blur 8px, 16px border-radius, box-shadow, floating gear button styling.
+
+**Sizing:** 4 files, ~250 lines.
