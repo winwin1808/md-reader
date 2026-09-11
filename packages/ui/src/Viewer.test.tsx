@@ -35,18 +35,16 @@ describe('Viewer', () => {
     expect(pres[0]?.style.display).toBe('none') // The mermaid one should be hidden
     expect(pres[1]?.style.display).not.toBe('none') // The js one should remain visible
 
-    // It should render a MermaidBlock which shows loading state initially
-    const injectedCode = container.querySelector('code')
-    // But since MermaidBlock itself renders a <pre><code> when loading, let's just check for opacity
-    // Note: Since we are not mocking MermaidBlock here, it will just render MermaidBlock which renders <pre> initially.
+    const wrapper = pres[0]?.nextElementSibling as HTMLElement
+    expect(wrapper?.tagName).toBe('DIV')
     
-    // Check that there's a new element inserted after the first pre
-    expect(pres[0]?.nextElementSibling?.tagName).toBe('DIV')
+    // Check MermaidBlock is mounted by checking loading state opacity
+    const innerPre = wrapper.querySelector('pre')
+    expect(innerPre?.style.opacity).toBe('0.5')
+    expect(innerPre?.textContent?.trim()).toBe('graph TD; A-->B;')
 
     // Test unmount restores the pre tag
     unmount()
-    // It's unmounted so the DOM is empty, we can't easily check pres[0].style.display
-    // But testing that unmount doesn't throw is good.
   })
 })
 
