@@ -17,6 +17,8 @@
 .main-content {
   min-width: 0;
   width: 100%;
+  background-color: var(--md-workspace-bg, var(--md-bg));
+  scroll-behavior: smooth;
 }
 
 .sidebar-toc {
