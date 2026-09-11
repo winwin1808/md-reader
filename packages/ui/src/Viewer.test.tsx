@@ -32,8 +32,8 @@ describe('Viewer', () => {
     
     // Check that pre tag containing mermaid is hidden
     const pres = container.querySelectorAll('pre')
-    expect(pres[0].style.display).toBe('none') // The mermaid one should be hidden
-    expect(pres[1].style.display).not.toBe('none') // The js one should remain visible
+    expect(pres[0]?.style.display).toBe('none') // The mermaid one should be hidden
+    expect(pres[1]?.style.display).not.toBe('none') // The js one should remain visible
 
     // It should render a MermaidBlock which shows loading state initially
     const injectedCode = container.querySelector('code')
@@ -41,7 +41,7 @@ describe('Viewer', () => {
     // Note: Since we are not mocking MermaidBlock here, it will just render MermaidBlock which renders <pre> initially.
     
     // Check that there's a new element inserted after the first pre
-    expect(pres[0].nextSibling).not.toBeNull()
+    expect(pres[0]?.nextElementSibling?.tagName).toBe('DIV')
 
     // Test unmount restores the pre tag
     unmount()

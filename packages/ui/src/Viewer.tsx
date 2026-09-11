@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
-import { createRoot, Root } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
+import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
 import './viewer.css'
 
@@ -98,11 +99,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
     return () => {
       roots.forEach(({ root, node, pre }) => {
-        // Need to setTimeout to let React clear the DOM before removing the node completely, 
-        // or we just unmount and let it be removed by React? 
-        // Actually, react-dom 18+ createRoot.unmount() is synchronous, but we can safely remove node after.
-        // Wait, unmount() might need some microticks to finish, it is safe to remove it immediately.
-        root.unmount()
+        setTimeout(() => root.unmount(), 0)
         node.remove()
         pre.style.display = ''
       })
