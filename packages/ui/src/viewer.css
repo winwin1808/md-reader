@@ -3,6 +3,7 @@
 @import './theme/a4.css';
 @import './theme/reading-mode.css';
 @import './theme/search.css';
+@import './theme/table-enhanced.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);
