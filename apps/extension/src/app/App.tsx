@@ -5,16 +5,23 @@ import { ThemeProvider } from "@md-reader/ui"
 import type { ThemeMode } from '@md-reader/ui'
 
 export function App(): React.JSX.Element {
-  const [initialTheme, setInitialTheme] = useState<ThemeMode | null>(null)
+  const [theme, setTheme] = useState<ThemeMode | null>(null)
 
   const doc = useMemo(() => new Y.Doc(), [])
 
   useEffect(() => {
+    let persistence: IndexeddbPersistence | null = null
     try {
-      const persistence = new IndexeddbPersistence('md-reader', doc)
+      persistence = new IndexeddbPersistence('md-reader', doc)
     } catch (err) {
       // Fallback to memory-only Y.Doc
       console.warn('Failed to initialize IndexeddbPersistence:', err)
+    }
+
+    return () => {
+      if (persistence) {
+        persistence.destroy()
+      }
     }
   }, [doc])
 
@@ -22,16 +29,17 @@ export function App(): React.JSX.Element {
     const fetchTheme = async () => {
       try {
         const result = await chrome.storage.sync.get('theme')
-        setInitialTheme((result.theme as ThemeMode) || 'system')
+        setTheme((result.theme as ThemeMode) || 'system')
       } catch (err) {
         console.warn('Failed to get theme from storage:', err)
-        setInitialTheme('system')
+        setTheme('system')
       }
     }
     fetchTheme()
   }, [])
 
   const handleModeChange = async (mode: ThemeMode) => {
+    setTheme(mode) // Update local state immediately
     try {
       await chrome.storage.sync.set({ theme: mode })
     } catch (err) {
@@ -39,12 +47,12 @@ export function App(): React.JSX.Element {
     }
   }
 
-  if (!initialTheme) {
+  if (!theme) {
     return <div>Loading...</div>
   }
 
   return (
-    <ThemeProvider mode={initialTheme} onModeChange={handleModeChange}>
+    <ThemeProvider mode={theme} onModeChange={handleModeChange}>
       <div data-testid="app-placeholder">App Page</div>
     </ThemeProvider>
   )
