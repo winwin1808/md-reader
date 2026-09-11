@@ -14,9 +14,9 @@ phải đường thẳng** — intent+design chạy một lần mỗi *phase*, c
 plan→build→review lặp lại theo từng *phase con*:
 
 ```
-capture-intent ──► design-from-intent
-                        │
-                        ▼
+(brainstorm-intent) ──► capture-intent ──► design-from-intent
+    [optional, ý tưởng còn thô]                  │
+                                                  ▼
               ┌─► plan-from-design ──► build-from-plan ──► review-before-ship
               │                                                   │
               └──────── còn phase con pending ◄───────────────────┤
@@ -24,11 +24,14 @@ capture-intent ──► design-from-intent
                                             hết phase con ────────┴──► ship-and-handover ──► MR
 ```
 
-`capture-intent` là stage DUY NHẤT hỏi người dùng. Chỗ dừng duy nhất là
+`brainstorm-intent` (stage 0, tùy chọn) và `capture-intent` là hai stage DUY
+NHẤT hỏi người dùng. Chỗ dừng duy nhất ngoài hai stage đó là
 `review-before-ship` khi gặp blocker thật.
 
-Bắt đầu một phase mới = gọi `capture-intent`. Chạy tiếp một phase con dở =
-gọi `build-from-plan` với đường dẫn plan.
+Bắt đầu một phase mới từ ý tưởng còn thô, cần khai phá + tham khảo thị trường
+= gọi `brainstorm-intent`. Ý tưởng đã rõ Problem/Outcome = gọi thẳng
+`capture-intent`. Chạy tiếp một phase con dở = gọi `build-from-plan` với
+đường dẫn plan.
 
 ## Agent & ngân sách context
 
