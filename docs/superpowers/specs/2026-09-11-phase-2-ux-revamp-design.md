@@ -1,5 +1,5 @@
 # Design: Phase 2 — Trải nghiệm Đọc A4 & UX/UI Chuyên nghiệp
-Author: Antigravity. Status: designed. Phase: 2
+Author: Antigravity. Status: shipped. Phase: 2
 Intent: docs/superpowers/intent/2026-09-11-phase-2-ux-revamp.md
 
 ## Sub-phase queue
@@ -11,7 +11,7 @@ Intent: docs/superpowers/intent/2026-09-11-phase-2-ux-revamp.md
 | 2j | In-document Search | done |
 | 2k | Elements: Code copy & Tables | done |
 | 2l | ToC Navigation & Font Family | done |
-| 2m | E2E UX & Reading Smoke | planned |
+| 2m | E2E UX & Reading Smoke | done |
 
 ## Approach chosen
 
