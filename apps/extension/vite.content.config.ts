@@ -15,28 +15,28 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: 'mock-core',
+      name: 'mock-highlight',
       enforce: 'pre',
       resolveId(source) {
-        if (source === '@md-reader/core') return '\0mock-core'
+        if (source === 'rehype-highlight') return '\0mock-highlight'
         return null
       },
       load(id) {
-        if (id === '\0mock-core') return `export const parseMarkdown = () => ({ tree: {} }); export const renderToHtml = () => ({ html: '', toc: [] });`
+        if (id === '\0mock-highlight') return `export default function() {}`
         return null
       }
     }
   ],
   build: {
     target: 'chrome120',
-    emptyOutDir: false, // app build chạy trước, đừng xoá
+    emptyOutDir: false,
     modulePreload: false,
     cssCodeSplit: false,
     rollupOptions: {
       input: { content: 'src/content/index.ts' },
       output: {
-        format: 'iife', // MV3 content script KHÔNG nạp ES module
-        inlineDynamicImports: true, // không sinh chunk chia sẻ
+        format: 'iife',
+        inlineDynamicImports: true,
         entryFileNames: '[name].js',
         assetFileNames: '[name][extname]',
       },
