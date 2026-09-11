@@ -20,7 +20,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 }
 
-;(function () {
+;(async function () {
+  const settings = await chrome.storage.sync.get('autoFormatMd')
+  if (settings.autoFormatMd === false) {
+    return
+  }
+
   const isFileMatch = window.location.pathname.match(/\.(md|markdown|txt)$/i)
   if (!isFileMatch && window.location.protocol === 'file:') {
     return
