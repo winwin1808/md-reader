@@ -271,7 +271,13 @@ Ship: *giao diện typography đẹp (5 themes), một tài liệu bất kỳ ra
 | 2d | SVG → PNG | Raster hoá chart để nhúng docx |
 | 2e | Print CSS + PDF | `@page`, ngắt trang, `window.print()` |
 | 2f | `ExportDialog` | Nối đường trên vào UI có nút Export |
-| 2g | E2E khói | Playwright: mở file → xuất đủ 3 định dạng |
+| 2g | E2E khói | Playwright/Vitest: mở file → xuất đủ 3 định dạng |
+| 2h | Layout A4 & Progress | Workspace vs Document A4 page (shadow, padding, subtle border), thanh reading progress |
+| 2i | Top Toolbar & Reading Mode | Sticky toolbar, font-size scaler (A- / A+), Reading mode tối giản, Fullscreen |
+| 2j | In-document Search | Tìm kiếm trong tài liệu (Cmd+F / toolbar), highlight từ khoá, counter N/M, Next/Prev |
+| 2k | Elements: Code copy & Tables | Code block language badge + copy button; table header ăn màu theme; zebra striping; task list |
+| 2l | ToC Navigation & Font Family | ToC collapse/expand H1-H3, scroll-spy indicator; tuỳ chọn font family (Sans/Serif/Mono) |
+| 2m | E2E UX & Reading Smoke | Test tích hợp toàn bộ tính năng đọc: toolbar, font scale, search, copy code, reading mode |
 
 ### Phase 3 — Trình chiếu
 
