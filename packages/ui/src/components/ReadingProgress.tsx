@@ -31,11 +31,13 @@ export function ReadingProgress(props?: ReadingProgressProps): React.JSX.Element
 
     updateProgress()
     window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleScroll)
     return () => {
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId)
       }
       window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
     }
   }, [])
 
@@ -45,7 +47,7 @@ export function ReadingProgress(props?: ReadingProgressProps): React.JSX.Element
       aria-valuenow={Math.round(progress)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className={props?.className}
+      className={`reading-progress-bar md-no-print ${props?.className || ''}`.trim()}
       style={{
         position: 'fixed',
         top: 0,
