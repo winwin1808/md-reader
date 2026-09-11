@@ -142,7 +142,7 @@ export async function rasterizeSvg(svgString: string): Promise<{ buffer: ArrayBu
 ## 2a-opt — UI Layout & Settings
 
 **Builds:** 
-- `packages/ui/src/components/SettingsPopover.tsx` (gom ThemePicker và switch auto-format vào đây).
+- `packages/ui/src/components/SettingsModal.tsx` (gom ThemePicker và switch auto-format vào đây).
 - `apps/extension/src/app/App.tsx` (Sửa layout thành dạng 2 cột: Main content và Sidebar ToC).
 - Cập nhật logic worker/content-script để tôn trọng tuỳ chọn auto-format.
 
