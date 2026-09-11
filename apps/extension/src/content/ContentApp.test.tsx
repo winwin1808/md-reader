@@ -38,7 +38,7 @@ describe('ContentApp', () => {
     expect(btn).toBeTruthy()
     
     fireEvent.click(btn)
-    expect(window.open).toHaveBeenCalledWith('chrome-extension://123/app.html')
+    expect(window.open).toHaveBeenCalledWith('chrome-extension://123/app.html?file=' + encodeURIComponent('http://localhost:3000/'))
     
     window.open = originalOpen
   })
