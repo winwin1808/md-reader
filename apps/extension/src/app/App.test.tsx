@@ -181,4 +181,23 @@ describe('App', () => {
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
   })
+
+  it('renders ReadingProgress and .a4-document-container when content is loaded', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=test.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Hello World\n\nContent here'),
+    } as any)
+
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+
+    const { container } = renderResult
+    expect(screen.getByRole('progressbar')).toBeDefined()
+    expect(container.querySelector('.a4-document-container')).not.toBeNull()
+    expect(container.querySelector('.a4-document-container .md-viewer')).not.toBeNull()
+  })
 })

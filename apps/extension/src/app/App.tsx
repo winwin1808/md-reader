@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc, ExportModal, printDocument, getDefaultExportCss } from "@md-reader/ui"
+import { ThemeProvider, ThemePicker, SettingsModal, Viewer, Toc, ExportModal, printDocument, getDefaultExportCss, ReadingProgress } from "@md-reader/ui"
 import type { ThemeMode, ColorTheme, ExportFormat } from '@md-reader/ui'
 import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -179,6 +179,7 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+      <ReadingProgress />
       <div style={{ position: 'fixed', top: '16px', right: '16px', display: 'flex', gap: '10px', zIndex: 100 }}>
         <ExportModal onExport={handleExport} />
         <SettingsModal
@@ -193,7 +194,9 @@ export function App(): React.JSX.Element {
         {hasContent && (
           <div className="app-layout">
             <div className="main-content">
-              <Viewer html={html} />
+              <div className="a4-document-container">
+                <Viewer html={html} />
+              </div>
             </div>
             {toc && toc.length > 0 && (
               <div className="sidebar-toc">
