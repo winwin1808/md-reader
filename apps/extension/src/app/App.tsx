@@ -31,6 +31,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   colorTheme: 'black',
   fontFamily: 'sans',
   autoFormatMd: true,
+  alwaysOpenApp: false,
   stripFrontmatter: true,
   displayMetadata: false,
   advancedTables: true,
@@ -230,29 +231,49 @@ export function App(): React.JSX.Element {
     const params = new URLSearchParams(window.location.search)
     const fileUrl = params.get('file')
     if (fileUrl) {
-      fetch(fileUrl)
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          return res.text()
+      const loadContent = (text: string) => {
+        const ytext = doc.getText('source')
+        ytext.delete(0, ytext.length)
+        ytext.insert(0, text)
+        const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
+        doc.getMap('meta').set('name', name)
+        setDocTitle(name.replace(/\.[^/.]+$/, ''))
+        
+        addRecentFile({
+          id: fileUrl,
+          name,
+          lastOpened: Date.now()
+        }).catch(console.error)
+      }
+
+      const cacheKey = 'file_content_' + fileUrl
+      const tryFetch = () => {
+        fetch(fileUrl)
+          .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            return res.text()
+          })
+          .then(loadContent)
+          .catch(err => {
+            console.error('Failed to load file from URL:', err)
+            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+          })
+      }
+
+      if (chrome.storage?.local?.get) {
+        chrome.storage.local.get(cacheKey).then((cached) => {
+          if (cached && typeof cached[cacheKey] === 'string' && cached[cacheKey].length > 0) {
+            loadContent(cached[cacheKey])
+            chrome.storage.local.remove(cacheKey).catch(() => {})
+          } else {
+            tryFetch()
+          }
+        }).catch(() => {
+          tryFetch()
         })
-        .then(text => {
-          const ytext = doc.getText('source')
-          ytext.delete(0, ytext.length)
-          ytext.insert(0, text)
-          const name = fileUrl.split('/').pop() || 'Untitled.md'
-          doc.getMap('meta').set('name', name)
-          setDocTitle(name.replace(/\.[^/.]+$/, ''))
-          
-          addRecentFile({
-            id: fileUrl,
-            name,
-            lastOpened: Date.now()
-          }).catch(console.error)
-        })
-        .catch(err => {
-          console.error('Failed to load file from URL:', err)
-          setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
-        })
+      } else {
+        tryFetch()
+      }
     }
   }, [doc])
 
