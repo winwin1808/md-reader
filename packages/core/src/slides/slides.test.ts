@@ -106,6 +106,49 @@ describe('splitIntoSlides', () => {
     expect(slides[1]!.title).toBe('Slide 2')
   })
 
+  it('does not leak speaker note from heading into slide.title', () => {
+    const md = '# Intro <!-- note: secret note -->\n\nSlide content'
+    const slides = splitIntoSlides(md)
+    expect(slides).toHaveLength(1)
+    expect(slides[0]!.title).toBe('Intro')
+    expect(slides[0]!.notes).toEqual(['secret note'])
+  })
+
+  it('ignores YAML frontmatter and does not treat it as HR split or slide', () => {
+    const md = `---\ntitle: Doc\n---\n# Slide 1\nBody 1\n# Slide 2\nBody 2`
+    const slides = splitIntoSlides(md)
+    expect(slides).toHaveLength(2)
+    expect(slides[0]!.title).toBe('Slide 1')
+    expect(slides[0]!.rawMarkdown).toBe('# Slide 1\nBody 1')
+    expect(slides[1]!.title).toBe('Slide 2')
+    expect(slides[1]!.rawMarkdown).toBe('# Slide 2\nBody 2')
+  })
+
+  it('preserves speaker note comments inside fenced code blocks', () => {
+    const md = '# Code Slide\n\n```html\n<!-- note: inside code block -->\n```\n\n~~~markdown\n<!-- note: inside tildes -->\n~~~\n\n<!-- note: actual note -->'
+    const slides = splitIntoSlides(md)
+    expect(slides).toHaveLength(1)
+    expect(slides[0]!.notes).toEqual(['actual note'])
+    expect(slides[0]!.html).toContain('inside code block')
+    expect(slides[0]!.html).toContain('inside tildes')
+    expect(slides[0]!.html).not.toContain('actual note')
+    expect(slides[0]!.rawMarkdown).toContain('<!-- note: inside code block -->')
+    expect(slides[0]!.rawMarkdown).toContain('<!-- note: inside tildes -->')
+  })
+
+  it('does not produce empty boundary slides when multiple hr delimiters exist at start or end', () => {
+    const md = `---\n---\n# Slide 1\nBody 1\n---\n# Slide 2\nBody 2\n---\n---`
+    const slides = splitIntoSlides(md, { strategy: 'hr' })
+    expect(slides).toHaveLength(2)
+    expect(slides[0]!.title).toBe('Slide 1')
+    expect(slides[1]!.title).toBe('Slide 2')
+
+    const mdLeading = `---\n---\n# Slide 1`
+    const slidesLeading = splitIntoSlides(mdLeading)
+    expect(slidesLeading).toHaveLength(1)
+    expect(slidesLeading[0]!.title).toBe('Slide 1')
+  })
+
   it('is exported from core index', async () => {
     const core = await import('../index.js')
     expect(core.splitIntoSlides).toBe(splitIntoSlides)

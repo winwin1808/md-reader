@@ -12,6 +12,27 @@ function parseCodeFence(line: string): { isFence: boolean; char?: string; length
   }
 }
 
+function stripFrontmatter(source: string): string {
+  const lines = source.split(/\r?\n/)
+  if (lines.length >= 2 && /^\s*---\s*$/.test(lines[0]!)) {
+    let closingIndex = -1
+    for (let i = 1; i < lines.length; i++) {
+      if (/^\s*---\s*$/.test(lines[i]!)) {
+        closingIndex = i
+        break
+      }
+    }
+    if (closingIndex !== -1) {
+      const innerLines = lines.slice(1, closingIndex)
+      const hasHeading = innerLines.some((l) => /^ {0,3}#{1,6}\s/.test(l))
+      if (!hasHeading) {
+        return lines.slice(closingIndex + 1).join('\n')
+      }
+    }
+  }
+  return source
+}
+
 function hasHr(lines: string[]): boolean {
   let inCodeBlock = false
   let fenceChar = ''
@@ -59,7 +80,7 @@ function hasMatchingHeading(lines: string[], headingDepth: number): boolean {
 
     if (!inCodeBlock) {
       const match = line.match(/^ {0,3}(#{1,6})\s+/)
-      if (match && match[1]!.length <= headingDepth) {
+      if (match && match[1] && match[1].length <= headingDepth) {
         return true
       }
     }
@@ -68,14 +89,63 @@ function hasMatchingHeading(lines: string[], headingDepth: number): boolean {
 }
 
 function extractNotes(markdown: string): { notes: string[]; cleanMarkdown: string } {
+  const lines = markdown.split(/\r?\n/)
+  const chunks: Array<{ type: 'code' | 'text'; lines: string[] }> = []
+  let currentChunk: { type: 'code' | 'text'; lines: string[] } = { type: 'text', lines: [] }
+
+  let inCodeBlock = false
+  let fenceChar = ''
+  let fenceLength = 0
+
+  for (const line of lines) {
+    const fence = parseCodeFence(line)
+
+    if (!inCodeBlock && fence.isFence) {
+      if (currentChunk.lines.length > 0) {
+        chunks.push(currentChunk)
+      }
+      currentChunk = { type: 'code', lines: [line] }
+      inCodeBlock = true
+      fenceChar = fence.char!
+      fenceLength = fence.length!
+    } else if (inCodeBlock && fence.isFence && fence.char === fenceChar && fence.length! >= fenceLength) {
+      currentChunk.lines.push(line)
+      chunks.push(currentChunk)
+      currentChunk = { type: 'text', lines: [] }
+      inCodeBlock = false
+      fenceChar = ''
+      fenceLength = 0
+    } else {
+      currentChunk.lines.push(line)
+    }
+  }
+
+  if (currentChunk.lines.length > 0) {
+    chunks.push(currentChunk)
+  }
+
   const notes: string[] = []
   const NOTE_REGEX = /<!--\s*(?:note|speaker):?\s*([\s\S]*?)-->/gi
-  let match: RegExpExecArray | null
-  while ((match = NOTE_REGEX.exec(markdown)) !== null) {
-    notes.push(match[1]!.trim())
+
+  const cleanChunks = chunks.map((chunk) => {
+    if (chunk.type === 'code') {
+      return chunk.lines.join('\n')
+    }
+    const text = chunk.lines.join('\n')
+    let match: RegExpExecArray | null
+    NOTE_REGEX.lastIndex = 0
+    while ((match = NOTE_REGEX.exec(text)) !== null) {
+      if (match[1] !== undefined) {
+        notes.push(match[1].trim())
+      }
+    }
+    return text.replace(NOTE_REGEX, '')
+  })
+
+  return {
+    notes,
+    cleanMarkdown: cleanChunks.join('\n'),
   }
-  const cleanMarkdown = markdown.replace(NOTE_REGEX, '')
-  return { notes, cleanMarkdown }
 }
 
 function extractTitle(markdown: string): string | undefined {
@@ -100,8 +170,11 @@ function extractTitle(markdown: string): string | undefined {
 
     if (!inCodeBlock) {
       const match = line.match(/^ {0,3}#{1,6}\s+(.+)$/)
-      if (match) {
-        return match[1]!.replace(/\s+#+\s*$/, '').trim()
+      if (match && match[1]) {
+        return match[1]
+          .replace(/<!--\s*(?:note|speaker):?\s*[\s\S]*?-->/gi, '')
+          .replace(/\s+#+\s*$/, '')
+          .trim()
       }
     }
   }
@@ -122,9 +195,22 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     ]
   }
 
+  const content = stripFrontmatter(source)
+  if (!content || content.trim() === '') {
+    return [
+      {
+        id: 'slide-0',
+        index: 0,
+        rawMarkdown: '',
+        html: '',
+        notes: [],
+      },
+    ]
+  }
+
   const strategy = options?.strategy ?? 'auto'
   const headingDepth = options?.headingDepth ?? 2
-  const lines = source.split(/\r?\n/)
+  const lines = content.split(/\r?\n/)
 
   let effectiveStrategy: 'hr' | 'heading' | 'fallback'
   if (strategy === 'hr') {
@@ -173,10 +259,10 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     }
     sections.push(currentSectionLines.join('\n'))
 
-    if (sections.length > 1 && sections[0]!.trim() === '') {
+    while (sections.length > 1 && sections[0] !== undefined && sections[0].trim() === '') {
       sections.shift()
     }
-    if (sections.length > 1 && sections[sections.length - 1]!.trim() === '') {
+    while (sections.length > 1 && sections[sections.length - 1] !== undefined && sections[sections.length - 1]!.trim() === '') {
       sections.pop()
     }
   } else if (effectiveStrategy === 'heading') {
@@ -200,7 +286,7 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
       }
 
       const headingMatch = !wasInCode && !fence.isFence ? line.match(/^ {0,3}(#{1,6})\s+/) : null
-      const isSplitHeading = headingMatch && headingMatch[1]!.length <= headingDepth
+      const isSplitHeading = headingMatch && headingMatch[1] && headingMatch[1].length <= headingDepth
 
       if (isSplitHeading) {
         if (currentSectionLines.join('\n').trim() !== '') {
@@ -217,7 +303,14 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     }
   } else {
     // fallback
-    sections = [source]
+    sections = [content]
+  }
+
+  while (sections.length > 1 && sections[0] !== undefined && sections[0].trim() === '') {
+    sections.shift()
+  }
+  while (sections.length > 1 && sections[sections.length - 1] !== undefined && sections[sections.length - 1]!.trim() === '') {
+    sections.pop()
   }
 
   return sections.map((rawSection, index) => {
@@ -225,7 +318,7 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     const { notes, cleanMarkdown } = extractNotes(rawMarkdown)
     const parsed = parseMarkdown(cleanMarkdown)
     const html = cleanMarkdown.trim() ? renderToHtml(parsed).html : ''
-    const title = extractTitle(rawMarkdown)
+    const title = extractTitle(cleanMarkdown)
 
     const slide: Slide = {
       id: `slide-${index}`,
