@@ -1,0 +1,102 @@
+@page {
+  size: auto;
+  margin: 20mm 15mm 20mm 15mm;
+}
+
+@media print {
+  .sidebar-toc,
+  nav.md-toc,
+  .settings-btn,
+  button,
+  dialog,
+  [role="dialog"],
+  input,
+  .md-no-print {
+    display: none !important;
+  }
+
+  body,
+  .app-layout,
+  .main-content,
+  .md-viewer,
+  .md-viewer *,
+  .md-viewer table tr {
+    background-color: transparent !important;
+    color: #000000 !important;
+  }
+
+  body,
+  .app-layout,
+  .main-content,
+  .md-viewer {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #000000 !important;
+  }
+
+  p,
+  blockquote,
+  table,
+  a {
+    color: #000000 !important;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  blockquote {
+    border-left: 4px solid #d0d7de !important;
+    color: #000000 !important;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  table,
+  th,
+  td {
+    border-color: #d0d7de !important;
+    color: #000000 !important;
+  }
+
+  table,
+  pre,
+  code,
+  img,
+  blockquote {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  pre,
+  code,
+  .md-viewer pre,
+  .md-viewer code {
+    border: 1px solid #d0d7de !important;
+    background-color: #f6f8fa !important;
+    color: #1f2328 !important;
+  }
+
+  pre code,
+  .md-viewer pre code {
+    border: none !important;
+    background-color: transparent !important;
+  }
+}

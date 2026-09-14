@@ -1,0 +1,32 @@
+{
+  "name": "@md-reader/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && vite build && vite build --config vite.content.config.ts && node scripts/check-size.js",
+    "dev": "vite build --watch",
+    "dev:content": "vite build --config vite.content.config.ts --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@md-reader/core": "workspace:*",
+    "@md-reader/ui": "workspace:*",
+    "preact": "^10.29.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "y-indexeddb": "9.0.12",
+    "yjs": "13.6.32"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/chrome": "0.2.9",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.0.1",
+    "vite": "8.2.2"
+  }
+}

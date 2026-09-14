@@ -14,9 +14,9 @@ phải đường thẳng** — intent+design chạy một lần mỗi *phase*, c
 plan→build→review lặp lại theo từng *phase con*:
 
 ```
-capture-intent ──► design-from-intent
-                        │
-                        ▼
+(brainstorm-intent) ──► capture-intent ──► design-from-intent
+    [optional, ý tưởng còn thô]                  │
+                                                  ▼
               ┌─► plan-from-design ──► build-from-plan ──► review-before-ship
               │                                                   │
               └──────── còn phase con pending ◄───────────────────┤
@@ -24,11 +24,14 @@ capture-intent ──► design-from-intent
                                             hết phase con ────────┴──► ship-and-handover ──► MR
 ```
 
-`capture-intent` là stage DUY NHẤT hỏi người dùng. Chỗ dừng duy nhất là
+`brainstorm-intent` (stage 0, tùy chọn) và `capture-intent` là hai stage DUY
+NHẤT hỏi người dùng. Chỗ dừng duy nhất ngoài hai stage đó là
 `review-before-ship` khi gặp blocker thật.
 
-Bắt đầu một phase mới = gọi `capture-intent`. Chạy tiếp một phase con dở =
-gọi `build-from-plan` với đường dẫn plan.
+Bắt đầu một phase mới từ ý tưởng còn thô, cần khai phá + tham khảo thị trường
+= gọi `brainstorm-intent`. Ý tưởng đã rõ Problem/Outcome = gọi thẳng
+`capture-intent`. Chạy tiếp một phase con dở = gọi `build-from-plan` với
+đường dẫn plan.
 
 ## Agent & ngân sách context
 
@@ -60,9 +63,12 @@ Chi tiết ở `docs/DESIGN.md` §7. Bản rút gọn:
 
 ```
 main
- └── phase-N                    branch tích hợp cả phase, kết thúc bằng MR
-      └── phase-N/<sub>-<slug>  branch một phase con, merge --no-ff vào phase-N
+ └── phase-N                     branch tích hợp cả phase, kết thúc bằng MR
+      └── phase-N-<sub>-<slug>   branch một phase con, merge --no-ff vào phase-N
 ```
+
+Gạch ngang, không gạch chéo — `phase-1` và `phase-1/x` không cùng tồn tại
+được trong git.
 
 `review-before-ship` so diff với điểm rẽ nhánh của **phase con**. MR mở ở cuối
 phase và **không tự merge** — đó là quyết định của người.
@@ -109,7 +115,8 @@ Mỗi phase là một vòng pipeline riêng và phải ship được thứ dùng
 không được chứa task vượt ra ngoài phase hiện tại — thứ lỡ ra ngoài ghi xuống
 mục "Deferred to phase N". Nội dung chi tiết từng phase ở `docs/DESIGN.md` §4.
 
-Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 38 phase con trên 6 phase.
+Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 phase
+(phase 1 được chia lại thành 18 sau khi design kiểm điều kiện sizing).
 
 | # | Phase | Ship được gì |
 |---|---|---|
@@ -127,7 +134,19 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 38 phase con trên 6 
   `docs/SESSION_HANDOVER.md`, workspace config tối thiểu. Doc-model chốt là
   **Yjs từ phase 1** (thay cho CM6 ChangeSet ở bản nháp đầu). Chưa có
   `packages/` hay `apps/` — phase 1 tạo chúng. Chưa phase nào chạy.
+- 2026-09-10 — **Phase 1 chạy được 5/18 phase con**, merged vào `phase-1`,
+  chưa MR: `1a` spike CSP (kết luận nhánh (a), ghi vào DESIGN.md §5.1) ·
+  `1b1` root workspace (typescript 7.0.2, vitest 5.0.0) · `1b2`
+  `@md-reader/core` · `1b3` `@md-reader/ui` (react 19.3.0) · `1b4`
+  `@md-reader/extension` (vite 8.2.2, build **hai lệnh** — content script
+  IIFE riêng, vì output chung kéo React vào content.js dạng ES module).
+  Cả ba package xanh: core 1 · ui 2 · extension 1 test; typecheck + build
+  exit 0; `dist/content.js` gz 104/61440. Phase con kế tiếp: **1c1
+  `core/parse`** (chưa có plan). CodeGraph đã bật cho repo (14 file, 32 node).
+  Món nợ đang mở + cách chạy tiếp ở `docs/SESSION_HANDOVER.md`.
 - 2026-09-10 — Pipeline chuyển thành vòng lặp phase/phase con + fan-out
   subagent. Thêm `.claude/agents/` (builder, spiker, reviewer, guard),
   DESIGN.md §4 chia 38 phase con, §7 mô hình agent/ngân sách context,
   §8 mô hình git/MR. Spike CSP chốt dùng harness vứt đi (phase con 1a).
+- 2026-09-11 — **Phase 1 HOÀN TẤT**, 18/18 phase con đã merge vào `phase-1`. Đã dựng xong toàn bộ nền tảng: parser, yjs doc model, UI components, app shell, và content script injection (với ngân sách 10KB gz, vượt xa yêu cầu 60KB). Branch sẵn sàng mở MR. Phase tiếp theo: **Phase 2 (Export)**.
+- 2026-09-11 — **Phase 2 HOÀN TẤT (bao gồm Export + UX/UI Revamp chuyên nghiệp)**: 15/15 phase con (2a..2g và 2h..2m) đã merge vào `phase-2`. Đã xây dựng hoàn chỉnh: 5 color themes; standalone HTML export; Microsoft Word (.docx) export; SVG rasterizer; Print CSS và PDF export; ExportModal; bố cục A4 document với shadow & border; thanh tiến độ đọc mỏng cố định 3px; TopToolbar sticky 48px với font scale tỉ lệ [A-] [100%] [A+]; chế độ đọc tập trung (Reading Mode); tìm kiếm trong tài liệu (Cmd+F) với DOM text walker & highlight; code block header với badge ngôn ngữ & copy button; bảng biểu theme accent & zebra striping; ToC collapsible phân cấp H1-H3; tuỳ chọn Font Family (Sans-serif, Serif, Monospace); và E2E smoke tests. Tích hợp skill `brainstorm-intent`. 197 tests xanh tuyệt đối (core 82, ui 93, extension 22), typecheck exit 0, build exit 0, content script gz 10.14KB. Branch `phase-2` sẵn sàng mở MR. Phase tiếp theo: **Phase 3 (Trình chiếu / Presentation)**.
