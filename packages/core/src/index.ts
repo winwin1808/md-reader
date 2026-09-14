@@ -33,3 +33,7 @@ export type { ExportHtmlOptions, ExportDocxOptions } from './export/index.js'
 
 export { splitIntoSlides } from './slides/index.js'
 export type { Slide, SlideSplitOptions } from './slides/index.js'
+
+export { extractMindmap } from './mindmap/mindmap.js'
+export type { MindNode } from './mindmap/mindmap.js'
+
