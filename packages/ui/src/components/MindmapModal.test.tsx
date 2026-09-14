@@ -209,4 +209,76 @@ describe('MindmapModal', () => {
     // Child nodes should be visible again
     expect(screen.getByText('Subsection 1.1')).toBeDefined()
   })
+
+  it('uses title or root.text fallback when exporting SVG and PNG', async () => {
+    const downloadedFiles: string[] = []
+    const origAnchorClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloadedFiles.push(this.download)
+    }
+
+    const mockCtx = {
+      drawImage: vi.fn(),
+      fillStyle: '',
+      fillRect: vi.fn(),
+    }
+    const origGetContext = HTMLCanvasElement.prototype.getContext
+    const origToBlob = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx) as any
+    HTMLCanvasElement.prototype.toBlob = vi.fn((cb: any) => {
+      cb(new Blob(['png-data'], { type: 'image/png' }))
+    }) as any
+
+    const origImage = globalThis.Image
+    class MockImage {
+      onload: (() => void) | null = null
+      onerror: ((err: any) => void) | null = null
+      private _src = ''
+      set src(v: string) {
+        this._src = v
+        setTimeout(() => this.onload?.(), 0)
+      }
+      get src() {
+        return this._src
+      }
+    }
+    ;(globalThis as any).Image = MockImage
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url')
+    window.URL.revokeObjectURL = vi.fn()
+
+    try {
+      // 1. When title is provided
+      const { unmount } = render(
+        <MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} title="Custom Document: Test / 1" />
+      )
+      const svgBtn = screen.getByRole('button', { name: 'Tải SVG' })
+      const pngBtn = screen.getByRole('button', { name: 'Tải PNG' })
+      fireEvent.click(svgBtn)
+      expect(downloadedFiles).toContain('Custom Document- Test - 1.svg')
+
+      fireEvent.click(pngBtn)
+      await vi.waitFor(() => {
+        expect(downloadedFiles).toContain('Custom Document- Test - 1.png')
+      })
+      unmount()
+
+      // 2. When title is omitted, falls back to root?.text
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      const svgBtn2 = screen.getByRole('button', { name: 'Tải SVG' })
+      const pngBtn2 = screen.getByRole('button', { name: 'Tải PNG' })
+      fireEvent.click(svgBtn2)
+      expect(downloadedFiles).toContain('Root Document.svg')
+
+      fireEvent.click(pngBtn2)
+      await vi.waitFor(() => {
+        expect(downloadedFiles).toContain('Root Document.png')
+      })
+    } finally {
+      HTMLAnchorElement.prototype.click = origAnchorClick
+      HTMLCanvasElement.prototype.getContext = origGetContext
+      HTMLCanvasElement.prototype.toBlob = origToBlob
+      ;(globalThis as any).Image = origImage
+    }
+  })
 })
