@@ -5,7 +5,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-5-editing.md
 ## Sub-phase queue
 - [x] 5a — Editor Core & Yjs Binding (`Editor` component, CodeMirror 6, `y-codemirror.next`, `Y.Text "source"`, `Y.UndoManager`) — done
 - [x] 5b — File System Access API & Handle Persistence (`fs.ts` module, IndexedDB handle storage, Open/Save/Save As) — done
-- [ ] 5c — Conflict Detection & 3-Way Diff Modal (`originHash` verification, `ConflictModal` UI, diff calculation) — pending
+- [ ] 5c — Conflict Detection & 3-Way Diff Modal (`originHash` verification, `ConflictModal` UI, diff calculation) — planned
 - [ ] 5d — Formatting Toolbar & Phím tắt Markdown (`FormattingToolbar`, smart list continuation, `Cmd+B`/`Cmd+I`/`Cmd+K`/`Tab`) — pending
 - [ ] 5e — Điều khiển 3 Chế độ xem & Split View Synchronized Scrolling (Reading / Editor / Split View, 2-way sync scroll) — pending
 - [ ] 5f — Auto-save, Format-and-save & History Checkpoint (`core/format` on save, debounced auto-save, unsaved dot `•`, `Y.Array "history"`) — pending
