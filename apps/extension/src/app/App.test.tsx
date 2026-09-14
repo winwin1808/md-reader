@@ -5,6 +5,8 @@ import { App } from './App'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
+import type { ReaderSettings } from '@md-reader/ui'
+import { WordCountBar, CelebrationConfetti, SettingsModal } from '@md-reader/ui'
 
 // Mock dependencies
 vi.mock('y-indexeddb', () => {
@@ -194,7 +196,7 @@ describe('App', () => {
     
     // Check if IndexeddbPersistence is called
     expect(IndexeddbPersistence).toHaveBeenCalled()
-    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(['theme', 'colorTheme', 'autoFormatMd', 'fontScale', 'fontFamily'])
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(null)
   })
   
   it('loads colorTheme and renders ThemePicker', async () => {
@@ -221,7 +223,7 @@ describe('App', () => {
     expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ colorTheme: 'navy' }))
   })
 
-  it('falls back to system theme and black colorTheme when storage throws', async () => {
+  it('falls back to system theme and github colorTheme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
@@ -235,9 +237,7 @@ describe('App', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     })
     
-    // The black button should be selected since fallback is black
-    const blackBtn = screen.getByRole('button', { name: 'Select black theme' })
-    expect(blackBtn.style.border).toContain('2px solid rgb(59, 130, 246)')
+    expect(document.querySelector('[data-color-theme="github"]')).not.toBeNull()
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
@@ -591,5 +591,149 @@ describe('App', () => {
       capturedSpeakerProps.onSlideChange(1)
     })
     expect(channelInstance?.postMessage).toHaveBeenCalledWith({ type: 'NAVIGATE', index: 1 })
+  })
+
+  it('loads extended settings initially from chrome.storage.sync', async () => {
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({
+      showReadingProgress: false,
+      showWordCount: false,
+      autoHideWordCount: false,
+      celebrationConfetti: false,
+      slideBgColor: '#112233',
+    })
+
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Test Document\n\nSome text content'),
+    } as any)
+
+    const wordCountSpy = vi.spyOn(ui, 'WordCountBar')
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    expect((window as any).chrome.storage.sync.get).toHaveBeenCalled()
+    // showReadingProgress is false -> ReadingProgress should NOT be rendered
+    expect(screen.queryByRole('progressbar')).toBeNull()
+
+    // WordCountBar receives loaded settings
+    expect(wordCountSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('# Test Document'),
+        visible: false,
+        autoHide: false,
+      }),
+      undefined
+    )
+  })
+
+  it('updates settings and persists to chrome.storage.sync.set', async () => {
+    let capturedModalProps: any = null
+    vi.spyOn(ui, 'SettingsModal').mockImplementation((props: any) => {
+      capturedModalProps = props
+      return <div data-testid="mock-settings-modal">SettingsModal</div>
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    expect(capturedModalProps).not.toBeNull()
+    expect(capturedModalProps.settings).toBeDefined()
+
+    await act(async () => {
+      capturedModalProps.onSettingChange('showWordCount', false)
+    })
+
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({ showWordCount: false })
+  })
+
+  it('passes settings properly to WordCountBar, CelebrationConfetti, and Deck', async () => {
+    vi.useFakeTimers()
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=deck-test.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent'),
+    } as any)
+
+    let capturedWordCountProps: any = null
+    vi.spyOn(ui, 'WordCountBar').mockImplementation((props: any) => {
+      capturedWordCountProps = props
+      return <div data-testid="mock-word-count-bar" />
+    })
+
+    let capturedConfettiProps: any = null
+    vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((props: any) => {
+      capturedConfettiProps = props
+      return <div data-testid="mock-confetti" />
+    })
+
+    let capturedDeckProps: any = null
+    vi.spyOn(ui, 'Deck').mockImplementation((props: any) => {
+      capturedDeckProps = props
+      return <div data-testid="mock-deck" />
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // WordCountBar received markdown text and default visible / autoHide
+    expect(capturedWordCountProps).toEqual(
+      expect.objectContaining({
+        text: expect.stringContaining('# Slide 1'),
+        visible: true,
+        autoHide: true,
+      })
+    )
+
+    // CelebrationConfetti is initially not active
+    expect(capturedConfettiProps).toEqual(
+      expect.objectContaining({
+        active: false,
+        onComplete: expect.any(Function),
+      })
+    )
+
+    // Scroll to bottom triggers confetti
+    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
+    Object.defineProperty(window, 'scrollY', { value: 1000, writable: true, configurable: true })
+    Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1800, writable: true, configurable: true })
+
+    await act(async () => {
+      fireEvent.scroll(window)
+    })
+
+    expect(capturedConfettiProps.active).toBe(true)
+
+    // Completing confetti resets active
+    await act(async () => {
+      capturedConfettiProps.onComplete()
+    })
+    expect(capturedConfettiProps.active).toBe(false)
+
+    // Deck receives presentationSettings
+    const presentBtn = screen.getByRole('button', { name: 'Trình chiếu' })
+    await act(async () => {
+      fireEvent.click(presentBtn)
+    })
+
+    expect(capturedDeckProps.presentationSettings).toEqual(
+      expect.objectContaining({
+        slideBgColor: undefined,
+        slideTextColor: undefined,
+        slideHeadingColor: undefined,
+        slideAccentColor: undefined,
+        slideFont: undefined,
+        slideBgImage: undefined,
+        slideImageOpacity: undefined,
+      })
+    )
+
+    vi.useRealTimers()
   })
 })
