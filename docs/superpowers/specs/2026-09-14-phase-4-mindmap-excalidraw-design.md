@@ -1,5 +1,5 @@
 # Spec: Phase 4 — Mindmap & Excalidraw
-Author: Antigravity & User. Status: designed. Phase: 4
+Author: Antigravity & User. Status: shipped. Phase: 4
 Intent: docs/superpowers/intent/2026-09-14-phase-4-mindmap-excalidraw.md
 
 ## Sub-phase queue
