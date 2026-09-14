@@ -293,20 +293,20 @@ export function MindmapModal({
     if (!svgRef.current) return
     const svgStr = exportMindmapToSvg(svgRef.current, title)
     const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
-    const baseName = (title || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
+    const baseName = (title || root?.text || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
     downloadBlob(blob, `${baseName}.svg`)
-  }, [title])
+  }, [title, root?.text])
 
   const handleExportPng = useCallback(async () => {
     if (!svgRef.current) return
     try {
       const blob = await exportMindmapToPng(svgRef.current, title, 2)
-      const baseName = (title || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
+      const baseName = (title || root?.text || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
       downloadBlob(blob, `${baseName}.png`)
     } catch (err) {
       console.error('Failed to export PNG', err)
     }
-  }, [title])
+  }, [title, root?.text])
 
   if (!isOpen) {
     return null

@@ -20,6 +20,64 @@ describe('exportMindmapToSvg', () => {
     expect(typeof result).toBe('string')
     expect(result.length).toBeGreaterThan(0)
   })
+
+  it('resets inner zoom transform and computes fitted viewBox with padding even when pan/zoom is applied', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('width', '800')
+    svg.setAttribute('height', '600')
+
+    const viewportG = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    viewportG.setAttribute('class', 'mindmap-viewport')
+    viewportG.setAttribute('transform', 'translate(150, -80) scale(1.75)')
+
+    // Node 1: translate(100, 50), width 120, height 32
+    // bounds: x: 100..220, y: 50..82
+    const node1 = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    node1.setAttribute('class', 'mindmap-node')
+    node1.setAttribute('transform', 'translate(100, 50)')
+    const rect1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    rect1.setAttribute('x', '0')
+    rect1.setAttribute('y', '0')
+    rect1.setAttribute('width', '120')
+    rect1.setAttribute('height', '32')
+    node1.appendChild(rect1)
+    viewportG.appendChild(node1)
+
+    // Node 2: translate(300, 200), width 150, height 32
+    // bounds: x: 300..450, y: 200..232
+    const node2 = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    node2.setAttribute('class', 'mindmap-node')
+    node2.setAttribute('transform', 'translate(300, 200)')
+    const rect2 = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    rect2.setAttribute('x', '0')
+    rect2.setAttribute('y', '0')
+    rect2.setAttribute('width', '150')
+    rect2.setAttribute('height', '32')
+    node2.appendChild(rect2)
+    viewportG.appendChild(node2)
+
+    svg.appendChild(viewportG)
+
+    const result = exportMindmapToSvg(svg, 'Exported Mindmap')
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(result, 'image/svg+xml')
+    const exportedSvg = doc.querySelector('svg')!
+    const exportedViewport = doc.querySelector('.mindmap-viewport') || doc.querySelector('g')!
+
+    // Zoom transform on viewport container must be reset
+    expect(exportedViewport.getAttribute('transform')).toBeNull()
+
+    // Bounding box: minX = 100, minY = 50, maxX = 450, maxY = 232
+    // With 40px padding:
+    // fittedX = 100 - 40 = 60
+    // fittedY = 50 - 40 = 10
+    // fittedWidth = 450 - 100 + 80 = 430
+    // fittedHeight = 232 - 50 + 80 = 262
+    expect(exportedSvg.getAttribute('viewBox')).toBe('60 10 430 262')
+    expect(exportedSvg.getAttribute('width')).toBe('430')
+    expect(exportedSvg.getAttribute('height')).toBe('262')
+  })
 })
 
 describe('exportMindmapToPng', () => {
@@ -87,27 +145,35 @@ describe('exportMindmapToPng', () => {
 })
 
 describe('downloadBlob', () => {
-  it('creates temporary object URL and anchor download link, clicks it, and revokes URL', () => {
-    const mockBlob = new Blob(['data'], { type: 'text/plain' })
-    const createObjectURLSpy = vi.fn().mockReturnValue('blob:http://localhost/uuid')
-    const revokeObjectURLSpy = vi.fn()
-    window.URL.createObjectURL = createObjectURLSpy
-    window.URL.revokeObjectURL = revokeObjectURLSpy
+  it('creates temporary object URL and anchor download link, clicks it, and revokes URL asynchronously', () => {
+    vi.useFakeTimers()
+    try {
+      const mockBlob = new Blob(['data'], { type: 'text/plain' })
+      const createObjectURLSpy = vi.fn().mockReturnValue('blob:http://localhost/uuid')
+      const revokeObjectURLSpy = vi.fn()
+      window.URL.createObjectURL = createObjectURLSpy
+      window.URL.revokeObjectURL = revokeObjectURLSpy
 
-    const clickSpy = vi.fn()
-    const origCreateElement = document.createElement.bind(document)
-    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      const el = origCreateElement(tagName)
-      if (tagName.toLowerCase() === 'a') {
-        el.click = clickSpy
-      }
-      return el
-    })
+      const clickSpy = vi.fn()
+      const origCreateElement = document.createElement.bind(document)
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        const el = origCreateElement(tagName)
+        if (tagName.toLowerCase() === 'a') {
+          el.click = clickSpy
+        }
+        return el
+      })
 
-    downloadBlob(mockBlob, 'test-mindmap.png')
+      downloadBlob(mockBlob, 'test-mindmap.png')
 
-    expect(createObjectURLSpy).toHaveBeenCalledWith(mockBlob)
-    expect(clickSpy).toHaveBeenCalled()
-    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/uuid')
+      expect(createObjectURLSpy).toHaveBeenCalledWith(mockBlob)
+      expect(clickSpy).toHaveBeenCalled()
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(1000)
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/uuid')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

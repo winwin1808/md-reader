@@ -121,17 +121,67 @@ describe('Phase 4 E2E Integration Smoke Test: Mindmap and Excalidraw', () => {
       })
     }
 
-    // 5. Verifies export buttons
+    // 5. Verifies export buttons (SVG and PNG)
     const svgBtn = modal.querySelector('button[aria-label="Tải SVG"]')
     const pngBtn = modal.querySelector('button[aria-label="Tải PNG"]')
     expect(svgBtn).toBeTruthy()
     expect(pngBtn).toBeTruthy()
 
+    const downloadedFiles: string[] = []
+    const origAnchorClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      downloadedFiles.push(this.download)
+    }
+
+    const mockCtx = {
+      drawImage: vi.fn(),
+      fillStyle: '',
+      fillRect: vi.fn(),
+    }
+    const origGetContext = HTMLCanvasElement.prototype.getContext
+    const origToBlob = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(mockCtx) as any
+    HTMLCanvasElement.prototype.toBlob = vi.fn((cb: any) => {
+      cb(new Blob(['png-data'], { type: 'image/png' }))
+    }) as any
+
+    const origImage = globalThis.Image
+    class MockImage {
+      onload: (() => void) | null = null
+      onerror: ((err: any) => void) | null = null
+      private _src = ''
+      set src(v: string) {
+        this._src = v
+        setTimeout(() => this.onload?.(), 0)
+      }
+      get src() {
+        return this._src
+      }
+    }
+    ;(globalThis as any).Image = MockImage
+
     window.URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url')
     window.URL.revokeObjectURL = vi.fn()
-    if (svgBtn) {
-      fireEvent.click(svgBtn)
-      expect(window.URL.createObjectURL).toHaveBeenCalled()
+
+    try {
+      if (svgBtn) {
+        fireEvent.click(svgBtn)
+        expect(downloadedFiles).toContain('architecture.svg')
+        expect(window.URL.createObjectURL).toHaveBeenCalled()
+      }
+
+      if (pngBtn) {
+        fireEvent.click(pngBtn)
+        await waitFor(() => {
+          expect(downloadedFiles).toContain('architecture.png')
+        })
+        expect(window.URL.createObjectURL).toHaveBeenCalled()
+      }
+    } finally {
+      HTMLAnchorElement.prototype.click = origAnchorClick
+      HTMLCanvasElement.prototype.getContext = origGetContext
+      HTMLCanvasElement.prototype.toBlob = origToBlob
+      ;(globalThis as any).Image = origImage
     }
 
     // 6. Verifies clicking node scrolls to heading and closes modal
