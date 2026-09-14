@@ -1,7 +1,11 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 
-const content = fs.readFileSync('dist/content.js');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.resolve(__dirname, '../dist/content.js');
+const content = fs.readFileSync(distPath);
 const compressed = zlib.gzipSync(content);
 const size = compressed.length;
 

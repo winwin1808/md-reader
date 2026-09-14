@@ -26,6 +26,7 @@ interface ExcalidrawElement {
 function pointsToSvgPath(points: [number, number][] | undefined, baseX: number, baseY: number): string {
   if (!points || points.length === 0) return ''
   const [first, ...rest] = points
+  if (!first) return ''
   let d = `M ${baseX + first[0]} ${baseY + first[1]}`
   for (const pt of rest) {
     d += ` L ${baseX + pt[0]} ${baseY + pt[1]}`
@@ -277,11 +278,11 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
             case 'line':
             case 'arrow': {
               let d = ''
-              if (Array.isArray(el.points) && el.points.length >= 2) {
+              if (Array.isArray(el.points) && el.points.length >= 2 && el.points[0]) {
                 const [first, ...rest] = el.points
-                d = `M ${el.x + first[0]} ${el.y + first[1]}`
+                d = `M ${el.x + first![0]} ${el.y + first![1]}`
                 for (const p of rest) {
-                  d += ` L ${el.x + p[0]} ${el.y + p[1]}`
+                  if (p) d += ` L ${el.x + p[0]} ${el.y + p[1]}`
                 }
               } else {
                 d = `M ${el.x} ${el.y} L ${el.x + (el.width || 0)} ${el.y + (el.height || 0)}`
