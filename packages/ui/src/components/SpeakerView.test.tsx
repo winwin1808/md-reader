@@ -5,9 +5,27 @@ import { SpeakerView } from './SpeakerView'
 
 describe('SpeakerView', () => {
   const slides: Slide[] = [
-    { html: '<h1>Slide 1 Title</h1><p>First slide body</p>', notes: ['Note 1A: intro', 'Note 1B: details'] },
-    { html: '<h2>Slide 2 Title</h2>', notes: ['Single note for slide 2'] },
-    { html: '<h3>Slide 3 Title</h3>' }, // no notes
+    {
+      id: 'slide-0',
+      index: 0,
+      rawMarkdown: '# Slide 1 Title\n\nFirst slide body',
+      html: '<h1>Slide 1 Title</h1><p>First slide body</p>',
+      notes: ['Note 1A: intro', 'Note 1B: details'],
+    },
+    {
+      id: 'slide-1',
+      index: 1,
+      rawMarkdown: '## Slide 2 Title',
+      html: '<h2>Slide 2 Title</h2>',
+      notes: ['Single note for slide 2'],
+    },
+    {
+      id: 'slide-2',
+      index: 2,
+      rawMarkdown: '### Slide 3 Title',
+      html: '<h3>Slide 3 Title</h3>',
+      notes: [],
+    },
   ]
 
   beforeEach(() => {
