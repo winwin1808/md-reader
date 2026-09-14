@@ -27,6 +27,16 @@
 
 .deck-slide .md-viewer {
   width: 100%;
+  background-color: transparent !important;
+  color: inherit;
+  font-family: inherit;
+}
+
+.deck-slide .md-viewer p,
+.deck-slide .md-viewer li,
+.deck-slide .md-viewer span {
+  color: inherit;
+  font-family: inherit;
 }
 
 .deck-controls {
@@ -75,11 +85,43 @@
   padding: 0 6px;
 }
 
+.deck-custom-bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.deck-slide-content {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+  font-family: inherit;
+}
+
+.deck-slide-content h1,
+.deck-slide-content h2,
+.deck-slide-content h3,
+.deck-slide-content h4 {
+  color: var(--slide-custom-heading, inherit);
+}
+
+.deck-slide-content a {
+  color: var(--slide-custom-accent, var(--color-accent, #0070f3));
+}
+
 .deck-progress-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   height: 4px;
-  background: var(--md-accent, #0969da);
+  background: var(--slide-custom-accent, var(--color-accent, var(--md-accent, #0969da)));
   transition: width 0.2s ease;
 }
+
+.deck-progress-fill {
+  background: var(--slide-custom-accent, var(--color-accent, #0070f3));
+}
+

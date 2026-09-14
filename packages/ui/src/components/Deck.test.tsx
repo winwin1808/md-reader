@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
@@ -210,5 +212,115 @@ describe('Deck component', () => {
     const uiIndex = await import('../index')
     expect(uiIndex.Deck).toBeDefined()
     expect(uiIndex.Deck).toBe(Deck)
+  })
+
+  describe('presentation customization settings', () => {
+    it('applies custom background color, text color, and font', () => {
+      const { container } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgColor: '#123456',
+            slideTextColor: '#abcdef',
+            slideFont: 'Georgia, serif',
+          }}
+        />
+      )
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(overlay.style.backgroundColor).toBe('rgb(18, 52, 86)')
+      expect(overlay.style.color).toBe('rgb(171, 205, 239)')
+      expect(overlay.style.fontFamily).toBe('Georgia, serif')
+    })
+
+    it('renders background image and applies opacity', () => {
+      const { container, rerender } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: 'https://example.com/bg.png',
+            slideImageOpacity: 45,
+          }}
+        />
+      )
+      const bgImage = container.querySelector('.deck-custom-bg-image') as HTMLElement
+      expect(bgImage).not.toBeNull()
+      expect(bgImage.style.backgroundImage).toBe('url("https://example.com/bg.png")')
+      expect(bgImage.style.opacity).toBe('0.45')
+      expect(bgImage.getAttribute('aria-hidden')).toBe('true')
+
+      // default opacity when not specified is 100% (1)
+      rerender(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: 'https://example.com/bg2.png',
+          }}
+        />
+      )
+      const bgImage2 = container.querySelector('.deck-custom-bg-image') as HTMLElement
+      expect(bgImage2.style.backgroundImage).toBe('url("https://example.com/bg2.png")')
+      expect(bgImage2.style.opacity).toBe('1')
+
+      // does not render bg div when slideBgImage is not provided or empty
+      rerender(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: '',
+          }}
+        />
+      )
+      expect(container.querySelector('.deck-custom-bg-image')).toBeNull()
+    })
+
+    it('applies heading color and accent variables as CSS custom properties', () => {
+      const { container } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideHeadingColor: '#ff0000',
+            slideAccentColor: '#00ff00',
+          }}
+        />
+      )
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(overlay.style.getPropertyValue('--slide-custom-heading')).toBe('#ff0000')
+      expect(overlay.style.getPropertyValue('--slide-custom-accent')).toBe('#00ff00')
+    })
+
+    it('ensures slide content inside .deck-slide .md-viewer inherits custom styling and has transparent background', () => {
+      const { container } = render(
+        <Deck
+          slides={[{ id: 's1', index: 0, html: '<p>Custom slide text</p><span>Span text</span>', rawMarkdown: 'Custom slide text', notes: [] }]}
+          presentationSettings={{
+            slideBgColor: '#222222',
+            slideTextColor: '#f0f0f0',
+            slideFont: 'Inter, sans-serif',
+          }}
+        />
+      )
+
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      const slide = container.querySelector('.deck-slide') as HTMLElement
+      const mdViewer = slide.querySelector('.md-viewer') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(slide).not.toBeNull()
+      expect(mdViewer).not.toBeNull()
+      expect(slide.contains(mdViewer)).toBe(true)
+      expect(overlay.style.backgroundColor).toBe('rgb(34, 34, 34)')
+      expect(overlay.style.color).toBe('rgb(240, 240, 240)')
+      expect(overlay.style.fontFamily).toBe('Inter, sans-serif')
+
+      // Verify deck.css cascade rules for .deck-slide .md-viewer
+      const cssPath = path.resolve(__dirname, '../theme/deck.css')
+      const css = fs.readFileSync(cssPath, 'utf-8')
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*background-color:\s*transparent\s*!important;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*color:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*font-family:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s+p,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+li,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+span\s*\{[^}]*color:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide-content\s*\{[^}]*color:\s*inherit;/)
+    })
   })
 })
