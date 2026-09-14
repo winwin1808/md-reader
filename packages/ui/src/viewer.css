@@ -6,6 +6,7 @@
 @import './theme/table-enhanced.css';
 @import './theme/deck.css';
 @import './theme/speaker-view.css';
+@import './theme/deck-print.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);
