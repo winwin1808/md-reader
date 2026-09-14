@@ -159,6 +159,9 @@ describe('App', () => {
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
 
     // 4. Trigger Slide PDF export
+    // Container should NOT be in DOM normally to save memory
+    expect(document.querySelector('.deck-print-container')).toBeNull()
+    
     await act(async () => {
       fireEvent.click(exportBtn)
     })
@@ -166,7 +169,16 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(slidePdfOption)
     })
+    
     expect(printSlidesSpy).toHaveBeenCalled()
+    // It should be rendered now
+    expect(document.querySelector('.deck-print-container')).not.toBeNull()
+    
+    // Wait for the timeout to remove it
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()
   })
