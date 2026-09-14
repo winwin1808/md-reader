@@ -105,7 +105,7 @@ export async function verifyHandlePermission(
   handle: FileSystemFileHandle,
   readWrite: boolean = true
 ): Promise<boolean> {
-  const mode: FileSystemPermissionMode = readWrite ? 'readwrite' : 'read'
+  const mode: 'readwrite' | 'read' = readWrite ? 'readwrite' : 'read'
   try {
     const queryResult = await (handle as any).queryPermission({ mode })
     if (queryResult === 'granted') {
