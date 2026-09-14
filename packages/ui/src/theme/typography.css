@@ -18,8 +18,8 @@
 
 .md-viewer {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: calc(1.0625rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.7;
+  font-size: calc(0.74375rem * var(--md-font-scale-ratio, 1));
+  line-height: 1.6;
   color: var(--md-fg);
   word-wrap: break-word;
 }
@@ -39,60 +39,60 @@
 }
 
 .md-viewer h1 {
-  font-size: calc(2.25rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(1.575rem * var(--md-font-scale-ratio, 1));
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.025em;
-  margin-top: 2.75rem;
-  margin-bottom: 1rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
 }
 
 .md-viewer h2 {
-  font-size: calc(1.75rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(1.225rem * var(--md-font-scale-ratio, 1));
   line-height: 1.25;
   font-weight: 650;
   letter-spacing: -0.02em;
-  margin-top: 2.25rem;
-  margin-bottom: 0.75rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
   border-bottom: 1px solid var(--md-border-subtle, var(--md-border));
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.25rem;
 }
 
 .md-viewer h3 {
-  font-size: calc(1.375rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(0.9625rem * var(--md-font-scale-ratio, 1));
   line-height: 1.35;
   font-weight: 600;
   letter-spacing: -0.015em;
-  margin-top: 1.75rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .md-viewer h4 {
-  font-size: calc(1.125rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(0.7875rem * var(--md-font-scale-ratio, 1));
   line-height: 1.4;
   font-weight: 600;
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
 }
 
 .md-viewer h5 {
-  font-size: calc(1rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(0.7rem * var(--md-font-scale-ratio, 1));
   line-height: 1.5;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--md-fg-muted);
-  margin-top: 1.25rem;
-  margin-bottom: 0.35rem;
+  margin-top: 0.85rem;
+  margin-bottom: 0.25rem;
 }
 
 .md-viewer h6 {
-  font-size: calc(0.875rem * var(--md-font-scale-ratio, 1));
+  font-size: calc(0.6125rem * var(--md-font-scale-ratio, 1));
   line-height: 1.5;
   font-weight: 600;
   color: var(--md-fg-muted);
-  margin-top: 1.25rem;
-  margin-bottom: 0.25rem;
+  margin-top: 0.85rem;
+  margin-bottom: 0.2rem;
 }
 
 .md-viewer p {

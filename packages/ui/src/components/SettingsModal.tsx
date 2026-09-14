@@ -37,23 +37,31 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
+        title="Settings"
         aria-label="Settings"
         style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '8px',
-          color: 'inherit',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          width: '38px',
+          height: '38px',
           borderRadius: '10px',
+          background: 'var(--md-bg)',
+          border: '1px solid var(--md-border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'var(--md-fg)',
+          padding: 0,
         }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

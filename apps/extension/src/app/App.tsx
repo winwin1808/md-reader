@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import {
@@ -8,13 +9,16 @@ import {
   Toc,
   ExportModal,
   printDocument,
+  printSlides,
   getDefaultExportCss,
   ReadingProgress,
   TopToolbar,
   DocumentSearch,
+  Deck,
+  SpeakerView,
 } from "@md-reader/ui"
 import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily } from '@md-reader/ui'
-import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx } from '@md-reader/core'
+import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx, splitIntoSlides } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { addRecentFile } from './registry'
@@ -35,9 +39,66 @@ export function App(): React.JSX.Element {
   const [docTitle, setDocTitle] = useState<string>('')
   // Re-render when doc text changes to hide placeholder
   const [hasContent, setHasContent] = useState(false)
+  const [isPresenting, setIsPresenting] = useState<boolean>(false)
+  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
+  const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
+
+  const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
+  const fileUrlParam = new URLSearchParams(window.location.search).get('file')
+
+  const slides = useMemo(() => splitIntoSlides(content), [content])
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
   const doc = useMemo(() => new Y.Doc(), [])
+  const channelRef = useRef<BroadcastChannel | null>(null)
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+
+    const channel = new BroadcastChannel('md-reader-slides-sync')
+    channelRef.current = channel
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NAVIGATE' && typeof event.data.index === 'number') {
+        setCurrentSlideIndex(event.data.index)
+      }
+    }
+
+    channel.onmessage = handleMessage
+    channel.addEventListener?.('message', handleMessage)
+
+    return () => {
+      channel.removeEventListener?.('message', handleMessage)
+      channel.close()
+      channelRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
+      const target = e.target as HTMLElement | null
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      if (
+        (e.key === 'p' || e.key === 'P') &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !isInput &&
+        !isPresenting &&
+        !isSpeakerMode
+      ) {
+        e.preventDefault()
+        setIsPresenting(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isPresenting, isSpeakerMode])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -188,6 +249,17 @@ export function App(): React.JSX.Element {
       const title = docTitle || 'document'
       if (format === 'pdf') {
         printDocument()
+      } else if (format === 'slide-pdf') {
+        flushSync(() => {
+          setIsPrintingSlides(true)
+        })
+        printSlides()
+        const cleanup = () => {
+          setIsPrintingSlides(false)
+          window.removeEventListener('afterprint', cleanup)
+        }
+        window.addEventListener('afterprint', cleanup)
+        setTimeout(cleanup, 1000)
       } else if (format === 'html') {
         const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
         const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })
@@ -215,12 +287,56 @@ export function App(): React.JSX.Element {
     }
   }
 
+  if (isSpeakerMode) {
+    return (
+      <SpeakerView
+        slides={slides}
+        currentSlideIndex={currentSlideIndex}
+        onSlideChange={(idx) => {
+          setCurrentSlideIndex(idx)
+          channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
+        }}
+      />
+    )
+  }
+
   if (!theme || !colorTheme) return <div>Loading...</div>
 
   const themeMode = theme
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+      {isPrintingSlides && (
+        <div className="deck-print-container" aria-hidden="true">
+          {slides.map((slide, idx) => (
+            <div key={slide.id || idx} className="deck-print-slide md-viewer">
+              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
+            </div>
+          ))}
+        </div>
+      )}
+      {isPresenting && (
+        <Deck
+          slides={slides}
+          initialSlide={currentSlideIndex}
+          onClose={() => setIsPresenting(false)}
+          onSlideChange={(idx) => {
+            setCurrentSlideIndex(idx)
+            channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
+          }}
+          onOpenSpeakerView={() =>
+            window.open(
+              window.location.pathname +
+                '?speaker=true' +
+                (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : ''),
+              'md-speaker',
+              'width=1080,height=680'
+            )
+          }
+          colorTheme={colorTheme}
+          mode={themeMode}
+        />
+      )}
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
       <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={fontFamily}>
         <ReadingProgress />
@@ -236,6 +352,7 @@ export function App(): React.JSX.Element {
           isReadingMode={isReadingMode}
           onToggleReadingMode={() => setIsReadingMode(!isReadingMode)}
           onOpenSearch={() => setIsSearchOpen(true)}
+          onPresent={() => setIsPresenting(true)}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
