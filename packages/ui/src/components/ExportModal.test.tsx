@@ -82,4 +82,14 @@ describe('ExportModal', () => {
     fireEvent.click(htmlOption!)
     expect(handleExport).not.toHaveBeenCalled()
   })
+
+  it('renders modal dialog with solid background and theme attributes', () => {
+    render(<ExportModal onExport={vi.fn()} />)
+    fireEvent.click(screen.getByTitle('Xuất tài liệu'))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('data-theme')).toBeTruthy()
+    expect(dialog.getAttribute('data-color-theme')).toBeTruthy()
+    const dialogCard = dialog.firstChild as HTMLElement
+    expect(dialogCard.style.background).toContain('var(--md-bg')
+  })
 })

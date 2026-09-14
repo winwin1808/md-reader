@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useTheme } from '../theme/ThemeProvider'
 
 export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
 
@@ -52,15 +53,24 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
+  let themeContext: { resolved: 'light' | 'dark'; colorTheme: string } | undefined
+  try {
+    themeContext = useTheme()
+  } catch {
+    // fallback outside ThemeProvider
+  }
+
   const modalContent = isOpen ? (
     <div
       role="dialog"
       aria-modal="true"
+      data-theme={themeContext?.resolved || 'light'}
+      data-color-theme={themeContext?.colorTheme || 'black'}
       onClick={() => setIsOpen(false)}
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
@@ -75,18 +85,19 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
         onClick={(e) => e.stopPropagation()}
         style={{
           borderRadius: '16px',
-          border: '1px solid var(--md-border)',
-          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
+          border: '1px solid var(--md-border, #d0d7de)',
+          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.35)',
           padding: '24px 28px',
           minWidth: '340px',
           maxWidth: '440px',
           width: '100%',
           maxHeight: 'calc(100vh - 48px)',
           overflowY: 'auto',
-          background: 'var(--md-bg)',
-          color: 'var(--md-fg)',
+          background: 'var(--md-bg, #ffffff)',
+          color: 'var(--md-fg, #24292f)',
           boxSizing: 'border-box',
           margin: 'auto',
+          position: 'relative',
         }}
       >
             <div
@@ -150,9 +161,9 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                     width: '100%',
                     padding: '12px 14px',
                     borderRadius: '10px',
-                    border: '1px solid var(--md-border)',
-                    background: 'var(--md-bg-secondary, var(--md-bg))',
-                    color: 'var(--md-fg)',
+                    border: '1px solid var(--md-border, #d0d7de)',
+                    background: 'var(--md-bg-secondary, rgba(125, 125, 125, 0.08))',
+                    color: 'var(--md-fg, #24292f)',
                     cursor: isExporting ? 'not-allowed' : 'pointer',
                     opacity: isExporting ? 0.6 : 1,
                     transition: 'all 0.15s ease',

@@ -4,8 +4,10 @@ CSS custom properties on [data-theme='light'] and [data-theme='dark']
 --md-hljs-* (keyword, string, comment, number, function, tag, attr).
 */
 
+:root,
 [data-theme='light'] {
   --md-bg: #ffffff;
+  --md-bg-secondary: #f6f8fa;
   --md-fg: #24292f;
   --md-fg-muted: #57606a;
   --md-border: #d0d7de;
@@ -25,6 +27,7 @@ CSS custom properties on [data-theme='light'] and [data-theme='dark']
 
 [data-theme='dark'] {
   --md-bg: #0d1117;
+  --md-bg-secondary: #161b22;
   --md-fg: #c9d1d9;
   --md-fg-muted: #8b949e;
   --md-border: #30363d;

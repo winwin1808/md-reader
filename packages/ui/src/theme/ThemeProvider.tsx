@@ -55,6 +55,15 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
 
   const resolved = mode === 'system' ? resolvedSystemMode : mode
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.setAttribute('data-theme', resolved)
+    document.documentElement.setAttribute('data-color-theme', colorTheme)
+    if (document.documentElement.style) {
+      document.documentElement.style.colorScheme = resolved
+    }
+  }, [resolved, colorTheme])
+
   const setMode = (newMode: ThemeMode) => {
     if (onModeChange) {
       onModeChange(newMode)
