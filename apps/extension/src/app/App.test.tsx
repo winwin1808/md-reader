@@ -223,7 +223,7 @@ describe('App', () => {
     expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ colorTheme: 'navy' }))
   })
 
-  it('falls back to system theme and github colorTheme when storage throws', async () => {
+  it('falls back to system theme and black colorTheme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
@@ -237,7 +237,7 @@ describe('App', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     })
     
-    expect(document.querySelector('[data-color-theme="github"]')).not.toBeNull()
+    expect(document.querySelector('[data-color-theme="black"]')).not.toBeNull()
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
