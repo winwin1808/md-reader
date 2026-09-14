@@ -1,5 +1,6 @@
 # Intent: Phase 5 — Chỉnh sửa (Editor & Lưu đĩa)
-Author: Antigravity & User. Status: draft. Phase: 5
+Author: Antigravity & User. Status: designed. Phase: 5
+Design: docs/superpowers/specs/2026-09-14-phase-5-editing-design.md
 Brainstorm: docs/superpowers/intent/2026-09-14-phase-5-editing-brainstorm.md
 
 ## Problem
