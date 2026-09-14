@@ -117,13 +117,13 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     const hast = processor.runSync(parsed.tree)
     let html = String(processor.stringify(hast))
 
-    if (options?.githubAlerts !== false) {
+    if (options?.githubAlerts === true) {
       html = applyGitHubAlerts(html, options?.localizeAlerts)
     }
-    if (options?.externalLinks !== false) {
+    if (options?.externalLinks === true) {
       html = applyExternalLinks(html)
     }
-    if (options?.typographer !== false) {
+    if (options?.typographer === true) {
       html = applyTypographer(html)
     }
 
