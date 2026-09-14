@@ -10,6 +10,7 @@
 @import './theme/reading-aids.css';
 @import './theme/settings.css';
 @import './theme/mindmap.css';
+@import './theme/excalidraw.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);
