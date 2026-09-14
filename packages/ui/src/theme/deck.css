@@ -1,0 +1,85 @@
+.deck-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--md-bg);
+  color: var(--md-fg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.deck-slide {
+  aspect-ratio: 16/9;
+  width: 90vw;
+  max-width: 1400px;
+  height: auto;
+  max-height: 85vh;
+  padding: 48px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.deck-slide .md-viewer {
+  width: 100%;
+}
+
+.deck-controls {
+  position: absolute;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--md-controls-bg, rgba(0, 0, 0, 0.08));
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  border: 1px solid var(--md-border, rgba(128, 128, 128, 0.2));
+  font-size: 14px;
+  user-select: none;
+  z-index: 10;
+}
+
+.deck-controls button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 16px;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background-color 0.15s ease;
+}
+
+.deck-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.deck-controls button:not(:disabled):hover {
+  background: var(--md-hover, rgba(128, 128, 128, 0.15));
+}
+
+.deck-counter {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  padding: 0 6px;
+}
+
+.deck-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--md-accent, #0969da);
+  transition: width 0.2s ease;
+}
