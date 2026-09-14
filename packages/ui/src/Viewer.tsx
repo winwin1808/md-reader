@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
+import { ExcalidrawBlock } from './components/ExcalidrawBlock'
 import './viewer.css'
 
 export interface ViewerProps {
@@ -10,10 +11,11 @@ export interface ViewerProps {
   className?: string
   /** Gọi khi heading đang đọc đổi, để Toc highlight. */
   onActiveHeadingChange?: (id: string | null) => void
+  isAppPage?: boolean
 }
 
 export function Viewer(props: ViewerProps): React.JSX.Element {
-  const { html, className = '', onActiveHeadingChange } = props
+  const { html, className = '', onActiveHeadingChange, isAppPage = true } = props
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Use a ref to store onActiveHeadingChange to avoid re-triggering observer on every render
@@ -106,6 +108,39 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     }
   }, [html])
 
+  // Excalidraw
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const excalidrawCodes = container.querySelectorAll('code.language-excalidraw')
+    const roots: { root: Root; node: HTMLDivElement; pre: HTMLElement }[] = []
+
+    excalidrawCodes.forEach((codeEl) => {
+      const pre = codeEl.parentElement
+      if (pre && pre.tagName.toLowerCase() === 'pre') {
+        const codeContent = codeEl.textContent || ''
+
+        const wrapper = document.createElement('div')
+        pre.parentNode?.insertBefore(wrapper, pre.nextSibling)
+        pre.style.display = 'none'
+
+        const root = createRoot(wrapper)
+        root.render(<ExcalidrawBlock data={codeContent} isAppPage={isAppPage} />)
+
+        roots.push({ root, node: wrapper, pre })
+      }
+    })
+
+    return () => {
+      roots.forEach(({ root, node, pre }) => {
+        setTimeout(() => root.unmount(), 0)
+        node.remove()
+        pre.style.display = ''
+      })
+    }
+  }, [html, isAppPage])
+
   // Code block header with copy button
   useEffect(() => {
     const container = containerRef.current
@@ -120,7 +155,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       }
       const code = pre.querySelector('code')
       if (!code) return
-      if (code.classList.contains('language-mermaid')) return
+      if (code.classList.contains('language-mermaid') || code.classList.contains('language-excalidraw')) return
 
       // Extract language
       let lang = 'text'
