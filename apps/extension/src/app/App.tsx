@@ -28,7 +28,7 @@ import './app.css'
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
   mode: 'system',
-  colorTheme: 'github',
+  colorTheme: 'black',
   fontFamily: 'sans',
   autoFormatMd: true,
   stripFrontmatter: true,
@@ -350,7 +350,7 @@ export function App(): React.JSX.Element {
 
   if (!readerSettings) return <div>Loading...</div>
 
-  const themeMode = readerSettings.mode
+  const themeMode = readerSettings.mode || 'system'
   const colorTheme = readerSettings.colorTheme
 
   return (
