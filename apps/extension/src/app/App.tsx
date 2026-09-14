@@ -8,6 +8,7 @@ import {
   Toc,
   ExportModal,
   printDocument,
+  printSlides,
   getDefaultExportCss,
   ReadingProgress,
   TopToolbar,
@@ -246,6 +247,8 @@ export function App(): React.JSX.Element {
       const title = docTitle || 'document'
       if (format === 'pdf') {
         printDocument()
+      } else if (format === 'slide-pdf') {
+        printSlides()
       } else if (format === 'html') {
         const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
         const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })
@@ -292,6 +295,13 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+      <div className="deck-print-container" aria-hidden="true">
+        {slides.map((slide, idx) => (
+          <div key={slide.id || idx} className="deck-print-slide md-viewer">
+            <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
+          </div>
+        ))}
+      </div>
       {isPresenting && (
         <Deck
           slides={slides}
