@@ -6,7 +6,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-3-trinh-chieu.md
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 3a | `core/slides` | planned |
+| 3a | `core/slides` | done |
 | 3b | `Deck` UI | pending |
 | 3c | `SpeakerView` UI | pending |
 | 3d | App Integration & Speaker Sync | pending |
