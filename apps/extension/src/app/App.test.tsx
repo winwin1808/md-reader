@@ -774,4 +774,65 @@ describe('App', () => {
     })
     expect(removeMock).toHaveBeenCalledWith(cachedKey)
   })
+
+  it('opens Mindmap modal via toolbar or shortcut and clicking node scrolls to heading', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Introduction\n\nIntro text\n\n# Section 1\n\nSection 1 text'),
+    } as any)
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Mindmap modal should not be rendered initially
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    // 1. Open via Toolbar button
+    const mindmapBtn = screen.getByRole('button', { name: /mindmap/i })
+    await act(async () => {
+      fireEvent.click(mindmapBtn)
+    })
+
+    const modal = screen.getByRole('dialog')
+    expect(modal).toBeDefined()
+    expect(modal.querySelector('.mindmap-svg')).not.toBeNull()
+
+    // 2. Click node to navigate
+    const introHeading = document.getElementById('introduction') || document.createElement('h1')
+    introHeading.id = 'introduction'
+    introHeading.scrollIntoView = vi.fn()
+    document.body.appendChild(introHeading)
+
+    const introNode = Array.from(modal.querySelectorAll('.mindmap-node-text')).find(
+      (el) => el.textContent === 'Introduction'
+    )!
+    expect(introNode).toBeDefined()
+
+    await act(async () => {
+      fireEvent.click(introNode)
+    })
+
+    expect(introHeading.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    // Modal should be closed after node click
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    // 3. Toggle via Cmd+M shortcut
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'm', metaKey: true })
+    })
+    expect(screen.getByRole('dialog')).toBeDefined()
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'm', metaKey: true })
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    document.body.removeChild(introHeading)
+  })
 })

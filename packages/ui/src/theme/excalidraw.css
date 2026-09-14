@@ -1,0 +1,93 @@
+/* Excalidraw renderer styles */
+
+.excalidraw-container {
+  position: relative;
+  margin: 24px 0;
+  border: 1px solid var(--md-border, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--md-bg-card, #ffffff);
+}
+
+.excalidraw-svg {
+  width: 100%;
+  max-height: 500px;
+  display: block;
+  margin: 0 auto;
+}
+
+.excalidraw-placeholder-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  margin: 24px 0;
+  border: 2px dashed var(--md-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--md-bg-subtle, rgba(0, 0, 0, 0.02));
+  color: var(--md-fg, inherit);
+}
+
+.excalidraw-placeholder-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.excalidraw-placeholder-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.excalidraw-placeholder-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.excalidraw-placeholder-hint {
+  font-size: 12px;
+  color: var(--md-muted, #64748b);
+}
+
+.excalidraw-action-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.excalidraw-container:hover .excalidraw-action-bar {
+  opacity: 1;
+}
+
+.excalidraw-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--md-border, #cbd5e1);
+  border-radius: 4px;
+  background: var(--md-bg-card, #ffffff);
+  color: var(--md-fg, #334155);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.excalidraw-btn:hover {
+  background: var(--md-bg-subtle, #f1f5f9);
+}
+
+.excalidraw-error-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--md-error, #ef4444);
+  background: var(--md-bg-subtle, rgba(239, 68, 68, 0.05));
+  font-size: 14px;
+}
