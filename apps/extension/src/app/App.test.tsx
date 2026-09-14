@@ -91,9 +91,10 @@ describe('App', () => {
     window.URL.revokeObjectURL = vi.fn()
   })
 
-  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
+  it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
     let lastDownloaded = ''
@@ -156,6 +157,28 @@ describe('App', () => {
       vi.advanceTimersByTime(1000)
     })
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
+
+    // 4. Trigger Slide PDF export
+    // Container should NOT be in DOM normally to save memory
+    expect(document.querySelector('.deck-print-container')).toBeNull()
+    
+    await act(async () => {
+      fireEvent.click(exportBtn)
+    })
+    const slidePdfOption = screen.getByText('Slide PDF (Khổ ngang)')
+    await act(async () => {
+      fireEvent.click(slidePdfOption)
+    })
+    
+    expect(printSlidesSpy).toHaveBeenCalled()
+    // It should be rendered now
+    expect(document.querySelector('.deck-print-container')).not.toBeNull()
+    
+    // Wait for the timeout to remove it
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()
   })
