@@ -1,5 +1,5 @@
 # Design: Phase 3 — Trình chiếu (Presentation & Slides)
-Author: Antigravity. Status: designed. Phase: 3
+Author: Antigravity. Status: shipped. Phase: 3
 Intent: docs/superpowers/intent/2026-09-14-phase-3-trinh-chieu.md
 
 ## Sub-phase queue
@@ -10,7 +10,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-3-trinh-chieu.md
 | 3b | `Deck` UI | done |
 | 3c | `SpeakerView` UI | done |
 | 3d | App Integration & Speaker Sync | done |
-| 3e | Deck → PDF Export | planned |
+| 3e | Deck → PDF Export | done |
 
 ## Approach chosen
 
