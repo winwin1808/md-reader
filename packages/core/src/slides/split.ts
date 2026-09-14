@@ -4,10 +4,10 @@ import type { Slide, SlideSplitOptions } from './types.js'
 
 function parseCodeFence(line: string): { isFence: boolean; char?: string; length?: number } {
   const match = line.match(/^ {0,3}(`{3,}|~{3,})/)
-  if (!match) return { isFence: false }
+  if (!match || !match[1]) return { isFence: false }
   return {
     isFence: true,
-    char: match[1][0],
+    char: match[1][0]!,
     length: match[1].length,
   }
 }
@@ -59,7 +59,7 @@ function hasMatchingHeading(lines: string[], headingDepth: number): boolean {
 
     if (!inCodeBlock) {
       const match = line.match(/^ {0,3}(#{1,6})\s+/)
-      if (match && match[1].length <= headingDepth) {
+      if (match && match[1]!.length <= headingDepth) {
         return true
       }
     }
@@ -72,7 +72,7 @@ function extractNotes(markdown: string): { notes: string[]; cleanMarkdown: strin
   const NOTE_REGEX = /<!--\s*(?:note|speaker):?\s*([\s\S]*?)-->/gi
   let match: RegExpExecArray | null
   while ((match = NOTE_REGEX.exec(markdown)) !== null) {
-    notes.push(match[1].trim())
+    notes.push(match[1]!.trim())
   }
   const cleanMarkdown = markdown.replace(NOTE_REGEX, '')
   return { notes, cleanMarkdown }
@@ -101,7 +101,7 @@ function extractTitle(markdown: string): string | undefined {
     if (!inCodeBlock) {
       const match = line.match(/^ {0,3}#{1,6}\s+(.+)$/)
       if (match) {
-        return match[1].replace(/\s+#+\s*$/, '').trim()
+        return match[1]!.replace(/\s+#+\s*$/, '').trim()
       }
     }
   }
@@ -173,10 +173,10 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     }
     sections.push(currentSectionLines.join('\n'))
 
-    if (sections.length > 1 && sections[0].trim() === '') {
+    if (sections.length > 1 && sections[0]!.trim() === '') {
       sections.shift()
     }
-    if (sections.length > 1 && sections[sections.length - 1].trim() === '') {
+    if (sections.length > 1 && sections[sections.length - 1]!.trim() === '') {
       sections.pop()
     }
   } else if (effectiveStrategy === 'heading') {
@@ -200,7 +200,7 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
       }
 
       const headingMatch = !wasInCode && !fence.isFence ? line.match(/^ {0,3}(#{1,6})\s+/) : null
-      const isSplitHeading = headingMatch && headingMatch[1].length <= headingDepth
+      const isSplitHeading = headingMatch && headingMatch[1]!.length <= headingDepth
 
       if (isSplitHeading) {
         if (currentSectionLines.join('\n').trim() !== '') {
