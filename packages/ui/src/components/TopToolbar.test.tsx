@@ -114,6 +114,17 @@ describe('TopToolbar', () => {
     expect(onToggleReadingMode).toHaveBeenCalledTimes(1)
   })
 
+  it('renders and triggers onPresent when present button is clicked', () => {
+    const onPresent = vi.fn()
+    const { rerender } = render(<TopToolbar {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Trình chiếu' })).toBeNull()
+
+    rerender(<TopToolbar {...defaultProps} onPresent={onPresent} />)
+    const presentBtn = screen.getByRole('button', { name: 'Trình chiếu' })
+    fireEvent.click(presentBtn)
+    expect(onPresent).toHaveBeenCalledTimes(1)
+  })
+
   it('renders rightActions when provided', () => {
     render(
       <TopToolbar
