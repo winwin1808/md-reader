@@ -98,7 +98,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ---
 
-## 4d — SettingsModal Revamp
+## 4d — SettingsModal Revamp (done)
 
 **Builds:**
 - Cập nhật `packages/ui/src/components/SettingsModal.tsx`:
