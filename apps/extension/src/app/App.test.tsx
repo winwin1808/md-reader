@@ -18,6 +18,42 @@ vi.mock('y-indexeddb', () => {
   }
 })
 
+class MockBroadcastChannel {
+  name: string
+  static instances: MockBroadcastChannel[] = []
+  onmessage: ((event: MessageEvent) => void) | null = null
+  listeners: Record<string, ((event: MessageEvent) => void)[]> = {}
+  postMessage = vi.fn((data: any) => {
+    for (const inst of MockBroadcastChannel.instances) {
+      if (inst !== this && inst.name === this.name) {
+        const event = new MessageEvent('message', { data })
+        inst.onmessage?.(event)
+        inst.listeners['message']?.forEach(fn => fn(event))
+      }
+    }
+  })
+  close = vi.fn(() => {
+    const idx = MockBroadcastChannel.instances.indexOf(this)
+    if (idx !== -1) MockBroadcastChannel.instances.splice(idx, 1)
+  })
+
+  constructor(name: string) {
+    this.name = name
+    MockBroadcastChannel.instances.push(this)
+  }
+
+  addEventListener(event: string, fn: (event: MessageEvent) => void) {
+    if (!this.listeners[event]) this.listeners[event] = []
+    this.listeners[event].push(fn)
+  }
+
+  removeEventListener(event: string, fn: (event: MessageEvent) => void) {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(l => l !== fn)
+    }
+  }
+}
+
 describe('App', () => {
   afterEach(() => {
     cleanup()
@@ -25,6 +61,17 @@ describe('App', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    MockBroadcastChannel.instances = []
+    Object.defineProperty(window, 'BroadcastChannel', {
+      value: MockBroadcastChannel,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(globalThis, 'BroadcastChannel', {
+      value: MockBroadcastChannel,
+      writable: true,
+      configurable: true,
+    });
     
     // Mock chrome storage
     (window as any).chrome = {
@@ -364,5 +411,162 @@ describe('App', () => {
     const { container } = renderResult
 
     expect(container.querySelector('[data-font-family="mono"]')).not.toBeNull()
+  })
+
+  it('triggers Present mode and opens Deck when clicking Present button', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
+    } as any)
+
+    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    const presentBtn = screen.getByRole('button', { name: 'Trình chiếu' })
+    expect(presentBtn).toBeDefined()
+    expect(deckSpy).not.toHaveBeenCalled()
+
+    await act(async () => {
+      fireEvent.click(presentBtn)
+    })
+
+    expect(deckSpy.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({
+        initialSlide: 0,
+        slides: expect.any(Array),
+        colorTheme: 'green',
+        mode: 'dark',
+      })
+    )
+  })
+
+  it('triggers Present mode when pressing "p" key unless inside input or already presenting', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
+    } as any)
+
+    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Pressing 'p' inside an input should NOT trigger present mode
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'p' })
+    })
+    expect(deckSpy).not.toHaveBeenCalled()
+    document.body.removeChild(input)
+
+    // Pressing 'p' on document should trigger present mode
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'p' })
+    })
+    expect(deckSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('navigates slides and synchronizes with BroadcastChannel', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    window.open = vi.fn()
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2\n\n---\n\n# Slide 3\n\nContent 3'),
+    } as any)
+
+    let capturedDeckProps: any = null
+    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation((props: any) => {
+      capturedDeckProps = props
+      return <div data-testid="mock-deck">Mock Deck</div>
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    const presentBtn = screen.getByRole('button', { name: 'Trình chiếu' })
+    await act(async () => {
+      fireEvent.click(presentBtn)
+    })
+
+    expect(deckSpy).toHaveBeenCalled()
+    expect(capturedDeckProps).not.toBeNull()
+
+    const channelInstance = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync')
+    expect(channelInstance).toBeDefined()
+
+    // Trigger slide change from Deck
+    await act(async () => {
+      capturedDeckProps.onSlideChange(1)
+    })
+
+    expect(channelInstance?.postMessage).toHaveBeenCalledWith({ type: 'NAVIGATE', index: 1 })
+
+    // Simulate incoming message from peer channel
+    const peerChannel = new MockBroadcastChannel('md-reader-slides-sync')
+    await act(async () => {
+      peerChannel.postMessage({ type: 'NAVIGATE', index: 2 })
+    })
+
+    expect(capturedDeckProps.initialSlide).toBe(2)
+
+    // Test opening speaker view
+    await act(async () => {
+      capturedDeckProps.onOpenSpeakerView()
+    })
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringContaining('speaker=true'),
+      'md-speaker',
+      'width=1080,height=680'
+    )
+
+    // Test closing deck
+    await act(async () => {
+      capturedDeckProps.onClose()
+    })
+    expect(screen.queryByTestId('mock-deck')).toBeNull()
+  })
+
+  it('renders SpeakerView directly when speaker query parameter is true', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1'),
+    } as any)
+
+    let capturedSpeakerProps: any = null
+    const speakerSpy = vi.spyOn(ui, 'SpeakerView').mockImplementation((props: any) => {
+      capturedSpeakerProps = props
+      return <div data-testid="mock-speaker-view">Mock Speaker View</div>
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    expect(speakerSpy).toHaveBeenCalled()
+    expect(screen.getByTestId('mock-speaker-view')).toBeDefined()
+    expect(screen.queryByTestId('app-placeholder')).toBeNull()
+    expect(screen.queryByTitle('Mục lục')).toBeNull()
+
+    const channelInstance = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync')
+    expect(channelInstance).toBeDefined()
+
+    // Navigating in speaker view posts to BroadcastChannel
+    await act(async () => {
+      capturedSpeakerProps.onSlideChange(1)
+    })
+    expect(channelInstance?.postMessage).toHaveBeenCalledWith({ type: 'NAVIGATE', index: 1 })
   })
 })
