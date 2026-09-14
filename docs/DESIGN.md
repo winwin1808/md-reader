@@ -285,10 +285,11 @@ Ship: *mở tài liệu, bấm Present, trình bày được.*
 
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 3a | `core/slides` | mdast → `Slide[]`, cắt theo `---` hoặc heading depth cấu hình được |
-| 3b | `Deck` | Render, keyboard nav, fullscreen, progress |
-| 3c | `SpeakerView` | Parse `<!-- note: -->`, cửa sổ thứ hai, đồng hồ, slide kế |
-| 3d | Deck → PDF | Dùng lại 2d |
+| 3a | `core/slides` | mdast → `Slide[]`, cắt theo `---` hoặc heading depth cấu hình được, trích xuất speaker notes |
+| 3b | `Deck` UI | Render slide deck 16:9, keyboard nav (←, →, Space, Esc), fullscreen, progress bar |
+| 3c | `SpeakerView` UI | Giao diện diễn giả: current slide, next slide preview, timer đồng hồ, speaker notes |
+| 3d | App & Speaker Sync | Tích hợp Present vào TopToolbar/App, sync 2 chiều qua BroadcastChannel, cửa sổ speaker riêng |
+| 3e | Deck → PDF Export | Print CSS landscape chuyên dụng cho slide, tích hợp vào ExportModal |
 
 ### Phase 4 — Mindmap & Excalidraw
 

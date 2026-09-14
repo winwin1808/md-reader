@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export type ExportFormat = 'html' | 'docx' | 'pdf'
+export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
 
 export interface ExportModalProps {
   onExport: (format: ExportFormat) => Promise<void> | void
@@ -29,6 +29,11 @@ const FORMAT_OPTIONS: FormatOption[] = [
     title: 'Tài liệu PDF (.pdf)',
     description: 'In ra giấy hoặc lưu thành file PDF chuẩn sách',
   },
+  {
+    format: 'slide-pdf',
+    title: 'Slide PDF (Khổ ngang)',
+    description: 'In các trang trình chiếu thành file PDF khổ ngang (16:9)',
+  },
 ]
 
 export function ExportModal(props: ExportModalProps): React.JSX.Element {
@@ -51,7 +56,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
