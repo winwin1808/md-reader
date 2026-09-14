@@ -161,4 +161,52 @@ describe('MindmapModal', () => {
     const zoomedTransform = zoomGroup.getAttribute('transform')
     expect(zoomedTransform).not.toEqual(initialTransform)
   })
+
+  it('clicking collapse handle hides child nodes and paths, and clicking again restores them', () => {
+    render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+
+    // Initially Subsection 1.1 is rendered
+    expect(screen.getByText('Subsection 1.1')).toBeDefined()
+    expect(document.querySelectorAll('path.mindmap-branch').length).toBe(3)
+
+    // Find collapse handle for Section 1
+    const collapseHandles = document.querySelectorAll('.mindmap-collapse-handle')
+    expect(collapseHandles.length).toBeGreaterThan(0)
+
+    // Section 1 is the second node with children (root is first, section 1 is second)
+    const sec1Handle = screen.getByRole('button', { name: /collapse section 1/i })
+    fireEvent.click(sec1Handle)
+
+    // Subsection 1.1 should now be hidden
+    expect(screen.queryByText('Subsection 1.1')).toBeNull()
+    // Branch sec1 -> subsec1.1 should be hidden, so 2 branches remain (root->sec1, root->sec2)
+    expect(document.querySelectorAll('path.mindmap-branch').length).toBe(2)
+
+    // Clicking again restores child nodes
+    const expandSec1Handle = screen.getByRole('button', { name: /expand section 1/i })
+    fireEvent.click(expandSec1Handle)
+
+    expect(screen.getByText('Subsection 1.1')).toBeDefined()
+    expect(document.querySelectorAll('path.mindmap-branch').length).toBe(3)
+  })
+
+  it('handles Expand All and Collapse All buttons', () => {
+    render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+
+    expect(screen.getByText('Subsection 1.1')).toBeDefined()
+
+    // Click Collapse All button
+    const collapseAllBtn = screen.getByRole('button', { name: /collapse all/i })
+    fireEvent.click(collapseAllBtn)
+
+    // Child nodes should be collapsed
+    expect(screen.queryByText('Subsection 1.1')).toBeNull()
+
+    // Click Expand All button
+    const expandAllBtn = screen.getByRole('button', { name: /expand all/i })
+    fireEvent.click(expandAllBtn)
+
+    // Child nodes should be visible again
+    expect(screen.getByText('Subsection 1.1')).toBeDefined()
+  })
 })
