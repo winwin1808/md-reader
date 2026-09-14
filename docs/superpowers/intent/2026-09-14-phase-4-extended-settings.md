@@ -1,5 +1,6 @@
 # Intent: Phase 4 — Cài đặt Mở rộng, Reading Aids & Rich Rendering Suite
-Author: Antigravity. Status: draft. Phase: 4
+Author: Antigravity. Status: designed. Phase: 4
+Design: docs/superpowers/specs/2026-09-14-phase-4-design.md
 
 ## Problem
 Hiện tại MD Reader đã có trải nghiệm đọc A4 xuất sắc, hệ thống export đa dạng và chế độ Presentation hoàn chỉnh. Tuy nhiên, các tuỳ chọn tuỳ biến cho việc đọc sâu, hỗ trợ đọc (Reading Aids), phong cách hiển thị nội dung (Core Rendering, Math, Diagrams, GitHub Alerts, Typographer), cũng như khả năng cá nhân hoá giao diện trình chiếu (màu sắc, ảnh nền, font) vẫn chưa được mở rộng đầy đủ trong bảng cài đặt (Settings).
