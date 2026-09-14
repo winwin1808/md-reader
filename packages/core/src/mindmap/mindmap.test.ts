@@ -78,18 +78,18 @@ describe('extractMindmap', () => {
     expect(result.depth).toBe(0)
     expect(result.children).toHaveLength(2)
 
-    const [overview, faq] = result.children
+    const [overview, faq] = result.children as [MindNode, MindNode]
     expect(overview.text).toBe('Overview')
     expect(overview.depth).toBe(1)
     expect(overview.headingId).toBe('overview')
     expect(overview.children).toHaveLength(2)
 
-    const [arch, deploy] = overview.children
+    const [arch, deploy] = overview.children as [MindNode, MindNode]
     expect(arch.text).toBe('Architecture')
     expect(arch.depth).toBe(2)
     expect(arch.children).toHaveLength(2)
 
-    const [backend, frontend] = arch.children
+    const [backend, frontend] = arch.children as [MindNode, MindNode]
     expect(backend.text).toBe('Backend')
     expect(backend.depth).toBe(3)
     expect(frontend.text).toBe('Frontend')
@@ -114,13 +114,13 @@ describe('extractMindmap', () => {
     const { tree } = parseMarkdown(md)
     const result = extractMindmap(tree)
 
-    const ch1 = result.children[0]
+    const ch1 = result.children[0]!
     expect(ch1.depth).toBe(1)
     expect(ch1.children).toHaveLength(2)
-    expect(ch1.children[0].text).toBe('Deep Section')
-    expect(ch1.children[0].depth).toBe(3)
-    expect(ch1.children[1].text).toBe('Normal Section')
-    expect(ch1.children[1].depth).toBe(2)
+    expect(ch1.children[0]!.text).toBe('Deep Section')
+    expect(ch1.children[0]!.depth).toBe(3)
+    expect(ch1.children[1]!.text).toBe('Normal Section')
+    expect(ch1.children[1]!.depth).toBe(2)
   })
 
   it('handles documents starting with H2 or lower when no H1 exists', () => {
@@ -133,12 +133,12 @@ describe('extractMindmap', () => {
     const result = extractMindmap(tree)
 
     expect(result.children).toHaveLength(2)
-    expect(result.children[0].text).toBe('First H2')
-    expect(result.children[0].depth).toBe(2)
-    expect(result.children[0].children).toHaveLength(1)
-    expect(result.children[0].children[0].text).toBe('Child H3')
-    expect(result.children[1].text).toBe('Second H2')
-    expect(result.children[1].depth).toBe(2)
+    expect(result.children[0]!.text).toBe('First H2')
+    expect(result.children[0]!.depth).toBe(2)
+    expect(result.children[0]!.children).toHaveLength(1)
+    expect(result.children[0]!.children[0]!.text).toBe('Child H3')
+    expect(result.children[1]!.text).toBe('Second H2')
+    expect(result.children[1]!.depth).toBe(2)
   })
 
   it('recursively extracts text from phrasing/inline nodes and trims whitespace', () => {
@@ -168,7 +168,7 @@ describe('extractMindmap', () => {
     }
 
     const result = extractMindmap(mdast)
-    const node = result.children[0]
+    const node = result.children[0]!
     expect(node.text).toBe('Leading and bold with italic and code() plus link trailing')
     expect(node.depth).toBe(2)
   })
@@ -184,13 +184,13 @@ describe('extractMindmap', () => {
     const mindmap = extractMindmap(tree)
 
     expect(mindmap.children).toHaveLength(3)
-    expect(mindmap.children[0].headingId).toBe(toc[0].id)
-    expect(mindmap.children[1].headingId).toBe(toc[1].id)
-    expect(mindmap.children[2].headingId).toBe(toc[2].id)
+    expect(mindmap.children[0]!.headingId).toBe(toc[0]!.id)
+    expect(mindmap.children[1]!.headingId).toBe(toc[1]!.id)
+    expect(mindmap.children[2]!.headingId).toBe(toc[2]!.id)
 
-    expect(mindmap.children[0].headingId).toBe('same-title')
-    expect(mindmap.children[1].headingId).toBe('same-title-1')
-    expect(mindmap.children[2].headingId).toBe('same-title-2')
+    expect(mindmap.children[0]!.headingId).toBe('same-title')
+    expect(mindmap.children[1]!.headingId).toBe('same-title-1')
+    expect(mindmap.children[2]!.headingId).toBe('same-title-2')
   })
 
   it('produces deterministic output across multiple calls', () => {

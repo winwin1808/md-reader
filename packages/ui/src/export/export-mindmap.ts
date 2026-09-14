@@ -18,8 +18,8 @@ export function exportMindmapToSvg(svgElement: SVGSVGElement, title?: string): s
   } else {
     // Reset transform on any parent <g> container of mindmap nodes
     const nodeEl = cloned.querySelector('.mindmap-node')
-    let parent = nodeEl?.parentElement
-    while (parent && parent !== cloned) {
+    let parent: Element | null = nodeEl?.parentElement ?? null
+    while (parent && parent !== (cloned as unknown as Element)) {
       if (parent.tagName.toLowerCase() === 'g') {
         parent.removeAttribute('transform')
       }
@@ -134,13 +134,13 @@ export function exportMindmapToPng(
     const heightMatch = svgString.match(/height="([^"]+)"/)
     const viewBoxMatch = svgString.match(/viewBox="([^"]+)"/)
 
-    let width = widthMatch ? parseFloat(widthMatch[1]) : 0
-    let height = heightMatch ? parseFloat(heightMatch[1]) : 0
+    let width = widthMatch && widthMatch[1] ? parseFloat(widthMatch[1]) : 0
+    let height = heightMatch && heightMatch[1] ? parseFloat(heightMatch[1]) : 0
 
     if (!width || !height) {
-      if (viewBoxMatch) {
+      if (viewBoxMatch && viewBoxMatch[1]) {
         const parts = viewBoxMatch[1].trim().split(/\s+/).map(Number)
-        if (parts.length === 4 && !isNaN(parts[2]) && !isNaN(parts[3])) {
+        if (parts.length === 4 && typeof parts[2] === 'number' && typeof parts[3] === 'number' && !isNaN(parts[2]) && !isNaN(parts[3])) {
           width = parts[2]
           height = parts[3]
         }
