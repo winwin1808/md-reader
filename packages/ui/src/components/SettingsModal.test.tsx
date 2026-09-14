@@ -129,4 +129,142 @@ describe('SettingsModal', () => {
     expect(modalContainer.style.padding).toBe('24px 28px');
     expect(modalContainer.style.minWidth).toBe('340px');
   });
+
+  it('supports 5-tab navigation and displays respective sections', () => {
+    render(<SettingsModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+
+    // 5 tabs should be visible
+    const displayTab = screen.getByRole('tab', { name: /giao diện/i });
+    const coreTab = screen.getByRole('tab', { name: /core rendering/i });
+    const mediaTab = screen.getByRole('tab', { name: /nội dung & sơ đồ/i });
+    const readingTab = screen.getByRole('tab', { name: /hỗ trợ đọc/i });
+    const presentationTab = screen.getByRole('tab', { name: /trình chiếu/i });
+
+    expect(displayTab).toBeInTheDocument();
+    expect(coreTab).toBeInTheDocument();
+    expect(mediaTab).toBeInTheDocument();
+    expect(readingTab).toBeInTheDocument();
+    expect(presentationTab).toBeInTheDocument();
+
+    // Default tab is display
+    expect(screen.getByText('Chế độ hiển thị')).toBeInTheDocument();
+
+    // Switch to Core tab
+    fireEvent.click(coreTab);
+    expect(screen.getByText('Front Matter')).toBeInTheDocument();
+    expect(screen.getByText('Strip YAML front matter (---) blocks instead of rendering them as text')).toBeInTheDocument();
+    expect(screen.getByText('Display Metadata')).toBeInTheDocument();
+    expect(screen.getByText('Advanced Tables')).toBeInTheDocument();
+    expect(screen.getByText('Task Lists')).toBeInTheDocument();
+
+    // Switch to Media tab
+    fireEvent.click(mediaTab);
+    expect(screen.getByText('Math Equations')).toBeInTheDocument();
+    expect(screen.getByText('Render LaTeX math equations ($...$ inline, $$...$$ display)')).toBeInTheDocument();
+    expect(screen.getByText('Mermaid Diagrams')).toBeInTheDocument();
+    expect(screen.getByText('PlantUML Diagrams')).toBeInTheDocument();
+    expect(screen.getByText('Graphviz Diagrams')).toBeInTheDocument();
+    expect(screen.getByText('GitHub Alerts')).toBeInTheDocument();
+    expect(screen.getByText('Localize Alert Titles')).toBeInTheDocument();
+
+    // Switch to Reading tab
+    fireEvent.click(readingTab);
+    expect(screen.getByText('Typographer')).toBeInTheDocument();
+    expect(screen.getByText('External Link Indicators')).toBeInTheDocument();
+    expect(screen.getByText('Show word count')).toBeInTheDocument();
+    expect(screen.getByText('Auto-hide word count')).toBeInTheDocument();
+    expect(screen.getByText('Show reading progress')).toBeInTheDocument();
+    expect(screen.getByText('Celebration animation')).toBeInTheDocument();
+
+    // Switch to Presentation tab
+    fireEvent.click(presentationTab);
+    expect(screen.getByText('Background Color')).toBeInTheDocument();
+    expect(screen.getByText('Text Color')).toBeInTheDocument();
+    expect(screen.getByText('Heading Color')).toBeInTheDocument();
+    expect(screen.getByText('Accent Color')).toBeInTheDocument();
+    expect(screen.getByText('Slide Font')).toBeInTheDocument();
+    expect(screen.getByText('Background Image URL')).toBeInTheDocument();
+    expect(screen.getByText('Image Opacity')).toBeInTheDocument();
+  });
+
+  it('triggers onSettingChange when toggling switches or typing in fields', () => {
+    const onSettingChange = vi.fn();
+    render(
+      <SettingsModal
+        {...defaultProps}
+        settings={{
+          stripFrontmatter: false,
+          advancedTables: false,
+          enableMermaid: false,
+          slideFont: 'Georgia',
+        }}
+        onSettingChange={onSettingChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+
+    // Core tab toggle
+    fireEvent.click(screen.getByRole('tab', { name: /core rendering/i }));
+    const advTablesCheckbox = screen.getByLabelText(/advanced tables/i);
+    expect(advTablesCheckbox).not.toBeChecked();
+    fireEvent.click(advTablesCheckbox);
+    expect(onSettingChange).toHaveBeenCalledWith('advancedTables', true);
+
+    // Media tab toggle
+    fireEvent.click(screen.getByRole('tab', { name: /nội dung & sơ đồ/i }));
+    const mermaidCheckbox = screen.getByLabelText(/mermaid diagrams/i);
+    expect(mermaidCheckbox).not.toBeChecked();
+    fireEvent.click(mermaidCheckbox);
+    expect(onSettingChange).toHaveBeenCalledWith('enableMermaid', true);
+
+    // Presentation tab input
+    fireEvent.click(screen.getByRole('tab', { name: /trình chiếu/i }));
+    const fontInput = screen.getByLabelText(/slide font/i);
+    expect(fontInput).toHaveValue('Georgia');
+    fireEvent.change(fontInput, { target: { value: 'Inter' } });
+    expect(onSettingChange).toHaveBeenCalledWith('slideFont', 'Inter');
+  });
+
+  it('calls both legacy handlers and onSettingChange when changing display settings', () => {
+    const onSettingChange = vi.fn();
+    const onModeChange = vi.fn();
+    const onFontFamilyChange = vi.fn();
+    const onAutoFormatChange = vi.fn();
+
+    render(
+      <SettingsModal
+        mode="light"
+        fontFamily="sans"
+        autoFormatMd={false}
+        onModeChange={onModeChange}
+        onFontFamilyChange={onFontFamilyChange}
+        onAutoFormatChange={onAutoFormatChange}
+        onSettingChange={onSettingChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+
+    // Mode
+    fireEvent.click(screen.getByRole('button', { name: 'Tối' }));
+    expect(onModeChange).toHaveBeenCalledTimes(1);
+    expect(onModeChange).toHaveBeenCalledWith('dark');
+    expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
+
+    // Font
+    fireEvent.click(screen.getByRole('button', { name: 'Serif' }));
+    expect(onFontFamilyChange).toHaveBeenCalledTimes(1);
+    expect(onFontFamilyChange).toHaveBeenCalledWith('serif');
+    expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
+
+    // Auto format
+    const checkbox = screen.getByLabelText(/auto-format/i);
+    fireEvent.click(checkbox);
+    expect(onAutoFormatChange).toHaveBeenCalledTimes(1);
+    expect(onAutoFormatChange).toHaveBeenCalledWith(true);
+    expect(onSettingChange).toHaveBeenCalledWith('autoFormatMd', true);
+  });
 });
