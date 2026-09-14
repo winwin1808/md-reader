@@ -1,61 +1,70 @@
 # Session Handover — md-reader
 
-Cập nhật lần cuối: 2026-09-10
+Cập nhật: 2026-09-11 (phiên 6). Branch đang đứng: `phase-2`.
 
-## Trạng thái hiện tại
+## Đang ở đâu
 
-Repo mới dựng khung. Chưa có phase nào chạy, chưa có dòng code sản phẩm nào.
+**Phase 2 (Export & Trải nghiệm Đọc A4 UX/UI Chuyên nghiệp) đã hoàn tất toàn bộ!** 15/15 phase con merged vào `phase-2`.
+Branch `phase-2` đã sẵn sàng để review và merge vào `main`.
 
-Đã có:
+| # | Phase con | Trạng thái |
+|---|---|---|
+| 2a | Typography & 5 Color Themes | ✅ done |
+| 2a-opt | UI Layout & Settings Modal | ✅ done |
+| 2a-ux | UX/UI Polish & Readability Audit | ✅ done |
+| 2b | Standalone HTML Export (ảnh data URL) | ✅ done |
+| 2c | mdast → Microsoft Word (.docx) | ✅ done |
+| 2d | SVG → PNG Canvas Rasterizer | ✅ done |
+| 2e | Print CSS & PDF (`window.print()`) | ✅ done |
+| 2f | ExportModal UI & App Handlers | ✅ done |
+| 2g | E2E Integration Smoke Test (Export & Themes) | ✅ done |
+| 2h | Layout A4 & Progress Bar | ✅ done |
+| 2i | Top Toolbar & Reading Mode (Font Scale [A-] [A+]) | ✅ done |
+| 2j | In-document Search (Cmd+F & Match Highlight) | ✅ done |
+| 2k | Elements: Code copy & Tables/Tasklist | ✅ done |
+| 2l | ToC Navigation (Collapsible H1-H3) & Font Family | ✅ done |
+| 2m | E2E UX & Reading Smoke Test | ✅ done |
 
-- **`docs/DESIGN.md`** (493 dòng) — design end-to-end, approved. Nguồn chân lý
-  về kiến trúc. §4 chia 38 phase con, §7 mô hình agent + ngân sách context,
-  §8 mô hình git/MR.
-- `CLAUDE.md` — 8 ràng buộc khoá cứng + luật agent + luật git, tóm tắt từ DESIGN.md.
-- `.claude/skills/` — 6 skill, pipeline dạng **vòng lặp** phase/phase con.
-- `.claude/agents/` — `builder` · `spiker` · `reviewer` · `guard`.
-- `docs/superpowers/{intent,specs,plans}/` — rỗng.
-- `pnpm-workspace.yaml`, `package.json` (pnpm 10.10.0), `.gitignore`.
+Specs tương ứng:
+- `docs/superpowers/specs/2026-09-11-phase-2-design.md` (Export & Themes)
+- `docs/superpowers/specs/2026-09-11-phase-2-ux-revamp-design.md` (UX/UI Revamp A4)
 
-Chưa có: `packages/`, `apps/`, `node_modules`, `tsconfig.base.json`.
-Phase con 1b tạo chúng.
+## Kỹ năng & Công cụ bổ sung
+- **`brainstorm-intent`**: Đã tích hợp skill brainstorm intent vào `.claude/skills/brainstorm-intent/SKILL.md` (giai đoạn tiền đề Stage 0 cho pipeline intent/spec/plan) và đã cập nhật vào `CLAUDE.md`.
 
-## Test counts
+## Chạy tiếp thế nào
 
-Chưa có test nào.
+Phase 2 đã hoàn tất toàn bộ và sẵn sàng mở MR vào `main`:
+- Mở MR hoặc merge `phase-2` vào `main`:
+  ```bash
+  git checkout main
+  git merge --no-ff phase-2 -m "Phase 2 — Export & Professional A4 Reading UX/UI"
+  ```
+- Bắt đầu session kế tiếp cho **Phase 3 (Trình chiếu / Presentation)** bằng cách chạy:
+  ```
+  /capture-intent
+  ```
+  Và yêu cầu: Bắt đầu **Phase 3 (Trình chiếu / Slides)**.
 
-## Việc tiếp theo
+## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-git checkout -b phase-1
-claude
-/capture-intent      → chọn phase 1
+pnpm --filter core test        8 test files, 82 passed
+pnpm --filter ui test          15 test files, 93 passed
+pnpm --filter extension test   8 test files, 22 passed
+Tổng cộng                      31 test files, 197 passed
+pnpm -r typecheck              exit 0
+pnpm -r build                  exit 0
+dist/content.js                25.77 kB, gz 10.14 kB (giới hạn 61.44 kB / 60KB)
 ```
 
-Pipeline tự chạy: design cả phase 1 → rồi lặp plan→build→review qua 9 phase
-con 1a…1i → hết thì mở MR `phase-1` → `main`.
+Toolchain đã pin: `typescript@7.0.2` · `vitest@5.0.0` · `pnpm@10.10.0` ·
+`vite@8.2.2` · `react@19.3.0` (một bản duy nhất) · `yjs@13.6.32` · `docx@9.5.3`.
 
-**Phase con 1a là spike CSP/mermaid, chạy TRƯỚC cả scaffold.** Nó dùng harness
-vứt đi ở `spike/csp-mermaid/` (~30 dòng, không build, không test), thử mermaid
-trên ≥5 trang có CSP khác nhau, ghi bảng kết quả thẳng vào DESIGN.md §5.1, rồi
-bị xoá ở 1b. Lý do đặt trước: câu trả lời định hình content script, đợi tới lúc
-có extension thật thì đã viết theo hướng có thể sai.
-
-## Điểm dễ làm sai nhất
-
-1. **Y.Doc schema phải đúng ngay phase con 1d** (DESIGN §2.1) kể cả khi phase 1
-   chưa có editor và Yjs lúc này thuần overhead. Gồm `originHash` và
-   `formatVersion` — cả hai chỉ *dùng* ở phase 5 nhưng phải *tồn tại* từ 1d.
-2. **Coordinator đọc file source là hỏng ngân sách context.** `build-from-plan`
-   và `review-before-ship` không được `Read` gì dưới `packages/` hay `apps/`.
-3. **Envelope gửi builder phải copy nguyên văn từ plan**, đặc biệt khối
-   `INVARIANTS` — builder bị cấm đọc DESIGN.md nên đó là toàn bộ ràng buộc nó
-   có. `INVARIANTS` chung chung dán vào mọi task là plan viết sai.
-
-## Điểm cần nhớ
-
-- `review-before-ship` là chỗ dừng duy nhất, và chỉ dừng khi có blocker thật.
-- Blocker cứng, không phải góp ý: vi phạm ranh giới package · content script
-  vượt 60KB gz hoặc dính yjs/mermaid/excalidraw · đổi Y.Doc schema mà thiếu
-  migration + fixture test.
-- MR cuối phase **không tự merge**.
+## Nợ và Phát hiện trong quá trình Phase 2
+- **Tối ưu UX/UI typography (2a-ux)**: Audit độc lập đã nâng chuẩn readability lên mức cao: cỡ chữ chuẩn 17px, line-height 1.7, độ rộng cột đọc chuẩn measure 740px, ToC dạng thanh chỉ mục hiện đại không bullet points, và khoảng đệm đáy trang 180px tránh cấn mép màn hình.
+- **Tương thích kích thước SVG (2d)**: Các sơ đồ Mermaid sinh thẻ `<svg width="100%" viewBox="0 0 W H">`. Bộ rasterizer đã xử lý fallback ưu tiên viewBox intrinsic dimensions khi gặp thuộc tính phần trăm.
+- **Chrome Blob download revocation (2f)**: Gọi `URL.revokeObjectURL` ngay lập tức khiến Chromium thi thoảng hủy download giữa chừng. Toàn bộ hàm export đã dùng `setTimeout(() => URL.revokeObjectURL(url), 1000)` để đảm bảo download ổn định tuyệt đối.
+- **Proportional Font Scaling (2i)**: Cỡ chữ phóng to thu nhỏ ([A-], [100%], [A+]) áp dụng tỉ lệ `--md-font-scale-ratio` (0.85, 1.0, 1.15, 1.3) cho cả body text lẫn hệ thống tiêu đề H1-H6 đồng bộ.
+- **In-document Search DOM safety (2j)**: Duyệt text nodes bằng `TreeWalker` thuần và highlight bằng thẻ `<mark>` tách rời; khi đóng tìm kiếm unwrap trả lại text node nguyên bản và gọi `normalize()`, tuyệt đối không mutate Y.Text CRDT hay gây re-parse document.
+- **Async Clipboard write (2k)**: Nút copy trên code block header đợi `navigator.clipboard.writeText` resolve thành công trước khi hiển thị `Copied ✓` để tránh phản hồi giả lập khi permission bị từ chối.

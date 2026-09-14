@@ -1,0 +1,99 @@
+/* Code block header styling */
+.code-block-header {
+  position: sticky;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--md-border);
+  font-size: 12px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  user-select: none;
+  margin: -16px -16px 12px -16px;
+}
+
+[data-theme="dark"] .code-block-header {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.code-lang-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  text-transform: lowercase;
+  color: var(--md-fg-muted, #656d76);
+  font-weight: 500;
+}
+
+.code-copy-btn {
+  background: transparent;
+  border: 1px solid var(--md-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--md-fg);
+  transition: all 0.15s ease;
+}
+
+.code-copy-btn:hover {
+  background: var(--md-bg);
+  border-color: var(--md-fg-muted);
+}
+
+.code-copy-btn.copied {
+  color: #16a34a;
+  border-color: #16a34a;
+  font-weight: 600;
+}
+
+/* Table enhancement */
+.md-viewer table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 24px 0;
+  border-radius: 8px;
+  border: 1px solid var(--md-border);
+}
+
+.md-viewer th {
+  background-color: var(--md-accent, #0969da);
+  color: #ffffff !important;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--md-border);
+}
+
+.md-viewer tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .md-viewer tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.md-viewer tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .md-viewer tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tasklist styling */
+.md-viewer input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--md-accent);
+  cursor: pointer;
+}
+
+.md-viewer li.task-list-item {
+  list-style-type: none;
+  margin-left: -1.25em;
+}

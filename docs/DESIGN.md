@@ -231,30 +231,53 @@ Không đạt thì chia tiếp. Đây không phải hướng dẫn, đây là đ
 Ship: *click link `.md` → đọc đẹp ngay; kéo file vào app page → đọc được và
 lần sau mở lại vẫn còn.*
 
+Bảng dưới đã được `design-from-intent` chia lại (2026-09-10): sáu phase con
+gốc — 1b, 1c, 1d, 1f, 1g, 1h — vượt rõ điều kiện sizing ở trên (1b một mình
+đã ~19 file), nên chúng được tách thành các đơn vị ≤5 file. Chi tiết interface
+từng phase con ở `docs/superpowers/specs/2026-09-10-phase-1-design.md`.
+
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
 | 1a | Spike CSP/mermaid | Có câu trả lời thật, ghi vào §5.1. Harness vứt đi, không commit code sản phẩm |
-| 1b | Scaffold monorepo | `pnpm -r test` xanh với 1 test smoke mỗi package; tsconfig base, vitest, 3 package rỗng |
-| 1c | `core/parse` + `core/render` | mdast + GFM + frontmatter + sanitize → HTML string, có snapshot test |
-| 1d | `core/doc` | Y.Doc schema đầy đủ, import/export text, `originHash`, `formatVersion`, history append, **test hội tụ 2 replica** |
-| 1e | `core/format` | Auto-format round-trip ổn định (format 2 lần ra cùng kết quả) |
-| 1f | `ui` cơ bản | `ThemeProvider` + token light/dark/system, `Viewer`, `Toc`, code highlight |
-| 1g | Extension shell | Manifest MV3, service worker, app page kéo-thả mở file, `y-indexeddb`, danh sách gần đây |
-| 1h | Content script | Match `.md`, Shadow DOM, render read-only, nút "Mở trong MD Reader", **đo bundle gz** |
-| 1i | Mermaid | Lazy ở app page + đường degrade theo kết quả 1a |
+| 1b1 | Root workspace & tooling | `pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`, `vitest.workspace.ts`; `pnpm -r test` chạy được |
+| 1b2 | `packages/core` skeleton | `@md-reader/core` + 1 test smoke (node), khai sẵn toàn bộ dep của core |
+| 1b3 | `packages/ui` skeleton | `@md-reader/ui` + vitest jsdom + 1 test smoke import qua tên workspace |
+| 1b4 | `apps/extension` skeleton | `@md-reader/extension` + `vite.config.ts` đa entry (app/worker/content) + 1 test smoke |
+| 1c1 | `core/parse` | remark + GFM + frontmatter tách khỏi cây + `sanitizeSchema`, có snapshot test |
+| 1c2 | `core/render` + ToC | mdast → hast → HTML string đã sanitize, highlight tập ngôn ngữ hạn chế, `extractToc` |
+| 1d1 | `core/doc` schema | Ba key Y.Doc, `formatVersion`, import/export text, `originHash`, hook `migrateDoc` |
+| 1d2 | `core/doc` history | `appendHistory` append-only, `sourceClientIds`, **test hội tụ 2 replica** |
+| 1e | `core/format` | Auto-format round-trip ổn định (format 2 lần ra cùng kết quả), không mất nội dung |
+| 1f1 | `ui` theme | `ThemeProvider` controlled + token CSS light/dark/system |
+| 1f2 | `ui` Viewer + Toc | `Viewer` (HTML đã sanitize), `Toc` cây lồng, CSS highlight ăn token |
+| 1g1 | Extension shell | Manifest MV3 quyền tối thiểu, service worker, routing thuần test được |
+| 1g2 | App page shell | React root + Y.Doc + `y-indexeddb` + theme bridge `chrome.storage.sync`, debounce 120ms |
+| 1g3 | Kéo-thả & recent | `DropZone`, registry IndexedDB, `RecentList`, mở file không ghi đè doc đã lưu |
+| 1h1 | Content script | Match `.md`, Shadow DOM, render read-only, nút "Mở trong MD Reader", degrade khi CSS bị chặn |
+| 1h2 | Cổng ngân sách | Đo gz thật của `content.js` trong build, **vượt 60KB thì fail build** |
+| 1i | Mermaid | Lazy `import('mermaid')` ở app page + đường degrade; content script chỉ placeholder |
 
-### Phase 2 — Export
+### Phase 2 — Export & Themes
 
-Ship: *một tài liệu bất kỳ ra được HTML, PDF, Word.*
+Ship: *giao diện typography đẹp (5 themes), một tài liệu bất kỳ ra được HTML, PDF, Word.*
 
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 2a | HTML self-contained | Inline CSS, SVG đã render, ảnh base64; mở offline vẫn đúng |
-| 2b | mdast → docx | Heading, đoạn, list, table, code, link, ảnh |
-| 2c | SVG → PNG | Raster hoá chart để nhúng docx |
-| 2d | Print CSS + PDF | `@page`, ngắt trang, `window.print()` |
-| 2e | `ExportDialog` | Nối 4 đường trên vào UI |
-| 2f | E2E khói | Playwright: mở file → xuất đủ 3 định dạng |
+| 2a | Typography & Themes | Bổ sung typography cho Viewer, UI chọn 5 theme màu, lưu trạng thái theme. |
+| 2a-opt | UI Layout & Settings | Layout 2 cột (Viewer + ToC), gom Settings vào modal, tuỳ chọn auto-format |
+| 2a-ux | Typography, Spacing & ToC Polish | Cỡ chữ 17px, line-height 1.7, 180px bottom padding, ToC rail, backdrop blur |
+| 2b | HTML self-contained | Inline CSS, SVG đã render, ảnh base64; mở offline vẫn đúng |
+| 2c | mdast → docx | Heading, đoạn, list, table, code, link, ảnh |
+| 2d | SVG → PNG | Raster hoá chart để nhúng docx |
+| 2e | Print CSS + PDF | `@page`, ngắt trang, `window.print()` |
+| 2f | `ExportDialog` | Nối đường trên vào UI có nút Export |
+| 2g | E2E khói | Playwright/Vitest: mở file → xuất đủ 3 định dạng |
+| 2h | Layout A4 & Progress | Workspace vs Document A4 page (shadow, padding, subtle border), thanh reading progress |
+| 2i | Top Toolbar & Reading Mode | Sticky toolbar, font-size scaler (A- / A+), Reading mode tối giản, Fullscreen |
+| 2j | In-document Search | Tìm kiếm trong tài liệu (Cmd+F / toolbar), highlight từ khoá, counter N/M, Next/Prev |
+| 2k | Elements: Code copy & Tables | Code block language badge + copy button; table header ăn màu theme; zebra striping; task list |
+| 2l | ToC Navigation & Font Family | ToC collapse/expand H1-H3, scroll-spy indicator; tuỳ chọn font family (Sans/Serif/Mono) |
+| 2m | E2E UX & Reading Smoke | Test tích hợp toàn bộ tính năng đọc: toolbar, font scale, search, copy code, reading mode |
 
 ### Phase 3 — Trình chiếu
 
@@ -335,6 +358,41 @@ phase con 1b. Nó tồn tại vì câu hỏi phải được trả lời *trư�
 ghi thẳng vào chính mục này, cộng một câu kết luận chọn (a) hay (b). Không
 stage nào được giả định mermaid chạy trong content script trước khi bảng đó có
 số liệu thật.
+
+**Kết quả spike 1a (1a.1 + 1a.2), đo tự động bằng Puppeteer + Chromium thật,
+load unpacked extension, đọc `data-spike-result` từ `documentElement`. mermaid
+là bản thật (vendor từ npm, không stub). 6/6 URL đo được, 0 dòng "không xác
+định".**
+
+| Trang | CSP quan sát được | Shadow DOM + style inline render đúng? | mermaid render đúng? | Ghi chú |
+|---|---|---|---|---|
+| /none | (không có header) | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-self | default-src 'self'; style-src 'self' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /locked | default-src 'none'; script-src 'self'; style-src 'self'; font-src 'none'; img-src 'none' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-nonce | style-src 'nonce-spike123' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| /style-inline | default-src 'self'; style-src 'self' 'unsafe-inline' | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; 0 securitypolicyviolation; *fo=0px ở mọi policy kể cả /none → không phải do CSP (không có violation), là chi tiết render của flowchart đơn giản này |
+| file:///…/fixture.html | (không có — file://) | CÓ (42px) | CÓ (svg 85x174, fo 0px*) | mermaid thật; file:// không có CSP header (khác biệt cố ý so với 4 route http); extension chạy với --allow-file-access-from-files; 0 securitypolicyviolation |
+
+**Giới hạn của bằng chứng này, đọc trước khi bám vào nó.** Probe chạy trên
+**Chromium unbranded** (tải qua `@puppeteer/browsers`), không phải "Google
+Chrome" branded: binary branded từ chối `--load-extension` /
+`--disable-extensions-except` ("is not allowed in Google Chrome, ignoring"),
+nên không tự động hoá được. Chromium và Chrome dùng cùng engine và cùng cách
+thực thi CSP, nhưng đây vẫn là suy rộng chứ không phải đo trực tiếp trên bản
+người dùng chạy. Phase con 1h1 phải xác nhận lại **một lần bằng tay** trên
+Chrome branded trước khi coi nhánh (a) là chốt cho sản phẩm.
+
+`adoptedStyleSheets` cũng render đúng ở cả 6 trang (24px, không có trong bảng
+trên vì spec chỉ yêu cầu 5 cột). Không trang nào phát sinh
+`securitypolicyviolation`, kể cả `/locked` với `default-src 'none'`.
+
+**Kết luận: chọn nhánh (a) — render mermaid trong Shadow DOM với style inline
+hoá.** Style inline trong Shadow DOM, `adoptedStyleSheets`, và SVG do mermaid
+sinh ra đều không bị CSP của trang chủ chặn ở bất kỳ chính sách nào đã thử,
+kể cả chính sách khoá chặt nhất (`default-src 'none'`). Nhánh (b) (degrade
+sang placeholder) không cần kích hoạt cho các trang đã thử; vẫn giữ làm lưới
+an toàn theo INVARIANTS vì spike chỉ phủ 5 chính sách CSP đại diện, không phải
+mọi CSP có thể gặp trong thực tế.
 
 ### 5.2 File `.md` bị server trả về dạng download
 
@@ -463,14 +521,18 @@ nên đẩy đi. Chúng chạy trong main loop. Chỉ `build` và `review` mới
 
 ```
 main
- └── phase-1                    ← branch tích hợp của cả phase
-      ├── phase-1/1a-spike-csp  ← branch nhỏ, một phase con
-      ├── phase-1/1b-scaffold
-      └── …                     mỗi cái merge --no-ff vào phase-1 khi review xanh
+ └── phase-1                     ← branch tích hợp của cả phase
+      ├── phase-1-1a-spike-csp   ← branch nhỏ, một phase con
+      ├── phase-1-1b1-workspace
+      └── …                      mỗi cái merge --no-ff vào phase-1 khi review xanh
 ```
 
+Tên phase con dùng **gạch ngang**, không gạch chéo: git không cho tồn tại
+đồng thời ref `phase-1` và `phase-1/<gì đó>` — một ref không thể vừa là file
+vừa là thư mục. Bản nháp đầu ghi `phase-N/<id>` và không tạo được branch nào.
+
 - `capture-intent` tạo `phase-N` từ `main`.
-- `plan-from-design` tạo `phase-N/<id>-<slug>` từ `phase-N`.
+- `plan-from-design` tạo `phase-N-<id>-<slug>` từ `phase-N`.
 - `review-before-ship` so diff với **điểm rẽ nhánh của phase con**, không phải
   với `main` — đây là lý do mỗi phase con có branch riêng.
 - Review xanh → merge `--no-ff` vào `phase-N`, rồi vòng lại
