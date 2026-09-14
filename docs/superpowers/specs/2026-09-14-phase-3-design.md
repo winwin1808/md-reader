@@ -8,7 +8,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-3-trinh-chieu.md
 |---|---|---|
 | 3a | `core/slides` | done |
 | 3b | `Deck` UI | done |
-| 3c | `SpeakerView` UI | planned |
+| 3c | `SpeakerView` UI | done |
 | 3d | App Integration & Speaker Sync | pending |
 | 3e | Deck → PDF Export | pending |
 
