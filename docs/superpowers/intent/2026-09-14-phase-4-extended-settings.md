@@ -1,5 +1,5 @@
 # Intent: Phase 4 — Cài đặt Mở rộng, Reading Aids & Rich Rendering Suite
-Author: Antigravity. Status: designed. Phase: 4
+Author: Antigravity. Status: shipped. Phase: 4
 Design: docs/superpowers/specs/2026-09-14-phase-4-design.md
 
 ## Problem
