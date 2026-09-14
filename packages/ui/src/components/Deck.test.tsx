@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
@@ -286,6 +288,39 @@ describe('Deck component', () => {
       expect(overlay).not.toBeNull()
       expect(overlay.style.getPropertyValue('--slide-custom-heading')).toBe('#ff0000')
       expect(overlay.style.getPropertyValue('--slide-custom-accent')).toBe('#00ff00')
+    })
+
+    it('ensures slide content inside .deck-slide .md-viewer inherits custom styling and has transparent background', () => {
+      const { container } = render(
+        <Deck
+          slides={[{ id: 's1', index: 0, html: '<p>Custom slide text</p><span>Span text</span>', rawMarkdown: 'Custom slide text', notes: [] }]}
+          presentationSettings={{
+            slideBgColor: '#222222',
+            slideTextColor: '#f0f0f0',
+            slideFont: 'Inter, sans-serif',
+          }}
+        />
+      )
+
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      const slide = container.querySelector('.deck-slide') as HTMLElement
+      const mdViewer = slide.querySelector('.md-viewer') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(slide).not.toBeNull()
+      expect(mdViewer).not.toBeNull()
+      expect(slide.contains(mdViewer)).toBe(true)
+      expect(overlay.style.backgroundColor).toBe('rgb(34, 34, 34)')
+      expect(overlay.style.color).toBe('rgb(240, 240, 240)')
+      expect(overlay.style.fontFamily).toBe('Inter, sans-serif')
+
+      // Verify deck.css cascade rules for .deck-slide .md-viewer
+      const cssPath = path.resolve(__dirname, '../theme/deck.css')
+      const css = fs.readFileSync(cssPath, 'utf-8')
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*background-color:\s*transparent\s*!important;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*color:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*font-family:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s+p,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+li,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+span\s*\{[^}]*color:\s*inherit;/)
+      expect(css).toMatch(/\.deck-slide-content\s*\{[^}]*color:\s*inherit;/)
     })
   })
 })

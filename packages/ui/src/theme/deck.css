@@ -27,6 +27,16 @@
 
 .deck-slide .md-viewer {
   width: 100%;
+  background-color: transparent !important;
+  color: inherit;
+  font-family: inherit;
+}
+
+.deck-slide .md-viewer p,
+.deck-slide .md-viewer li,
+.deck-slide .md-viewer span {
+  color: inherit;
+  font-family: inherit;
 }
 
 .deck-controls {
@@ -87,6 +97,8 @@
 .deck-slide-content {
   position: relative;
   z-index: 1;
+  color: inherit;
+  font-family: inherit;
 }
 
 .deck-slide-content h1,
