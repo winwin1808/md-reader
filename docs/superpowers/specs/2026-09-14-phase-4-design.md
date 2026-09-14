@@ -1,16 +1,16 @@
 # Design: Phase 4 — Cài đặt Mở rộng, Reading Aids & Rich Rendering Suite
-Author: Antigravity. Status: designed. Phase: 4
+Author: Antigravity. Status: shipped. Phase: 4
 Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ## Sub-phase queue
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 4a | `core/rendering-options` | pending |
-| 4b | Reading Aids UI (`WordCountBar`, `CelebrationConfetti`) | pending |
-| 4c | Presentation Customization in `Deck` | pending |
-| 4d | SettingsModal Revamp (Tabbed Layout & Sections) | pending |
-| 4e | Extension Integration & E2E Verification | pending |
+| 4a | `core/rendering-options` | ✅ done |
+| 4b | Reading Aids UI (`WordCountBar`, `CelebrationConfetti`) | ✅ done |
+| 4c | Presentation Customization in `Deck` | ✅ done |
+| 4d | SettingsModal Revamp (Tabbed Layout & Sections) | ✅ done |
+| 4e | Extension Integration & E2E Verification | ✅ done |
 
 ## Approach chosen
 
@@ -111,7 +111,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ---
 
-## 4e — Extension Integration & E2E Verification
+## 4e — Extension Integration & E2E Verification (done)
 
 **Builds:**
 - Cập nhật `apps/extension/src/app/App.tsx`:
