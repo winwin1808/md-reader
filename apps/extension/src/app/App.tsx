@@ -18,9 +18,11 @@ import {
   SpeakerView,
   WordCountBar,
   CelebrationConfetti,
+  MindmapModal,
 } from "@md-reader/ui"
 import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings } from '@md-reader/ui'
-import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx, splitIntoSlides } from '@md-reader/core'
+import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx, splitIntoSlides, extractMindmap } from '@md-reader/core'
+import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { addRecentFile } from './registry'
@@ -57,6 +59,7 @@ export function App(): React.JSX.Element {
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState<boolean>(false)
+  const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
   const [docTitle, setDocTitle] = useState<string>('')
@@ -137,6 +140,17 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isSearchOpen])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault()
+        setIsMindmapOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
     let persistence: IndexeddbPersistence | null = null
@@ -294,8 +308,16 @@ export function App(): React.JSX.Element {
     handleSettingChange('colorTheme', color)
   }
 
-  const { html, toc, parseResult } = useMemo(() => {
-    if (!content) return { html: '', toc: [], parseResult: { ast: { type: 'root', children: [] } as any } }
+  const { html, toc, parseResult, parsedDoc } = useMemo(() => {
+    if (!content) {
+      const emptyTree = { type: 'root', children: [] } as any
+      return {
+        html: '',
+        toc: [],
+        parseResult: { ast: emptyTree },
+        parsedDoc: { tree: emptyTree },
+      }
+    }
     const parsed = parseMarkdown(content)
     const rendered = renderToHtml(parsed, {
       stripFrontmatter: readerSettings?.stripFrontmatter,
@@ -309,8 +331,23 @@ export function App(): React.JSX.Element {
       html: rendered.html,
       toc: rendered.toc,
       parseResult: { ast: parsed.tree, ...parsed },
+      parsedDoc: parsed,
     }
   }, [content, readerSettings])
+
+  const mindmapRoot = useMemo(() => {
+    return extractMindmap(parsedDoc.tree, docTitle || 'Tài liệu không tên')
+  }, [parsedDoc.tree, docTitle])
+
+  const handleMindNodeClick = (node: MindNode) => {
+    if (node.headingId) {
+      const headingEl = document.getElementById(node.headingId)
+      if (headingEl) {
+        headingEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+    setIsMindmapOpen(false)
+  }
 
   const handleExport = async (format: ExportFormat) => {
     setIsExporting(true)
@@ -415,6 +452,13 @@ export function App(): React.JSX.Element {
         />
       )}
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
+      <MindmapModal
+        root={mindmapRoot}
+        isOpen={isMindmapOpen}
+        onClose={() => setIsMindmapOpen(false)}
+        onNodeClick={handleMindNodeClick}
+        title={docTitle}
+      />
       <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
@@ -439,6 +483,7 @@ export function App(): React.JSX.Element {
           onToggleReadingMode={() => setIsReadingMode(!isReadingMode)}
           onOpenSearch={() => setIsSearchOpen(true)}
           onPresent={() => setIsPresenting(true)}
+          onOpenMindmap={() => setIsMindmapOpen(true)}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
