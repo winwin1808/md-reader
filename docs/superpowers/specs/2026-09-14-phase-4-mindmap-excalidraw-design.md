@@ -6,8 +6,8 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-mindmap-excalidraw.md
 - [x] 4a — `core/mindmap` AST extractor (Heading & list → `MindNode` tree) — done
 - [x] 4b — `MindmapModal` UI (D3-hierarchy / SVG tree, Markmap curve styling, zoom & pan) — done
 - [x] 4c — Tương tác 2 chiều (Gập/mở nhánh, click node nhảy tới heading, TopToolbar button & `Cmd+M`) — done
-- [ ] 4d — Excalidraw inline rendering (`ExcalidrawBlock` vector sketch ở app page, placeholder ở content script) — planned
-- [ ] 4e — Xuất Mindmap (SVG/PNG) & E2E smoke tests
+- [x] 4d — Excalidraw inline rendering (`ExcalidrawBlock` vector sketch ở app page, placeholder ở content script) — done
+- [ ] 4e — Xuất Mindmap (SVG/PNG) & E2E smoke tests — planned
 
 ## Approach chosen
 - **Đã chọn**: Xây dựng kiến trúc module phân tầng:
