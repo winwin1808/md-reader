@@ -35,7 +35,8 @@ describe('Content script entry point', () => {
     delete (globalThis as any).chrome
   })
 
-  it('detects markdown in pre and mounts shadow dom', async () => {
+  it('detects markdown in pre and mounts shadow dom when alwaysOpenApp is false', async () => {
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
     document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
     
     await import('./index')
@@ -49,7 +50,8 @@ describe('Content script entry point', () => {
     expect(link!.getAttribute('href')).toBe('mock-url/app.css')
   })
 
-  it('restores body on render error', async () => {
+  it('restores body on render error when alwaysOpenApp is false', async () => {
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
     document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
     
     const { createRoot } = await import('react-dom/client')
@@ -102,5 +104,23 @@ describe('Content script entry point', () => {
     })
     expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
     expect(document.getElementById('md-reader-root')).toBeNull()
+  })
+
+  it('redirects to app.html by default when alwaysOpenApp is not set', async () => {
+    const replaceMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:', replace: replaceMock },
+      writable: true,
+      configurable: true,
+    })
+    document.body.innerHTML = '<pre># Default Markdown Content</pre>'
+    
+    const localSetMock = vi.fn().mockResolvedValue(undefined)
+    ;(chrome.storage as any).local = { set: localSetMock }
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({})
+
+    await import('./index')
+
+    expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
   })
 })

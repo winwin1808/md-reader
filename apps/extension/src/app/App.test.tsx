@@ -760,17 +760,17 @@ describe('App', () => {
 
     expect(capturedSettingsModalProps.settings).toEqual(
       expect.objectContaining({
-        alwaysOpenApp: false,
+        alwaysOpenApp: true,
       })
     )
 
     // Simulate changing alwaysOpenApp
     await act(async () => {
-      capturedSettingsModalProps.onSettingChange('alwaysOpenApp', true)
+      capturedSettingsModalProps.onSettingChange('alwaysOpenApp', false)
     })
 
     expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({
-      alwaysOpenApp: true,
+      alwaysOpenApp: false,
     })
     expect(removeMock).toHaveBeenCalledWith(cachedKey)
   })
