@@ -267,4 +267,42 @@ describe('SettingsModal', () => {
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
     expect(onSettingChange).toHaveBeenCalledWith('autoFormatMd', true);
   });
+
+  it('supports visual color picking, font presets, opacity slider, and image url clear in presentation tab', () => {
+    const onSettingChange = vi.fn();
+    render(
+      <SettingsModal
+        {...defaultProps}
+        settings={{
+          slideBgColor: '#000000',
+          slideImageOpacity: 80,
+          slideBgImage: 'https://example.com/bg.png',
+        }}
+        onSettingChange={onSettingChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /trình chiếu/i }));
+
+    // Color quick preset
+    const blueBtn = screen.getAllByTitle('#2563eb')[0]!;
+    fireEvent.click(blueBtn);
+    expect(onSettingChange).toHaveBeenCalledWith('slideBgColor', '#2563eb');
+
+    // Font preset button
+    const monoFontBtn = screen.getByRole('button', { name: 'Monospace' });
+    fireEvent.click(monoFontBtn);
+    expect(onSettingChange).toHaveBeenCalledWith('slideFont', expect.stringContaining('monospace'));
+
+    // Image opacity number change
+    const opacityInput = screen.getByLabelText(/image opacity/i);
+    fireEvent.change(opacityInput, { target: { value: '50' } });
+    expect(onSettingChange).toHaveBeenCalledWith('slideImageOpacity', 50);
+
+    // Image URL clear button
+    const clearImgBtn = screen.getByTitle('Xóa ảnh nền');
+    fireEvent.click(clearImgBtn);
+    expect(onSettingChange).toHaveBeenCalledWith('slideBgImage', undefined);
+  });
 });

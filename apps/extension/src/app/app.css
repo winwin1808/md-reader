@@ -1,4 +1,28 @@
 /* apps/extension/src/app/app.css */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
+  color: var(--md-fg, #24292f);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
+  color: var(--md-fg, #24292f);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 .app-layout {
   display: grid;
   grid-template-columns: minmax(0, 820px) 260px;
@@ -8,6 +32,7 @@
   margin: 0 auto;
   padding: 24px 24px 80px;
   align-items: start;
+  flex: 1;
 }
 
 .app-layout.single-column {
@@ -17,7 +42,7 @@
 .main-content {
   min-width: 0;
   width: 100%;
-  background-color: var(--md-workspace-bg, var(--md-bg));
+  background-color: transparent;
   scroll-behavior: smooth;
 }
 
