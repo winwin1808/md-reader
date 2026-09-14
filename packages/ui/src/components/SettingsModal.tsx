@@ -11,6 +11,7 @@ export interface ReaderSettings {
   colorTheme?: ColorTheme;
   fontFamily?: FontFamily;
   autoFormatMd?: boolean;
+  alwaysOpenApp?: boolean;
 
   // Core Rendering
   stripFrontmatter?: boolean;
@@ -53,10 +54,12 @@ export interface SettingsModalProps {
   fontFamily?: FontFamily;
   autoFormatMd?: boolean;
   autoFormat?: boolean;
+  alwaysOpenApp?: boolean;
   onModeChange?: (mode: 'light' | 'dark' | 'system') => void;
   onColorThemeChange?: (colorTheme: ColorTheme) => void;
   onAutoFormatChange?: (autoFormat: boolean) => void;
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
+  onAlwaysOpenAppChange?: (alwaysOpenApp: boolean) => void;
   themePicker?: React.ReactNode;
 }
 
@@ -467,6 +470,8 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     onFontFamilyChange,
     themePicker,
     autoFormat,
+    alwaysOpenApp,
+    onAlwaysOpenAppChange,
   } = props;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -481,6 +486,12 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
       : typeof autoFormatMd === 'boolean'
       ? autoFormatMd
       : Boolean(autoFormat);
+  const currentAlwaysOpenApp =
+    typeof settings?.alwaysOpenApp === 'boolean'
+      ? settings.alwaysOpenApp
+      : typeof alwaysOpenApp === 'boolean'
+      ? alwaysOpenApp
+      : false;
 
   const handleSettingChange = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     onSettingChange?.(key, value);
@@ -495,6 +506,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     }
     if (key === 'autoFormatMd' && onAutoFormatChange) {
       onAutoFormatChange(Boolean(value));
+    }
+    if (key === 'alwaysOpenApp' && onAlwaysOpenAppChange) {
+      onAlwaysOpenAppChange(Boolean(value));
     }
   };
 
@@ -701,16 +715,21 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     </div>
                   </div>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={currentAutoFormat}
-                      onChange={(e) => {
-                        handleSettingChange('autoFormatMd', e.target.checked);
-                      }}
-                    />
-                    Auto-format .md files
-                  </label>
+                  <ToggleRow
+                    id="settings-autoFormatMd"
+                    title="Auto-format .md files"
+                    description="Tự động nhận diện và áp dụng kiểu hiển thị cho các tệp tin Markdown"
+                    checked={currentAutoFormat}
+                    onChange={(val) => handleSettingChange('autoFormatMd', val)}
+                  />
+
+                  <ToggleRow
+                    id="settings-alwaysOpenApp"
+                    title="Always open app for .md files"
+                    description="Tự động chuyển hướng và mở file .md trong ứng dụng MD Reader thay vì văn bản thô"
+                    checked={currentAlwaysOpenApp}
+                    onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
+                  />
                 </div>
               )}
 

@@ -736,4 +736,42 @@ describe('App', () => {
 
     vi.useRealTimers()
   })
+
+  it('loads fileUrl directly from chrome.storage.local cache and updates alwaysOpenApp', async () => {
+    delete (window as any).location
+    ;(window as any).location = new URL('chrome-extension://mock-id/app.html?file=file%3A%2F%2F%2Ftest.md')
+
+    const cachedKey = 'file_content_file:///test.md'
+    const removeMock = vi.fn().mockResolvedValue(undefined)
+    ;(window as any).chrome.storage.local.get = vi.fn().mockResolvedValue({
+      [cachedKey]: '# Cached Content from Extension',
+    })
+    ;(window as any).chrome.storage.local.remove = removeMock
+
+    let capturedSettingsModalProps: any = null
+    vi.spyOn(ui, 'SettingsModal').mockImplementation((props: any) => {
+      capturedSettingsModalProps = props
+      return <div data-testid="settings-modal-mock" />
+    })
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    expect(capturedSettingsModalProps.settings).toEqual(
+      expect.objectContaining({
+        alwaysOpenApp: false,
+      })
+    )
+
+    // Simulate changing alwaysOpenApp
+    await act(async () => {
+      capturedSettingsModalProps.onSettingChange('alwaysOpenApp', true)
+    })
+
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({
+      alwaysOpenApp: true,
+    })
+    expect(removeMock).toHaveBeenCalledWith(cachedKey)
+  })
 })

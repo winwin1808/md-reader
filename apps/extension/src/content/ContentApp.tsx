@@ -1,9 +1,20 @@
 import React from 'react'
 
 export function ContentApp({ markdown }: { markdown: string }) {
+  const handleOpen = () => {
+    try {
+      chrome.storage?.local?.set?.({
+        ['file_content_' + window.location.href]: markdown,
+      })
+    } catch (e) {
+      console.warn('Failed to cache file content:', e)
+    }
+    window.open(chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href)))
+  }
+
   return (
     <button
-      onClick={() => window.open(chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href)))}
+      onClick={handleOpen}
       style={{
         position: 'fixed',
         bottom: '20px',

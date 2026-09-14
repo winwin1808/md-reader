@@ -81,4 +81,26 @@ describe('Content script entry point', () => {
 
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
+
+  it('redirects to app.html and caches markdown in storage when alwaysOpenApp is true', async () => {
+    const replaceMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:', replace: replaceMock },
+      writable: true,
+      configurable: true,
+    })
+    document.body.innerHTML = '<pre># My Markdown Content</pre>'
+    
+    const localSetMock = vi.fn().mockResolvedValue(undefined)
+    ;(chrome.storage as any).local = { set: localSetMock }
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
+
+    await import('./index')
+
+    expect(localSetMock).toHaveBeenCalledWith({
+      'file_content_file:///test.md': '# My Markdown Content',
+    })
+    expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
+    expect(document.getElementById('md-reader-root')).toBeNull()
+  })
 })

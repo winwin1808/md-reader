@@ -305,4 +305,25 @@ describe('SettingsModal', () => {
     fireEvent.click(clearImgBtn);
     expect(onSettingChange).toHaveBeenCalledWith('slideBgImage', undefined);
   });
+
+  it('toggles alwaysOpenApp setting and triggers callbacks', () => {
+    const onSettingChange = vi.fn();
+    const onAlwaysOpenAppChange = vi.fn();
+    render(
+      <SettingsModal
+        {...defaultProps}
+        alwaysOpenApp={false}
+        onSettingChange={onSettingChange}
+        onAlwaysOpenAppChange={onAlwaysOpenAppChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    const checkbox = screen.getByLabelText(/always open app/i);
+    expect(checkbox).not.toBeChecked();
+
+    fireEvent.click(checkbox);
+    expect(onSettingChange).toHaveBeenCalledWith('alwaysOpenApp', true);
+    expect(onAlwaysOpenAppChange).toHaveBeenCalledWith(true);
+  });
 });

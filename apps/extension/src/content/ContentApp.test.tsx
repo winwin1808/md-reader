@@ -8,9 +8,15 @@ describe('ContentApp', () => {
     const originalOpen = window.open
     window.open = vi.fn()
     
+    const setMock = vi.fn().mockResolvedValue(undefined)
     globalThis.chrome = {
       runtime: {
         getURL: vi.fn((path) => `chrome-extension://123/${path}`)
+      },
+      storage: {
+        local: {
+          set: setMock,
+        }
       }
     } as any
 
@@ -20,6 +26,9 @@ describe('ContentApp', () => {
     expect(btn).toBeTruthy()
     
     fireEvent.click(btn)
+    expect(setMock).toHaveBeenCalledWith({
+      'file_content_http://localhost:3000/': '# Test',
+    })
     expect(window.open).toHaveBeenCalledWith('chrome-extension://123/app.html?file=' + encodeURIComponent('http://localhost:3000/'))
     
     window.open = originalOpen
