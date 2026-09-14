@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { MindNode } from '@md-reader/core'
+import {
+  exportMindmapToSvg,
+  exportMindmapToPng,
+  downloadBlob,
+} from '../export/export-mindmap'
 
 export interface MindmapModalProps {
   root: MindNode
@@ -284,6 +289,25 @@ export function MindmapModal({
     }
   }, [isOpen, onClose])
 
+  const handleExportSvg = useCallback(() => {
+    if (!svgRef.current) return
+    const svgStr = exportMindmapToSvg(svgRef.current, title)
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
+    const baseName = (title || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
+    downloadBlob(blob, `${baseName}.svg`)
+  }, [title])
+
+  const handleExportPng = useCallback(async () => {
+    if (!svgRef.current) return
+    try {
+      const blob = await exportMindmapToPng(svgRef.current, title, 2)
+      const baseName = (title || 'mindmap').trim().replace(/[/\\?%*:|"<>]/g, '-')
+      downloadBlob(blob, `${baseName}.png`)
+    } catch (err) {
+      console.error('Failed to export PNG', err)
+    }
+  }, [title])
+
   if (!isOpen) {
     return null
   }
@@ -488,6 +512,24 @@ export function MindmapModal({
       </svg>
 
       <div className="mindmap-controls" role="toolbar" aria-label="Mindmap Controls">
+        <button
+          type="button"
+          className="mindmap-btn"
+          onClick={handleExportSvg}
+          aria-label="Tải SVG"
+          title="Tải SVG"
+        >
+          SVG
+        </button>
+        <button
+          type="button"
+          className="mindmap-btn"
+          onClick={handleExportPng}
+          aria-label="Tải PNG"
+          title="Tải PNG"
+        >
+          PNG
+        </button>
         <button
           type="button"
           className="mindmap-btn"
