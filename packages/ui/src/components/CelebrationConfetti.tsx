@@ -71,7 +71,7 @@ export function CelebrationConfetti({
         vx: (Math.random() - 0.5) * 6,
         vy: Math.random() * 3 + 2,
         size: Math.random() * 6 + 4,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        color: COLORS[Math.floor(Math.random() * COLORS.length)] || '#ff0000',
         rotation: Math.random() * 360,
         rotationSpeed: (Math.random() - 0.5) * 10,
       })
@@ -92,7 +92,7 @@ export function CelebrationConfetti({
         ctx.save()
         ctx.translate(p.x, p.y)
         ctx.rotate((p.rotation * Math.PI) / 180)
-        ctx.fillStyle = p.color
+        ctx.fillStyle = p.color || '#ff0000'
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6)
         ctx.restore()
       }
