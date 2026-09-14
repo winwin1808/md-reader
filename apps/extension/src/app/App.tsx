@@ -16,20 +16,42 @@ import {
   DocumentSearch,
   Deck,
   SpeakerView,
+  WordCountBar,
+  CelebrationConfetti,
 } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily } from '@md-reader/ui'
+import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings } from '@md-reader/ui'
 import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx, splitIntoSlides } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { addRecentFile } from './registry'
 import './app.css'
 
+const DEFAULT_READER_SETTINGS: ReaderSettings = {
+  mode: 'system',
+  colorTheme: 'github',
+  fontFamily: 'sans',
+  autoFormatMd: true,
+  stripFrontmatter: true,
+  displayMetadata: false,
+  advancedTables: true,
+  taskLists: true,
+  enableMath: true,
+  enableMermaid: true,
+  enablePlantUml: false,
+  enableGraphviz: false,
+  githubAlerts: true,
+  localizeAlerts: false,
+  typographer: false,
+  externalLinks: false,
+  showWordCount: true,
+  autoHideWordCount: true,
+  showReadingProgress: true,
+  celebrationConfetti: true,
+}
+
 export function App(): React.JSX.Element {
-  const [theme, setTheme] = useState<ThemeMode | null>(null)
-  const [colorTheme, setColorTheme] = useState<ColorTheme | null>(null)
-  const [autoFormatMd, setAutoFormatMd] = useState<boolean>(true)
+  const [readerSettings, setReaderSettings] = useState<ReaderSettings | null>(null)
   const [fontScale, setFontScale] = useState<FontScale>('md')
-  const [fontFamily, setFontFamily] = useState<FontFamily>('sans')
   const [tocOpen, setTocOpen] = useState<boolean>(true)
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
@@ -42,6 +64,8 @@ export function App(): React.JSX.Element {
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
+  const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
+  const hasCelebratedRef = useRef<boolean>(false)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
   const fileUrlParam = new URLSearchParams(window.location.search).get('file')
@@ -155,20 +179,47 @@ export function App(): React.JSX.Element {
   }, [doc])
 
   useEffect(() => {
+    hasCelebratedRef.current = false
+    setIsConfettiActive(false)
+  }, [content])
+
+  useEffect(() => {
+    if (!isConfettiActive) return
+    const timer = setTimeout(() => {
+      setIsConfettiActive(false)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [isConfettiActive])
+
+  useEffect(() => {
+    if (!content || readerSettings?.celebrationConfetti === false) return
+
+    const handleScroll = () => {
+      if (hasCelebratedRef.current) return
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
+        hasCelebratedRef.current = true
+        setIsConfettiActive(true)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [content, readerSettings?.celebrationConfetti])
+
+  useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const result = await chrome.storage.sync.get(['theme', 'colorTheme', 'autoFormatMd', 'fontScale', 'fontFamily'])
-        setTheme((result.theme as ThemeMode) || 'system')
-        setColorTheme((result.colorTheme as ColorTheme) || 'black')
-        setAutoFormatMd(result.autoFormatMd !== undefined ? (result.autoFormatMd as boolean) : true)
-        setFontScale((result.fontScale as FontScale) || 'md')
-        setFontFamily((result.fontFamily as FontFamily) || 'sans')
+        const result = await chrome.storage.sync.get(null)
+        setReaderSettings({
+          ...DEFAULT_READER_SETTINGS,
+          ...result,
+          mode: (result?.mode as ThemeMode) || (result?.theme as ThemeMode) || DEFAULT_READER_SETTINGS.mode,
+          colorTheme: (result?.colorTheme as ColorTheme) || DEFAULT_READER_SETTINGS.colorTheme,
+        })
+        setFontScale((result?.fontScale as FontScale) || 'md')
       } catch (err) {
-        setTheme('system')
-        setColorTheme('black')
-        setAutoFormatMd(true)
+        setReaderSettings(DEFAULT_READER_SETTINGS)
         setFontScale('md')
-        setFontFamily('sans')
       }
     }
     fetchSettings()
@@ -205,43 +256,40 @@ export function App(): React.JSX.Element {
     }
   }, [doc])
 
-  const handleModeChange = async (mode: ThemeMode) => {
-    setTheme(mode)
+  const handleSettingChange = (key: string, value: any) => {
+    setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
     try {
-      await chrome.storage.sync.set({ theme: mode })
+      chrome.storage?.sync?.set?.({ [key]: value })
     } catch (err) {
       // ignore
     }
   }
 
-  const handleColorThemeChange = async (color: ColorTheme) => {
-    setColorTheme(color)
-    try {
-      await chrome.storage.sync.set({ colorTheme: color })
-    } catch (err) {
-      // ignore
-    }
+  const handleModeChange = (mode: ThemeMode) => {
+    handleSettingChange('mode', mode)
   }
 
-  const handleAutoFormatChange = async (val: boolean) => {
-    setAutoFormatMd(val)
-    try {
-      await chrome.storage.sync.set({ autoFormatMd: val })
-    } catch (err) {
-      // ignore
-    }
+  const handleColorThemeChange = (color: ColorTheme) => {
+    handleSettingChange('colorTheme', color)
   }
 
   const { html, toc, parseResult } = useMemo(() => {
     if (!content) return { html: '', toc: [], parseResult: { ast: { type: 'root', children: [] } as any } }
     const parsed = parseMarkdown(content)
-    const rendered = renderToHtml(parsed)
+    const rendered = renderToHtml(parsed, {
+      stripFrontmatter: readerSettings?.stripFrontmatter,
+      displayMetadata: readerSettings?.displayMetadata,
+      typographer: readerSettings?.typographer,
+      externalLinks: readerSettings?.externalLinks,
+      githubAlerts: readerSettings?.githubAlerts,
+      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
+    })
     return {
       html: rendered.html,
       toc: rendered.toc,
       parseResult: { ast: parsed.tree, ...parsed },
     }
-  }, [content])
+  }, [content, readerSettings])
 
   const handleExport = async (format: ExportFormat) => {
     setIsExporting(true)
@@ -300,12 +348,13 @@ export function App(): React.JSX.Element {
     )
   }
 
-  if (!theme || !colorTheme) return <div>Loading...</div>
+  if (!readerSettings) return <div>Loading...</div>
 
-  const themeMode = theme
+  const themeMode = readerSettings.mode
+  const colorTheme = readerSettings.colorTheme
 
   return (
-    <ThemeProvider mode={theme} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+    <ThemeProvider mode={themeMode} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
           {slides.map((slide, idx) => (
@@ -335,11 +384,29 @@ export function App(): React.JSX.Element {
           }
           colorTheme={colorTheme}
           mode={themeMode}
+          presentationSettings={{
+            slideBgColor: readerSettings.slideBgColor,
+            slideTextColor: readerSettings.slideTextColor,
+            slideHeadingColor: readerSettings.slideHeadingColor,
+            slideAccentColor: readerSettings.slideAccentColor,
+            slideFont: readerSettings.slideFont,
+            slideBgImage: readerSettings.slideBgImage,
+            slideImageOpacity: readerSettings.slideImageOpacity,
+          }}
         />
       )}
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={fontFamily}>
-        <ReadingProgress />
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
+        {readerSettings.showReadingProgress !== false && <ReadingProgress />}
+        <WordCountBar
+          text={content}
+          visible={readerSettings.showWordCount !== false}
+          autoHide={readerSettings.autoHideWordCount !== false}
+        />
+        <CelebrationConfetti
+          active={isConfettiActive}
+          onComplete={() => setIsConfettiActive(false)}
+        />
         <TopToolbar
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
@@ -357,17 +424,8 @@ export function App(): React.JSX.Element {
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
               <SettingsModal
-                mode={themeMode}
-                colorTheme={colorTheme}
-                autoFormatMd={autoFormatMd}
-                onModeChange={handleModeChange}
-                onColorThemeChange={handleColorThemeChange}
-                onAutoFormatChange={handleAutoFormatChange}
-                fontFamily={fontFamily}
-                onFontFamilyChange={(newFont) => {
-                  setFontFamily(newFont)
-                  chrome.storage?.sync?.set?.({ fontFamily: newFont })
-                }}
+                settings={readerSettings}
+                onSettingChange={handleSettingChange}
               />
             </div>
           }
