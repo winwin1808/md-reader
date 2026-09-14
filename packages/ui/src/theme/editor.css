@@ -1,0 +1,22 @@
+.cm-editor {
+  height: 100%;
+  font-family: var(--md-font-mono, ui-monospace, monospace);
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: var(--md-bg-editor, var(--md-bg, #ffffff));
+  color: var(--md-text, #1e293b);
+  border: 1px solid var(--md-border, #e2e8f0);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-editor .cm-scroller {
+  font-family: inherit;
+  line-height: inherit;
+  height: 100%;
+  overflow: auto;
+}
