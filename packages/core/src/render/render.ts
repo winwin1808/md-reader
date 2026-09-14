@@ -1,7 +1,7 @@
 import type { Root } from 'mdast'
 import { Slugger } from './slug.js'
 import type { TocEntry, RenderOptions, RenderResult } from './types.js'
-import { applyTypographer, applyExternalLinks, applyGitHubAlerts, processFrontmatter } from './options.js'
+import { applyTypographer, applyExternalLinks, applyGitHubAlerts, processFrontmatter, escapeHtml } from './options.js'
 
 function getHeadingText(node: any): string {
   if (node.type === 'text' || node.type === 'inlineCode') {
@@ -125,6 +125,15 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     }
     if (options?.typographer === true) {
       html = applyTypographer(html)
+    }
+    if (options?.displayMetadata === true && parsed.frontmatter && Object.keys(parsed.frontmatter).length > 0) {
+      const metadata = Object.entries(parsed.frontmatter)
+        .map(([key, val]) => {
+          const valStr = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '')
+          return `<div><strong>${escapeHtml(key)}</strong>: ${escapeHtml(valStr)}</div>`
+        })
+        .join('')
+      html = `<div class="markdown-metadata-card">${metadata}</div>` + html
     }
 
     return { html, toc }
