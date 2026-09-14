@@ -2,38 +2,58 @@ import React, { useState, useEffect, useCallback } from 'react'
 import type { Slide } from '@md-reader/core'
 import { ThemeProvider, type ColorTheme } from '../theme/ThemeProvider'
 
+export interface PresentationSettings {
+  slideBgColor?: string
+  slideTextColor?: string
+  slideHeadingColor?: string
+  slideAccentColor?: string
+  slideFont?: string
+  slideBgImage?: string
+  slideImageOpacity?: number // 0 - 100
+}
+
 export interface DeckProps {
   slides: Slide[]
   initialSlide?: number
+  initialIndex?: number
   onClose?: () => void
   onSlideChange?: (index: number) => void
+  onIndexChange?: (index: number) => void
   onOpenSpeakerView?: () => void
+  onOpenSpeaker?: () => void
   colorTheme?: ColorTheme
   mode?: 'light' | 'dark' | 'system'
+  presentationSettings?: PresentationSettings
 }
 
 export function Deck(props: DeckProps): React.JSX.Element {
   const {
     slides,
-    initialSlide = 0,
+    initialSlide,
+    initialIndex,
     onClose,
     onSlideChange,
+    onIndexChange,
     onOpenSpeakerView,
+    onOpenSpeaker,
+    presentationSettings,
   } = props
 
   const totalSlides = slides.length
+  const startingIndex = initialIndex ?? initialSlide ?? 0
 
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (slides.length === 0) return 0
-    return Math.max(0, Math.min(slides.length - 1, initialSlide))
+    return Math.max(0, Math.min(slides.length - 1, startingIndex))
   })
 
   useEffect(() => {
-    if (props.initialSlide !== undefined && slides.length > 0) {
-      const clamped = Math.max(0, Math.min(slides.length - 1, props.initialSlide))
+    const start = props.initialIndex ?? props.initialSlide
+    if (start !== undefined && slides.length > 0) {
+      const clamped = Math.max(0, Math.min(slides.length - 1, start))
       setCurrentIndex(clamped)
     }
-  }, [props.initialSlide, slides.length])
+  }, [props.initialIndex, props.initialSlide, slides.length])
 
   const goToSlide = useCallback(
     (nextIndex: number) => {
@@ -42,9 +62,10 @@ export function Deck(props: DeckProps): React.JSX.Element {
       if (clamped !== currentIndex) {
         setCurrentIndex(clamped)
         onSlideChange?.(clamped)
+        onIndexChange?.(clamped)
       }
     },
-    [slides.length, currentIndex, onSlideChange]
+    [slides.length, currentIndex, onSlideChange, onIndexChange]
   )
 
   useEffect(() => {
@@ -102,16 +123,39 @@ export function Deck(props: DeckProps): React.JSX.Element {
     }
   }, [currentIndex, slides.length, goToSlide, onClose])
 
+  const handleOpenSpeaker = () => {
+    onOpenSpeaker?.()
+    onOpenSpeakerView?.()
+  }
+
   const currentSlide = slides[currentIndex]
   const progressPercent = totalSlides > 0 ? ((currentIndex + 1) / totalSlides) * 100 : 0
   const counterText = totalSlides > 0 ? `Slide ${currentIndex + 1} / ${totalSlides}` : 'Slide 0 / 0'
 
+  const overlayStyle: React.CSSProperties & Record<string, string | undefined> = {
+    backgroundColor: presentationSettings?.slideBgColor || undefined,
+    color: presentationSettings?.slideTextColor || undefined,
+    fontFamily: presentationSettings?.slideFont || undefined,
+    '--slide-custom-heading': presentationSettings?.slideHeadingColor,
+    '--slide-custom-accent': presentationSettings?.slideAccentColor,
+  }
+
   return (
     <ThemeProvider mode={props.mode ?? 'system'} colorTheme={props.colorTheme}>
-      <div className="deck-overlay">
-        <div className="deck-slide">
+      <div className="deck-overlay" style={overlayStyle}>
+        {Boolean(presentationSettings?.slideBgImage) && (
           <div
-            className="md-viewer"
+            className="deck-custom-bg-image"
+            style={{
+              backgroundImage: `url(${presentationSettings!.slideBgImage})`,
+              opacity: (presentationSettings?.slideImageOpacity ?? 100) / 100,
+            }}
+            aria-hidden="true"
+          />
+        )}
+        <div className="deck-slide deck-slide-container deck-slide-content">
+          <div
+            className="md-viewer deck-slide-content"
             dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
           />
         </div>
@@ -138,7 +182,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
             type="button"
             aria-label="Giao diện diễn giả"
             title="Mở chế độ diễn giả"
-            onClick={onOpenSpeakerView}
+            onClick={handleOpenSpeaker}
           >
             🎙
           </button>
@@ -153,7 +197,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
         </div>
 
         <div
-          className="deck-progress-bar"
+          className="deck-progress-bar deck-progress-fill"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
