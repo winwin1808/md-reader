@@ -51,7 +51,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',

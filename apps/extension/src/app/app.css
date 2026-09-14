@@ -1,17 +1,17 @@
 /* apps/extension/src/app/app.css */
 .app-layout {
   display: grid;
-  grid-template-columns: minmax(0, 740px) 260px;
+  grid-template-columns: minmax(0, 820px) 260px;
   justify-content: center;
-  column-gap: 56px;
+  column-gap: 40px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 56px 32px 180px;
+  padding: 24px 24px 80px;
   align-items: start;
 }
 
 .app-layout.single-column {
-  grid-template-columns: minmax(0, 740px);
+  grid-template-columns: minmax(0, 820px);
 }
 
 .main-content {
