@@ -86,7 +86,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ---
 
-## 4c — Presentation Customization in `Deck`
+## 4c — Presentation Customization in `Deck` (done)
 
 **Builds:**
 - Cập nhật `packages/ui/src/components/Deck.tsx`:
