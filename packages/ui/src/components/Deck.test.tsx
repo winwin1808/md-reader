@@ -8,9 +8,9 @@ import type { Slide } from '@md-reader/core'
 import { Deck } from './Deck'
 
 const mockSlides: Slide[] = [
-  { index: 0, html: '<h1>Slide 1 Title</h1>', raw: '# Slide 1 Title', notes: 'Speaker note 1' },
-  { index: 1, html: '<h2>Slide 2 Title</h2>', raw: '## Slide 2 Title', notes: 'Speaker note 2' },
-  { index: 2, html: '<h3>Slide 3 Title</h3>', raw: '### Slide 3 Title' },
+  { id: 'slide-0', index: 0, html: '<h1>Slide 1 Title</h1>', rawMarkdown: '# Slide 1 Title', notes: ['Speaker note 1'] },
+  { id: 'slide-1', index: 1, html: '<h2>Slide 2 Title</h2>', rawMarkdown: '## Slide 2 Title', notes: ['Speaker note 2'] },
+  { id: 'slide-2', index: 2, html: '<h3>Slide 3 Title</h3>', rawMarkdown: '### Slide 3 Title', notes: [] },
 ]
 
 describe('Deck component', () => {
@@ -201,8 +201,8 @@ describe('Deck component', () => {
   })
 
   it('passes colorTheme and mode to ThemeProvider', () => {
-    const { container } = render(<Deck slides={mockSlides} colorTheme="github" mode="dark" />)
-    const themeWrapper = container.querySelector('[data-theme="dark"][data-color-theme="github"]')
+    const { container } = render(<Deck slides={mockSlides} colorTheme="navy" mode="dark" />)
+    const themeWrapper = container.querySelector('[data-theme="dark"][data-color-theme="navy"]')
     expect(themeWrapper).not.toBeNull()
   })
 

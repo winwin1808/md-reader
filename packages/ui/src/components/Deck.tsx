@@ -19,8 +19,6 @@ export function Deck(props: DeckProps): React.JSX.Element {
     onClose,
     onSlideChange,
     onOpenSpeakerView,
-    colorTheme,
-    mode,
   } = props
 
   const totalSlides = slides.length
@@ -109,7 +107,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
   const counterText = totalSlides > 0 ? `Slide ${currentIndex + 1} / ${totalSlides}` : 'Slide 0 / 0'
 
   return (
-    <ThemeProvider colorTheme={colorTheme} mode={mode}>
+    <ThemeProvider mode={props.mode ?? 'system'} colorTheme={props.colorTheme}>
       <div className="deck-overlay">
         <div className="deck-slide">
           <div
