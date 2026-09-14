@@ -29,14 +29,17 @@ export function computeLineDiff(original: string, modified: string): DiffLine[] 
     return a.map((text) => ({ type: 'removed', text }))
   }
 
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
 
   for (let i = 1; i <= n; i++) {
+    const prevRow = dp[i - 1]!
+    const currRow = dp[i]!
+    const aVal = a[i - 1]!
     for (let j = 1; j <= m; j++) {
-      if (a[i - 1] === b[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1
+      if (aVal === b[j - 1]!) {
+        currRow[j] = prevRow[j - 1]! + 1
       } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
+        currRow[j] = Math.max(prevRow[j]!, currRow[j - 1]!)
       }
     }
   }
@@ -46,15 +49,20 @@ export function computeLineDiff(original: string, modified: string): DiffLine[] 
   let j = m
 
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      diff.push({ type: 'same', text: a[i - 1] })
+    const aVal = i > 0 ? a[i - 1]! : ''
+    const bVal = j > 0 ? b[j - 1]! : ''
+    const dpLeft = (i >= 0 && j > 0) ? dp[i]![j - 1]! : 0
+    const dpUp = (i > 0 && j >= 0) ? dp[i - 1]![j]! : 0
+
+    if (i > 0 && j > 0 && aVal === bVal) {
+      diff.push({ type: 'same', text: aVal })
       i--
       j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      diff.push({ type: 'added', text: b[j - 1] })
+    } else if (j > 0 && (i === 0 || dpLeft >= dpUp)) {
+      diff.push({ type: 'added', text: bVal })
       j--
-    } else if (i > 0 && (j === 0 || dp[i - 1][j] >= dp[i][j - 1])) {
-      diff.push({ type: 'removed', text: a[i - 1] })
+    } else if (i > 0 && (j === 0 || dpUp >= dpLeft)) {
+      diff.push({ type: 'removed', text: aVal })
       i--
     }
   }
