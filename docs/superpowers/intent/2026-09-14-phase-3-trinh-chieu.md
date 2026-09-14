@@ -1,5 +1,6 @@
 # Intent: Phase 3 — Trình chiếu (Presentation & Slides)
-Author: Antigravity. Status: draft. Phase: 3
+Author: Antigravity. Status: designed. Phase: 3
+Design: docs/superpowers/specs/2026-09-14-phase-3-design.md
 
 ## Problem
 Hiện tại md-reader chỉ cung cấp trải nghiệm đọc tài liệu liên tục theo khổ A4 hoặc webpage thông thường. Khi người dùng cần trình bày hoặc giảng dạy nội dung từ file Markdown, họ phải copy sang các phần mềm trình chiếu khác (Google Slides, PowerPoint) hoặc dùng công cụ rời rạc. md-reader cần một chế độ Trình chiếu (Present mode) tích hợp sẵn: mở file Markdown bất kỳ, bấm "Present", tài liệu lập tức biến thành slide deck chuyên nghiệp, toàn màn hình, hỗ trợ phím điều hướng, đồng hồ diễn giả, ghi chú (Speaker Notes) và xuất PDF slide.
@@ -54,6 +55,7 @@ Theo `docs/DESIGN.md` §4:
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
 | 3a | `core/slides` | mdast → `Slide[]`, cắt theo `---` hoặc heading depth cấu hình được, trích xuất speaker notes |
-| 3b | `Deck` UI | Render slide deck, keyboard nav (←, →, Space, Esc), fullscreen, thanh progress |
-| 3c | `SpeakerView` | Giao diện cho diễn giả: slide hiện tại, slide kế tiếp, đồng hồ đếm giờ, speaker notes, sync qua BroadcastChannel |
-| 3d | Deck → PDF | Print CSS chuyên dụng cho slide (landscape 16:9, mỗi slide 1 trang) và tích hợp vào ExportModal |
+| 3b | `Deck` UI | Render slide deck 16:9, keyboard nav (←, →, Space, Esc), fullscreen, progress bar |
+| 3c | `SpeakerView` UI | Giao diện diễn giả: current slide, next slide preview, timer đồng hồ, speaker notes |
+| 3d | App & Speaker Sync | Tích hợp Present vào TopToolbar/App, sync 2 chiều qua BroadcastChannel, cửa sổ speaker riêng |
+| 3e | Deck → PDF Export | Print CSS landscape chuyên dụng cho slide, tích hợp vào ExportModal |
