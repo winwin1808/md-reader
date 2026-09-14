@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ColorTheme } from '../theme/ThemeProvider';
 import { ThemePicker } from './ThemePicker';
 
@@ -194,78 +195,71 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     }
   };
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        title="Settings"
-        aria-label="Settings"
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const resolvedMode = currentMode === 'system'
+    ? (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : (currentMode || 'light');
+
+  const modalContent = isOpen ? (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="settings-overlay"
+      data-theme={resolvedMode}
+      data-color-theme={currentColorTheme || 'black'}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setIsOpen(false);
+        }
+      }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '20px 16px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        className="settings-dialog"
         style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '10px',
           background: 'var(--md-bg)',
-          border: '1px solid var(--md-border)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
           color: 'var(--md-fg)',
-          padding: 0,
+          padding: '24px 28px',
+          borderRadius: '16px',
+          border: '1px solid var(--md-border)',
+          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
+          minWidth: '340px',
+          maxWidth: '640px',
+          width: '90vw',
+          maxHeight: 'calc(100vh - 48px)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxSizing: 'border-box',
+          margin: 'auto',
+          overflow: 'hidden',
+          position: 'relative',
         }}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="settings-overlay"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="settings-dialog"
-            style={{
-              background: 'var(--md-bg)',
-              color: 'var(--md-fg)',
-              padding: '24px 28px',
-              borderRadius: '16px',
-              border: '1px solid var(--md-border)',
-              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
-              minWidth: '340px',
-            }}
-          >
             <div
               className="settings-header"
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}
@@ -601,7 +595,48 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
             </div>
           </div>
         </div>
-      )}
+  ) : null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        title="Settings"
+        aria-label="Settings"
+        style={{
+          width: '38px',
+          height: '38px',
+          borderRadius: '10px',
+          background: 'var(--md-bg)',
+          border: '1px solid var(--md-border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'var(--md-fg)',
+          padding: 0,
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+      {isOpen && (typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent)}
     </>
   );
 }
