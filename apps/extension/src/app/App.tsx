@@ -31,7 +31,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   colorTheme: 'black',
   fontFamily: 'sans',
   autoFormatMd: true,
-  alwaysOpenApp: false,
+  alwaysOpenApp: true,
   stripFrontmatter: true,
   displayMetadata: false,
   advancedTables: true,
@@ -458,7 +458,37 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop doc={doc}>
-          {error && <div style={{ color: 'red', padding: '20px' }}>{error}</div>}
+          {error && (
+            <div style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>{error}</div>
+              {fileUrlParam?.startsWith('file:') && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        chrome.tabs?.create?.({ url: 'chrome://extensions/?id=' + (chrome.runtime?.id || '') })
+                      } catch {
+                        window.open('chrome://extensions')
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#0070f3',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Mở Cài đặt Tiện ích để Bật "Cho phép truy cập vào các URL tệp"
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           
           {hasContent && (
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>

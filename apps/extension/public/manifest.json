@@ -3,7 +3,8 @@
   "name": "MD Reader",
   "version": "0.1.0",
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "*://*/*.md",

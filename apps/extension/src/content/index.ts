@@ -54,9 +54,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  // If user enabled "Always open app" for md files, immediately redirect to MD Reader app
+  // If "Always open app" is enabled (default: true), immediately redirect to MD Reader app
   const isMdFile = Boolean(window.location.pathname.match(/\.(md|markdown)$/i))
-  if (settings.alwaysOpenApp && (isMdFile || isFileMatch)) {
+  const isAlwaysOpen = settings.alwaysOpenApp !== false
+  if (isAlwaysOpen && (isMdFile || isFileMatch)) {
     try {
       await chrome.storage?.local?.set?.({
         ['file_content_' + window.location.href]: markdownText,
@@ -64,7 +65,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     } catch (e) {
       console.warn('Failed to cache file content:', e)
     }
-    window.location.replace(chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href)))
+    const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
+    if (typeof window.location.replace === 'function') {
+      window.location.replace(targetAppUrl)
+    } else {
+      window.location.href = targetAppUrl
+    }
     return
   }
 

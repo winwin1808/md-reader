@@ -491,7 +491,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
       ? settings.alwaysOpenApp
       : typeof alwaysOpenApp === 'boolean'
       ? alwaysOpenApp
-      : false;
+      : true;
 
   const handleSettingChange = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     onSettingChange?.(key, value);
