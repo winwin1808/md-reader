@@ -43,7 +43,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ---
 
-## 4a — `core/rendering-options`
+## 4a — `core/rendering-options` (done)
 
 **Builds:**
 - Mở rộng `packages/core/src/render/`:
