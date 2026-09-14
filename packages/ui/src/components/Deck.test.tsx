@@ -211,4 +211,81 @@ describe('Deck component', () => {
     expect(uiIndex.Deck).toBeDefined()
     expect(uiIndex.Deck).toBe(Deck)
   })
+
+  describe('presentation customization settings', () => {
+    it('applies custom background color, text color, and font', () => {
+      const { container } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgColor: '#123456',
+            slideTextColor: '#abcdef',
+            slideFont: 'Georgia, serif',
+          }}
+        />
+      )
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(overlay.style.backgroundColor).toBe('rgb(18, 52, 86)')
+      expect(overlay.style.color).toBe('rgb(171, 205, 239)')
+      expect(overlay.style.fontFamily).toBe('Georgia, serif')
+    })
+
+    it('renders background image and applies opacity', () => {
+      const { container, rerender } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: 'https://example.com/bg.png',
+            slideImageOpacity: 45,
+          }}
+        />
+      )
+      const bgImage = container.querySelector('.deck-custom-bg-image') as HTMLElement
+      expect(bgImage).not.toBeNull()
+      expect(bgImage.style.backgroundImage).toBe('url("https://example.com/bg.png")')
+      expect(bgImage.style.opacity).toBe('0.45')
+      expect(bgImage.getAttribute('aria-hidden')).toBe('true')
+
+      // default opacity when not specified is 100% (1)
+      rerender(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: 'https://example.com/bg2.png',
+          }}
+        />
+      )
+      const bgImage2 = container.querySelector('.deck-custom-bg-image') as HTMLElement
+      expect(bgImage2.style.backgroundImage).toBe('url("https://example.com/bg2.png")')
+      expect(bgImage2.style.opacity).toBe('1')
+
+      // does not render bg div when slideBgImage is not provided or empty
+      rerender(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideBgImage: '',
+          }}
+        />
+      )
+      expect(container.querySelector('.deck-custom-bg-image')).toBeNull()
+    })
+
+    it('applies heading color and accent variables as CSS custom properties', () => {
+      const { container } = render(
+        <Deck
+          slides={mockSlides}
+          presentationSettings={{
+            slideHeadingColor: '#ff0000',
+            slideAccentColor: '#00ff00',
+          }}
+        />
+      )
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      expect(overlay).not.toBeNull()
+      expect(overlay.style.getPropertyValue('--slide-custom-heading')).toBe('#ff0000')
+      expect(overlay.style.getPropertyValue('--slide-custom-accent')).toBe('#00ff00')
+    })
+  })
 })
