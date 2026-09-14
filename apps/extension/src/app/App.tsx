@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import {
@@ -249,9 +250,16 @@ export function App(): React.JSX.Element {
       if (format === 'pdf') {
         printDocument()
       } else if (format === 'slide-pdf') {
-        setIsPrintingSlides(true)
+        flushSync(() => {
+          setIsPrintingSlides(true)
+        })
         printSlides()
-        setTimeout(() => setIsPrintingSlides(false), 500)
+        const cleanup = () => {
+          setIsPrintingSlides(false)
+          window.removeEventListener('afterprint', cleanup)
+        }
+        window.addEventListener('afterprint', cleanup)
+        setTimeout(cleanup, 1000)
       } else if (format === 'html') {
         const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
         const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })

@@ -94,7 +94,7 @@ describe('App', () => {
   it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
-    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {})
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
     let lastDownloaded = ''
@@ -176,7 +176,7 @@ describe('App', () => {
     
     // Wait for the timeout to remove it
     act(() => {
-      vi.advanceTimersByTime(500)
+      vi.advanceTimersByTime(1000)
     })
     expect(document.querySelector('.deck-print-container')).toBeNull()
 
