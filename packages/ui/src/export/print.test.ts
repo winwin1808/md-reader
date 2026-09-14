@@ -131,3 +131,25 @@ describe('printSlides', () => {
     expect(document.body.classList.contains('print-slides')).toBe(false)
   })
 })
+
+describe('deck-print.css', () => {
+  const cssPath = path.resolve(__dirname, '../theme/deck-print.css')
+  const viewerCssPath = path.resolve(__dirname, '../viewer.css')
+
+  it('contains landscape slide print styles', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    expect(content).toContain('.deck-print-container')
+    expect(content).toContain('@media print')
+    expect(content).toContain('@page slide-deck')
+    expect(content).toContain('size: landscape')
+    expect(content).toContain('body.print-slides')
+    expect(content).toContain('.deck-print-slide')
+    expect(content).toContain('page: slide-deck')
+    expect(content).toContain('display: flex !important')
+  })
+
+  it('is imported in viewer.css', () => {
+    const viewerContent = fs.readFileSync(viewerCssPath, 'utf8')
+    expect(viewerContent).toContain("@import './theme/deck-print.css';")
+  })
+})
