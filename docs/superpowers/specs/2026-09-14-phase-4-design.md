@@ -72,7 +72,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-4-extended-settings.md
 
 ---
 
-## 4b — Reading Aids UI
+## 4b — Reading Aids UI (done)
 
 **Builds:**
 - `packages/ui/src/components/WordCountBar.tsx`:
