@@ -435,7 +435,7 @@ describe('App', () => {
       fireEvent.click(presentBtn)
     })
 
-    expect(deckSpy.mock.calls[0][0]).toEqual(
+    expect(deckSpy.mock.calls[0]![0]).toEqual(
       expect.objectContaining({
         initialSlide: 0,
         slides: expect.any(Array),
