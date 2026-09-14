@@ -28,8 +28,7 @@
     }
   ],
   "action": {
-    "default_title": "Open MD Reader",
-    "default_popup": ""
+    "default_title": "Open MD Reader"
   },
   "web_accessible_resources": [
     {
