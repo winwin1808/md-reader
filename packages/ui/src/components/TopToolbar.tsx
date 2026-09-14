@@ -11,6 +11,7 @@ export interface TopToolbarProps {
   isReadingMode: boolean
   onToggleReadingMode: () => void
   onOpenSearch?: () => void
+  onPresent?: () => void
   rightActions?: React.ReactNode
 }
 
@@ -210,6 +211,20 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
           </svg>
         </button>
+
+        {props.onPresent && (
+          <button
+            type="button"
+            title="Trình chiếu (P)"
+            aria-label="Trình chiếu"
+            style={buttonStyle}
+            onClick={props.onPresent}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </button>
+        )}
 
         {props.rightActions}
       </div>
