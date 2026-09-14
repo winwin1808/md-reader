@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
 
@@ -40,79 +41,54 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const { onExport, isExporting = false } = props
 
-  return (
-    <>
-      <button
-        type="button"
-        title="Xuất tài liệu"
-        aria-label="Xuất tài liệu"
-        onClick={() => setIsOpen(true)}
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
+  const modalContent = isOpen ? (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={() => setIsOpen(false)}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '20px 16px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '10px',
-          background: 'var(--md-bg)',
+          borderRadius: '16px',
           border: '1px solid var(--md-border)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
+          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
+          padding: '24px 28px',
+          minWidth: '340px',
+          maxWidth: '440px',
+          width: '100%',
+          maxHeight: 'calc(100vh - 48px)',
+          overflowY: 'auto',
+          background: 'var(--md-bg)',
           color: 'var(--md-fg)',
-          padding: 0,
+          boxSizing: 'border-box',
+          margin: 'auto',
         }}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setIsOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              borderRadius: '16px',
-              border: '1px solid var(--md-border)',
-              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
-              padding: '24px 28px',
-              minWidth: '340px',
-              maxWidth: '440px',
-              width: '100%',
-              background: 'var(--md-bg)',
-              color: 'var(--md-fg)',
-              boxSizing: 'border-box',
-            }}
-          >
             <div
               style={{
                 display: 'flex',
@@ -219,7 +195,50 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
             )}
           </div>
         </div>
-      )}
+  ) : null
+
+  return (
+    <>
+      <button
+        type="button"
+        title="Xuất tài liệu"
+        aria-label="Xuất tài liệu"
+        onClick={() => setIsOpen(true)}
+        style={{
+          width: '38px',
+          height: '38px',
+          borderRadius: '10px',
+          background: 'var(--md-bg)',
+          border: '1px solid var(--md-border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'var(--md-fg)',
+          padding: 0,
+        }}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      </button>
+
+      {isOpen && (typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent)}
     </>
   )
 }
