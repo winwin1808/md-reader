@@ -101,6 +101,25 @@
   font-family: inherit;
 }
 
+.mindmap-collapse-handle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.mindmap-collapse-handle:hover {
+  transform: scale(1.2);
+}
+
+.mindmap-collapsed-badge {
+  font-size: 10px;
+  font-weight: 700;
+  user-select: none;
+  pointer-events: none;
+}
+
 .mindmap-controls {
   position: absolute;
   bottom: 24px;

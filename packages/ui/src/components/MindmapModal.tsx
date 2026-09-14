@@ -53,7 +53,10 @@ function estimateWidth(text: string, isRoot: boolean): number {
   return Math.max(isRoot ? 110 : 80, Math.min(260, estimated))
 }
 
-function computeTreeLayout(root: MindNode): {
+function computeTreeLayout(
+  root: MindNode,
+  collapsedIds: Set<string>
+): {
   nodes: LayoutNode[]
   edges: Edge[]
   bounds: Bounds
@@ -68,7 +71,8 @@ function computeTreeLayout(root: MindNode): {
     const height = NODE_HEIGHT
     const layoutChildren: LayoutNode[] = []
 
-    const rawChildren = node.children || []
+    const isCollapsed = collapsedIds.has(node.id)
+    const rawChildren = isCollapsed ? [] : node.children || []
     if (rawChildren.length === 0) {
       const y = leafY
       leafY += DY
@@ -180,6 +184,7 @@ export function MindmapModal({
   title,
 }: MindmapModalProps): React.JSX.Element | null {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const svgRef = useRef<SVGSVGElement | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
@@ -192,7 +197,40 @@ export function MindmapModal({
         bounds: { minX: 0, minY: 0, maxX: 400, maxY: 300 },
       }
     }
-    return computeTreeLayout(root)
+    return computeTreeLayout(root, collapsedIds)
+  }, [root, collapsedIds])
+
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const handleExpandAll = useCallback(() => {
+    setCollapsedIds(new Set())
+  }, [])
+
+  const handleCollapseAll = useCallback(() => {
+    if (!root) return
+    const ids = new Set<string>()
+    function traverse(n: MindNode, isRoot: boolean) {
+      if (n.children && n.children.length > 0) {
+        if (!isRoot) {
+          ids.add(n.id)
+        }
+        for (const child of n.children) {
+          traverse(child, false)
+        }
+      }
+    }
+    traverse(root, true)
+    setCollapsedIds(ids)
   }, [root])
 
   const fitToScreen = useCallback(() => {
@@ -380,6 +418,8 @@ export function MindmapModal({
           {/* Nodes */}
           {nodes.map((n) => {
             const isRoot = n.depth === 0
+            const hasChildren = Boolean(n.node.children && n.node.children.length > 0)
+            const isCollapsed = collapsedIds.has(n.node.id)
             return (
               <g
                 key={n.node.id}
@@ -411,6 +451,36 @@ export function MindmapModal({
                 >
                   {n.node.text}
                 </text>
+
+                {hasChildren && (
+                  <g
+                    className="mindmap-collapse-handle"
+                    role="button"
+                    aria-label={isCollapsed ? `Expand ${n.node.text}` : `Collapse ${n.node.text}`}
+                    transform={`translate(${n.width}, ${n.height / 2})`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleCollapse(n.node.id)
+                    }}
+                  >
+                    <circle
+                      r={isCollapsed ? (n.node.children.length > 9 ? 11 : 9) : 8}
+                      fill={isCollapsed ? n.color : 'var(--md-bg-card, #ffffff)'}
+                      stroke={n.color}
+                      strokeWidth={1.5}
+                    />
+                    <text
+                      className={isCollapsed ? 'mindmap-collapsed-badge' : undefined}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill={isCollapsed ? '#ffffff' : n.color}
+                      fontSize={isCollapsed ? 9 : 11}
+                      fontWeight="bold"
+                    >
+                      {isCollapsed ? `+${n.node.children.length}` : '−'}
+                    </text>
+                  </g>
+                )}
               </g>
             )
           })}
@@ -444,6 +514,24 @@ export function MindmapModal({
           title="Fit to screen"
         >
           ⛶
+        </button>
+        <button
+          type="button"
+          className="mindmap-btn"
+          onClick={handleCollapseAll}
+          aria-label="Collapse all"
+          title="Collapse all"
+        >
+          ⊟
+        </button>
+        <button
+          type="button"
+          className="mindmap-btn"
+          onClick={handleExpandAll}
+          aria-label="Expand all"
+          title="Expand all"
+        >
+          ⊞
         </button>
         <button
           type="button"

@@ -125,6 +125,17 @@ describe('TopToolbar', () => {
     expect(onPresent).toHaveBeenCalledTimes(1)
   })
 
+  it('renders and triggers onOpenMindmap when mindmap button is clicked', () => {
+    const onOpenMindmap = vi.fn()
+    const { rerender } = render(<TopToolbar {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: /mindmap/i })).toBeNull()
+
+    rerender(<TopToolbar {...defaultProps} onOpenMindmap={onOpenMindmap} />)
+    const mindmapBtn = screen.getByRole('button', { name: /mindmap/i })
+    fireEvent.click(mindmapBtn)
+    expect(onOpenMindmap).toHaveBeenCalledTimes(1)
+  })
+
   it('renders rightActions when provided', () => {
     render(
       <TopToolbar

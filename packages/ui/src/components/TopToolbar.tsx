@@ -12,6 +12,7 @@ export interface TopToolbarProps {
   onToggleReadingMode: () => void
   onOpenSearch?: () => void
   onPresent?: () => void
+  onOpenMindmap?: () => void
   rightActions?: React.ReactNode
 }
 
@@ -222,6 +223,24 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </button>
+        )}
+
+        {props.onOpenMindmap && (
+          <button
+            type="button"
+            title="Mindmap (Cmd+M)"
+            aria-label="Mindmap"
+            style={buttonStyle}
+            onClick={props.onOpenMindmap}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
           </button>
         )}
