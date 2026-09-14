@@ -23,9 +23,10 @@ describe('ExportModal', () => {
     expect(screen.getByText('HTML Độc lập (.html)')).toBeDefined()
     expect(screen.getByText('Microsoft Word (.docx)')).toBeDefined()
     expect(screen.getByText('Tài liệu PDF (.pdf)')).toBeDefined()
+    expect(screen.getByText('Slide PDF (Khổ ngang)')).toBeDefined()
   })
 
-  it('calls onExport and closes modal with "html", "docx", "pdf" when respective options are clicked', () => {
+  it('calls onExport and closes modal with "html", "docx", "pdf", "slide-pdf" when respective options are clicked', () => {
     const handleExport = vi.fn()
     render(<ExportModal onExport={handleExport} />)
 
@@ -42,6 +43,11 @@ describe('ExportModal', () => {
     fireEvent.click(screen.getByTitle('Xuất tài liệu'))
     fireEvent.click(screen.getByText('Tài liệu PDF (.pdf)'))
     expect(handleExport).toHaveBeenCalledWith('pdf')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.click(screen.getByTitle('Xuất tài liệu'))
+    fireEvent.click(screen.getByText('Slide PDF (Khổ ngang)'))
+    expect(handleExport).toHaveBeenCalledWith('slide-pdf')
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

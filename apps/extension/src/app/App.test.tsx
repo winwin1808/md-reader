@@ -91,9 +91,10 @@ describe('App', () => {
     window.URL.revokeObjectURL = vi.fn()
   })
 
-  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
+  it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {})
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
     let lastDownloaded = ''
@@ -156,6 +157,16 @@ describe('App', () => {
       vi.advanceTimersByTime(1000)
     })
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
+
+    // 4. Trigger Slide PDF export
+    await act(async () => {
+      fireEvent.click(exportBtn)
+    })
+    const slidePdfOption = screen.getByText('Slide PDF (Khổ ngang)')
+    await act(async () => {
+      fireEvent.click(slidePdfOption)
+    })
+    expect(printSlidesSpy).toHaveBeenCalled()
 
     vi.useRealTimers()
   })
