@@ -31,21 +31,23 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  const childNodes = document.body.childNodes
   let markdownText = ''
   let isMarkdown = false
+  const childNodes = document.body.childNodes
 
-  if (childNodes.length === 1) {
+  const pre = document.querySelector('pre')
+  if (pre && pre.textContent && (isFileMatch || document.body.children.length <= 2)) {
+    markdownText = pre.textContent || ''
+    isMarkdown = true
+  } else if (childNodes.length === 1 && childNodes[0]) {
     const node = childNodes[0]
-    if (node) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        markdownText = node.textContent || ''
-        isMarkdown = true
-      } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName === 'PRE') {
-        markdownText = node.textContent || ''
-        isMarkdown = true
-      }
+    if (node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && node.nodeName === 'PRE')) {
+      markdownText = node.textContent || ''
+      isMarkdown = true
     }
+  } else if (isFileMatch && document.body.innerText) {
+    markdownText = document.body.innerText
+    isMarkdown = true
   }
 
   if (!isMarkdown) {

@@ -50,7 +50,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
 }
 
 export function App(): React.JSX.Element {
-  const [readerSettings, setReaderSettings] = useState<ReaderSettings | null>(null)
+  const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocOpen, setTocOpen] = useState<boolean>(true)
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
@@ -347,8 +347,6 @@ export function App(): React.JSX.Element {
       />
     )
   }
-
-  if (!readerSettings) return <div>Loading...</div>
 
   const themeMode = readerSettings.mode || 'system'
   const colorTheme = readerSettings.colorTheme
