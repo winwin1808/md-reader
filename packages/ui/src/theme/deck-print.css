@@ -1,0 +1,45 @@
+.deck-print-container {
+  display: none;
+}
+
+@media print {
+  @page slide-deck {
+    size: landscape;
+    margin: 0;
+  }
+
+  body.print-slides .app-layout,
+  body.print-slides .top-toolbar,
+  body.print-slides .reading-progress,
+  body.print-slides .sidebar-toc,
+  body.print-slides nav.md-toc,
+  body.print-slides .settings-btn,
+  body.print-slides button,
+  body.print-slides dialog,
+  body.print-slides [role="dialog"],
+  body.print-slides input {
+    display: none !important;
+  }
+
+  body.print-slides .deck-print-container {
+    display: block !important;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+
+  body.print-slides .deck-print-slide {
+    page: slide-deck;
+    break-after: page;
+    page-break-after: always;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 60px;
+    overflow: hidden;
+  }
+}
