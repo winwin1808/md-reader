@@ -250,17 +250,20 @@ describe('SettingsModal', () => {
 
     // Mode
     fireEvent.click(screen.getByRole('button', { name: 'Tối' }));
+    expect(onModeChange).toHaveBeenCalledTimes(1);
     expect(onModeChange).toHaveBeenCalledWith('dark');
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
 
     // Font
     fireEvent.click(screen.getByRole('button', { name: 'Serif' }));
+    expect(onFontFamilyChange).toHaveBeenCalledTimes(1);
     expect(onFontFamilyChange).toHaveBeenCalledWith('serif');
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
 
     // Auto format
     const checkbox = screen.getByLabelText(/auto-format/i);
     fireEvent.click(checkbox);
+    expect(onAutoFormatChange).toHaveBeenCalledTimes(1);
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
     expect(onSettingChange).toHaveBeenCalledWith('autoFormatMd', true);
   });

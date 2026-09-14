@@ -325,7 +325,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                               key={opt.key}
                               type="button"
                               onClick={() => {
-                                onModeChange?.(opt.key);
                                 handleSettingChange('mode', opt.key);
                               }}
                               aria-pressed={isSelected}
@@ -359,7 +358,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                         <ThemePicker
                           currentTheme={currentColorTheme}
                           onSelect={(t) => {
-                            onColorThemeChange?.(t);
                             handleSettingChange('colorTheme', t);
                           }}
                         />
@@ -380,7 +378,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                             key={opt.key}
                             type="button"
                             onClick={() => {
-                              onFontFamilyChange?.(opt.key);
                               handleSettingChange('fontFamily', opt.key);
                             }}
                             aria-pressed={isSelected}
@@ -412,7 +409,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       type="checkbox"
                       checked={currentAutoFormat}
                       onChange={(e) => {
-                        onAutoFormatChange?.(e.target.checked);
                         handleSettingChange('autoFormatMd', e.target.checked);
                       }}
                     />
