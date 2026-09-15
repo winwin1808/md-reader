@@ -92,7 +92,7 @@ export function applyFormat(
     case 'number':
     case 'task':
     case 'quote': {
-      const lineStart = text.lastIndexOf('\n', selectionStart - 1) + 1
+      const lineStart = selectionStart === 0 ? 0 : text.lastIndexOf('\n', selectionStart - 1) + 1
       const lineEndIndex = text.indexOf('\n', selectionStart)
       const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex
       const currentLine = text.slice(lineStart, lineEnd)
@@ -138,7 +138,7 @@ export function handleListContinuation(
   text: string,
   cursorPos: number
 ): { handled: boolean; newText: string; newCursorPos: number } {
-  const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
+  const lineStart = cursorPos === 0 ? 0 : text.lastIndexOf('\n', cursorPos - 1) + 1
   const lineEndIndex = text.indexOf('\n', cursorPos)
   const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex
   const currentLine = text.slice(lineStart, lineEnd)
@@ -166,7 +166,14 @@ export function handleListContinuation(
   }
 
   // 2. Numbered list item: e.g. "1. item"
-  const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s*(.*)$/)
+  const emptyNumberMatch = currentLine.match(/^(\s*)(\d+)\.[ \t]*$/)
+  if (emptyNumberMatch) {
+    // Empty list item: exit list
+    const newText = text.slice(0, lineStart) + text.slice(lineEnd)
+    return { handled: true, newText, newCursorPos: lineStart }
+  }
+
+  const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/)
   if (numberMatch) {
     const indent = numberMatch[1]!
     const num = parseInt(numberMatch[2]!, 10)

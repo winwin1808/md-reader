@@ -149,6 +149,11 @@ describe('applyFormat', () => {
     expect(res.newText).toContain('| --- | --- | --- |')
     expect(res.newText).toContain('| Ô 1 | Ô 2 | Ô 3 |')
   })
+
+  it('applies formatting at index 0 when text starts with newline', () => {
+    const res = applyFormat('\nSecond line', 0, 0, 'bullet')
+    expect(res.newText).toBe('- \nSecond line')
+  })
 })
 
 describe('handleListContinuation', () => {
@@ -199,5 +204,12 @@ describe('handleListContinuation', () => {
     expect(res.handled).toBe(false)
     expect(res.newText).toBe('Just plain text')
     expect(res.newCursorPos).toBe(15)
+  })
+
+  it('does not treat decimal numbers like 1.1 as numbered list items', () => {
+    const res = handleListContinuation('1.1 Note', 8)
+    expect(res.handled).toBe(false)
+    expect(res.newText).toBe('1.1 Note')
+    expect(res.newCursorPos).toBe(8)
   })
 })
