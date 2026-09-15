@@ -8,8 +8,8 @@ Intent: docs/superpowers/intent/2026-09-14-phase-5-editing.md
 - [x] 5c — Conflict Detection & 3-Way Diff Modal (`originHash` verification, `ConflictModal` UI, diff calculation) — done
 - [x] 5d — Formatting Toolbar & Phím tắt Markdown (`FormattingToolbar`, smart list continuation, `Cmd+B`/`Cmd+I`/`Cmd+K`/`Tab`) — done
 - [x] 5e — Điều khiển 3 Chế độ xem & Split View Synchronized Scrolling (Reading / Editor / Split View, 2-way sync scroll) — done
-- [ ] 5f — Auto-save, Format-and-save & History Checkpoint (`core/format` on save, debounced auto-save, unsaved dot `•`, `Y.Array "history"`) — planned
-- [ ] 5g — E2E Smoke Tests cho toàn bộ Phase 5 (Quy trình soạn thảo, format, split view, lưu file và xử lý xung đột) — pending
+- [x] 5f — Auto-save, Format-and-save & History Checkpoint (`core/format` on save, debounced auto-save, unsaved dot `•`, `Y.Array "history"`) — done
+- [ ] 5g — E2E Smoke Tests cho toàn bộ Phase 5 (Quy trình soạn thảo, format, split view, lưu file và xử lý xung đột) — planned
 
 ---
 
