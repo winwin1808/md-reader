@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react'
+import { computeLineDiff } from '@md-reader/core'
 import '../theme/conflict.css'
 
 export interface ConflictModalProps {
@@ -12,104 +13,33 @@ export interface ConflictModalProps {
   onClose: () => void
 }
 
-export interface DiffLine {
+export interface SideBySideDiffLine {
   num: number | null
   text: string
   type: 'same' | 'added' | 'removed' | 'empty'
 }
 
 export function computeSideBySideDiff(diskText: string, localText: string): {
-  localDiff: DiffLine[]
-  diskDiff: DiffLine[]
+  localDiff: SideBySideDiffLine[]
+  diskDiff: SideBySideDiffLine[]
 } {
-  const diskLines = diskText.split('\n')
-  const localLines = localText.split('\n')
+  const diffs = computeLineDiff(diskText, localText)
+  const localDiff: SideBySideDiffLine[] = []
+  const diskDiff: SideBySideDiffLine[] = []
 
-  const m = diskLines.length
-  const n = localLines.length
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0))
+  let diskNum = 1
+  let localNum = 1
 
-  for (let i = 0; i < m; i++) {
-    const diskLine = diskLines[i] ?? ''
-    const rowPrev = dp[i] ?? []
-    const rowCurr = dp[i + 1] ?? []
-    for (let j = 0; j < n; j++) {
-      const localLine = localLines[j] ?? ''
-      if (diskLine === localLine) {
-        rowCurr[j + 1] = (rowPrev[j] ?? 0) + 1
-      } else {
-        rowCurr[j + 1] = Math.max(rowCurr[j] ?? 0, rowPrev[j + 1] ?? 0)
-      }
-    }
-  }
-
-  let i = m
-  let j = n
-  const aligned: {
-    disk: { num: number; text: string; type: 'same' | 'removed' } | null
-    local: { num: number; text: string; type: 'same' | 'added' } | null
-  }[] = []
-
-  while (i > 0 || j > 0) {
-    const diskLine = (i > 0 ? diskLines[i - 1] : undefined) ?? ''
-    const localLine = (j > 0 ? localLines[j - 1] : undefined) ?? ''
-    const prevDiskVal = i > 0 && j > 0 ? (dp[i - 1]?.[j] ?? 0) : 0
-    const prevLocalVal = i > 0 && j > 0 ? (dp[i]?.[j - 1] ?? 0) : 0
-
-    if (i > 0 && j > 0 && diskLine === localLine) {
-      aligned.push({
-        disk: { num: i, text: diskLine, type: 'same' },
-        local: { num: j, text: localLine, type: 'same' },
-      })
-      i--
-      j--
-    } else if (j > 0 && (i === 0 || prevLocalVal >= prevDiskVal)) {
-      aligned.push({
-        disk: null,
-        local: { num: j, text: localLine, type: 'added' },
-      })
-      j--
-    } else if (i > 0 && (j === 0 || prevLocalVal < prevDiskVal)) {
-      aligned.push({
-        disk: { num: i, text: diskLine, type: 'removed' },
-        local: null,
-      })
-      i--
-    }
-  }
-
-  aligned.reverse()
-
-  const localDiff: DiffLine[] = []
-  const diskDiff: DiffLine[] = []
-
-  for (const row of aligned) {
-    if (row.local) {
-      localDiff.push({
-        num: row.local.num,
-        text: row.local.text,
-        type: row.local.type,
-      })
-    } else {
-      localDiff.push({
-        num: null,
-        text: '',
-        type: 'empty',
-      })
-    }
-
-    if (row.disk) {
-      diskDiff.push({
-        num: row.disk.num,
-        text: row.disk.text,
-        type: row.disk.type,
-      })
-    } else {
-      diskDiff.push({
-        num: null,
-        text: '',
-        type: 'empty',
-      })
+  for (const item of diffs) {
+    if (item.type === 'same') {
+      diskDiff.push({ num: diskNum++, text: item.text, type: 'same' })
+      localDiff.push({ num: localNum++, text: item.text, type: 'same' })
+    } else if (item.type === 'removed') {
+      diskDiff.push({ num: diskNum++, text: item.text, type: 'removed' })
+      localDiff.push({ num: null, text: '', type: 'empty' })
+    } else if (item.type === 'added') {
+      diskDiff.push({ num: null, text: '', type: 'empty' })
+      localDiff.push({ num: localNum++, text: item.text, type: 'added' })
     }
   }
 

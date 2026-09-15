@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { ConflictModal } from './ConflictModal'
+import { ConflictModal, computeSideBySideDiff } from './ConflictModal'
 
 describe('ConflictModal', () => {
   afterEach(() => {
@@ -66,5 +66,26 @@ describe('ConflictModal', () => {
     render(<ConflictModal {...defaultProps} onClose={onClose} />)
     fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not produce phantom empty lines when localContent or diskContent is empty', () => {
+    const diff1 = computeSideBySideDiff('', 'line 1')
+    expect(diff1.diskDiff).toEqual([{ num: null, text: '', type: 'empty' }])
+    expect(diff1.localDiff).toEqual([{ num: 1, text: 'line 1', type: 'added' }])
+
+    const diff2 = computeSideBySideDiff('line 1', '')
+    expect(diff2.diskDiff).toEqual([{ num: 1, text: 'line 1', type: 'removed' }])
+    expect(diff2.localDiff).toEqual([{ num: null, text: '', type: 'empty' }])
+
+    const diff3 = computeSideBySideDiff('', '')
+    expect(diff3.diskDiff).toEqual([])
+    expect(diff3.localDiff).toEqual([])
+  })
+
+  it('renders correctly when localContent or diskContent is empty without phantom lines', () => {
+    const { container } = render(<ConflictModal {...defaultProps} localContent="" diskContent="disk only" />)
+    expect(container.querySelectorAll('.conflict-diff-line.empty').length).toBe(1)
+    expect(container.querySelectorAll('.conflict-diff-line.removed').length).toBe(1)
+    expect(container.querySelectorAll('.conflict-diff-line.added').length).toBe(0)
   })
 })
