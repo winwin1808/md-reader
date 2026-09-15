@@ -198,9 +198,11 @@ export function App(): React.JSX.Element {
         setDocTitle(name.replace(/\.[^/.]+$/, ''))
       }
     }
-    const observer = () => {
+    const observer = (event: Y.YTextEvent) => {
       setHasContent(text.length > 0)
-      setIsDirty(true)
+      if (event.transaction.origin !== 'save-format' && event.transaction.origin !== 'load-file') {
+        setIsDirty(true)
+      }
       setContent(text.toString())
       updateTitle()
     }
@@ -279,8 +281,10 @@ export function App(): React.JSX.Element {
     if (fileUrl) {
       const loadContent = async (text: string) => {
         const ytext = doc.getText('source')
-        ytext.delete(0, ytext.length)
-        ytext.insert(0, text)
+        doc.transact(() => {
+          ytext.delete(0, ytext.length)
+          ytext.insert(0, text)
+        }, 'load-file')
         setIsDirty(false)
         const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
         doc.getMap('meta').set('name', name)
@@ -337,7 +341,7 @@ export function App(): React.JSX.Element {
         doc.transact(() => {
           yText.delete(0, yText.length)
           yText.insert(0, formattedText)
-        })
+        }, 'save-format')
         savedContent = formattedText
       }
     }
@@ -423,7 +427,7 @@ export function App(): React.JSX.Element {
     doc.transact(() => {
       yText.delete(0, yText.length)
       yText.insert(0, conflictData.diskContent)
-    })
+    }, 'load-file')
     const diskHash = await hashText(conflictData.diskContent)
     doc.getMap('meta').set('originHash', diskHash)
     setIsDirty(false)
