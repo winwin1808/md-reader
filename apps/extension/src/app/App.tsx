@@ -302,6 +302,28 @@ export function App(): React.JSX.Element {
 
       const cacheKey = 'file_content_' + fileUrl
       const tryFetch = () => {
+        if (fileUrl.startsWith('file:')) {
+          try {
+            const xhr = new XMLHttpRequest()
+            xhr.open('GET', fileUrl, true)
+            xhr.onload = () => {
+              if ((xhr.status === 200 || xhr.status === 0) && xhr.responseText) {
+                loadContent(xhr.responseText)
+              } else {
+                setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+              }
+            }
+            xhr.onerror = () => {
+              setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+            }
+            xhr.send()
+          } catch (err) {
+            console.error('XHR file read error:', err)
+            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+          }
+          return
+        }
+
         fetch(fileUrl)
           .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`)

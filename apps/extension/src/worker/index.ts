@@ -15,29 +15,39 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
     const fileUrl = message.fileUrl || ''
     const targetUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(fileUrl))
 
-    if (message.content && fileUrl) {
-      chrome.storage?.local?.set?.({
-        ['file_content_' + fileUrl]: message.content,
-      }).catch((err) => console.warn('Failed to cache file content in worker:', err))
+    const handleOpen = async () => {
+      if (message.content && fileUrl) {
+        try {
+          await chrome.storage?.local?.set?.({
+            ['file_content_' + fileUrl]: message.content,
+          })
+        } catch (err) {
+          console.warn('Failed to cache file content in worker:', err)
+        }
+      }
+
+      if (tabId && message.replace) {
+        try {
+          await chrome.tabs.update(tabId, { url: targetUrl })
+          sendResponse?.({ success: true })
+        } catch (err) {
+          console.warn('Failed to update tab in worker:', err)
+          await chrome.tabs.create({ url: targetUrl })
+          sendResponse?.({ success: true, created: true })
+        }
+      } else {
+        try {
+          await chrome.tabs.create({ url: targetUrl })
+          sendResponse?.({ success: true })
+        } catch (err) {
+          console.warn('Failed to create tab in worker:', err)
+          sendResponse?.({ success: false, error: String(err) })
+        }
+      }
     }
 
-    if (tabId && message.replace) {
-      chrome.tabs.update(tabId, { url: targetUrl }).then(() => {
-        sendResponse?.({ success: true })
-      }).catch((err) => {
-        console.warn('Failed to update tab in worker:', err)
-        chrome.tabs.create({ url: targetUrl }).then(() => sendResponse?.({ success: true, created: true }))
-      })
-      return true
-    } else {
-      chrome.tabs.create({ url: targetUrl }).then(() => {
-        sendResponse?.({ success: true })
-      }).catch((err) => {
-        console.warn('Failed to create tab in worker:', err)
-        sendResponse?.({ success: false, error: String(err) })
-      })
-      return true
-    }
+    handleOpen()
+    return true
   }
 })
 
@@ -55,6 +65,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   // Skip GitHub web blob pages (e.g. github.com/owner/repo/blob/...)
   if (targetUrl.includes('github.com') && targetUrl.includes('/blob/')) return
+
+  // Skip file:// URLs here because content.js must run first to extract and cache DOM content!
+  if (targetUrl.startsWith('file:')) return
 
   try {
     const settings = await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])

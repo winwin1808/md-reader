@@ -1103,16 +1103,13 @@ describe('App', () => {
 
       // Before 2000ms, saveToHandle should not have triggered
       await act(async () => {
-        vi.advanceTimersByTime(1500)
+        await vi.advanceTimersByTimeAsync(1500)
       })
       expect(saveToHandleSpy).not.toHaveBeenCalled()
 
       // Advance past 2000ms to fire debounced auto-save
       await act(async () => {
-        vi.advanceTimersByTime(600)
-        for (let i = 0; i < 20; i++) {
-          await Promise.resolve()
-        }
+        await vi.advanceTimersByTimeAsync(600)
       })
 
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
@@ -1174,9 +1171,7 @@ describe('App', () => {
       // Resolve in-flight saveFileAs
       await act(async () => {
         resolveSaveFileAs?.({ handle: mockHandle, file: new File([], 'guide.md') })
-        for (let i = 0; i < 20; i++) await Promise.resolve()
-        vi.advanceTimersByTime(50)
-        for (let i = 0; i < 20; i++) await Promise.resolve()
+        await vi.advanceTimersByTimeAsync(50)
       })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
 
@@ -1195,18 +1190,13 @@ describe('App', () => {
       // Manual save runs and clears debounced auto-save timer
       await act(async () => {
         fireEvent.keyDown(window, { key: 's', metaKey: true })
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        vi.advanceTimersByTime(50)
+        await vi.advanceTimersByTimeAsync(50)
       })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
 
       // Fast forward past autoSave debounce duration, no extra auto-save call occurs
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        await vi.advanceTimersByTimeAsync(2500)
       })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
     } finally {
