@@ -110,7 +110,7 @@ export function applyFormat(
       if (action === 'h1' || action === 'h2' || action === 'h3') {
         const headingMatch = currentLine.match(/^(#{1,6}\s+)/)
         if (headingMatch) {
-          const oldPrefixLen = headingMatch[1].length
+          const oldPrefixLen = headingMatch[1]!.length
           const lineRest = currentLine.slice(oldPrefixLen)
           const newText = text.slice(0, lineStart) + prefix + lineRest + text.slice(lineEnd)
           const diff = prefix.length - oldPrefixLen
@@ -146,8 +146,8 @@ export function handleListContinuation(
   // 1. Task list item: e.g. "- [ ] item" or "- [x] item"
   const taskMatch = currentLine.match(/^(\s*[-*+]\s+\[[ xX]\]\s*)(.*)$/)
   if (taskMatch) {
-    const prefix = taskMatch[1]
-    const content = taskMatch[2]
+    const prefix = taskMatch[1]!
+    const content = taskMatch[2]!
     if (content.trim() === '') {
       // Empty list item: exit list by removing the prefix on this line
       const newText = text.slice(0, lineStart) + text.slice(lineEnd)
@@ -155,7 +155,7 @@ export function handleListContinuation(
     }
     // Continue list with unchecked task
     const indentMatch = prefix.match(/^(\s*)/)
-    const indent = indentMatch ? indentMatch[1] : ''
+    const indent = indentMatch?.[1] ?? ''
     const continuation = `\n${indent}- [ ] `
     const newText = text.slice(0, cursorPos) + continuation + text.slice(cursorPos)
     return {
@@ -168,9 +168,9 @@ export function handleListContinuation(
   // 2. Numbered list item: e.g. "1. item"
   const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s*(.*)$/)
   if (numberMatch) {
-    const indent = numberMatch[1]
-    const num = parseInt(numberMatch[2], 10)
-    const content = numberMatch[3]
+    const indent = numberMatch[1]!
+    const num = parseInt(numberMatch[2]!, 10)
+    const content = numberMatch[3]!
     if (content.trim() === '') {
       // Empty list item: exit list
       const newText = text.slice(0, lineStart) + text.slice(lineEnd)
@@ -188,8 +188,8 @@ export function handleListContinuation(
   // 3. Bullet list item: e.g. "- item", "* item", "+ item"
   const bulletMatch = currentLine.match(/^(\s*[-*+]\s+)(.*)$/)
   if (bulletMatch) {
-    const prefix = bulletMatch[1]
-    const content = bulletMatch[2]
+    const prefix = bulletMatch[1]!
+    const content = bulletMatch[2]!
     if (content.trim() === '') {
       // Empty list item: exit list
       const newText = text.slice(0, lineStart) + text.slice(lineEnd)
