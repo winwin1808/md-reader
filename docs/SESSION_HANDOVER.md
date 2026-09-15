@@ -1,75 +1,78 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-14 (phiên 9). Branch: `phase-4-mindmap` (sẵn sàng merge vào `main`).
+Cập nhật: 2026-09-15 (phiên 10). Branch: `phase-5` (sẵn sàng merge vào `main`).
 
 ## Đang ở đâu
 
-**Phase 4 (Mindmap chuẩn Markmap & Excalidraw Sơ đồ nhúng) đã hoàn tất toàn bộ 5/5 phase con trên branch `phase-4-mindmap`!**
+**Phase 5 (Chỉnh sửa / Editor, Split View & Lưu đĩa An toàn) đã hoàn tất toàn bộ 7/7 phase con trên branch `phase-5`!**
 
 | # | Phase con | Trạng thái |
 |---|---|---|
-| 4a | `core/mindmap` AST extractor (Heading & list → `MindNode` tree, slug nhất quán ToC) | ✅ done |
-| 4b | `MindmapModal` UI (D3-hierarchy / SVG tree, đường cong Bézier Markmap, zoom & pan) | ✅ done |
-| 4c | Tương tác 2 chiều (Gập/mở nhánh với badge +N, cuộn đến heading, TopToolbar button & `Cmd+M`) | ✅ done |
-| 4d | Excalidraw inline rendering (`ExcalidrawBlock` vector SVG ở app page, placeholder ở content script) | ✅ done |
-| 4e | Xuất Mindmap (SVG/PNG reset transform, padded viewBox, safe download) & E2E smoke tests | ✅ done |
+| 5a | `Editor` component CodeMirror 6 (`y-codemirror.next`, `Y.Text "source"`, `Y.UndoManager`) | ✅ done |
+| 5b | File System Access API (`file-system.ts`, IndexedDB handle persistence, Open/Save/Save As) | ✅ done |
+| 5c | Phát hiện xung đột & Hộp thoại 3-Way Diff (`computeLineDiff`, `detectConflict`, `ConflictModal`) | ✅ done |
+| 5d | Thanh công cụ `FormattingToolbar` & phím tắt Markdown thông minh, tự tiếp tục danh sách khi Enter | ✅ done |
+| 5e | Container 3 chế độ xem `SplitViewContainer` (Reading/Editor/Split) & 2-way synchronized scrolling | ✅ done |
+| 5f | Pipeline lưu đĩa `App.tsx`: `Cmd+S`, dot `•`, `formatMarkdown`, debounced auto-save, history checkpoint | ✅ done |
+| 5g | Bộ kiểm thử tích hợp E2E Smoke Tests toàn diện cho toàn bộ Phase 5 (`apps/extension/e2e/editor.spec.ts`) | ✅ done |
 
 Specs & Intent tương ứng:
-- `docs/superpowers/intent/2026-09-14-phase-4-mindmap-excalidraw.md`
-- `docs/superpowers/specs/2026-09-14-phase-4-mindmap-excalidraw-design.md`
-- Các plans: `docs/superpowers/plans/2026-09-14-phase-4-4{a,b,c,d,e}-plan.md`
+- `docs/superpowers/intent/2026-09-14-phase-5-editing.md`
+- `docs/superpowers/specs/2026-09-14-phase-5-editing-design.md`
+- Các plans: `docs/superpowers/plans/2026-09-14-phase-5-5{a,b,c,d,e,f,g}-plan.md`
 
 ## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
 
 ```
-packages/core test        11 test files, 123 passed
-packages/ui test          21 test files, 162 passed
-apps/extension test       10 test files, 39 passed
-Tổng cộng                 42 test files, 324 passed
+packages/core test        12 test files, 133 passed
+packages/ui test          25 test files, 206 passed
+apps/extension test       12 test files, 61 passed
+Tổng cộng                 49 test files, 400 passed (0 failed)
 pnpm -r typecheck         exit 0
 pnpm -r build             exit 0
 dist/content.js           26.56 kB, gz 10.23 kB (giới hạn 61.44 kB / 60KB)
 ```
 
-## Tính năng đã hoàn tất ở Phase 4
+## Tính năng đã hoàn tất ở Phase 5
 
-1. **`core/mindmap` AST extractor:**
-   - Trích xuất cấu trúc phân cấp từ AST mdast thành cây `MindNode`.
-   - Node gốc `depth: 0`, tiêu đề lấy từ H1 đầu tiên hoặc fallback title.
-   - Headings lồng phân cấp tự nhiên, hỗ trợ skipping levels.
-   - `headingId` đồng bộ slug với `extractToc` phục vụ click-to-jump.
+1. **CodeMirror 6 Core & Yjs 2-way Binding (`Editor`):**
+   - Tích hợp `@codemirror/view`, `@codemirror/state`, `@codemirror/lang-markdown`, `@codemirror/language`.
+   - Kết nối 2 chiều với `Y.Text "source"` và `Y.UndoManager` thông qua `y-codemirror.next`.
+   - Hỗ trợ `onEditorReady`, `editorViewRef` để thao tác và kiểm tra vùng chọn chính xác.
 
-2. **`MindmapModal` giao diện toàn màn hình:**
-   - Render SVG sắc nét, nền mờ `backdrop-filter: blur(12px)`.
-   - Cây layout ngang từ trái sang phải với khoảng cách động theo cấp.
-   - Đường cong Bézier Markmap mượt mà: `M ... C ...`.
-   - 7 màu nhánh phân cấp (`#2563eb`, `#10b981`, `#8b5cf6`, `#f59e0b`, `#ec4899`, `#06b6d4`, `#f97316`) kế thừa xuống các nhánh con.
-   - Tương tác canvas SVG: kéo chuột pan, lăn chuột wheel zoom quanh con trỏ (clamped 0.2x–3.0x), nút Fit to Screen, Zoom In/Out, phím Escape đóng modal.
+2. **File System Access API & IndexedDB Handle Persistence:**
+   - Hỗ trợ lưu trực tiếp về file gốc trên đĩa thông qua `FileSystemFileHandle` (`saveToHandle`, `openLocalFile`, `saveFileAs`).
+   - Lưu handle an toàn vào IndexedDB (`idb-handle.ts`), tự động khôi phục và xác thực quyền khi mở lại.
 
-3. **Tương tác 2 chiều & điều hướng:**
-   - Nút tròn toggle gập/mở nhánh với badge pill hiển thị số lượng con bị ẩn (`+N`).
-   - Nút tiện ích `Expand All` (⊞) và `Collapse All` (⊟).
-   - Nút Mindmap trên `TopToolbar` cạnh nút Present.
-   - Phím tắt toàn cục `Cmd+M` / `Ctrl+M` đóng/mở nhanh.
-   - Click node tự động đóng modal và cuộn mượt (`scrollIntoView({ behavior: 'smooth' })`) tới heading tương ứng trong tài liệu.
+3. **Phát hiện Xung đột & Hộp thoại 3-Way Diff (`ConflictModal`):**
+   - Thuật toán `computeLineDiff` (LCS DP) và `detectConflict` theo SHA-256 `originHash` trong `@md-reader/core`.
+   - Giao diện `ConflictModal` toàn màn hình với nền mờ, hiển thị song song hai bản (Cục bộ vs Ngoài đĩa) tô màu trực quan (xanh lá cho thêm mới, đỏ cho xóa).
+   - Hai lựa chọn an toàn: "Giữ bản sửa của tôi (Ghi đè)" hoặc "Tải lại từ đĩa (Bỏ thay đổi)".
 
-4. **Sơ đồ Excalidraw nhúng (`ExcalidrawBlock`):**
-   - Hỗ trợ khối mã ````excalidraw```` trong Markdown.
-   - Vector renderer thuần SVG, không kéo thư viện canvas nặng nề, giữ nguyên chuẩn MV3 CSP.
-   - Hỗ trợ đầy đủ các hình phác thảo: hình chữ nhật, hình thoi, hình elip, đoạn thẳng, mũi tên có đầu nhọn, chữ viết, nét vẽ tự do (freedraw).
-   - Tự động tính toán `viewBox` bao bọc và padding 24px.
-   - Content script render card placeholder nét đứt nhẹ nhàng, bảo toàn ngân sách bundle (~10KB gz).
+4. **Thanh công cụ Định dạng & Phím tắt Markdown (`FormattingToolbar`):**
+   - 14 thao tác định dạng: Bold, Italic, Strike, Heading 1-3, Bullet list, Numbered list, Task list, Blockquote, Inline code, Code block, Math, Link, Table.
+   - Giữ nguyên vùng chọn text sau khi áp dụng định dạng.
+   - Tự động tiếp tục bullet/number/task list khi nhấn Enter; tự động thoát danh sách khi nhấn Enter ở dòng trống.
 
-5. **Xuất Mindmap & E2E smoke tests:**
-   - Nút xuất file `Tải SVG` và `Tải PNG` độ phân giải cao (2x Retina ready).
-   - Reset transform hiển thị khi xuất, tính toán `viewBox` khớp bounding box thực tế kèm padding 40px, đảm bảo sơ đồ không bị lệch hay cắt xén kể cả khi đang pan/zoom.
-   - Thu hồi `URL.revokeObjectURL` bất đồng bộ an toàn.
-   - Bộ E2E smoke test Playwright/Vitest toàn diện kiểm thử end-to-end từ render Excalidraw, mở modal, tương tác gập mở, cuộn heading và tải ảnh.
+5. **3 Chế độ Xem & Cuộn Đồng bộ 2 Chiều (`SplitViewContainer`):**
+   - 3 chế độ xem: Chế độ Đọc (Reading), Soạn thảo (Editor), Chia đôi 50:50 (Split View).
+   - Cuộn đồng bộ 2 chiều (Synchronized Scrolling) giữa Editor và Live Preview theo tỉ lệ tiến độ cuộn.
+   - Cơ chế bảo vệ `syncingTargetRef` kết hợp hủy `cancelAnimationFrame` ngăn ngừa vòng lặp phản hồi cuộn vô tận và không bị drop scroll khi người dùng thao tác nhanh.
+
+6. **Tích hợp Lưu đĩa Toàn diện trong `App.tsx`:**
+   - Phím tắt toàn cục `Cmd+S` / `Ctrl+S`.
+   - Chỉ báo tài liệu chưa lưu `•` (`.dirty-indicator`) cạnh tiêu đề file.
+   - Tự động định dạng Markdown trước khi lưu (`formatMarkdown`).
+   - Ghi lại checkpoint lịch sử `appendHistory` vào `Y.Array "history"`.
+   - Debounced auto-save sau 2000ms khi đã có file handle.
+   - Concurrency guard `isSavingRef` chống xung đột gọi lưu song song và bảo vệ dữ liệu gõ trong lúc đang ghi đĩa.
+
+7. **Bộ Kiểm thử E2E Smoke Tests Toàn diện (`editor.spec.ts`):**
+   - Kịch bản end-to-end kiểm tra toàn bộ hành trình người dùng: chuyển đổi chế độ xem, bôi đen định dạng bold, gõ nội dung mới cập nhật live preview, lưu Cmd+S, giả lập file ngoài đĩa bị sửa, mở hộp thoại ConflictModal và giải quyết xung đột bằng ghi đè.
 
 ## Phase tiếp theo
 
-- **Phase 5 (Chỉnh sửa / Editor & Lưu đĩa)**:
-  - Tích hợp CodeMirror 6 (`@codemirror/view`, `@codemirror/state`, `y-codemirror.next`).
-  - Chế độ chia đôi màn hình Split-view (Editor bên trái, Live Preview bên phải) hoặc toggle View/Edit.
-  - Lưu file an toàn thông qua File System Access API hoặc fallback download.
-  - Cảnh báo và phát hiện xung đột file ngoài đĩa.
+- **Phase 6 (Chia sẻ & Cộng tác)**:
+  - Chia sẻ link xem tài liệu.
+  - Cộng tác thời gian thực qua WebRTC / WebSocket provider của Yjs.
+  - Awareness / hiển thị con trỏ của người khác và lịch sử sửa đổi (trace ai sửa chỗ nào).
