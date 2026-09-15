@@ -141,6 +141,10 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
 
     expect(view.state.doc.toString()).toContain('**sample**')
 
+    // Verify CodeMirror selection preservation inside **...**
+    expect(view.state.selection.main.from).toBe(idx + 2)
+    expect(view.state.selection.main.to).toBe(idx + 2 + 'sample'.length)
+
     await waitFor(() => {
       const strong = container.querySelector('.a4-document-container strong')
       expect(strong?.textContent).toBe('sample')
@@ -171,7 +175,8 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     })
 
     expect(saveFileAsSpy).toHaveBeenCalled()
-    expect(saveToHandleSpy).toHaveBeenCalled()
+    expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
+    expect(saveToHandleSpy).toHaveBeenCalledWith(mockHandle, expect.stringContaining('Realtime Section'))
     expect(container.querySelector('.dirty-indicator')).toBeNull()
 
     // 7. Conflict detection and resolution
@@ -208,21 +213,22 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
       expect(conflictModal?.textContent).toMatch(/xung đột/i)
     })
 
-    // Click "Giữ bản sửa của tôi" to resolve conflict by force overwrite
-    const keepLocalBtn = conflictModal!.querySelector('button.btn-conflict-primary') ||
-      Array.from(conflictModal!.querySelectorAll('button')).find((b) => /giữ bản sửa|keep local/i.test(b.textContent || ''))
+    // Click "Giữ bản sửa của tôi" to resolve conflict by force overwrite (using .conflict-btn-keep)
+    const keepLocalBtn = conflictModal!.querySelector('button.conflict-btn-keep') as HTMLButtonElement
     expect(keepLocalBtn).toBeTruthy()
 
     await act(async () => {
-      fireEvent.click(keepLocalBtn!)
+      fireEvent.click(keepLocalBtn)
       await Promise.resolve()
       await Promise.resolve()
       await Promise.resolve()
       await Promise.resolve()
     })
 
-    // Modal closes, file is saved, and dirty indicator cleared
+    // Modal closes, file is saved with latest local edits, and dirty indicator cleared
     expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
+    expect(saveToHandleSpy).toHaveBeenLastCalledWith(mockHandle, expect.stringContaining('More local edits'))
     expect(container.querySelector('.dirty-indicator')).toBeNull()
 
     // 8. Switch back to Reading mode
