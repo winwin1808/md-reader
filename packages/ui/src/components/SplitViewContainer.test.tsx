@@ -135,12 +135,17 @@ describe('SplitViewContainer', () => {
     expect(editorPane.scrollTop).toBe(300)
   })
 
-  it('prevents circular scroll loops when syncing', () => {
+  it('does not drop rapid successive scroll events and updates target to final scroll ratio', () => {
     const onSyncScroll = vi.fn()
-    const rafCallbacks: FrameRequestCallback[] = []
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    let nextRafId = 1
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCallbacks.push(cb)
-      return rafCallbacks.length
+      const id = nextRafId++
+      rafCallbacks.set(id, cb)
+      return id
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      rafCallbacks.delete(id)
     })
 
     render(
@@ -161,20 +166,78 @@ describe('SplitViewContainer', () => {
     Object.defineProperty(previewPane, 'clientHeight', { configurable: true, value: 500 })
 
     fireEvent.mouseEnter(editorPane)
+
+    // Editor max scroll = 1500, preview max scroll = 3000
+    // Scroll 1: scrollTop = 300 (ratio = 0.2)
+    editorPane.scrollTop = 300
+    fireEvent.scroll(editorPane)
+
+    // Scroll 2 (rapidly before rAF fires): scrollTop = 750 (ratio = 0.5)
+    editorPane.scrollTop = 750
+    fireEvent.scroll(editorPane)
+
+    // Scroll 3 (rapidly before rAF fires): scrollTop = 1200 (ratio = 0.8)
+    editorPane.scrollTop = 1200
+    fireEvent.scroll(editorPane)
+
+    // Verify all rapid scroll events were captured, not dropped
+    expect(onSyncScroll).toHaveBeenCalledTimes(3)
+    expect(onSyncScroll).toHaveBeenLastCalledWith('editor', 0.8)
+
+    // Execute remaining scheduled animation frames
+    Array.from(rafCallbacks.values()).forEach((cb) => cb(performance.now()))
+
+    // Target pane should reach the final scroll ratio (0.8 * 3000 = 2400)
+    expect(previewPane.scrollTop).toBe(2400)
+  })
+
+  it('prevents circular scroll loops when syncing without relying solely on mouseEnter blocking', () => {
+    const onSyncScroll = vi.fn()
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    let nextRafId = 1
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      const id = nextRafId++
+      rafCallbacks.set(id, cb)
+      return id
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      rafCallbacks.delete(id)
+    })
+
+    render(
+      <SplitViewContainer
+        mode="split"
+        editor={<div style={{ height: 2000 }}>Editor Content</div>}
+        preview={<div style={{ height: 3000 }}>Preview Content</div>}
+        onSyncScroll={onSyncScroll}
+      />
+    )
+
+    const editorPane = screen.getByTestId('split-view-editor-pane')
+    const previewPane = screen.getByTestId('split-view-preview-pane')
+
+    Object.defineProperty(editorPane, 'scrollHeight', { configurable: true, value: 2000 })
+    Object.defineProperty(editorPane, 'clientHeight', { configurable: true, value: 500 })
+    Object.defineProperty(previewPane, 'scrollHeight', { configurable: true, value: 3500 })
+    Object.defineProperty(previewPane, 'clientHeight', { configurable: true, value: 500 })
+
+    // Test without mouseEnter on editorPane - neither pane is hovered initially
     editorPane.scrollTop = 750
     fireEvent.scroll(editorPane)
 
     expect(onSyncScroll).toHaveBeenCalledTimes(1)
+    expect(onSyncScroll).toHaveBeenCalledWith('editor', 0.5)
 
-    // While isSyncing is active, programmatic scroll on previewPane should not trigger sync back
+    // Execute rAF callback that updates previewPane.scrollTop
+    const cbs = Array.from(rafCallbacks.values())
+    cbs.forEach((cb) => cb(performance.now()))
+    expect(previewPane.scrollTop).toBe(1500)
+
+    // Now hover the previewPane and fire scroll (programmatic echo)
+    // Even though previewPane is hovered (mouseEnter), programmatic target guard must prevent echo back to editor
+    fireEvent.mouseEnter(previewPane)
     fireEvent.scroll(previewPane)
     expect(onSyncScroll).toHaveBeenCalledTimes(1)
-
-    // Run raf callbacks to reset isSyncing
-    while (rafCallbacks.length > 0) {
-      const cb = rafCallbacks.shift()
-      cb?.(performance.now())
-    }
   })
 })
 

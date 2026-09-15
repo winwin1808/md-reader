@@ -13,7 +13,7 @@ export interface SplitViewContainerProps {
 export function SplitViewContainer(props: SplitViewContainerProps): React.JSX.Element {
   const editorPaneRef = useRef<HTMLDivElement>(null)
   const previewPaneRef = useRef<HTMLDivElement>(null)
-  const isSyncingRef = useRef(false)
+  const syncingTargetRef = useRef<'editor' | 'preview' | null>(null)
   const activeSourceRef = useRef<'editor' | 'preview' | null>(null)
   const rafIdRef = useRef<number | null>(null)
   const rafResetIdRef = useRef<number | null>(null)
@@ -28,7 +28,10 @@ export function SplitViewContainer(props: SplitViewContainerProps): React.JSX.El
   const handleScroll = useCallback(
     (source: 'editor' | 'preview') => {
       if (props.mode !== 'split') return
-      if (isSyncingRef.current) return
+      if (syncingTargetRef.current === source) {
+        syncingTargetRef.current = null
+        return
+      }
 
       const sourcePane = source === 'editor' ? editorPaneRef.current : previewPaneRef.current
       const targetPane = source === 'editor' ? previewPaneRef.current : editorPaneRef.current
@@ -47,7 +50,9 @@ export function SplitViewContainer(props: SplitViewContainerProps): React.JSX.El
 
       props.onSyncScroll?.(source, ratio)
 
-      isSyncingRef.current = true
+      const target = source === 'editor' ? 'preview' : 'editor'
+      syncingTargetRef.current = target
+
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current)
       if (rafResetIdRef.current) cancelAnimationFrame(rafResetIdRef.current)
 
@@ -56,8 +61,10 @@ export function SplitViewContainer(props: SplitViewContainerProps): React.JSX.El
         targetPane.scrollTop = ratio * targetMaxScroll
 
         rafResetIdRef.current = requestAnimationFrame(() => {
-          isSyncingRef.current = false
+          syncingTargetRef.current = null
+          rafResetIdRef.current = null
         })
+        rafIdRef.current = null
       })
     },
     [props.mode, props.onSyncScroll]
