@@ -11,6 +11,7 @@
 @import './theme/settings.css';
 @import './theme/mindmap.css';
 @import './theme/excalidraw.css';
+@import './theme/conflict.css';
 .md-viewer {
   background-color: var(--md-bg);
   color: var(--md-fg);
