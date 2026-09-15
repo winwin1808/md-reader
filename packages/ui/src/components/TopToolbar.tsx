@@ -17,6 +17,8 @@ export interface TopToolbarProps {
   rightActions?: React.ReactNode
   viewMode?: ViewMode
   onViewModeChange?: (mode: ViewMode) => void
+  isDirty?: boolean
+  onSave?: () => void
 }
 
 const FONT_SCALES: FontScale[] = ['sm', 'md', 'lg', 'xl']
@@ -114,6 +116,11 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
         >
           {props.title || 'Untitled'}
         </span>
+        {props.isDirty && (
+          <span className="dirty-indicator" title="Có thay đổi chưa lưu" style={{ color: 'var(--md-fg-muted, #888)', fontWeight: 'bold' }}>
+            {' '}•
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -311,6 +318,22 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
               ◫ Chia đôi
             </button>
           </div>
+        )}
+
+        {props.onSave && (
+          <button
+            type="button"
+            title="Lưu (Cmd+S)"
+            aria-label="Lưu"
+            style={buttonStyle}
+            onClick={props.onSave}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+          </button>
         )}
 
         {props.rightActions}

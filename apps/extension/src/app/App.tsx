@@ -19,13 +19,30 @@ import {
   WordCountBar,
   CelebrationConfetti,
   MindmapModal,
+  Editor,
+  SplitViewContainer,
+  ConflictModal,
+  FormattingToolbar,
+  applyFormat,
 } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings } from '@md-reader/ui'
-import { parseMarkdown, renderToHtml, exportToHtml, mdastToDocx, splitIntoSlides, extractMindmap } from '@md-reader/core'
+import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction } from '@md-reader/ui'
+import {
+  parseMarkdown,
+  renderToHtml,
+  exportToHtml,
+  mdastToDocx,
+  splitIntoSlides,
+  extractMindmap,
+  formatMarkdown,
+  detectConflict,
+  appendHistory,
+  hashText,
+} from '@md-reader/core'
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { addRecentFile } from './registry'
+import { saveToHandle, saveFileAs, storeFileHandle } from './fs/file-system'
 import './app.css'
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -65,6 +82,14 @@ export function App(): React.JSX.Element {
   const [docTitle, setDocTitle] = useState<string>('')
   // Re-render when doc text changes to hide placeholder
   const [hasContent, setHasContent] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('reading')
+  const [isDirty, setIsDirty] = useState<boolean>(false)
+  const [activeHandle, setActiveHandle] = useState<FileSystemFileHandle | null>(null)
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false)
+  const [conflictData, setConflictData] = useState<{ localContent: string; diskContent: string }>({
+    localContent: '',
+    diskContent: '',
+  })
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
@@ -78,6 +103,8 @@ export function App(): React.JSX.Element {
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
   const doc = useMemo(() => new Y.Doc(), [])
+  const yText = useMemo(() => doc.getText('source'), [doc])
+  const undoManager = useMemo(() => new Y.UndoManager(yText), [yText])
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   useEffect(() => {
@@ -170,6 +197,7 @@ export function App(): React.JSX.Element {
     }
     const observer = () => {
       setHasContent(text.length > 0)
+      setIsDirty(true)
       setContent(text.toString())
       updateTitle()
     }
@@ -181,6 +209,7 @@ export function App(): React.JSX.Element {
         setHasContent(text.length > 0)
         setContent(text.toString())
         updateTitle()
+        setIsDirty(false)
       })
     }
 
@@ -245,13 +274,17 @@ export function App(): React.JSX.Element {
     const params = new URLSearchParams(window.location.search)
     const fileUrl = params.get('file')
     if (fileUrl) {
-      const loadContent = (text: string) => {
+      const loadContent = async (text: string) => {
         const ytext = doc.getText('source')
         ytext.delete(0, ytext.length)
         ytext.insert(0, text)
+        setIsDirty(false)
         const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
         doc.getMap('meta').set('name', name)
+        const originHash = await hashText(text)
+        doc.getMap('meta').set('originHash', originHash)
         setDocTitle(name.replace(/\.[^/.]+$/, ''))
+        setIsDirty(false)
         
         addRecentFile({
           id: fileUrl,
@@ -290,6 +323,132 @@ export function App(): React.JSX.Element {
       }
     }
   }, [doc])
+
+  const executeSave = async (handle: FileSystemFileHandle, textToSave: string) => {
+    const formattedText = readerSettings?.autoFormatMd !== false ? formatMarkdown(textToSave) : textToSave
+    if (formattedText !== textToSave) {
+      yText.delete(0, yText.length)
+      yText.insert(0, formattedText)
+    }
+    await saveToHandle(handle, formattedText)
+    const newHash = await hashText(formattedText)
+    doc.getMap('meta').set('originHash', newHash)
+    appendHistory(doc, {
+      source: formattedText,
+      timestamp: Date.now(),
+      actor: 'user',
+      label: 'save',
+      clientIds: [],
+    } as any)
+    setIsDirty(false)
+  }
+
+  const handleSave = async () => {
+    const currentText = yText.toString()
+    if (!activeHandle) {
+      const suggestedName = docTitle ? (docTitle.endsWith('.md') ? docTitle : `${docTitle}.md`) : 'Untitled.md'
+      try {
+        const res = await saveFileAs(suggestedName, currentText)
+        if (res) {
+          const handle = res.handle
+          setActiveHandle(handle)
+          await storeFileHandle(handle).catch(() => {})
+          doc.getMap('meta').set('name', handle.name)
+          setDocTitle(handle.name.replace(/\.[^/.]+$/, ''))
+          await executeSave(handle, currentText)
+        }
+      } catch (err) {
+        console.error('Error saving file as:', err)
+      }
+      return
+    }
+
+    try {
+      let diskText = ''
+      try {
+        const file = await activeHandle.getFile()
+        diskText = await file.text()
+      } catch (err) {
+        console.warn('Could not read disk file for conflict check:', err)
+      }
+
+      const currentOriginHash = (doc.getMap('meta').get('originHash') as string) || ''
+      const hasConflict = await detectConflict(currentOriginHash, diskText)
+      if (hasConflict) {
+        setConflictData({
+          localContent: currentText,
+          diskContent: diskText,
+        })
+        setIsConflictModalOpen(true)
+        return
+      }
+
+      await executeSave(activeHandle, currentText)
+    } catch (err) {
+      console.error('Error saving file:', err)
+    }
+  }
+
+  const handleSaveRef = useRef(handleSave)
+  handleSaveRef.current = handleSave
+
+  const handleKeepLocal = async () => {
+    setIsConflictModalOpen(false)
+    if (activeHandle) {
+      await executeSave(activeHandle, yText.toString())
+    }
+  }
+
+  const handleRevertToDisk = async () => {
+    setIsConflictModalOpen(false)
+    yText.delete(0, yText.length)
+    yText.insert(0, conflictData.diskContent)
+    const diskHash = await hashText(conflictData.diskContent)
+    doc.getMap('meta').set('originHash', diskHash)
+    setIsDirty(false)
+  }
+
+  const handleFormatAction = (action: FormatAction) => {
+    const activeEl = document.activeElement as HTMLTextAreaElement | null
+    if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      const start = activeEl.selectionStart ?? 0
+      const end = activeEl.selectionEnd ?? 0
+      const current = yText.toString()
+      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(current, start, end, action)
+      yText.delete(0, yText.length)
+      yText.insert(0, newText)
+      setTimeout(() => {
+        activeEl.focus()
+        activeEl.setSelectionRange?.(newSelectionStart, newSelectionEnd)
+      }, 0)
+    } else {
+      const current = yText.toString()
+      const { newText } = applyFormat(current, 0, 0, action)
+      yText.delete(0, yText.length)
+      yText.insert(0, newText)
+    }
+  }
+
+  // Debounced auto-save (2000ms after last edit if activeHandle exists)
+  useEffect(() => {
+    if (!isDirty || !activeHandle) return
+    const timer = setTimeout(() => {
+      handleSaveRef.current()
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [isDirty, content, activeHandle])
+
+  // Global keyboard shortcut for Cmd+S / Ctrl+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault()
+        handleSaveRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const handleSettingChange = (key: string, value: any) => {
     setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
@@ -459,6 +618,15 @@ export function App(): React.JSX.Element {
         onNodeClick={handleMindNodeClick}
         title={docTitle}
       />
+      <ConflictModal
+        isOpen={isConflictModalOpen}
+        fileName={activeHandle?.name || docTitle || 'document.md'}
+        localContent={conflictData.localContent}
+        diskContent={conflictData.diskContent}
+        onKeepLocal={handleKeepLocal}
+        onRevertToDisk={handleRevertToDisk}
+        onClose={() => setIsConflictModalOpen(false)}
+      />
       <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
@@ -484,6 +652,10 @@ export function App(): React.JSX.Element {
           onOpenSearch={() => setIsSearchOpen(true)}
           onPresent={() => setIsPresenting(true)}
           onOpenMindmap={() => setIsMindmapOpen(true)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          isDirty={isDirty}
+          onSave={handleSave}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
@@ -535,7 +707,7 @@ export function App(): React.JSX.Element {
             </div>
           )}
           
-          {hasContent && (
+          {viewMode === 'reading' && hasContent && (
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 <div ref={docContainerRef} className="a4-document-container">
@@ -550,7 +722,33 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
-          {!hasContent && !error && (
+          {viewMode === 'editor' && (
+            <div className="editor-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+              <FormattingToolbar onAction={handleFormatAction} />
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                <Editor yText={yText} undoManager={undoManager} />
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'split' && (
+            <div className="split-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+              <FormattingToolbar onAction={handleFormatAction} />
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <SplitViewContainer
+                  mode="split"
+                  editor={<Editor yText={yText} undoManager={undoManager} />}
+                  preview={
+                    <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
+                      <Viewer html={html} />
+                    </div>
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'reading' && !hasContent && !error && (
             <div data-testid="app-placeholder" style={{ padding: '40px', textAlign: 'center' }}>
               <h2>MD Reader</h2>
               <p>Drag and drop a Markdown file here, or click "Open in MD Reader" from any Markdown file in Chrome.</p>
