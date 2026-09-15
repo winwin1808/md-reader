@@ -24,6 +24,7 @@ export interface EditorProps {
   readOnly?: boolean
   onScroll?: (scrollTop: number, scrollHeight: number, clientHeight: number) => void
   onEditorReady?: (view: EditorView) => void
+  editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
 export function Editor({
@@ -34,6 +35,7 @@ export function Editor({
   readOnly = false,
   onScroll,
   onEditorReady,
+  editorViewRef,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -84,11 +86,17 @@ export function Editor({
     })
 
     viewRef.current = view
+    if (editorViewRef) {
+      ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = view
+    }
     onEditorReady?.(view)
 
     return () => {
       view.destroy()
       viewRef.current = null
+      if (editorViewRef) {
+        ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
+      }
     }
   }, [yText, undoManager])
 
