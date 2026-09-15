@@ -37,3 +37,6 @@ export type { Slide, SlideSplitOptions } from './slides/index.js'
 export { extractMindmap } from './mindmap/mindmap.js'
 export type { MindNode } from './mindmap/mindmap.js'
 
+export { computeLineDiff, detectConflict } from './diff/diff.js'
+export type { DiffLine } from './diff/diff.js'
+

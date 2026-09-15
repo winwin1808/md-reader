@@ -1,0 +1,69 @@
+.md-formatting-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #e1e4e8);
+  user-select: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-history-group {
+  margin-right: 2px;
+}
+
+.toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--border-color, #d0d7de);
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary, #24292f);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--border-color, #d0d7de);
+}
+
+.toolbar-btn:active:not(:disabled) {
+  background: var(--bg-active, #dee2e6);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn code {
+  font-size: 11px;
+  background: none;
+  padding: 0;
+}
