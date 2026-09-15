@@ -1,6 +1,6 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
-import { render, waitFor, fireEvent, act } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, waitFor, fireEvent, act, cleanup } from '@testing-library/react'
 import { EditorView } from '@md-reader/ui'
 import * as fsSystem from '../src/app/fs/file-system'
 
@@ -69,6 +69,13 @@ globalThis.fetch = vi.fn().mockResolvedValue({
 import { App } from '../src/app/App'
 
 describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, and Conflict Resolution', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+    delete (window as any).location
+    window.location = new URL('http://localhost/') as any
+  })
+
   it('exercises full user journey: view mode switching, toolbar formatting, synchronized typing, Cmd+S save, and conflict resolution modal', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?file=guide.md') as any
@@ -219,10 +226,7 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
 
     await act(async () => {
       fireEvent.click(keepLocalBtn)
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
 
     // Modal closes, file is saved with latest local edits, and dirty indicator cleared
