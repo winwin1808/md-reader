@@ -63,9 +63,13 @@ describe('App', () => {
     cleanup()
     vi.clearAllTimers()
     vi.useRealTimers()
+    delete (window as any).location
+    window.location = new URL('http://localhost/') as any
   })
 
   beforeEach(() => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/') as any
     if (!Range.prototype.getClientRects) {
       Range.prototype.getClientRects = () => [] as any
     }
