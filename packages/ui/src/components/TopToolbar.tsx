@@ -1,4 +1,5 @@
 import React from 'react'
+import type { ViewMode } from './SplitViewContainer'
 
 export type FontScale = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -14,6 +15,8 @@ export interface TopToolbarProps {
   onPresent?: () => void
   onOpenMindmap?: () => void
   rightActions?: React.ReactNode
+  viewMode?: ViewMode
+  onViewModeChange?: (mode: ViewMode) => void
 }
 
 const FONT_SCALES: FontScale[] = ['sm', 'md', 'lg', 'xl']
@@ -243,6 +246,71 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
           </button>
+        )}
+
+        {(props.viewMode !== undefined || props.onViewModeChange !== undefined) && (
+          <div
+            className="view-mode-group"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              border: '1px solid var(--md-border)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              type="button"
+              className={props.viewMode === 'reading' ? 'active' : ''}
+              title="Chế độ Đọc"
+              aria-label="Chế độ Đọc"
+              onClick={() => props.onViewModeChange?.('reading')}
+              style={{
+                ...buttonStyle,
+                borderRadius: 0,
+                padding: '4px 8px',
+                fontSize: '12px',
+                background: props.viewMode === 'reading' ? 'var(--md-border)' : 'transparent',
+                fontWeight: props.viewMode === 'reading' ? 600 : 400,
+              }}
+            >
+              📖 Đọc
+            </button>
+            <button
+              type="button"
+              className={props.viewMode === 'editor' ? 'active' : ''}
+              title="Chế độ Soạn thảo"
+              aria-label="Chế độ Soạn thảo"
+              onClick={() => props.onViewModeChange?.('editor')}
+              style={{
+                ...buttonStyle,
+                borderRadius: 0,
+                padding: '4px 8px',
+                fontSize: '12px',
+                background: props.viewMode === 'editor' ? 'var(--md-border)' : 'transparent',
+                fontWeight: props.viewMode === 'editor' ? 600 : 400,
+              }}
+            >
+              ✍️ Sửa
+            </button>
+            <button
+              type="button"
+              className={props.viewMode === 'split' ? 'active' : ''}
+              title="Chế độ Chia đôi"
+              aria-label="Chế độ Chia đôi"
+              onClick={() => props.onViewModeChange?.('split')}
+              style={{
+                ...buttonStyle,
+                borderRadius: 0,
+                padding: '4px 8px',
+                fontSize: '12px',
+                background: props.viewMode === 'split' ? 'var(--md-border)' : 'transparent',
+                fontWeight: props.viewMode === 'split' ? 600 : 400,
+              }}
+            >
+              ◫ Chia đôi
+            </button>
+          </div>
         )}
 
         {props.rightActions}
