@@ -145,4 +145,16 @@ describe('Editor', () => {
     editorView!.scrollDOM.dispatchEvent(new Event('scroll'))
     expect(handleScroll).toHaveBeenCalled()
   })
+
+  it('populates and clears editorViewRef on mount and unmount', () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('codemirror')
+    const ref = { current: null as EditorView | null }
+
+    const { unmount } = render(<Editor yText={yText} editorViewRef={ref} />)
+    expect(ref.current).not.toBeNull()
+
+    unmount()
+    expect(ref.current).toBeNull()
+  })
 })

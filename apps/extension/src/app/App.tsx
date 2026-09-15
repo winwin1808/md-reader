@@ -25,7 +25,7 @@ import {
   FormattingToolbar,
   applyFormat,
 } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction } from '@md-reader/ui'
+import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
 import {
   parseMarkdown,
   renderToHtml,
@@ -95,6 +95,9 @@ export function App(): React.JSX.Element {
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
+  const isSavingRef = useRef<boolean>(false)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editorViewRef = useRef<EditorView | null>(null)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
   const fileUrlParam = new URLSearchParams(window.location.search).get('file')
@@ -324,46 +327,60 @@ export function App(): React.JSX.Element {
     }
   }, [doc])
 
-  const executeSave = async (handle: FileSystemFileHandle, textToSave: string) => {
-    const formattedText = readerSettings?.autoFormatMd !== false ? formatMarkdown(textToSave) : textToSave
-    if (formattedText !== textToSave) {
-      yText.delete(0, yText.length)
-      yText.insert(0, formattedText)
+  const executeSave = async (handle: FileSystemFileHandle, _textToSave?: string) => {
+    const textBeforeFormat = yText.toString()
+    const formattedText =
+      readerSettings?.autoFormatMd !== false ? formatMarkdown(textBeforeFormat) : textBeforeFormat
+    let savedContent = textBeforeFormat
+    if (formattedText !== textBeforeFormat) {
+      if (yText.toString() === textBeforeFormat) {
+        doc.transact(() => {
+          yText.delete(0, yText.length)
+          yText.insert(0, formattedText)
+        })
+        savedContent = formattedText
+      }
     }
-    await saveToHandle(handle, formattedText)
-    const newHash = await hashText(formattedText)
+    await saveToHandle(handle, savedContent)
+    const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     appendHistory(doc, {
-      source: formattedText,
+      source: savedContent,
       timestamp: Date.now(),
       actor: 'user',
       label: 'save',
       clientIds: [],
     } as any)
-    setIsDirty(false)
+    setIsDirty(yText.toString() !== savedContent)
   }
 
   const handleSave = async () => {
-    const currentText = yText.toString()
-    if (!activeHandle) {
-      const suggestedName = docTitle ? (docTitle.endsWith('.md') ? docTitle : `${docTitle}.md`) : 'Untitled.md'
-      try {
-        const res = await saveFileAs(suggestedName, currentText)
-        if (res) {
-          const handle = res.handle
-          setActiveHandle(handle)
-          await storeFileHandle(handle).catch(() => {})
-          doc.getMap('meta').set('name', handle.name)
-          setDocTitle(handle.name.replace(/\.[^/.]+$/, ''))
-          await executeSave(handle, currentText)
-        }
-      } catch (err) {
-        console.error('Error saving file as:', err)
-      }
-      return
+    if (isSavingRef.current) return
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
     }
-
+    isSavingRef.current = true
     try {
+      const currentText = yText.toString()
+      if (!activeHandle) {
+        const suggestedName = docTitle ? (docTitle.endsWith('.md') ? docTitle : `${docTitle}.md`) : 'Untitled.md'
+        try {
+          const res = await saveFileAs(suggestedName, currentText)
+          if (res) {
+            const handle = res.handle
+            setActiveHandle(handle)
+            await storeFileHandle(handle).catch(() => {})
+            doc.getMap('meta').set('name', handle.name)
+            setDocTitle(handle.name.replace(/\.[^/.]+$/, ''))
+            await executeSave(handle)
+          }
+        } catch (err) {
+          console.error('Error saving file as:', err)
+        }
+        return
+      }
+
       let diskText = ''
       try {
         const file = await activeHandle.getFile()
@@ -376,16 +393,18 @@ export function App(): React.JSX.Element {
       const hasConflict = await detectConflict(currentOriginHash, diskText)
       if (hasConflict) {
         setConflictData({
-          localContent: currentText,
+          localContent: yText.toString(),
           diskContent: diskText,
         })
         setIsConflictModalOpen(true)
         return
       }
 
-      await executeSave(activeHandle, currentText)
+      await executeSave(activeHandle)
     } catch (err) {
       console.error('Error saving file:', err)
+    } finally {
+      isSavingRef.current = false
     }
   }
 
@@ -395,28 +414,49 @@ export function App(): React.JSX.Element {
   const handleKeepLocal = async () => {
     setIsConflictModalOpen(false)
     if (activeHandle) {
-      await executeSave(activeHandle, yText.toString())
+      await executeSave(activeHandle)
     }
   }
 
   const handleRevertToDisk = async () => {
     setIsConflictModalOpen(false)
-    yText.delete(0, yText.length)
-    yText.insert(0, conflictData.diskContent)
+    doc.transact(() => {
+      yText.delete(0, yText.length)
+      yText.insert(0, conflictData.diskContent)
+    })
     const diskHash = await hashText(conflictData.diskContent)
     doc.getMap('meta').set('originHash', diskHash)
     setIsDirty(false)
   }
 
   const handleFormatAction = (action: FormatAction) => {
+    const view = editorViewRef.current
+    if (view) {
+      const { from, to } = view.state.selection.main
+      const current = yText.toString()
+      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(current, from, to, action)
+      doc.transact(() => {
+        yText.delete(0, yText.length)
+        yText.insert(0, newText)
+      })
+      view.dispatch({
+        selection: { anchor: newSelectionStart, head: newSelectionEnd },
+        scrollIntoView: true,
+      })
+      view.focus()
+      return
+    }
+
     const activeEl = document.activeElement as HTMLTextAreaElement | null
     if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
       const start = activeEl.selectionStart ?? 0
       const end = activeEl.selectionEnd ?? 0
       const current = yText.toString()
       const { newText, newSelectionStart, newSelectionEnd } = applyFormat(current, start, end, action)
-      yText.delete(0, yText.length)
-      yText.insert(0, newText)
+      doc.transact(() => {
+        yText.delete(0, yText.length)
+        yText.insert(0, newText)
+      })
       setTimeout(() => {
         activeEl.focus()
         activeEl.setSelectionRange?.(newSelectionStart, newSelectionEnd)
@@ -424,18 +464,30 @@ export function App(): React.JSX.Element {
     } else {
       const current = yText.toString()
       const { newText } = applyFormat(current, 0, 0, action)
-      yText.delete(0, yText.length)
-      yText.insert(0, newText)
+      doc.transact(() => {
+        yText.delete(0, yText.length)
+        yText.insert(0, newText)
+      })
     }
   }
 
   // Debounced auto-save (2000ms after last edit if activeHandle exists)
   useEffect(() => {
     if (!isDirty || !activeHandle) return
-    const timer = setTimeout(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null
       handleSaveRef.current()
     }, 2000)
-    return () => clearTimeout(timer)
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+    }
   }, [isDirty, content, activeHandle])
 
   // Global keyboard shortcut for Cmd+S / Ctrl+S
@@ -726,7 +778,7 @@ export function App(): React.JSX.Element {
             <div className="editor-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
               <FormattingToolbar onAction={handleFormatAction} />
               <div style={{ flex: 1, overflow: 'auto' }}>
-                <Editor yText={yText} undoManager={undoManager} />
+                <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
               </div>
             </div>
           )}
@@ -737,7 +789,7 @@ export function App(): React.JSX.Element {
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <SplitViewContainer
                   mode="split"
-                  editor={<Editor yText={yText} undoManager={undoManager} />}
+                  editor={<Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />}
                   preview={
                     <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
                       <Viewer html={html} />

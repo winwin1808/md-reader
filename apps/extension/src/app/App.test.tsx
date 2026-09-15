@@ -7,7 +7,7 @@ import { IndexeddbPersistence } from 'y-indexeddb'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
 import type { ReaderSettings } from '@md-reader/ui'
-import { WordCountBar, CelebrationConfetti, SettingsModal } from '@md-reader/ui'
+import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
 import * as fsSystem from './fs/file-system'
 
 
@@ -61,6 +61,8 @@ class MockBroadcastChannel {
 describe('App', () => {
   afterEach(() => {
     cleanup()
+    vi.clearAllTimers()
+    vi.useRealTimers()
   })
 
   beforeEach(() => {
@@ -995,6 +997,11 @@ describe('App', () => {
     // Save once to establish activeHandle
     await act(async () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
 
     // Now edit again to make it dirty
@@ -1006,6 +1013,11 @@ describe('App', () => {
     // Now disk has different content and trigger save again via Cmd+S
     await act(async () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
 
     // ConflictModal should be open
@@ -1016,11 +1028,321 @@ describe('App', () => {
     const keepLocalBtn = screen.getByText(/giữ bản sửa|keep local/i)
     await act(async () => {
       fireEvent.click(keepLocalBtn)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
     })
 
     // Should save to handle and modal closes
     expect(saveToHandleSpy).toHaveBeenCalled()
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(container.querySelector('.dirty-indicator')).toBeNull()
+  })
+
+  it('debounced auto-save triggers saveToHandle 2000ms after editing when activeHandle is set', async () => {
+    vi.useFakeTimers()
+    try {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# Initial Content'),
+      } as any)
+
+      let savedDiskText = '# Initial Content'
+      const mockHandle = {
+        name: 'guide.md',
+        getFile: vi.fn().mockImplementation(async () => ({
+          text: async () => savedDiskText,
+        })),
+      } as any
+      vi.spyOn(fsSystem, 'saveFileAs').mockResolvedValue({ handle: mockHandle, file: new File([], 'guide.md') })
+      const saveToHandleSpy = vi.spyOn(fsSystem, 'saveToHandle').mockImplementation(async (_handle, text) => {
+        savedDiskText = text
+        return 100
+      })
+
+      let renderResult: any
+      await act(async () => {
+        renderResult = render(<App />)
+      })
+      const { container } = renderResult
+
+      // Switch to editor mode
+      await act(async () => {
+        fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      })
+
+      // Establish activeHandle by saving once via Cmd+S
+      await act(async () => {
+        fireEvent.keyDown(window, { key: 's', metaKey: true })
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
+      saveToHandleSpy.mockClear()
+
+      // User types new content into editor
+      const cmEditor = container.querySelector('.cm-editor') as HTMLElement
+      expect(cmEditor).not.toBeNull()
+      const view = EditorView.findFromDOM(cmEditor)
+      expect(view).not.toBeNull()
+
+      await act(async () => {
+        view!.dispatch({
+          changes: { from: 0, to: view!.state.doc.length, insert: '# Auto Saved Text' },
+        })
+      })
+
+      // Dirty indicator is active
+      expect(container.querySelector('.dirty-indicator')).not.toBeNull()
+
+      // Before 2000ms, saveToHandle should not have triggered
+      await act(async () => {
+        vi.advanceTimersByTime(1500)
+      })
+      expect(saveToHandleSpy).not.toHaveBeenCalled()
+
+      // Advance past 2000ms to fire debounced auto-save
+      await act(async () => {
+        vi.advanceTimersByTime(500)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
+      expect(saveToHandleSpy).toHaveBeenCalledWith(mockHandle, expect.stringContaining('# Auto Saved Text'))
+      expect(container.querySelector('.dirty-indicator')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('concurrency guard prevents duplicate saves and manual save clears autoSave timer', async () => {
+    vi.useFakeTimers()
+    try {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# Initial Content'),
+      } as any)
+
+      let savedDiskText = '# Initial Content'
+      let resolveSaveFileAs: ((val: any) => void) | null = null
+      const mockHandle = {
+        name: 'guide.md',
+        getFile: vi.fn().mockImplementation(async () => ({
+          text: async () => savedDiskText,
+        })),
+      } as any
+      const saveFileAsSpy = vi.spyOn(fsSystem, 'saveFileAs').mockImplementation(() => {
+        return new Promise((resolve) => {
+          resolveSaveFileAs = resolve
+        })
+      })
+      const saveToHandleSpy = vi.spyOn(fsSystem, 'saveToHandle').mockImplementation(async (_h, text) => {
+        savedDiskText = text
+        return 100
+      })
+
+      let renderResult: any
+      await act(async () => {
+        renderResult = render(<App />)
+      })
+      const { container } = renderResult
+
+      // Switch to editor mode
+      await act(async () => {
+        fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      })
+
+      // Trigger first save
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(saveFileAsSpy).toHaveBeenCalledTimes(1)
+
+      // Concurrent save attempted while first is in-flight -> ignored by concurrency guard
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      expect(saveFileAsSpy).toHaveBeenCalledTimes(1)
+
+      // Resolve in-flight saveFileAs
+      await act(async () => {
+        resolveSaveFileAs?.({ handle: mockHandle, file: new File([], 'guide.md') })
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        vi.advanceTimersByTime(50)
+      })
+      expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
+
+      // Active handle is now set. Type new content using editor view
+      const cmEditor = container.querySelector('.cm-editor') as HTMLElement
+      expect(cmEditor).not.toBeNull()
+      const view = EditorView.findFromDOM(cmEditor)
+      expect(view).not.toBeNull()
+
+      await act(async () => {
+        view!.dispatch({
+          changes: { from: 0, to: view!.state.doc.length, insert: '# Edit for manual save' },
+        })
+      })
+
+      // Manual save runs and clears debounced auto-save timer
+      await act(async () => {
+        fireEvent.keyDown(window, { key: 's', metaKey: true })
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+        vi.advanceTimersByTime(50)
+      })
+      expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
+
+      // Fast forward past autoSave debounce duration, no extra auto-save call occurs
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not overwrite edits typed during async conflict check or save, and preserves isDirty if unsaved edits remain', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Initial Content'),
+    } as any)
+
+    let resolveGetFile: ((file: any) => void) | null = null
+    let savedDiskText = '# Initial Content'
+    const mockFile = {
+      text: vi.fn().mockImplementation(async () => savedDiskText),
+    }
+    let isGetFileBlocked = false
+    const mockHandle = {
+      name: 'guide.md',
+      getFile: vi.fn().mockImplementation(async () => {
+        if (isGetFileBlocked) {
+          return new Promise((resolve) => {
+            resolveGetFile = resolve
+          })
+        }
+        return mockFile
+      }),
+    } as any
+    vi.spyOn(fsSystem, 'saveFileAs').mockResolvedValue({ handle: mockHandle, file: new File([], 'guide.md') })
+    const saveToHandleSpy = vi.spyOn(fsSystem, 'saveToHandle').mockImplementation(async (_h, text) => {
+      savedDiskText = text
+      return 100
+    })
+
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+    const { container } = renderResult
+
+    // Switch to editor mode
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+    })
+
+    // Save once to establish activeHandle
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 's', metaKey: true })
+      await new Promise((r) => setTimeout(r, 50))
+    })
+    saveToHandleSpy.mockClear()
+
+    const cmEditor = container.querySelector('.cm-editor') as HTMLElement
+    expect(cmEditor).not.toBeNull()
+    const view = EditorView.findFromDOM(cmEditor)
+    expect(view).not.toBeNull()
+
+    // Now block next getFile call during conflict check
+    isGetFileBlocked = true
+    fireEvent.keyDown(window, { key: 's', metaKey: true })
+    await new Promise((r) => setTimeout(r, 20))
+
+    // While getFile is pending, user types new characters into editor
+    await act(async () => {
+      view!.dispatch({
+        changes: { from: 0, to: view!.state.doc.length, insert: '# Initial Content + User Edit While Saving' },
+      })
+    })
+
+    // Now resolve getFile
+    isGetFileBlocked = false
+    await act(async () => {
+      resolveGetFile?.(mockFile)
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    // executeSave should save the fresh content without overwriting it with stale snapshot
+    expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
+    expect(saveToHandleSpy).toHaveBeenCalledWith(
+      mockHandle,
+      expect.stringContaining('User Edit While Saving')
+    )
+    expect(view!.state.doc.toString()).toContain('User Edit While Saving')
+  })
+
+  it('formatting toolbar action applies markdown format to CodeMirror selection and preserves selection', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('Hello World'),
+    } as any)
+
+    let renderResult: any
+    await act(async () => {
+      renderResult = render(<App />)
+    })
+    const { container } = renderResult
+
+    // Switch to editor mode
+    await act(async () => {
+      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+    })
+
+    // Retrieve EditorView from DOM
+    const cmEditor = container.querySelector('.cm-editor') as HTMLElement
+    expect(cmEditor).not.toBeNull()
+    const view = EditorView.findFromDOM(cmEditor)
+    expect(view).not.toBeNull()
+
+    // Select 'World' (indices 6 to 11)
+    view!.dispatch({
+      selection: { anchor: 6, head: 11 },
+    })
+    expect(view!.state.selection.main.from).toBe(6)
+    expect(view!.state.selection.main.to).toBe(11)
+
+    // Find Bold button in FormattingToolbar and click it
+    const boldBtn = screen.getByTitle('Bold')
+    expect(boldBtn).not.toBeNull()
+    await act(async () => {
+      fireEvent.click(boldBtn)
+    })
+
+    // The text should now be 'Hello **World**'
+    expect(view!.state.doc.toString()).toBe('Hello **World**')
+    // Selection should encompass 'World' inside **...** (indices 8 to 13)
+    expect(view!.state.selection.main.from).toBe(8)
+    expect(view!.state.selection.main.to).toBe(13)
   })
 })
