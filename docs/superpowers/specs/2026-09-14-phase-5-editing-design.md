@@ -6,7 +6,7 @@ Intent: docs/superpowers/intent/2026-09-14-phase-5-editing.md
 - [x] 5a — Editor Core & Yjs Binding (`Editor` component, CodeMirror 6, `y-codemirror.next`, `Y.Text "source"`, `Y.UndoManager`) — done
 - [x] 5b — File System Access API & Handle Persistence (`fs.ts` module, IndexedDB handle storage, Open/Save/Save As) — done
 - [x] 5c — Conflict Detection & 3-Way Diff Modal (`originHash` verification, `ConflictModal` UI, diff calculation) — done
-- [ ] 5d — Formatting Toolbar & Phím tắt Markdown (`FormattingToolbar`, smart list continuation, `Cmd+B`/`Cmd+I`/`Cmd+K`/`Tab`) — pending
+- [ ] 5d — Formatting Toolbar & Phím tắt Markdown (`FormattingToolbar`, smart list continuation, `Cmd+B`/`Cmd+I`/`Cmd+K`/`Tab`) — planned
 - [ ] 5e — Điều khiển 3 Chế độ xem & Split View Synchronized Scrolling (Reading / Editor / Split View, 2-way sync scroll) — pending
 - [ ] 5f — Auto-save, Format-and-save & History Checkpoint (`core/format` on save, debounced auto-save, unsaved dot `•`, `Y.Array "history"`) — pending
 - [ ] 5g — E2E Smoke Tests cho toàn bộ Phase 5 (Quy trình soạn thảo, format, split view, lưu file và xử lý xung đột) — pending
