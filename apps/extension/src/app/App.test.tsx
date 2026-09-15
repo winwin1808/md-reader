@@ -991,6 +991,7 @@ describe('App', () => {
     let renderResult: any
     await act(async () => {
       renderResult = render(<App />)
+      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
     const { container } = renderResult
 
@@ -1001,27 +1002,25 @@ describe('App', () => {
     // Save once to establish activeHandle
     await act(async () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
 
     // Now edit again to make it dirty
-    const cmContent = container.querySelector('.cm-content')
+    const cmEditor = container.querySelector('.cm-editor') as HTMLElement
+    expect(cmEditor).not.toBeNull()
+    const view = EditorView.findFromDOM(cmEditor)
+    expect(view).not.toBeNull()
     await act(async () => {
-      fireEvent.input(cmContent!, { target: { textContent: '# Local Changes' } })
+      view!.dispatch({
+        changes: { from: 0, to: view!.state.doc.length, insert: '# Local Changes' },
+      })
+      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
 
     // Now disk has different content and trigger save again via Cmd+S
     await act(async () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
 
     // ConflictModal should be open
@@ -1070,6 +1069,7 @@ describe('App', () => {
       let renderResult: any
       await act(async () => {
         renderResult = render(<App />)
+        for (let i = 0; i < 20; i++) await Promise.resolve()
       })
       const { container } = renderResult
 
@@ -1081,11 +1081,7 @@ describe('App', () => {
       // Establish activeHandle by saving once via Cmd+S
       await act(async () => {
         fireEvent.keyDown(window, { key: 's', metaKey: true })
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
       })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
       saveToHandleSpy.mockClear()
@@ -1113,12 +1109,10 @@ describe('App', () => {
 
       // Advance past 2000ms to fire debounced auto-save
       await act(async () => {
-        vi.advanceTimersByTime(500)
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
+        vi.advanceTimersByTime(600)
+        for (let i = 0; i < 20; i++) {
+          await Promise.resolve()
+        }
       })
 
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
@@ -1160,6 +1154,7 @@ describe('App', () => {
       let renderResult: any
       await act(async () => {
         renderResult = render(<App />)
+        for (let i = 0; i < 20; i++) await Promise.resolve()
       })
       const { container } = renderResult
 
@@ -1179,12 +1174,9 @@ describe('App', () => {
       // Resolve in-flight saveFileAs
       await act(async () => {
         resolveSaveFileAs?.({ handle: mockHandle, file: new File([], 'guide.md') })
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
         vi.advanceTimersByTime(50)
+        for (let i = 0; i < 20; i++) await Promise.resolve()
       })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
 

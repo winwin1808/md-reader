@@ -21,22 +21,28 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 }
 
 ;(async function () {
-  const settings = await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp'])
+  let settings: any = {}
+  try {
+    settings = (await chrome.storage?.sync?.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+  } catch (err) {
+    console.warn('MD Reader: Failed to read settings:', err)
+  }
+
   if (settings.autoFormatMd === false) {
     return
   }
 
-  const isFileMatch = window.location.pathname.match(/\.(md|markdown|txt)$/i)
+  const isFileMatch = Boolean(window.location.pathname.match(/\.(md|markdown|txt)$/i))
   if (!isFileMatch && window.location.protocol === 'file:') {
     return
   }
 
   let markdownText = ''
   let isMarkdown = false
-  const childNodes = document.body.childNodes
+  const childNodes = document.body?.childNodes || []
 
   const pre = document.querySelector('pre')
-  if (pre && pre.textContent && (isFileMatch || document.body.children.length <= 2)) {
+  if (pre && pre.textContent && (isFileMatch || (document.body?.children?.length ?? 0) <= 2)) {
     markdownText = pre.textContent || ''
     isMarkdown = true
   } else if (childNodes.length === 1 && childNodes[0]) {
@@ -45,36 +51,56 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       markdownText = node.textContent || ''
       isMarkdown = true
     }
-  } else if (isFileMatch && document.body.innerText) {
-    markdownText = document.body.innerText
+  } else if (isFileMatch && (document.body?.innerText || document.body?.textContent)) {
+    markdownText = document.body.innerText || document.body.textContent || ''
     isMarkdown = true
   }
 
-  if (!isMarkdown) {
+  if (!isMarkdown || !document.body) {
     return
   }
 
-  // If "Always open app" is enabled (default: true), immediately redirect to MD Reader app
+  // Pre-cache markdown content into local storage
+  try {
+    await chrome.storage?.local?.set?.({
+      ['file_content_' + window.location.href]: markdownText,
+    })
+  } catch (e) {
+    console.warn('Failed to cache file content:', e)
+  }
+
+  // If "Always open app" is enabled (default: true), attempt background redirect
   const isMdFile = Boolean(window.location.pathname.match(/\.(md|markdown)$/i))
   const isAlwaysOpen = settings.alwaysOpenApp !== false
   if (isAlwaysOpen && (isMdFile || isFileMatch)) {
     try {
-      await chrome.storage?.local?.set?.({
-        ['file_content_' + window.location.href]: markdownText,
+      chrome.runtime?.sendMessage?.({
+        action: 'openApp',
+        fileUrl: window.location.href,
+        content: markdownText,
+        replace: true,
       })
     } catch (e) {
-      console.warn('Failed to cache file content:', e)
+      console.warn('MD Reader worker message failed:', e)
     }
-    const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
-    if (typeof window.location.replace === 'function') {
-      window.location.replace(targetAppUrl)
-    } else {
-      window.location.href = targetAppUrl
+
+    try {
+      const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
+      if (typeof window.location.replace === 'function') {
+        window.location.replace(targetAppUrl)
+      } else {
+        window.location.href = targetAppUrl
+      }
+    } catch (e) {
+      // Chrome blocks direct navigation to chrome-extension:// from file:///
     }
+  }
+
+  // Always mount the floating widget!
+  if (document.getElementById('md-reader-root')) {
     return
   }
 
-  // Do not clear document.body, just overlay the button!
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
   document.body.appendChild(rootEl)

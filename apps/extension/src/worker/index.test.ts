@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 describe('Service Worker', () => {
-  let actionListener: (() => void) | null = null
+  let actionListener: ((tab?: any) => Promise<void> | void) | null = null
   let updatedListener: ((tabId: number, changeInfo: any, tab: any) => Promise<void>) | null = null
   let tabsUpdateMock = vi.fn()
   let tabsCreateMock = vi.fn()
@@ -13,9 +13,16 @@ describe('Service Worker', () => {
     tabsUpdateMock = vi.fn().mockResolvedValue(undefined)
     tabsCreateMock = vi.fn().mockResolvedValue(undefined)
 
+    let messageListener: ((message: any, sender: any, sendResponse: any) => boolean | void) | null = null
+
     globalThis.chrome = {
       runtime: {
         getURL: vi.fn((path) => `chrome-extension://test-id/${path}`),
+        onMessage: {
+          addListener: vi.fn((cb) => {
+            messageListener = cb
+          }),
+        },
       },
       action: {
         onClicked: {
@@ -37,6 +44,9 @@ describe('Service Worker', () => {
         sync: {
           get: vi.fn().mockResolvedValue({}),
         },
+        local: {
+          set: vi.fn().mockResolvedValue(undefined),
+        },
       },
     } as any
   })
@@ -46,13 +56,54 @@ describe('Service Worker', () => {
     delete (globalThis as any).chrome
   })
 
-  it('opens app.html when extension icon is clicked', async () => {
+  it('opens app.html when extension icon is clicked without active file tab', async () => {
     await import('./index')
     expect(actionListener).not.toBeNull()
 
-    actionListener!()
+    await actionListener!({} as any)
     expect(tabsCreateMock).toHaveBeenCalledWith({
       url: 'chrome-extension://test-id/app.html',
+    })
+  })
+
+  it('updates tab when extension icon is clicked on a .md file tab', async () => {
+    await import('./index')
+    await actionListener!({ id: 10, url: 'file:///path/to/notes.md' } as any)
+    expect(tabsUpdateMock).toHaveBeenCalledWith(10, {
+      url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('file:///path/to/notes.md'),
+    })
+  })
+
+  it('handles openApp message with replace=true', async () => {
+    await import('./index')
+    const sendResponse = vi.fn()
+    const messageListener = (chrome.runtime.onMessage.addListener as any).mock.calls[0][0]
+    messageListener(
+      { action: 'openApp', fileUrl: 'file:///test.md', content: '# Hello', replace: true },
+      { tab: { id: 5 } },
+      sendResponse
+    )
+
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      'file_content_file:///test.md': '# Hello',
+    })
+    expect(tabsUpdateMock).toHaveBeenCalledWith(5, {
+      url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('file:///test.md'),
+    })
+  })
+
+  it('handles openApp message with replace=false', async () => {
+    await import('./index')
+    const sendResponse = vi.fn()
+    const messageListener = (chrome.runtime.onMessage.addListener as any).mock.calls[0][0]
+    messageListener(
+      { action: 'openApp', fileUrl: 'file:///test.md', content: '# Hello', replace: false },
+      {},
+      sendResponse
+    )
+
+    expect(tabsCreateMock).toHaveBeenCalledWith({
+      url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('file:///test.md'),
     })
   })
 

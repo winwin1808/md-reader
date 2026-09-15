@@ -1,36 +1,181 @@
-import React from 'react'
+import React, { useState } from 'react'
 
-export function ContentApp({ markdown }: { markdown: string }) {
-  const handleOpen = () => {
+export interface ContentAppProps {
+  markdown: string
+}
+
+export function ContentApp({ markdown }: ContentAppProps) {
+  const [isOpening, setIsOpening] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const handleOpen = (replace = false) => {
+    setIsOpening(true)
+    setErrorMsg(null)
+
+    const fileUrl = window.location.href
+
+    // Pre-cache markdown content into chrome.storage.local
     try {
       chrome.storage?.local?.set?.({
-        ['file_content_' + window.location.href]: markdown,
+        ['file_content_' + fileUrl]: markdown,
       })
     } catch (e) {
       console.warn('Failed to cache file content:', e)
     }
-    window.open(chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href)))
+
+    // Try sending message to background worker
+    try {
+      if (chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          {
+            action: 'openApp',
+            fileUrl,
+            content: markdown,
+            replace,
+          },
+          (response) => {
+            if (chrome.runtime.lastError || (response && !response.success)) {
+              console.warn('Worker navigation failed, fallback to window.open', chrome.runtime.lastError)
+              fallbackOpen()
+            }
+          }
+        )
+        return
+      }
+    } catch (e) {
+      console.warn('sendMessage failed, fallback to window.open', e)
+    }
+
+    fallbackOpen()
+  }
+
+  const fallbackOpen = () => {
+    try {
+      const targetUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
+      window.open(targetUrl)
+    } catch (err) {
+      console.error('Failed to open MD Reader:', err)
+      setErrorMsg('Vui lòng bật "Cho phép truy cập vào URL tệp" trong chrome://extensions')
+    } finally {
+      setIsOpening(false)
+    }
+  }
+
+  if (isMinimized) {
+    return (
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 2147483647 }}>
+        <button
+          onClick={() => setIsMinimized(false)}
+          title="Mở bảng điều khiển MD Reader"
+          aria-label="Mở bảng điều khiển MD Reader"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#0f172a',
+            color: '#38bdf8',
+            border: '2px solid rgba(56, 189, 248, 0.4)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            cursor: 'pointer',
+            fontSize: '20px',
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          📖
+        </button>
+      </div>
+    )
   }
 
   return (
-    <button
-      onClick={handleOpen}
+    <div
       style={{
         position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 9999,
-        padding: '10px 16px',
-        backgroundColor: '#0070f3',
-        color: 'white',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)',
-        fontWeight: 500
+        bottom: '24px',
+        right: '24px',
+        zIndex: 2147483647,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      Open in MD Reader
-    </button>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '10px 14px',
+          backgroundColor: '#0f172a',
+          color: '#f8fafc',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          maxWidth: '400px',
+        }}
+      >
+        <div style={{ fontSize: '22px', lineHeight: 1 }}>📖</div>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: '13px', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+            MD Reader
+          </div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {errorMsg ? (
+              <span style={{ color: '#f87171' }}>{errorMsg}</span>
+            ) : (
+              'Đọc đẹp, trình chiếu, mindmap & soạn thảo'
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => handleOpen(false)}
+          disabled={isOpening}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 14px',
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: isOpening ? 'wait' : 'pointer',
+            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)',
+            transition: 'background-color 0.15s ease',
+            whiteSpace: 'nowrap',
+          }}
+          title="Mở file này trong giao diện MD Reader"
+        >
+          {isOpening ? 'Đang mở...' : 'Open in MD Reader'}
+        </button>
+
+        <button
+          onClick={() => setIsMinimized(true)}
+          title="Thu nhỏ widget"
+          aria-label="Thu nhỏ widget"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '24px',
+            height: '24px',
+            padding: 0,
+            backgroundColor: 'transparent',
+            color: '#64748b',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '18px',
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
+    </div>
   )
 }
