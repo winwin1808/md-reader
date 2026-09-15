@@ -83,6 +83,7 @@ describe('Service Worker', () => {
       { tab: { id: 5 } },
       sendResponse
     )
+    for (let i = 0; i < 5; i++) await Promise.resolve()
 
     expect(chrome.storage.local.set).toHaveBeenCalledWith({
       'file_content_file:///test.md': '# Hello',
@@ -101,10 +102,19 @@ describe('Service Worker', () => {
       {},
       sendResponse
     )
+    for (let i = 0; i < 5; i++) await Promise.resolve()
 
     expect(tabsCreateMock).toHaveBeenCalledWith({
       url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('file:///test.md'),
     })
+  })
+
+  it('does not intercept file:// URLs in tabs.onUpdated', async () => {
+    await import('./index')
+    expect(updatedListener).not.toBeNull()
+
+    await updatedListener!(1, { url: 'file:///Users/me/document.md' }, {})
+    expect(tabsUpdateMock).not.toHaveBeenCalled()
   })
 
   it('intercepts .md navigation and updates tab url by default', async () => {
