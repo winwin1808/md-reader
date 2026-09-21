@@ -267,14 +267,32 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const result = await chrome.storage.sync.get(null)
+        let localRes: any = {}
+        let syncRes: any = {}
+        if (typeof chrome.storage?.local?.get === 'function') {
+          localRes = (await chrome.storage.local.get(null)) || {}
+        }
+        if (typeof chrome.storage?.sync?.get === 'function') {
+          syncRes = (await chrome.storage.sync.get(null)) || {}
+        }
+        const mode =
+          (localRes?.mode as ThemeMode) ||
+          (localRes?.theme as ThemeMode) ||
+          (syncRes?.mode as ThemeMode) ||
+          (syncRes?.theme as ThemeMode) ||
+          DEFAULT_READER_SETTINGS.mode
+        const colorTheme =
+          (localRes?.colorTheme as ColorTheme) ||
+          (syncRes?.colorTheme as ColorTheme) ||
+          DEFAULT_READER_SETTINGS.colorTheme
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
-          ...result,
-          mode: (result?.mode as ThemeMode) || (result?.theme as ThemeMode) || DEFAULT_READER_SETTINGS.mode,
-          colorTheme: (result?.colorTheme as ColorTheme) || DEFAULT_READER_SETTINGS.colorTheme,
+          ...syncRes,
+          ...localRes,
+          mode,
+          colorTheme,
         })
-        setFontScale((result?.fontScale as FontScale) || 'md')
+        setFontScale((localRes?.fontScale as FontScale) || (syncRes?.fontScale as FontScale) || 'md')
       } catch (err) {
         setReaderSettings(DEFAULT_READER_SETTINGS)
         setFontScale('md')

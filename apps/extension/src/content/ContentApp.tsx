@@ -9,7 +9,7 @@ export function ContentApp({ markdown }: ContentAppProps) {
   const [isMinimized, setIsMinimized] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleOpen = (replace = false) => {
+  const handleOpen = (replace = true) => {
     setIsOpening(true)
     setErrorMsg(null)
 
@@ -36,21 +36,21 @@ export function ContentApp({ markdown }: ContentAppProps) {
           },
           (response) => {
             if (chrome.runtime.lastError || (response && !response.success)) {
-              console.warn('Worker navigation failed, fallback to window.open', chrome.runtime.lastError)
-              fallbackOpen()
+              console.warn('Worker navigation failed, fallback to direct open', chrome.runtime.lastError)
+              fallbackOpen(replace)
             }
           }
         )
         return
       }
     } catch (e) {
-      console.warn('sendMessage failed, fallback to window.open', e)
+      console.warn('sendMessage failed, fallback to direct open', e)
     }
 
-    fallbackOpen()
+    fallbackOpen(replace)
   }
 
-  const fallbackOpen = () => {
+  const fallbackOpen = (_replace?: boolean) => {
     try {
       const targetUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
       window.open(targetUrl)
@@ -130,7 +130,7 @@ export function ContentApp({ markdown }: ContentAppProps) {
         </div>
 
         <button
-          onClick={() => handleOpen(false)}
+          onClick={() => handleOpen(true)}
           disabled={isOpening}
           style={{
             display: 'inline-flex',

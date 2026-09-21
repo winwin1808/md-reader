@@ -21,30 +21,69 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 }
 
 ;(async function () {
-  let settings: any = {}
+  let autoFormatMd = true
+  let alwaysOpenApp = true
+
   try {
-    const syncSettings = typeof chrome.storage?.sync?.get === 'function' ? ((await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp'])) || {}) : {}
-    const localSettings = typeof chrome.storage?.local?.get === 'function' ? ((await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp'])) || {}) : {}
-    settings = { ...localSettings, ...syncSettings }
+    let localSettings: any = {}
+    let syncSettings: any = {}
+    if (typeof chrome.storage?.local?.get === 'function') {
+      localSettings = (await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+    }
+    if (typeof chrome.storage?.sync?.get === 'function') {
+      syncSettings = (await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+    }
+
+    if (typeof localSettings.autoFormatMd === 'boolean') {
+      autoFormatMd = localSettings.autoFormatMd
+    } else if (typeof syncSettings.autoFormatMd === 'boolean') {
+      autoFormatMd = syncSettings.autoFormatMd
+    }
+
+    if (typeof localSettings.alwaysOpenApp === 'boolean') {
+      alwaysOpenApp = localSettings.alwaysOpenApp
+    } else if (typeof syncSettings.alwaysOpenApp === 'boolean') {
+      alwaysOpenApp = syncSettings.alwaysOpenApp
+    }
   } catch (err) {
     console.warn('MD Reader: Failed to read settings:', err)
   }
 
-  if (settings.autoFormatMd === false) {
+  if (autoFormatMd === false) {
     return
   }
 
-  const isFileMatch = Boolean(window.location.pathname.match(/\.(md|markdown|txt)$/i))
-  if (!isFileMatch && window.location.protocol === 'file:') {
+  const cleanPath = window.location.pathname.split('?')[0]?.split('#')[0] || ''
+  const isMdFile = Boolean(cleanPath.match(/\.(md|markdown)$/i))
+  const isTxtFile = Boolean(cleanPath.match(/\.txt$/i))
+  const isFileProtocol = window.location.protocol === 'file:'
+
+  if (isFileProtocol && !isMdFile && !isTxtFile) {
     return
+  }
+
+  if (!document.body || document.readyState === 'loading') {
+    await new Promise<void>((resolve) => {
+      if (document.readyState !== 'loading' && document.body) {
+        resolve()
+      } else {
+        const onReady = () => {
+          window.removeEventListener('DOMContentLoaded', onReady)
+          window.removeEventListener('load', onReady)
+          resolve()
+        }
+        window.addEventListener('DOMContentLoaded', onReady)
+        window.addEventListener('load', onReady)
+      }
+    })
   }
 
   let markdownText = ''
-  let isMarkdown = false
+  let isMarkdown = isMdFile
   const childNodes = document.body?.childNodes || []
 
   const pre = document.querySelector('pre')
-  if (pre && pre.textContent && (isFileMatch || (document.body?.children?.length ?? 0) <= 2)) {
+  if (pre && pre.textContent && (isMdFile || isTxtFile || (document.body?.children?.length ?? 0) <= 2)) {
     markdownText = pre.textContent || ''
     isMarkdown = true
   } else if (childNodes.length === 1 && childNodes[0]) {
@@ -53,7 +92,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       markdownText = node.textContent || ''
       isMarkdown = true
     }
-  } else if (isFileMatch && (document.body?.innerText || document.body?.textContent)) {
+  } else if ((isMdFile || isTxtFile) && (document.body?.innerText || document.body?.textContent)) {
     markdownText = document.body.innerText || document.body.textContent || ''
     isMarkdown = true
   }
@@ -63,18 +102,19 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 
   // Pre-cache markdown content into local storage
-  try {
-    await chrome.storage?.local?.set?.({
-      ['file_content_' + window.location.href]: markdownText,
-    })
-  } catch (e) {
-    console.warn('Failed to cache file content:', e)
+  if (markdownText) {
+    try {
+      await chrome.storage?.local?.set?.({
+        ['file_content_' + window.location.href]: markdownText,
+      })
+    } catch (e) {
+      console.warn('Failed to cache file content:', e)
+    }
   }
 
-  // If "Always open app" is enabled (default: true), attempt background redirect
-  const isMdFile = Boolean(window.location.pathname.match(/\.(md|markdown)$/i))
-  const isAlwaysOpen = settings.alwaysOpenApp !== false
-  if (isAlwaysOpen && (isMdFile || isFileMatch)) {
+  // If "Always open app" is enabled (default: true), attempt redirect
+  if (alwaysOpenApp && isMdFile) {
+    let redirected = false
     try {
       chrome.runtime?.sendMessage?.({
         action: 'openApp',
@@ -90,21 +130,29 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
       if (typeof window.location.replace === 'function') {
         window.location.replace(targetAppUrl)
+        redirected = true
       } else {
         window.location.href = targetAppUrl
+        redirected = true
       }
     } catch (e) {
       // Chrome blocks direct navigation to chrome-extension:// from file:///
     }
+
+    if (redirected) {
+      return
+    }
   }
 
-  // Always mount the floating widget!
+  // Mount the floating widget (when alwaysOpenApp is false, or if navigation didn't unload page)
   if (document.getElementById('md-reader-root')) {
     return
   }
 
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
+  rootEl.style.cssText =
+    'all: initial !important; position: fixed !important; bottom: 24px !important; right: 24px !important; z-index: 2147483647 !important; display: block !important; width: auto !important; height: auto !important;'
   document.body.appendChild(rootEl)
 
   const shadow = rootEl.attachShadow({ mode: 'open' })
@@ -121,7 +169,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   try {
     const root = createRoot(shadow)
     root.render(
-      React.createElement(ErrorBoundary, { onError: restore },
+      React.createElement(
+        ErrorBoundary,
+        { onError: restore },
         React.createElement(ContentApp, { markdown: markdownText })
       )
     )

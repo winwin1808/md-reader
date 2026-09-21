@@ -70,11 +70,31 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (targetUrl.startsWith('file:')) return
 
   try {
-    const syncSettings = typeof chrome.storage?.sync?.get === 'function' ? ((await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])) || {}) : {}
-    const localSettings = typeof chrome.storage?.local?.get === 'function' ? ((await chrome.storage.local.get(['alwaysOpenApp', 'autoFormatMd'])) || {}) : {}
-    const settings = { ...localSettings, ...syncSettings }
-    if (settings.autoFormatMd === false) return
-    if (settings.alwaysOpenApp === false) return
+    let localSettings: any = {}
+    let syncSettings: any = {}
+    if (typeof chrome.storage?.local?.get === 'function') {
+      localSettings = (await chrome.storage.local.get(['alwaysOpenApp', 'autoFormatMd'])) || {}
+    }
+    if (typeof chrome.storage?.sync?.get === 'function') {
+      syncSettings = (await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])) || {}
+    }
+
+    let autoFormatMd = true
+    let alwaysOpenApp = true
+    if (typeof localSettings.autoFormatMd === 'boolean') {
+      autoFormatMd = localSettings.autoFormatMd
+    } else if (typeof syncSettings.autoFormatMd === 'boolean') {
+      autoFormatMd = syncSettings.autoFormatMd
+    }
+
+    if (typeof localSettings.alwaysOpenApp === 'boolean') {
+      alwaysOpenApp = localSettings.alwaysOpenApp
+    } else if (typeof syncSettings.alwaysOpenApp === 'boolean') {
+      alwaysOpenApp = syncSettings.alwaysOpenApp
+    }
+
+    if (autoFormatMd === false) return
+    if (alwaysOpenApp === false) return
 
     const appUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(targetUrl))
     await chrome.tabs.update(tabId, { url: appUrl })
