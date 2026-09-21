@@ -717,16 +717,16 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 
                   <ToggleRow
                     id="settings-autoFormatMd"
-                    title="Auto-format .md files"
-                    description="Tự động nhận diện và áp dụng kiểu hiển thị cho các tệp tin Markdown"
+                    title="Kích hoạt tiện ích (Auto-format .md)"
+                    description="Công tắc tổng cho phép tiện ích nhận diện file Markdown và tự động format khi lưu"
                     checked={currentAutoFormat}
                     onChange={(val) => handleSettingChange('autoFormatMd', val)}
                   />
 
                   <ToggleRow
                     id="settings-alwaysOpenApp"
-                    title="Always open app for .md files"
-                    description="Tự động chuyển hướng và mở file .md trong ứng dụng MD Reader thay vì văn bản thô"
+                    title="Tự động mở App toàn màn hình (Always open app)"
+                    description="Bật: Tự động chuyển hướng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
                     checked={currentAlwaysOpenApp}
                     onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
                   />
