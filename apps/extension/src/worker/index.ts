@@ -61,7 +61,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   // Check if URL ends with markdown extension (strip query params and hash)
   const cleanUrl = targetUrl.split('?')[0]?.split('#')[0] || ''
-  if (!cleanUrl.match(/\.(md|markdown)$/i)) return
+  if (!cleanUrl.match(/\.(md|markdown|mdown|mkd|mdx)$/i)) return
 
   // Skip GitHub web blob pages (e.g. github.com/owner/repo/blob/...)
   if (targetUrl.includes('github.com') && targetUrl.includes('/blob/')) return
@@ -80,7 +80,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
 
     let autoFormatMd = true
-    let alwaysOpenApp = true
+    let alwaysOpenApp = false
     if (typeof localSettings.autoFormatMd === 'boolean') {
       autoFormatMd = localSettings.autoFormatMd
     } else if (typeof syncSettings.autoFormatMd === 'boolean') {
@@ -94,7 +94,19 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
 
     if (autoFormatMd === false) return
-    if (alwaysOpenApp === false) return
+    if (alwaysOpenApp === false) {
+      if ((chrome as any).scripting?.executeScript) {
+        try {
+          await (chrome as any).scripting.executeScript({
+            target: { tabId },
+            files: ['content.js'],
+          })
+        } catch {
+          // Ignored
+        }
+      }
+      return
+    }
 
     const appUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(targetUrl))
     await chrome.tabs.update(tabId, { url: appUrl })

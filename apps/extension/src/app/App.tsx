@@ -50,7 +50,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   colorTheme: 'black',
   fontFamily: 'sans',
   autoFormatMd: true,
-  alwaysOpenApp: true,
+  alwaysOpenApp: false,
   stripFrontmatter: true,
   displayMetadata: false,
   advancedTables: true,
@@ -354,7 +354,11 @@ export function App(): React.JSX.Element {
           return
         }
 
-        fetch(fileUrl)
+        const fetchUrl =
+          fileUrl.includes('github.com/') && fileUrl.includes('/blob/')
+            ? fileUrl.replace('github.com/', 'raw.githubusercontent.com/').replace('/blob/', '/')
+            : fileUrl
+        fetch(fetchUrl)
           .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             return res.text()

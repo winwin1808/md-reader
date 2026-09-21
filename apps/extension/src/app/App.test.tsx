@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import * as Y from 'yjs'
@@ -776,17 +776,17 @@ describe('App', () => {
 
     expect(capturedSettingsModalProps.settings).toEqual(
       expect.objectContaining({
-        alwaysOpenApp: true,
+        alwaysOpenApp: false,
       })
     )
 
     // Simulate changing alwaysOpenApp
     await act(async () => {
-      capturedSettingsModalProps.onSettingChange('alwaysOpenApp', false)
+      capturedSettingsModalProps.onSettingChange('alwaysOpenApp', true)
     })
 
     expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({
-      alwaysOpenApp: false,
+      alwaysOpenApp: true,
     })
     expect(removeMock).toHaveBeenCalledWith(cachedKey)
   })
@@ -1020,12 +1020,12 @@ describe('App', () => {
     // Now disk has different content and trigger save again via Cmd+S
     await act(async () => {
       fireEvent.keyDown(window, { key: 's', metaKey: true })
-      for (let i = 0; i < 20; i++) await Promise.resolve()
     })
 
     // ConflictModal should be open
-    const conflictModal = document.querySelector('[role="dialog"]')
-    expect(conflictModal).not.toBeNull()
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+    })
 
     // User chooses to keep local
     const keepLocalBtn = screen.getByText(/giữ bản sửa|keep local/i)

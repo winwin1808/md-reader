@@ -491,7 +491,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
       ? settings.alwaysOpenApp
       : typeof alwaysOpenApp === 'boolean'
       ? alwaysOpenApp
-      : true;
+      : false;
 
   const handleSettingChange = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     onSettingChange?.(key, value);
@@ -718,15 +718,15 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                   <ToggleRow
                     id="settings-autoFormatMd"
                     title="Kích hoạt tiện ích (Auto-format .md)"
-                    description="Công tắc tổng cho phép tiện ích nhận diện file Markdown và tự động format khi lưu"
+                    description="Tự động nhận diện file Markdown và hiển thị widget nổi 📖 ở góc màn hình"
                     checked={currentAutoFormat}
                     onChange={(val) => handleSettingChange('autoFormatMd', val)}
                   />
 
                   <ToggleRow
                     id="settings-alwaysOpenApp"
-                    title="Tự động mở App toàn màn hình (Always open app)"
-                    description="Bật: Tự động chuyển hướng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
+                    title="Tự động chuyển hướng vào app (Always open app)"
+                    description="Bật: Mở thẳng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
                     checked={currentAlwaysOpenApp}
                     onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
                   />

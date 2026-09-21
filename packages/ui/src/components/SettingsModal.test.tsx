@@ -327,10 +327,10 @@ describe('SettingsModal', () => {
     expect(onAlwaysOpenAppChange).toHaveBeenCalledWith(true);
   });
 
-  it('defaults alwaysOpenApp to true when not provided', () => {
+  it('defaults alwaysOpenApp to false when not provided', () => {
     render(<SettingsModal {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
     const checkbox = screen.getByLabelText(/always open app/i);
-    expect(checkbox).toBeChecked();
+    expect(checkbox).not.toBeChecked();
   });
 });

@@ -22,7 +22,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 
 ;(async function () {
   let autoFormatMd = true
-  let alwaysOpenApp = true
+  let alwaysOpenApp = false
 
   try {
     let localSettings: any = {}
@@ -54,7 +54,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 
   const cleanPath = window.location.pathname.split('?')[0]?.split('#')[0] || ''
-  const isMdFile = Boolean(cleanPath.match(/\.(md|markdown)$/i))
+  const isMdFile = Boolean(cleanPath.match(/\.(md|markdown|mdown|mkd|mdx)$/i))
   const isTxtFile = Boolean(cleanPath.match(/\.txt$/i))
   const isFileProtocol = window.location.protocol === 'file:'
 
@@ -62,20 +62,22 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  if (!document.body || document.readyState === 'loading') {
-    await new Promise<void>((resolve) => {
-      if (document.readyState !== 'loading' && document.body) {
-        resolve()
-      } else {
+  if (!document.body) {
+    if (document.readyState === 'loading') {
+      await new Promise<void>((resolve) => {
         const onReady = () => {
           window.removeEventListener('DOMContentLoaded', onReady)
-          window.removeEventListener('load', onReady)
           resolve()
         }
         window.addEventListener('DOMContentLoaded', onReady)
-        window.addEventListener('load', onReady)
-      }
-    })
+        setTimeout(resolve, 1000)
+      })
+    }
+  }
+
+  const targetContainer = document.body || document.documentElement
+  if (!targetContainer) {
+    return
   }
 
   let markdownText = ''
@@ -97,7 +99,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     isMarkdown = true
   }
 
-  if (!isMarkdown || !document.body) {
+  if (!isMarkdown) {
     return
   }
 
@@ -112,9 +114,8 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     }
   }
 
-  // If "Always open app" is enabled (default: true), attempt redirect
+  // If "Always open app" is enabled (default: false), attempt redirect
   if (alwaysOpenApp && isMdFile) {
-    let redirected = false
     try {
       chrome.runtime?.sendMessage?.({
         action: 'openApp',
@@ -130,21 +131,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
       if (typeof window.location.replace === 'function') {
         window.location.replace(targetAppUrl)
-        redirected = true
       } else {
         window.location.href = targetAppUrl
-        redirected = true
       }
     } catch (e) {
-      // Chrome blocks direct navigation to chrome-extension:// from file:///
+      // Ignored
     }
 
-    if (redirected) {
-      return
-    }
+    return
   }
 
-  // Mount the floating widget (when alwaysOpenApp is false, or if navigation didn't unload page)
+  // Mount the floating widget (when alwaysOpenApp is false)
   if (document.getElementById('md-reader-root')) {
     return
   }
@@ -153,7 +150,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   rootEl.id = 'md-reader-root'
   rootEl.style.cssText =
     'all: initial !important; position: fixed !important; bottom: 24px !important; right: 24px !important; z-index: 2147483647 !important; display: block !important; width: auto !important; height: auto !important;'
-  document.body.appendChild(rootEl)
+  targetContainer.appendChild(rootEl)
 
   const shadow = rootEl.attachShadow({ mode: 'open' })
 
@@ -179,4 +176,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     console.error('Failed to render MD Reader content:', error)
     restore()
   }
+
+  window.addEventListener('popstate', () => {
+    const currentPath = window.location.pathname.split('?')[0]?.split('#')[0] || ''
+    if (!currentPath.match(/\.(md|markdown|mdown|mkd|mdx)$/i)) {
+      document.getElementById('md-reader-root')?.remove()
+    }
+  })
 })()
