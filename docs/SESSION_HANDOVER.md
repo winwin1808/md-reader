@@ -1,10 +1,11 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-15 (phiên 10). Branch: `phase-5` (sẵn sàng merge vào `main`).
+Cập nhật: 2026-09-21 (phiên 11). Branch: `main` / `master` (Phase 1-5 đã merge hoàn toàn vào main và master).
 
 ## Đang ở đâu
 
-**Phase 5 (Chỉnh sửa / Editor, Split View & Lưu đĩa An toàn) đã hoàn tất toàn bộ 7/7 phase con trên branch `phase-5`!**
+**Phase 1 đến Phase 5 đã hoàn tất và đã merge 100% vào `main` và `master`!**
+Đồng thời đã hoàn thiện sửa lỗi đồng bộ cài đặt đa file, cô lập IndexedDB theo URL, ưu tiên lưu trữ local và hiển thị widget nổi khi mở file markdown.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -26,11 +27,11 @@ Specs & Intent tương ứng:
 ```
 packages/core test        12 test files, 133 passed
 packages/ui test          25 test files, 206 passed
-apps/extension test       12 test files, 61 passed
-Tổng cộng                 49 test files, 400 passed (0 failed)
+apps/extension test       12 test files, 65 passed
+Tổng cộng                 49 test files, 404 passed (0 failed)
 pnpm -r typecheck         exit 0
 pnpm -r build             exit 0
-dist/content.js           26.56 kB, gz 10.23 kB (giới hạn 61.44 kB / 60KB)
+dist/content.js           30.49 kB, gz 11.65 kB (giới hạn 61.44 kB / 60KB)
 ```
 
 ## Tính năng đã hoàn tất ở Phase 5
