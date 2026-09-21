@@ -5,7 +5,7 @@ Cập nhật: 2026-09-21 (phiên 11). Branch: `main` / `master` (Phase 1-5 đã 
 ## Đang ở đâu
 
 **Phase 1 đến Phase 5 đã hoàn tất và đã merge 100% vào `main` và `master`!**
-Đồng thời đã hoàn thiện sửa lỗi đồng bộ cài đặt đa file, cô lập IndexedDB theo URL, ưu tiên lưu trữ local và hiển thị widget nổi khi mở file markdown.
+Đồng thời đã hoàn thiện sửa lỗi đồng bộ cài đặt đa file, cô lập IndexedDB theo URL, ưu tiên lưu trữ local, đảm bảo hiển thị widget nổi 📖 ở mọi link/file .md, phân định rõ ràng `autoFormatMd` vs `alwaysOpenApp` (mặc định `alwaysOpenApp: false`).
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -31,7 +31,7 @@ apps/extension test       12 test files, 65 passed
 Tổng cộng                 49 test files, 404 passed (0 failed)
 pnpm -r typecheck         exit 0
 pnpm -r build             exit 0
-dist/content.js           30.49 kB, gz 11.65 kB (giới hạn 61.44 kB / 60KB)
+dist/content.js           30.58 kB, gz 11.66 kB (giới hạn 61.44 kB / 60KB)
 ```
 
 ## Tính năng đã hoàn tất ở Phase 5
