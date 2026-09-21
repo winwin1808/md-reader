@@ -23,7 +23,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 ;(async function () {
   let settings: any = {}
   try {
-    settings = (await chrome.storage?.sync?.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+    const syncSettings = typeof chrome.storage?.sync?.get === 'function' ? ((await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp'])) || {}) : {}
+    const localSettings = typeof chrome.storage?.local?.get === 'function' ? ((await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp'])) || {}) : {}
+    settings = { ...localSettings, ...syncSettings }
   } catch (err) {
     console.warn('MD Reader: Failed to read settings:', err)
   }

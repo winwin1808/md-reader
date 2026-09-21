@@ -23,7 +23,9 @@ export function RecentFiles(): React.JSX.Element {
   }, []);
 
   const handleClick = (file: any) => {
-    console.log('TODO: Load file', file);
+    if (file?.id) {
+      window.location.href = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(file.id))
+    }
   };
 
   if (files.length === 0) return <></>;

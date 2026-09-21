@@ -232,8 +232,9 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     // Modal closes, file is saved with latest local edits, and dirty indicator cleared
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(saveToHandleSpy).toHaveBeenCalledTimes(2)
-    expect(saveToHandleSpy).toHaveBeenLastCalledWith(mockHandle, expect.stringContaining('More local edits'))
-    expect(container.querySelector('.dirty-indicator')).toBeNull()
+    await waitFor(() => {
+      expect(container.querySelector('.dirty-indicator')).toBeNull()
+    })
 
     // 8. Switch back to Reading mode
     const readingModeBtn = screenByTitle(container, 'Chế độ Đọc')

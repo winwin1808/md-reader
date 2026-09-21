@@ -70,7 +70,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (targetUrl.startsWith('file:')) return
 
   try {
-    const settings = await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])
+    const syncSettings = typeof chrome.storage?.sync?.get === 'function' ? ((await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])) || {}) : {}
+    const localSettings = typeof chrome.storage?.local?.get === 'function' ? ((await chrome.storage.local.get(['alwaysOpenApp', 'autoFormatMd'])) || {}) : {}
+    const settings = { ...localSettings, ...syncSettings }
     if (settings.autoFormatMd === false) return
     if (settings.alwaysOpenApp === false) return
 
