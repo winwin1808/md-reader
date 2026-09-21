@@ -117,7 +117,16 @@ describe('Service Worker', () => {
     expect(tabsUpdateMock).not.toHaveBeenCalled()
   })
 
-  it('intercepts .md navigation and updates tab url by default', async () => {
+  it('does not intercept .md navigation by default (alwaysOpenApp is false)', async () => {
+    await import('./index')
+    expect(updatedListener).not.toBeNull()
+
+    await updatedListener!(1, { url: 'https://example.com/docs/readme.md' }, {})
+    expect(tabsUpdateMock).not.toHaveBeenCalled()
+  })
+
+  it('intercepts .md navigation and updates tab url when alwaysOpenApp is true', async () => {
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
     await import('./index')
     expect(updatedListener).not.toBeNull()
 
@@ -125,14 +134,6 @@ describe('Service Worker', () => {
     expect(tabsUpdateMock).toHaveBeenCalledWith(1, {
       url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('https://example.com/docs/readme.md'),
     })
-  })
-
-  it('does not intercept when alwaysOpenApp is false', async () => {
-    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
-    await import('./index')
-
-    await updatedListener!(1, { url: 'https://example.com/docs/readme.md' }, {})
-    expect(tabsUpdateMock).not.toHaveBeenCalled()
   })
 
   it('does not intercept GitHub web blob pages', async () => {

@@ -18,6 +18,11 @@ describe('Content script entry point', () => {
     vi.resetModules()
     document.body.innerHTML = ''
     document.head.innerHTML = ''
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/index.html', href: 'https://example.com/index.html', protocol: 'https:' },
+      writable: true,
+      configurable: true,
+    })
     globalThis.chrome = {
       runtime: {
         getURL: vi.fn((path) => `mock-url/${path}`)
@@ -55,7 +60,7 @@ describe('Content script entry point', () => {
     document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
     
     const { createRoot } = await import('react-dom/client')
-    vi.mocked(createRoot).mockImplementation(() => {
+    vi.mocked(createRoot).mockImplementationOnce(() => {
       throw new Error('Render error')
     })
 
@@ -106,10 +111,9 @@ describe('Content script entry point', () => {
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
 
-  it('redirects to app.html by default when alwaysOpenApp is not set', async () => {
-    const replaceMock = vi.fn()
+  it('mounts floating widget by default when alwaysOpenApp is not set', async () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:', replace: replaceMock },
+      value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' },
       writable: true,
       configurable: true,
     })
@@ -121,6 +125,6 @@ describe('Content script entry point', () => {
 
     await import('./index')
 
-    expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
+    expect(document.getElementById('md-reader-root')).not.toBeNull()
   })
 })
