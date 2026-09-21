@@ -105,7 +105,14 @@ export function App(): React.JSX.Element {
   const slides = useMemo(() => splitIntoSlides(content), [content])
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
-  const doc = useMemo(() => new Y.Doc(), [])
+  const isFileContentSetRef = useRef<boolean>(false)
+
+  const persistenceName = useMemo(() => {
+    if (!fileUrlParam) return 'md-reader'
+    return `md-reader-${encodeURIComponent(fileUrlParam)}`
+  }, [fileUrlParam])
+
+  const doc = useMemo(() => new Y.Doc(), [fileUrlParam])
   const yText = useMemo(() => doc.getText('source'), [doc])
   const undoManager = useMemo(() => new Y.UndoManager(yText), [yText])
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -185,7 +192,7 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     let persistence: IndexeddbPersistence | null = null
     try {
-      persistence = new IndexeddbPersistence('md-reader', doc)
+      persistence = new IndexeddbPersistence(persistenceName, doc)
     } catch (err) {
       console.warn('Failed to initialize IndexeddbPersistence:', err)
     }
@@ -211,10 +218,12 @@ export function App(): React.JSX.Element {
     // Wait for initial sync from IDB
     if (persistence) {
       persistence.once('synced', () => {
-        setHasContent(text.length > 0)
-        setContent(text.toString())
-        updateTitle()
-        setIsDirty(false)
+        if (!isFileContentSetRef.current) {
+          setHasContent(text.length > 0)
+          setContent(text.toString())
+          updateTitle()
+          setIsDirty(false)
+        }
       })
     }
 
@@ -225,7 +234,7 @@ export function App(): React.JSX.Element {
         persistence.destroy()
       }
     }
-  }, [doc])
+  }, [doc, persistenceName])
 
   useEffect(() => {
     hasCelebratedRef.current = false
@@ -276,10 +285,11 @@ export function App(): React.JSX.Element {
 
   // Handle URL file param
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const fileUrl = params.get('file')
+    isFileContentSetRef.current = false
+    const fileUrl = fileUrlParam
     if (fileUrl) {
       const loadContent = async (text: string) => {
+        isFileContentSetRef.current = true
         const ytext = doc.getText('source')
         doc.transact(() => {
           ytext.delete(0, ytext.length)
@@ -291,6 +301,8 @@ export function App(): React.JSX.Element {
         const originHash = await hashText(text)
         doc.getMap('meta').set('originHash', originHash)
         setDocTitle(name.replace(/\.[^/.]+$/, ''))
+        setContent(text)
+        setHasContent(text.length > 0)
         setIsDirty(false)
         
         addRecentFile({
@@ -351,7 +363,7 @@ export function App(): React.JSX.Element {
         tryFetch()
       }
     }
-  }, [doc])
+  }, [doc, fileUrlParam])
 
   const executeSave = async (handle: FileSystemFileHandle, _textToSave?: string) => {
     const textBeforeFormat = yText.toString()
@@ -532,6 +544,7 @@ export function App(): React.JSX.Element {
     setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
     try {
       chrome.storage?.sync?.set?.({ [key]: value })
+      chrome.storage?.local?.set?.({ [key]: value })
     } catch (err) {
       // ignore
     }
