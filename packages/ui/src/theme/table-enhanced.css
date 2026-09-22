@@ -50,15 +50,35 @@
   font-weight: 600;
 }
 
-/* Table enhancement */
-.md-viewer table {
-  display: block;
+/* Table enhancement: Full width 100% aligned to both margins */
+.table-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 24px 0;
+  border-radius: 8px;
+  border: 1px solid var(--md-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-wrapper table {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.md-viewer table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: auto;
   border-collapse: collapse;
   margin: 24px 0;
   border-radius: 8px;
   border: 1px solid var(--md-border);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .md-viewer th {
@@ -66,8 +86,31 @@
   color: #ffffff !important;
   font-weight: 600;
   text-align: left;
-  padding: 10px 14px;
+  padding: 11px 16px;
   border: 1px solid var(--md-border);
+  vertical-align: middle;
+}
+
+.md-viewer td {
+  padding: 11px 16px;
+  border: 1px solid var(--md-border);
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.md-viewer th[align="center"],
+.md-viewer td[align="center"] {
+  text-align: center;
+}
+
+.md-viewer th[align="right"],
+.md-viewer td[align="right"] {
+  text-align: right;
+}
+
+.md-viewer th[align="justify"],
+.md-viewer td[align="justify"] {
+  text-align: justify;
 }
 
 .md-viewer tbody tr:nth-child(even) {

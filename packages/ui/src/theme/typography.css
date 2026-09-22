@@ -170,17 +170,23 @@
 .md-viewer table {
   margin: 2rem 0;
   border-spacing: 0;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--md-border);
   width: 100%;
+  min-width: 100%;
+  display: table;
+  table-layout: auto;
+  box-sizing: border-box;
 }
 
 .md-viewer table th,
 .md-viewer table td {
   padding: 11px 16px;
   border: 1px solid var(--md-border);
+  vertical-align: middle;
+  word-break: break-word;
 }
 
 .md-viewer table tr {

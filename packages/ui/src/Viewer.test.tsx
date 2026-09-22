@@ -46,6 +46,27 @@ describe('Viewer', () => {
     // Test unmount restores the pre tag
     unmount()
   })
+
+  it('wraps tables in .table-wrapper for full-width 2-margin alignment and responsive overflow', () => {
+    const html = `
+      <table>
+        <thead><tr><th>Col 1</th><th>Col 2</th></tr></thead>
+        <tbody><tr><td>A</td><td>B</td></tr></tbody>
+      </table>
+      <table>
+        <thead><tr><th>Col A</th><th>Col B</th><th>Col C</th></tr></thead>
+        <tbody><tr><td>1</td><td>2</td><td>3</td></tr></tbody>
+      </table>
+    `
+    const { container } = render(<Viewer html={html} />)
+    const tableWrappers = container.querySelectorAll('.table-wrapper')
+    expect(tableWrappers.length).toBe(2)
+
+    const tables = container.querySelectorAll('table')
+    expect(tables.length).toBe(2)
+    expect(tables[0]?.parentElement?.classList.contains('table-wrapper')).toBe(true)
+    expect(tables[1]?.parentElement?.classList.contains('table-wrapper')).toBe(true)
+  })
 })
 
 describe('Toc', () => {
