@@ -210,6 +210,23 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     }
   }, [html])
 
+  // Table wrapper for full-width 2-margin alignment and responsive overflow
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const tables = container.querySelectorAll('table')
+    tables.forEach((table) => {
+      const parent = table.parentElement
+      if (parent && !parent.classList.contains('table-wrapper')) {
+        const wrapper = document.createElement('div')
+        wrapper.className = 'table-wrapper'
+        parent.insertBefore(wrapper, table)
+        wrapper.appendChild(table)
+      }
+    })
+  }, [html])
+
   return (
     <div
       ref={containerRef}

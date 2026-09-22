@@ -127,18 +127,21 @@ pre code {
 table {
   border-spacing: 0;
   border-collapse: collapse;
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow: auto;
-  margin-top: 0;
-  margin-bottom: 16px;
+  display: table;
+  width: 100%;
+  min-width: 100%;
+  table-layout: auto;
+  box-sizing: border-box;
+  margin-top: 16px;
+  margin-bottom: 24px;
 }
 
 table th,
 table td {
-  padding: 6px 13px;
+  padding: 8px 14px;
   border: 1px solid var(--md-border);
+  vertical-align: middle;
+  word-break: break-word;
 }
 
 table th {
