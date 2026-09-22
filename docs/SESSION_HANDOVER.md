@@ -1,11 +1,12 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-21 (phiên 11). Branch: `main` / `master` (Phase 1-5 đã merge hoàn toàn vào main và master).
+Cập nhật: 2026-09-22 (phiên 12). Branch: `main` / `master` (Phase 1-5 đã merge hoàn toàn vào main và master).
 
 ## Đang ở đâu
 
 **Phase 1 đến Phase 5 đã hoàn tất và đã merge 100% vào `main` và `master`!**
 Đồng thời đã hoàn thiện sửa lỗi đồng bộ cài đặt đa file, cô lập IndexedDB theo URL, ưu tiên lưu trữ local, đảm bảo hiển thị widget nổi 📖 ở mọi link/file .md, phân định rõ ràng `autoFormatMd` vs `alwaysOpenApp` (mặc định `alwaysOpenApp: false`).
+Vừa hoàn tất tinh chỉnh: Căn đều 2 mép lề 100% cho mọi bảng biểu (Table 100% Margin Justified & Responsive Wrapper), loại bỏ triệt để hiện tượng chiều dài bảng lồi lõm không đều nhau trên trang A4.
 
 | # | Phase con | Trạng thái |
 |---|---|---|
@@ -26,9 +27,9 @@ Specs & Intent tương ứng:
 
 ```
 packages/core test        12 test files, 133 passed
-packages/ui test          25 test files, 206 passed
+packages/ui test          25 test files, 207 passed
 apps/extension test       12 test files, 65 passed
-Tổng cộng                 49 test files, 404 passed (0 failed)
+Tổng cộng                 49 test files, 405 passed (0 failed)
 pnpm -r typecheck         exit 0
 pnpm -r build             exit 0
 dist/content.js           30.58 kB, gz 11.66 kB (giới hạn 61.44 kB / 60KB)
