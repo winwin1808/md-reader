@@ -206,4 +206,38 @@ describe('useFileSave', () => {
     expect(saveToHandle).toHaveBeenCalledTimes(1)
     expect(result.current.saveState.kind).toBe('saved')
   })
+
+  it('error pauses autosave', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const { result, rerender } = await withHandle(doc)
+    saveToHandle.mockClear()
+    saveToHandle.mockRejectedValueOnce(new Error('disk full'))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.saveState.kind).toBe('error')
+    vi.useFakeTimers()
+    rerender({ s: makeSession(doc, { isDirty: true, content: 'x!' }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000) })
+    expect(saveToHandle).toHaveBeenCalledTimes(1)
+  })
+
+  it('saved then user edit -> idle', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const { result, rerender } = await withHandle(doc)
+    expect(result.current.saveState.kind).toBe('saved')
+    rerender({ s: makeSession(doc, { isDirty: true, content: 'x!' }) })
+    expect(result.current.saveState.kind).toBe('idle')
+  })
+
+  it('Save As write failure leaves activeHandle null', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    saveFileAs.mockResolvedValue({ handle: fakeHandle() })
+    saveToHandle.mockRejectedValueOnce(new Error('nope'))
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { isDirty: true }), { formatOnSave: false }))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.saveState.kind).toBe('error')
+    expect(result.current.activeHandle).toBeNull()
+  })
 })

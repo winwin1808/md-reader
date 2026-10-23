@@ -34,6 +34,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     diskContent: '',
   })
   const isSavingRef = useRef<boolean>(false)
+  const savedContentRef = useRef<string | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const executeSave = async (handle: FileSystemFileHandle, explicit = false) => {
@@ -47,6 +48,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       }
     }
     await saveToHandle(handle, savedContent)
+    savedContentRef.current = savedContent
     setIsDirty(yText.toString() !== savedContent)
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
@@ -76,10 +78,10 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
         const res = await saveFileAs(suggestedName, currentText)
         if (res) {
           const handle = res.handle
+          await executeSave(handle, explicit)
           setActiveHandle(handle)
           await storeFileHandle(handle).catch(() => {})
           doc.getMap('meta').set('name', handle.name)
-          await executeSave(handle, explicit)
           next = { kind: 'saved', at: Date.now() }
         }
         return
@@ -152,7 +154,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
   // Debounced auto-save (2000ms after last edit if activeHandle exists)
   useEffect(() => {
-    if (!isDirty || !activeHandle || saveState.kind === 'conflict') return
+    if (!isDirty || !activeHandle || saveState.kind === 'conflict' || saveState.kind === 'error') return
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
       autoSaveTimerRef.current = null
@@ -168,6 +170,13 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       }
     }
   }, [isDirty, content, activeHandle, saveState.kind])
+
+  // Saved -> idle once the user edits again
+  useEffect(() => {
+    if (saveState.kind === 'saved' && isDirty && content !== savedContentRef.current) {
+      setSaveState({ kind: 'idle' })
+    }
+  }, [isDirty, content, saveState.kind])
 
   // Global keyboard shortcut for Cmd+S / Ctrl+S
   useEffect(() => {
