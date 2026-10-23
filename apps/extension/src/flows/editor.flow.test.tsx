@@ -143,7 +143,7 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
       selection: { anchor: idx, head: idx + 'sample'.length }
     })
 
-    const boldBtn = screenByTitle(container, 'Bold')
+    const boldBtn = screenByTitle(container, 'Đậm (⌘B)')
     expect(boldBtn).toBeTruthy()
     fireEvent.click(boldBtn!)
 

@@ -576,9 +576,9 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'editor' && (
-            <div className="editor-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+            <div className="editor-mode-container">
               <FormattingToolbar onAction={handleFormatAction} />
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div className="editor-mode-body">
                 <Suspense fallback={<LazyFallback />}>
                   <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
                 </Suspense>
@@ -587,15 +587,15 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'split' && (
-            <div className="split-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+            <div className="split-mode-container">
               <FormattingToolbar onAction={handleFormatAction} />
-              <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div className="split-mode-body">
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
                   editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
                   preview={
-                    <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
+                    <div ref={docContainerRef} className="a4-document-container">
                       <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
                     </div>
                   }

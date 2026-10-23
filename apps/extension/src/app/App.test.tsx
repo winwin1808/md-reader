@@ -1538,7 +1538,7 @@ describe('App', () => {
     expect(view!.state.selection.main.to).toBe(11)
 
     // Find Bold button in FormattingToolbar and click it
-    const boldBtn = screen.getByTitle('Bold')
+    const boldBtn = screen.getByTitle('Đậm (⌘B)')
     expect(boldBtn).not.toBeNull()
     await act(async () => {
       fireEvent.click(boldBtn)

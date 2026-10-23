@@ -268,3 +268,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink);
   pointer-events: none;
 }
+
+/* Editor / split modes: a definite height chain so .cm-editor fills the pane.
+   The SplitViewContainer panes are the only scrollers. */
+.editor-mode-container,
+.split-mode-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+  min-height: 0;
+  flex: none;
+  overflow: hidden;
+}
+
+.editor-mode-body,
+.split-mode-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-mode-body > *,
+.split-mode-body > * {
+  flex: 1;
+  min-height: 0;
+}

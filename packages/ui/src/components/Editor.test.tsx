@@ -2,7 +2,15 @@ import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import * as Y from 'yjs'
 import type { EditorView } from '@codemirror/view'
-import { Editor } from './Editor'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { Editor, lereSachHighlight } from './Editor'
+
+// jsdom lacks layout APIs CodeMirror's scroll-into-view measurement uses
+if (!Range.prototype.getClientRects) {
+  Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] }) as unknown as DOMRectList
+  Range.prototype.getBoundingClientRect = () => new DOMRect()
+}
 
 describe('Editor', () => {
   it('renders CodeMirror container with .cm-editor on mount', () => {
@@ -156,5 +164,45 @@ describe('Editor', () => {
 
     unmount()
     expect(ref.current).toBeNull()
+  })
+
+  function keydown(view: EditorView, key: string) {
+    const ev = new KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, cancelable: true })
+    view.contentDOM.dispatchEvent(ev)
+  }
+
+  it('Mod-b wraps selection in ** via transaction and Mod-z undoes it', () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('source')
+    yText.insert(0, 'hello world')
+    const undoManager = new Y.UndoManager(yText)
+    let view: EditorView | undefined
+    render(<Editor yText={yText} undoManager={undoManager} onEditorReady={(v) => { view = v }} />)
+    view!.dispatch({ selection: { anchor: 0, head: 5 } })
+    keydown(view!, 'b')
+    expect(yText.toString()).toBe('**hello** world')
+    keydown(view!, 'z')
+    expect(yText.toString()).toBe('hello world')
+  })
+
+  it('Mod-i and Mod-k wrap selection', () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('source')
+    yText.insert(0, 'abc')
+    let view: EditorView | undefined
+    render(<Editor yText={yText} onEditorReady={(v) => { view = v }} />)
+    view!.dispatch({ selection: { anchor: 0, head: 3 } })
+    keydown(view!, 'i')
+    expect(yText.toString()).toBe('*abc*')
+    view!.dispatch({ selection: { anchor: 1, head: 4 } })
+    keydown(view!, 'k')
+    expect(yText.toString()).toBe('*[abc](url)*')
+  })
+
+  it('exports lereSachHighlight using CSS variables and editor.css has no .tok- rules', () => {
+    expect(lereSachHighlight).toBeDefined()
+    expect(lereSachHighlight.module).toBeTruthy()
+    const css = readFileSync(resolve(process.cwd(), 'src/theme/editor.css'), 'utf8')
+    expect(css).not.toContain('.tok-')
   })
 })
