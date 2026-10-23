@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTheme } from '../theme/ThemeProvider'
 
 export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
 
@@ -76,18 +75,11 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
-  let themeContext: { resolved: 'light' | 'dark' } | undefined
-  try {
-    themeContext = useTheme()
-  } catch {
-    // fallback outside ThemeProvider
-  }
 
   const modalContent = isOpen ? (
     <div
       role="dialog"
       aria-modal="true"
-      data-theme={themeContext?.resolved || 'light'}
       onClick={() => setIsOpen(false)}
       style={{
         position: 'fixed',

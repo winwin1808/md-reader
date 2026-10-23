@@ -58,13 +58,18 @@
   padding: 0 10px;
   border: none;
   background: transparent;
-  color: var(--ink);
+  color: var(--pencil);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
 }
 .tb-seg-btn:hover { background: var(--hover); }
-.tb-seg-btn[aria-checked='true'] { background: var(--active); font-weight: 600; }
+.tb-seg-btn[aria-checked='true'] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 600;
+}
 .tb-menu {
   position: absolute;
   top: calc(100% + 4px);
