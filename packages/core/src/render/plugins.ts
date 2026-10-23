@@ -40,7 +40,8 @@ function walk(node: Root | Element, fn: (node: Element, parent: Root | Element, 
     const child = node.children[i] as Child
     if (child.type === 'element') {
       fn(child, node, i)
-      walk(child, fn)
+      const current = node.children[i] as Child
+      if (current.type === 'element') walk(current, fn)
     }
   }
 }
@@ -101,13 +102,14 @@ export function rehypeExternalLinks() {
       const href = node.properties?.href
       if (typeof href !== 'string' || !/^https?:\/\//i.test(href)) return
       const classes = classList(node)
-      if (classes.includes('external-link')) return
       node.properties = {
         ...node.properties,
-        className: [...classes, 'external-link'],
+        className: classes.includes('external-link') ? classes : [...classes, 'external-link'],
         target: '_blank',
         rel: ['noopener', 'noreferrer'],
       }
+      const last = node.children[node.children.length - 1]
+      if (last && last.type === 'element' && last.tagName === 'svg' && classList(last).includes('external-link-icon')) return
       node.children.push(
         el(
           'svg',
@@ -124,6 +126,18 @@ export function rehypeExternalLinks() {
           ],
         ),
       )
+    })
+  }
+}
+
+export function rehypeSafeLinkTargets() {
+  return (tree: Root) => {
+    walk(tree, (node) => {
+      if (node.tagName !== 'a' || node.properties?.target === undefined) return
+      const r: unknown = node.properties.rel
+      const existing = Array.isArray(r) ? r.map(String) : typeof r === 'string' ? r.split(/\s+/).filter(Boolean) : []
+      const rel = [...new Set([...existing, 'noopener', 'noreferrer'])]
+      node.properties = { ...node.properties, rel }
     })
   }
 }

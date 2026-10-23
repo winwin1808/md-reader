@@ -142,4 +142,27 @@ describe('Render Options', () => {
       expect(result.html).toContain('aria-hidden="true"')
     })
   })
+
+  describe('6g1.2 review fixes', () => {
+    it('forces noopener noreferrer on targeted raw links without externalLinks', () => {
+      const html = r('<a href="https://e" target="_blank">x</a>', { allowRawHtml: true })
+      expect(html).toContain('noopener')
+      expect(html).toContain('noreferrer')
+    })
+    it('normalizes author external-link anchors with exactly one icon', () => {
+      const html = r('<a href="https://e" class="external-link" target="_self">x</a>', {
+        allowRawHtml: true,
+        externalLinks: true,
+      })
+      expect(html).toContain('target="_blank"')
+      expect(html).toContain('rel="noopener noreferrer"')
+      expect(html.match(/<svg/g)?.length).toBe(1)
+      expect(html.match(/external-link"/g)?.length).toBe(1)
+    })
+    it('transforms nested alerts', () => {
+      const html = r('> [!NOTE]\n> a\n>\n> > [!TIP]\n> > b', { githubAlerts: true })
+      expect(html.match(/class="markdown-alert /g)?.length).toBe(2)
+      expect(html).not.toContain('[!TIP]')
+    })
+  })
 })
