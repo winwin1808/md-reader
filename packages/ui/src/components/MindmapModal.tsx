@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Icon } from './Icon'
 import type { MindNode } from '@md-reader/core'
 import {
   exportMindmapToSvg,
@@ -392,17 +393,17 @@ export function MindmapModal({
       className="mindmap-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={title || 'Document Mindmap'}
+      aria-label={title || 'Sơ đồ tư duy'}
     >
       <div className="mindmap-modal-header">
-        <h2 className="mindmap-modal-title">{title || 'Document Mindmap'}</h2>
+        <h2 className="mindmap-modal-title">{title || 'Sơ đồ tư duy'}</h2>
         <button
           type="button"
           className="mindmap-close-btn"
           onClick={onClose}
-          aria-label="Close mindmap"
+          aria-label="Đóng sơ đồ tư duy" title="Đóng sơ đồ tư duy"
         >
-          ✕
+          <Icon name="close" size={20} />
         </button>
       </div>
 
@@ -493,16 +494,29 @@ export function MindmapModal({
                       stroke={n.color}
                       strokeWidth={1.5}
                     />
-                    <text
-                      className={isCollapsed ? 'mindmap-collapsed-badge' : undefined}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fill={isCollapsed ? '#ffffff' : n.color}
-                      fontSize={isCollapsed ? 9 : 11}
-                      fontWeight="bold"
-                    >
-                      {isCollapsed ? `+${n.node.children.length}` : '−'}
-                    </text>
+                    {isCollapsed ? (
+                      <text
+                        className="mindmap-collapsed-badge"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#ffffff"
+                        fontSize={9}
+                        fontWeight="bold"
+                      >
+                        {`+${n.node.children.length}`}
+                      </text>
+                    ) : (
+                      <line
+                        x1={-4}
+                        x2={4}
+                        y1={0}
+                        y2={0}
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        style={{ color: n.color }}
+                      />
+                    )}
                   </g>
                 )}
               </g>
@@ -511,7 +525,7 @@ export function MindmapModal({
         </g>
       </svg>
 
-      <div className="mindmap-controls" role="toolbar" aria-label="Mindmap Controls">
+      <div className="mindmap-controls" role="toolbar" aria-label="Điều khiển sơ đồ tư duy">
         <button
           type="button"
           className="mindmap-btn"
@@ -534,55 +548,55 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleZoomIn}
-          aria-label="Zoom in"
-          title="Zoom in"
+          aria-label="Phóng to"
+          title="Phóng to"
         >
-          +
+          <Icon name="zoom-in" size={20} />
         </button>
         <button
           type="button"
           className="mindmap-btn"
           onClick={handleZoomOut}
-          aria-label="Zoom out"
-          title="Zoom out"
+          aria-label="Thu nhỏ"
+          title="Thu nhỏ"
         >
-          −
+          <Icon name="zoom-out" size={20} />
         </button>
         <button
           type="button"
           className="mindmap-btn"
           onClick={fitToScreen}
-          aria-label="Fit to screen"
-          title="Fit to screen"
+          aria-label="Toàn màn hình"
+          title="Toàn màn hình"
         >
-          ⛶
+          <Icon name="fullscreen" size={20} />
         </button>
         <button
           type="button"
           className="mindmap-btn"
           onClick={handleCollapseAll}
-          aria-label="Collapse all"
-          title="Collapse all"
+          aria-label="Gập tất cả nhánh"
+          title="Gập tất cả nhánh"
         >
-          ⊟
+          <Icon name="collapse-all" size={20} />
         </button>
         <button
           type="button"
           className="mindmap-btn"
           onClick={handleExpandAll}
-          aria-label="Expand all"
-          title="Expand all"
+          aria-label="Mở tất cả nhánh"
+          title="Mở tất cả nhánh"
         >
-          ⊞
+          <Icon name="expand-all" size={20} />
         </button>
         <button
           type="button"
           className="mindmap-btn"
           onClick={onClose}
-          aria-label="Close"
-          title="Close"
+          aria-label="Đóng"
+          title="Đóng"
         >
-          ✕
+          <Icon name="close" size={20} />
         </button>
       </div>
     </div>

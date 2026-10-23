@@ -1,4 +1,5 @@
 import React from 'react'
+import { Icon } from './Icon'
 import type { ViewMode } from './SplitViewContainer'
 
 export type FontScale = 'sm' | 'md' | 'lg' | 'xl'
@@ -281,7 +282,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
                 fontWeight: props.viewMode === 'reading' ? 600 : 400,
               }}
             >
-              📖 Đọc
+              <Icon name="book" size={16} /> Đọc
             </button>
             <button
               type="button"
@@ -298,7 +299,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
                 fontWeight: props.viewMode === 'editor' ? 600 : 400,
               }}
             >
-              ✍️ Sửa
+              <Icon name="edit" size={16} /> Sửa
             </button>
             <button
               type="button"
@@ -315,7 +316,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
                 fontWeight: props.viewMode === 'split' ? 600 : 400,
               }}
             >
-              ◫ Chia đôi
+              <Icon name="split" size={16} /> Chia đôi
             </button>
           </div>
         )}
