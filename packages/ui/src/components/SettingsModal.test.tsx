@@ -43,7 +43,7 @@ describe('SettingsModal', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     
-    const checkbox = screen.getByLabelText(/auto-format/i);
+    const checkbox = screen.getByLabelText(/Định dạng lại Markdown khi lưu/i);
     expect(checkbox).not.toBeChecked();
     
     fireEvent.click(checkbox);
@@ -62,11 +62,11 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
 
-    expect(screen.getByText('Kiểu phông chữ')).toBeInTheDocument();
+    expect(screen.getByText('Phông chữ thân')).toBeInTheDocument();
     const look = within(section('Chữ và màu'));
-    const sansBtn = look.getByRole('button', { name: 'Sans-serif' });
-    const serifBtn = look.getByRole('button', { name: 'Serif' });
-    const monoBtn = look.getByRole('button', { name: 'Monospace' });
+    const sansBtn = look.getByRole('button', { name: 'Không chân (IBM Plex Sans)' });
+    const serifBtn = look.getByRole('button', { name: 'Có chân (Literata)' });
+    const monoBtn = look.getByRole('button', { name: 'Đơn cách (IBM Plex Mono)' });
 
     expect(sansBtn).toBeInTheDocument();
     expect(serifBtn).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('SettingsModal', () => {
     const look = section('Chữ và màu');
     fireEvent.click(within(look).getByRole('button', { name: 'Tối' }));
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
-    fireEvent.click(within(look).getByRole('button', { name: 'Serif' }));
+    fireEvent.click(within(look).getByRole('button', { name: 'Có chân (Literata)' }));
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
   });
 
@@ -189,6 +189,28 @@ describe('SettingsModal', () => {
     expect(buttons[3]).toHaveAttribute('aria-current', 'true');
     // @ts-expect-error cleanup
     delete window.matchMedia;
+  });
+
+  it('uses Vietnamese labels with descriptions and no English title-case text', () => {
+    render(<SettingsModal {...defaultProps} open settings={{ contrast: 'standard', settingsVersion: 2 }} />);
+    const labels = [
+      'Ẩn phần thông tin đầu file (frontmatter)', 'Hiện thông tin đầu file thành thẻ', 'Hiển thị công thức toán',
+      'Vẽ sơ đồ Mermaid', 'Hộp ghi chú kiểu GitHub ([!NOTE], [!WARNING]…)', 'Tiêu đề ghi chú bằng tiếng Việt',
+      'Dấu câu đẹp (ngoặc kép cong, gạch dài)', 'Đánh dấu và mở liên kết ngoài ở thẻ mới',
+      'Luôn mở file .md trong MD Reader', 'Định dạng lại Markdown khi lưu', 'Định dạng Markdown khi bấm Lưu',
+      'Hiện số từ và thời gian đọc', 'Tự ẩn khi đọc tới cuối', 'Thanh tiến độ đọc', 'Pháo giấy khi đọc xong',
+      'Nền trang chiếu', 'Chữ', 'Tiêu đề', 'Màu nhấn', 'Phông chữ trang chiếu', 'Ảnh nền (URL)', 'Độ mờ ảnh nền',
+    ];
+    for (const l of labels) expect(screen.getByLabelText(l), l).toBeInTheDocument();
+    for (const n of ['Sáng', 'Tối', 'Theo hệ thống', 'Có chân (Literata)', 'Không chân (IBM Plex Sans)', 'Đơn cách (IBM Plex Mono)']) {
+      expect(screen.getByRole('button', { name: n }), n).toBeInTheDocument();
+    }
+    for (const d of ['Bấm vào link .md sẽ mở thẳng tab đọc thay vì xem trên trang.', 'Chỉ khi bạn bấm Lưu, không trong lúc gõ.',
+      'Không đổi nội dung file, chỉ đổi cách hiển thị.', 'Tắt nếu tài liệu có nhiều sơ đồ và mở chậm.']) {
+      expect(screen.getByText(d)).toBeInTheDocument();
+    }
+    const text = (screen.getByRole('dialog').textContent ?? '').replace(/IBM Plex (Sans|Mono)|MD Reader|Playfair Display/g, '');
+    expect(text.match(/[A-Z][a-z]+ [A-Z][a-z]+/g)).toBeNull();
   });
 
   it('settings.css has no outline: none and no rgba( literal', () => {
@@ -222,24 +244,24 @@ describe('SettingsModal', () => {
     expect(screen.queryByLabelText(/task lists/i)).toBeNull();
 
     // Display tab: format on save
-    const fmt = screen.getByLabelText(/Định dạng Markdown khi lưu/i);
+    const fmt = screen.getByLabelText(/Định dạng Markdown khi bấm Lưu/i);
     expect(fmt).not.toBeChecked();
     fireEvent.click(fmt);
     expect(onSettingChange).toHaveBeenCalledWith('formatOnSave', true);
 
     // Media tab toggle
-    const mathCheckbox = screen.getByLabelText(/math equations/i);
+    const mathCheckbox = screen.getByLabelText(/công thức toán/i);
     fireEvent.click(mathCheckbox);
     expect(onSettingChange).toHaveBeenCalledWith('enableMath', true);
     expect(screen.queryByLabelText(/plantuml/i)).toBeNull();
     expect(screen.queryByLabelText(/graphviz/i)).toBeNull();
-    const mermaidCheckbox = screen.getByLabelText(/mermaid diagrams/i);
+    const mermaidCheckbox = screen.getByLabelText(/sơ đồ Mermaid/i);
     expect(mermaidCheckbox).not.toBeChecked();
     fireEvent.click(mermaidCheckbox);
     expect(onSettingChange).toHaveBeenCalledWith('enableMermaid', true);
 
     // Presentation tab input
-    const fontInput = screen.getByLabelText(/slide font/i);
+    const fontInput = screen.getByLabelText(/Phông chữ trang chiếu/i);
     expect(fontInput).toHaveValue('Georgia');
     fireEvent.change(fontInput, { target: { value: 'Inter' } });
     expect(onSettingChange).toHaveBeenCalledWith('slideFont', 'Inter');
@@ -272,13 +294,13 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
 
     // Font
-    fireEvent.click(within(section('Chữ và màu')).getByRole('button', { name: 'Serif' }));
+    fireEvent.click(within(section('Chữ và màu')).getByRole('button', { name: 'Có chân (Literata)' }));
     expect(onFontFamilyChange).toHaveBeenCalledTimes(1);
     expect(onFontFamilyChange).toHaveBeenCalledWith('serif');
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
 
     // Auto format
-    const checkbox = screen.getByLabelText(/auto-format/i);
+    const checkbox = screen.getByLabelText(/Định dạng lại Markdown khi lưu/i);
     fireEvent.click(checkbox);
     expect(onAutoFormatChange).toHaveBeenCalledTimes(1);
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
@@ -309,12 +331,12 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('slideBgColor', '#2563eb');
 
     // Font preset button
-    const monoFontBtn = within(section('Trình chiếu')).getByRole('button', { name: 'Monospace' });
+    const monoFontBtn = within(section('Trình chiếu')).getByRole('button', { name: 'Đơn cách' });
     fireEvent.click(monoFontBtn);
     expect(onSettingChange).toHaveBeenCalledWith('slideFont', expect.stringContaining('monospace'));
 
     // Image opacity number change
-    const opacityInput = screen.getByLabelText(/image opacity/i);
+    const opacityInput = screen.getByLabelText(/Độ mờ ảnh nền/i);
     fireEvent.change(opacityInput, { target: { value: '50' } });
     expect(onSettingChange).toHaveBeenCalledWith('slideImageOpacity', 50);
 
@@ -337,7 +359,7 @@ describe('SettingsModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
-    const checkbox = screen.getByLabelText(/always open app/i);
+    const checkbox = screen.getByLabelText(/Luôn mở file .md/i);
     expect(checkbox).not.toBeChecked();
 
     fireEvent.click(checkbox);
@@ -348,7 +370,7 @@ describe('SettingsModal', () => {
   it('defaults alwaysOpenApp to false when not provided', () => {
     render(<SettingsModal {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
-    const checkbox = screen.getByLabelText(/always open app/i);
+    const checkbox = screen.getByLabelText(/Luôn mở file .md/i);
     expect(checkbox).not.toBeChecked();
   });
 });
