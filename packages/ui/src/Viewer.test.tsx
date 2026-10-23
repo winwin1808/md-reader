@@ -107,6 +107,26 @@ describe('Viewer anchors and mermaid toggle', () => {
     expect(ev.defaultPrevented).toBe(true)
   })
 
+  it('modified click on in-page link is not prevented', () => {
+    const html = '<a href="#sec">go</a><h2 id="user-content-sec">Sec</h2>'
+    const { container } = render(<Viewer html={html} />)
+    const a = container.querySelector('a') as HTMLElement
+    const ev = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true })
+    a.dispatchEvent(ev)
+    expect(ev.defaultPrevented).toBe(false)
+  })
+
+  it('initial location.hash scrolls to prefixed id', () => {
+    const spy = vi.fn()
+    const orig = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = spy
+    window.location.hash = '#sec'
+    render(<Viewer html={'<h2 id="user-content-sec">Sec</h2>'} />)
+    Element.prototype.scrollIntoView = orig
+    window.location.hash = ''
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
   it('mermaid={false} leaves mermaid code blocks alone', () => {
     const html = '<pre><code class="language-mermaid">graph TD; A-->B;</code></pre>'
     const { container } = render(<Viewer html={html} mermaid={false} />)

@@ -130,6 +130,19 @@ export function rehypeExternalLinks() {
   }
 }
 
+export function rehypePrefixFragmentLinks(prefix: string) {
+  return (tree: Root) => {
+    walk(tree, (node) => {
+      if (node.tagName !== 'a') return
+      const href = node.properties?.href
+      if (typeof href !== 'string' || !href.startsWith('#') || href.length < 2) return
+      const rest = href.slice(1)
+      if (rest.startsWith(prefix)) return
+      node.properties = { ...node.properties, href: '#' + prefix + rest }
+    })
+  }
+}
+
 export function rehypeSafeLinkTargets() {
   return (tree: Root) => {
     walk(tree, (node) => {
