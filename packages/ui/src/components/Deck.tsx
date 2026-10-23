@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Icon } from './Icon'
 import type { Slide } from '@md-reader/core'
 import { ThemeProvider, type ColorTheme } from '../theme/ThemeProvider'
 
@@ -130,7 +131,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
 
   const currentSlide = slides[currentIndex]
   const progressPercent = totalSlides > 0 ? ((currentIndex + 1) / totalSlides) * 100 : 0
-  const counterText = totalSlides > 0 ? `Slide ${currentIndex + 1} / ${totalSlides}` : 'Slide 0 / 0'
+  const counterText = totalSlides > 0 ? `Trang ${currentIndex + 1} / ${totalSlides}` : 'Trang 0 / 0'
 
   const overlayStyle: React.CSSProperties & Record<string, string | undefined> = {
     backgroundColor: presentationSettings?.slideBgColor || undefined,
@@ -164,27 +165,27 @@ export function Deck(props: DeckProps): React.JSX.Element {
           <span className="deck-counter">{counterText}</span>
           <button
             type="button"
-            aria-label="Slide trước"
+            aria-label="Trang trước" title="Trang trước"
             disabled={totalSlides === 0 || currentIndex <= 0}
             onClick={() => goToSlide(currentIndex - 1)}
           >
-            ←
+            <Icon name="chevron-left" size={20} />
           </button>
           <button
             type="button"
-            aria-label="Slide kế tiếp"
+            aria-label="Trang sau" title="Trang sau"
             disabled={totalSlides === 0 || currentIndex >= totalSlides - 1}
             onClick={() => goToSlide(currentIndex + 1)}
           >
-            →
+            <Icon name="chevron-right" size={20} />
           </button>
           <button
             type="button"
-            aria-label="Giao diện diễn giả"
-            title="Mở chế độ diễn giả"
+            aria-label="Cửa sổ diễn giả"
+            title="Cửa sổ diễn giả"
             onClick={handleOpenSpeaker}
           >
-            🎙
+            <Icon name="speaker" size={20} />
           </button>
           <button
             type="button"
@@ -192,7 +193,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
             title="Thoát (Esc)"
             onClick={onClose}
           >
-            ✕
+            <Icon name="close" size={20} />
           </button>
         </div>
 

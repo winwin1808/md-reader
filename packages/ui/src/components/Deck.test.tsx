@@ -33,7 +33,7 @@ describe('Deck component', () => {
     const { container } = render(<Deck slides={mockSlides} initialSlide={1} />)
     const mdViewer = container.querySelector('.deck-slide .md-viewer')
     expect(mdViewer?.innerHTML).toContain('<h2>Slide 2 Title</h2>')
-    expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+    expect(screen.getByText('Trang 2 / 3')).toBeDefined()
   })
 
   it('renders bottom floating controls and progress bar', () => {
@@ -41,26 +41,26 @@ describe('Deck component', () => {
     const controls = container.querySelector('.deck-controls')
     expect(controls).not.toBeNull()
 
-    expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+    expect(screen.getByText('Trang 1 / 3')).toBeDefined()
 
-    const prevBtn = screen.getByRole('button', { name: 'Slide trước' })
+    const prevBtn = screen.getByRole('button', { name: 'Trang trước' })
     expect(prevBtn).toBeDefined()
-    expect(prevBtn.textContent).toBe('←')
+    expect(prevBtn.querySelector('svg')).not.toBeNull()
     expect((prevBtn as HTMLButtonElement).disabled).toBe(true)
 
-    const nextBtn = screen.getByRole('button', { name: 'Slide kế tiếp' })
+    const nextBtn = screen.getByRole('button', { name: 'Trang sau' })
     expect(nextBtn).toBeDefined()
-    expect(nextBtn.textContent).toBe('→')
+    expect(nextBtn.querySelector('svg')).not.toBeNull()
     expect((nextBtn as HTMLButtonElement).disabled).toBe(false)
 
-    const speakerBtn = screen.getByRole('button', { name: 'Giao diện diễn giả' })
+    const speakerBtn = screen.getByRole('button', { name: 'Cửa sổ diễn giả' })
     expect(speakerBtn).toBeDefined()
-    expect(speakerBtn.textContent).toBe('🎙')
-    expect(speakerBtn.getAttribute('title')).toBe('Mở chế độ diễn giả')
+    expect(speakerBtn.querySelector('svg')).not.toBeNull()
+    expect(speakerBtn.getAttribute('title')).toBe('Cửa sổ diễn giả')
 
     const exitBtn = screen.getByRole('button', { name: 'Thoát trình chiếu' })
     expect(exitBtn).toBeDefined()
-    expect(exitBtn.textContent).toBe('✕')
+    expect(exitBtn.querySelector('svg')).not.toBeNull()
     expect(exitBtn.getAttribute('title')).toBe('Thoát (Esc)')
 
     const progressBar = container.querySelector('.deck-progress-bar') as HTMLElement
@@ -72,21 +72,21 @@ describe('Deck component', () => {
     const onSlideChange = vi.fn()
     render(<Deck slides={mockSlides} onSlideChange={onSlideChange} />)
 
-    const nextBtn = screen.getByRole('button', { name: 'Slide kế tiếp' })
-    const prevBtn = screen.getByRole('button', { name: 'Slide trước' })
+    const nextBtn = screen.getByRole('button', { name: 'Trang sau' })
+    const prevBtn = screen.getByRole('button', { name: 'Trang trước' })
 
     fireEvent.click(nextBtn)
-    expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+    expect(screen.getByText('Trang 2 / 3')).toBeDefined()
     expect(onSlideChange).toHaveBeenCalledWith(1)
     expect((prevBtn as HTMLButtonElement).disabled).toBe(false)
 
     fireEvent.click(nextBtn)
-    expect(screen.getByText('Slide 3 / 3')).toBeDefined()
+    expect(screen.getByText('Trang 3 / 3')).toBeDefined()
     expect(onSlideChange).toHaveBeenCalledWith(2)
     expect((nextBtn as HTMLButtonElement).disabled).toBe(true)
 
     fireEvent.click(prevBtn)
-    expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+    expect(screen.getByText('Trang 2 / 3')).toBeDefined()
     expect(onSlideChange).toHaveBeenCalledWith(1)
   })
 
@@ -94,7 +94,7 @@ describe('Deck component', () => {
     const onOpenSpeakerView = vi.fn()
     render(<Deck slides={mockSlides} onOpenSpeakerView={onOpenSpeakerView} />)
 
-    const speakerBtn = screen.getByRole('button', { name: 'Giao diện diễn giả' })
+    const speakerBtn = screen.getByRole('button', { name: 'Cửa sổ diễn giả' })
     fireEvent.click(speakerBtn)
     expect(onOpenSpeakerView).toHaveBeenCalledTimes(1)
   })
@@ -114,46 +114,46 @@ describe('Deck component', () => {
       render(<Deck slides={mockSlides} onSlideChange={onSlideChange} />)
 
       fireEvent.keyDown(window, { key: 'ArrowRight' })
-      expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
       expect(onSlideChange).toHaveBeenLastCalledWith(1)
 
       fireEvent.keyDown(window, { key: 'ArrowDown' })
-      expect(screen.getByText('Slide 3 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 3 / 3')).toBeDefined()
       expect(onSlideChange).toHaveBeenLastCalledWith(2)
 
       // Reset to 0 with Home
       fireEvent.keyDown(window, { key: 'Home' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
 
       // PageDown
       fireEvent.keyDown(window, { key: 'PageDown' })
-      expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
 
       // Space
       fireEvent.keyDown(window, { key: ' ' })
-      expect(screen.getByText('Slide 3 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 3 / 3')).toBeDefined()
     })
 
     it('navigates prev on ArrowLeft, ArrowUp, PageUp, Backspace', () => {
       render(<Deck slides={mockSlides} initialSlide={2} />)
 
       fireEvent.keyDown(window, { key: 'ArrowLeft' })
-      expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
 
       fireEvent.keyDown(window, { key: 'ArrowUp' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
 
       // End
       fireEvent.keyDown(window, { key: 'End' })
-      expect(screen.getByText('Slide 3 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 3 / 3')).toBeDefined()
 
       // PageUp
       fireEvent.keyDown(window, { key: 'PageUp' })
-      expect(screen.getByText('Slide 2 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
 
       // Backspace
       fireEvent.keyDown(window, { key: 'Backspace' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
     })
 
     it('calls onClose on Escape key', () => {
@@ -178,26 +178,26 @@ describe('Deck component', () => {
       const input = screen.getByTestId('test-input')
       input.focus()
       fireEvent.keyDown(input, { key: 'ArrowRight' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
       expect(onSlideChange).not.toHaveBeenCalled()
 
       const textarea = screen.getByTestId('test-textarea')
       textarea.focus()
       fireEvent.keyDown(textarea, { key: 'ArrowRight' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
       expect(onSlideChange).not.toHaveBeenCalled()
 
       const button = screen.getByTestId('test-button')
       button.focus()
       fireEvent.keyDown(button, { key: 'ArrowRight' })
-      expect(screen.getByText('Slide 1 / 3')).toBeDefined()
+      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
       expect(onSlideChange).not.toHaveBeenCalled()
     })
   })
 
   it('handles empty slides gracefully', () => {
     const { container } = render(<Deck slides={[]} />)
-    expect(screen.getByText('Slide 0 / 0')).toBeDefined()
+    expect(screen.getByText('Trang 0 / 0')).toBeDefined()
     const progressBar = container.querySelector('.deck-progress-bar') as HTMLElement
     expect(progressBar.style.width).toBe('0%')
   })
