@@ -134,8 +134,7 @@ Each lists FILES (hand-written, ≤5), what it proves, and its test. Copy is Vie
 named by what the user does, sentence case, no ALL-CAPS labels, no emoji anywhere.
 
 ### 7a1 — logo, favicon, app title
-FILES `apps/extension/public/icons/logo.svg` (new) · `apps/extension/public/icons/logo-16.svg`
-(new) · `packages/ui/src/components/Logo.tsx` (new) · `packages/ui/src/index.ts` (export) ·
+FILES `apps/extension/public/icons/logo.svg` (new) · `packages/ui/src/components/Logo.tsx` (new) · `packages/ui/src/index.ts` (export) ·
 `apps/extension/app.html` (title "MD Reader", `<link rel="icon" href="icons/logo.svg">`).
 logo.svg (viewBox 0 0 128 128):
 ```svg
@@ -155,7 +154,7 @@ margin rule width 8, band `x=54 y=50 w=38 h=20`. Test: `Logo` renders an svg wit
 `role="img"` and the title; no new test file beyond `Logo.test.tsx`.
 
 ### 7a2 — PNG icons and manifest
-FILES `apps/extension/scripts/render-icons.mjs` (new) · `apps/extension/package.json`
+FILES `apps/extension/public/icons/logo-16.svg` (new, spec in 7a1) · `apps/extension/scripts/render-icons.mjs` (new) · `apps/extension/package.json`
 (script `"icons": "node scripts/render-icons.mjs"`) · `apps/extension/public/manifest.json`
 (`icons` 16/32/48/128 and `action.default_icon` 16/32) · generated
 `apps/extension/public/icons/icon-{16,32,48,128}.png`.
