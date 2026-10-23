@@ -196,6 +196,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
             setContent(local)
             setHasContent(local.length > 0)
             setIsDirty(lh !== origin)
+            rememberBase()
           } else if (lh === origin) {
             applyRemote(h)
           } else {
