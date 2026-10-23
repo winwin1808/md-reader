@@ -163,7 +163,9 @@ class dùng cho highlight. Raw HTML trong markdown **mặc định tắt**, có 
 ### 2.6 Theme
 
 CSS custom properties, ba chế độ light / dark / system. Lưu
-`chrome.storage.sync`. `packages/ui` chỉ đọc CSS var và không biết
+`chrome.storage.sync`. **Từ phase 7:** token Lề sách (`--paper --surface --ink --pencil --rule --hl
+--accent`…), `data-theme` = light|dark đã resolve + `data-contrast` = standard|high; 5 "theme
+màu" cũ bị bỏ. `packages/ui` chỉ đọc CSS var và không biết
 `chrome.storage` tồn tại — `apps/extension` là lớp bơm giá trị vào.
 
 Content script bọc **Shadow DOM** để CSS trang chủ không đè, đồng thời là dự
@@ -352,7 +354,28 @@ interface: `docs/superpowers/specs/2026-10-23-phase-6-design.md`.
 ### Phase 7 — Giao diện Lề sách
 
 Ship: *giao diện "Lề sách" (phương án A, `docs/design/ui-redesign-options.html`) cho
-mọi bề mặt + logo app.* Phase con chốt ở bước design của phase 7.
+mọi bề mặt + logo app.* Interface từng phase con: `docs/superpowers/specs/2026-10-24-phase-7-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 7a1-7a2 | Logo | SVG gốc + bản 16px, favicon, PNG 16/32/48/128 sinh bằng Playwright, manifest icons |
+| 7b1-7b3 | Token & chữ | Token Lề sách 4 bảng (Giấy/Than chì × thường/tương phản cao) + alias cũ; font cục bộ có subset Việt; chữ thân 18px, cột 68ch |
+| 7c | Bảng màu | Bỏ 5 theme màu; `contrast` + `settingsVersion` 2; migrate font mặc định |
+| 7d | Icon | Một bộ icon SVG thay emoji/glyph |
+| 7e | Thanh app | Trạng thái lưu bằng chữ, menu "Thêm" khi hẹp |
+| 7f | Mục lục lề | Scroll-spy nét dạ quang; ngăn kéo khi hẹp |
+| 7g | Bề mặt đọc | Alerts thành ghi chú lề phải; tìm kiếm, bảng, mã theo token |
+| 7h1-7h2 | Cài đặt | Một cột theo nhóm việc; `PalettePicker`, xoá `colorTheme` |
+| 7i1-7i3 | Màn đầu & hộp thoại | Empty state + thả cả cửa sổ; Xuất báo tiến trình; Xung đột a11y |
+| 7j | Soạn thảo | Editor, thanh định dạng, split view theo token |
+| 7k | Trình chiếu | Slide scale theo màn; speaker view đọc được từ xa |
+| 7l1-7l2 | Mindmap | Màu theo token, đo chữ thật, kéo ≠ nhảy; bàn phím + chạm |
+| 7m | Widget content | `content.css` riêng (`?inline`), tab lề phải, nhớ trạng thái thu gọn |
+| 7n-7o | Render tại chỗ | Spike đo gz; ≤ 50KB thì render Markdown tại chỗ, không thì hoãn |
+| 7p1-7p2 | File xuất | HTML/print theo Lề sách, `lang`; Word có styles |
+| 7q1-7q2 | Sơ đồ | Mermaid theo bảng màu + gate cả Deck; excalidraw theo token |
+| 7r | Hỗ trợ đọc | Confetti tắt mặc định, tôn trọng reduced-motion; đếm từ tiếng Việt |
+| 7s1-7s2 | Dọn | Playwright bỏ waitForTimeout, dedupe migration giữa tab, flake IDB; xoá alias cũ |
 
 ### Phase 8 — Chia sẻ & cộng tác
 
