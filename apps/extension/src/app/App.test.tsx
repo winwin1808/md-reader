@@ -33,6 +33,8 @@ vi.mock('./doc-registry', () => {
     findOrCreateByOrigin: async (i: any) => { const e = recs.get(i.originPath); if (e) return e; const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
     touchRecord: async () => {},
     listRecent: async () => [],
+    storeHandle: async () => {},
+    getHandle: async () => null,
     writeDocText: async () => 'written',
   }
 })
