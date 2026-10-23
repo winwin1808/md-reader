@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  formatMarkdown, detectConflict, appendHistory, hashText,
+  formatMarkdown, detectConflict, hashText,
   applyTextChange, ORIGIN_FORMAT, ORIGIN_REVERT,
 } from '@md-reader/core'
 import { saveToHandle, saveFileAs } from '../fs/file-system'
@@ -106,13 +106,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     rememberBase(savedContent)
-    appendHistory(doc, {
-      source: savedContent,
-      timestamp: Date.now(),
-      actor: 'user',
-      label: 'save',
-      clientIds: [],
-    } as any)
+    session.checkpoints?.flush('save', 'Bạn')
   }
 
   const runSave = async (opts: { explicit?: boolean } | undefined, forcePicker: boolean) => {
