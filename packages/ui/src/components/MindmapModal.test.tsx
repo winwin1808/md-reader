@@ -80,11 +80,11 @@ describe('MindmapModal', () => {
     const onClose = vi.fn()
     render(<MindmapModal root={sampleTree} isOpen={true} onClose={onClose} />)
 
-    const headerCloseBtn = screen.getByRole('button', { name: /^close mindmap$/i })
+    const headerCloseBtn = screen.getByRole('button', { name: /^đóng sơ đồ tư duy$/i })
     fireEvent.click(headerCloseBtn)
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    const floatingCloseBtn = screen.getByRole('button', { name: /^close$/i })
+    const floatingCloseBtn = screen.getByRole('button', { name: /^đóng$/i })
     fireEvent.click(floatingCloseBtn)
     expect(onClose).toHaveBeenCalledTimes(2)
   })
@@ -120,15 +120,15 @@ describe('MindmapModal', () => {
     expect(zoomGroup).toBeDefined()
     const initialTransform = zoomGroup?.getAttribute('transform')
 
-    const zoomInBtn = screen.getByRole('button', { name: /zoom in|\+/i })
+    const zoomInBtn = screen.getByRole('button', { name: /phóng to/i })
     fireEvent.click(zoomInBtn)
     const afterZoomInTransform = zoomGroup?.getAttribute('transform')
     expect(afterZoomInTransform).not.toEqual(initialTransform)
 
-    const zoomOutBtn = screen.getByRole('button', { name: /zoom out|-/i })
+    const zoomOutBtn = screen.getByRole('button', { name: /thu nhỏ/i })
     fireEvent.click(zoomOutBtn)
 
-    const fitBtn = screen.getByRole('button', { name: /fit/i })
+    const fitBtn = screen.getByRole('button', { name: /toàn màn hình/i })
     fireEvent.click(fitBtn)
     const afterFitTransform = zoomGroup?.getAttribute('transform')
     expect(afterFitTransform).toBeDefined()
@@ -196,14 +196,14 @@ describe('MindmapModal', () => {
     expect(screen.getByText('Subsection 1.1')).toBeDefined()
 
     // Click Collapse All button
-    const collapseAllBtn = screen.getByRole('button', { name: /collapse all/i })
+    const collapseAllBtn = screen.getByRole('button', { name: /gập tất cả/i })
     fireEvent.click(collapseAllBtn)
 
     // Child nodes should be collapsed
     expect(screen.queryByText('Subsection 1.1')).toBeNull()
 
     // Click Expand All button
-    const expandAllBtn = screen.getByRole('button', { name: /expand all/i })
+    const expandAllBtn = screen.getByRole('button', { name: /mở tất cả/i })
     fireEvent.click(expandAllBtn)
 
     // Child nodes should be visible again
