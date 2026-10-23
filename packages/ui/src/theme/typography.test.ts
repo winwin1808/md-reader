@@ -3,35 +3,36 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('typography.css proportional font scaling', () => {
-  const cssPath = path.resolve(__dirname, './typography.css');
-  const css = fs.readFileSync(cssPath, 'utf-8');
+  const css = fs.readFileSync(path.resolve(__dirname, './typography.css'), 'utf-8');
 
   it('multiplies .md-viewer font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s*\{[^}]*font-size:\s*calc\(0\.74375rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
+    expect(css).toMatch(/\.md-viewer\s*\{[^}]*font-size:\s*calc\(var\(--body-size\)\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
   });
 
-  it('multiplies .md-viewer h1 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h1\s*\{[^}]*font-size:\s*calc\(1\.575rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
+  it('keeps the scale ratio on every rem/px font-size', () => {
+    const sizes = css.match(/font-size:\s*[^;]*(?:rem|px)[^;]*;/g) ?? [];
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const s of sizes) expect(s).toContain('--md-font-scale-ratio');
   });
 
-  it('multiplies .md-viewer h2 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h2\s*\{[^}]*font-size:\s*calc\(1\.225rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
+  it('uses the Literata body, measure and token fonts', () => {
+    expect(css).toMatch(/\.md-viewer\s*\{[^}]*var\(--font-body\)/);
+    expect(css).toMatch(/\.md-viewer\s*\{[^}]*var\(--body-size\)/);
+    expect(css).toMatch(/\.md-viewer\s*\{[^}]*var\(--measure\)/);
   });
 
-  it('multiplies .md-viewer h3 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h3\s*\{[^}]*font-size:\s*calc\(0\.9625rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
+  it('has no --md-font-sans declaration, no !important in font-family rules, no uppercase', () => {
+    expect(css).not.toContain('--md-font-sans:');
+    const rules = css.match(/\[data-font-family[^{]*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBe(3);
+    for (const r of rules) expect(r).not.toContain('!important');
+    expect(css).not.toContain('uppercase');
+    expect(css).not.toContain('letter-spacing');
   });
 
-  it('multiplies .md-viewer h4 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h4\s*\{[^}]*font-size:\s*calc\(0\.7875rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
-  });
-
-  it('multiplies .md-viewer h5 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h5\s*\{[^}]*font-size:\s*calc\(0\.7rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
-  });
-
-  it('multiplies .md-viewer h6 font-size by --md-font-scale-ratio', () => {
-    expect(css).toMatch(/\.md-viewer\s+h6\s*\{[^}]*font-size:\s*calc\(0\.6125rem\s*\*\s*var\(--md-font-scale-ratio,\s*1\)\);/);
+  it('a4.css max-width uses --measure', () => {
+    const a4 = fs.readFileSync(path.resolve(__dirname, './a4.css'), 'utf-8');
+    expect(a4).toMatch(/max-width:\s*calc\(var\(--measure\)/);
   });
 });
 
