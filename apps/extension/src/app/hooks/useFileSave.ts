@@ -3,7 +3,8 @@ import {
   formatMarkdown, detectConflict, appendHistory, hashText,
   applyTextChange, ORIGIN_FORMAT, ORIGIN_REVERT,
 } from '@md-reader/core'
-import { saveToHandle, saveFileAs, storeFileHandle } from '../fs/file-system'
+import { saveToHandle, saveFileAs } from '../fs/file-system'
+import { storeHandle, getHandle } from '../doc-registry'
 import type { DocSession } from './useDocSession'
 
 export type SaveState =
@@ -20,6 +21,7 @@ export interface FileSave {
   keepLocal(): Promise<void>
   revertToDisk(): Promise<void>
   closeConflict(): void
+  grantPermission(): Promise<void>
 }
 
 export function useFileSave(session: DocSession, settings: { formatOnSave: boolean }): FileSave {
@@ -35,7 +37,53 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   })
   const isSavingRef = useRef<boolean>(false)
   const savedContentRef = useRef<string | null>(null)
+  const pendingHandleRef = useRef<FileSystemFileHandle | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const record = session.record
+  const sessionDocId = session.docId
+  useEffect(() => {
+    setActiveHandle(null)
+    pendingHandleRef.current = null
+    setSaveState((s) => (s.kind === 'needs-permission' ? { kind: 'idle' } : s))
+    if (!record || !record.hasHandle || !sessionDocId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const h = await getHandle(sessionDocId)
+        if (!h || cancelled) return
+        const p = await (h as any).queryPermission({ mode: 'readwrite' })
+        if (cancelled) return
+        if (p === 'granted') {
+          pendingHandleRef.current = null
+          setActiveHandle(h)
+        } else {
+          pendingHandleRef.current = h
+          setSaveState({ kind: 'needs-permission', fileName: h.name })
+        }
+      } catch (err) {
+        console.warn('Could not restore file handle:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [record, sessionDocId])
+
+  const grantPermission = async () => {
+    const h = pendingHandleRef.current
+    if (!h) return
+    let r: string
+    try {
+      r = await (h as any).requestPermission({ mode: 'readwrite' })
+    } catch (err) {
+      console.warn('requestPermission failed:', err)
+      return
+    }
+    if (r === 'granted') {
+      pendingHandleRef.current = null
+      setActiveHandle(h)
+      setSaveState({ kind: 'idle' })
+    }
+  }
 
   const executeSave = async (handle: FileSystemFileHandle, explicit = false) => {
     const textBeforeFormat = yText.toString()
@@ -80,7 +128,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
           const handle = res.handle
           await executeSave(handle, explicit)
           setActiveHandle(handle)
-          await storeFileHandle(handle).catch(() => {})
+          if (session.docId) await storeHandle(session.docId, handle).catch(() => {})
           doc.getMap('meta').set('title', handle.name)
           next = { kind: 'saved', at: Date.now() }
         }
@@ -154,7 +202,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
   // Debounced auto-save (2000ms after last edit if activeHandle exists)
   useEffect(() => {
-    if (!isDirty || !activeHandle || saveState.kind === 'conflict' || saveState.kind === 'error') return
+    if (!isDirty || !activeHandle || saveState.kind === 'conflict' || saveState.kind === 'error' || saveState.kind === 'needs-permission') return
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
       autoSaveTimerRef.current = null
@@ -199,5 +247,6 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     keepLocal,
     revertToDisk,
     closeConflict,
+    grantPermission,
   }
 }
