@@ -413,7 +413,7 @@ export function App(): React.JSX.Element {
             Thoát đọc tập trung ✕
           </button>
         )}
-        <FileDrop doc={doc}>
+        <FileDrop>
           {session.externalChange && (
             <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontWeight: 600 }}>File gốc đã thay đổi kể từ lần mở trước.</div>

@@ -32,6 +32,8 @@ vi.mock('./doc-registry', () => {
     createRecord: async (i: any) => { const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
     findOrCreateByOrigin: async (i: any) => { const e = recs.get(i.originPath); if (e) return e; const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
     touchRecord: async () => {},
+    listRecent: async () => [],
+    writeDocText: async () => 'written',
   }
 })
 
@@ -223,8 +225,8 @@ describe('App', () => {
     expect(placeholder).not.toBeNull()
     expect(placeholder.textContent).toContain('MD Reader')
     
-    // Check if IndexeddbPersistence is called
-    expect(IndexeddbPersistence).toHaveBeenCalled()
+    // no ?doc / ?file -> no persistence is opened
+    expect(IndexeddbPersistence).not.toHaveBeenCalled()
     expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(null)
   })
   
