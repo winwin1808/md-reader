@@ -1,6 +1,7 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import remarkFrontmatter from 'remark-frontmatter'
 import yaml from 'yaml'
 import type { Root } from 'mdast'
@@ -8,6 +9,8 @@ import type { Root } from 'mdast'
 export interface ParseOptions {
   /** GFM: table, task list, strikethrough, autolink. Default: true */
   gfm?: boolean
+  /** Math ($..$, $$..$$) via remark-math. Default: true */
+  math?: boolean
 }
 
 export interface ParseResult {
@@ -26,6 +29,10 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
     processor.use(remarkGfm)
   }
   
+  if (options?.math !== false) {
+    processor.use(remarkMath)
+  }
+
   processor.use(remarkFrontmatter, ['yaml'])
   
   const tree = processor.parse(source) as Root
