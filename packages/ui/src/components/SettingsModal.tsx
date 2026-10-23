@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { ColorTheme } from '../theme/ThemeProvider';
+import type { ColorTheme, Contrast } from '../theme/ThemeProvider';
 import { ThemePicker } from './ThemePicker';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
@@ -8,7 +8,10 @@ export type FontFamily = 'sans' | 'serif' | 'mono';
 export interface ReaderSettings {
   // Display
   mode?: 'light' | 'dark' | 'system';
+  /** @deprecated replaced by contrast (settings v2) */
   colorTheme?: ColorTheme;
+  contrast: Contrast;
+  settingsVersion: number;
   fontFamily?: FontFamily;
   autoFormatMd?: boolean;
   formatOnSave?: boolean;
