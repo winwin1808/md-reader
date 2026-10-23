@@ -39,11 +39,20 @@ import { useExport } from './hooks/useExport'
 import { useShortcuts } from './hooks/useShortcuts'
 import './app.css'
 
+const persistSettings = (patch: Record<string, any>) => {
+  try {
+    chrome.storage?.sync?.set?.(patch)
+    chrome.storage?.local?.set?.(patch)
+  } catch (err) {
+    // ignore
+  }
+}
+
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
   mode: 'system',
   contrast: 'standard',
   settingsVersion: 2,
-  fontFamily: 'sans',
+  fontFamily: 'serif',
   autoFormatMd: true,
   alwaysOpenApp: false,
   stripFrontmatter: true,
@@ -163,7 +172,9 @@ export function App(): React.JSX.Element {
         if ((stored.settingsVersion ?? 1) < 2) {
           if (!stored.fontFamily || stored.fontFamily === 'sans') stored.fontFamily = 'serif'
           stored.settingsVersion = 2
+          persistSettings({ settingsVersion: 2, fontFamily: stored.fontFamily })
         }
+        if (stored.contrast !== 'standard' && stored.contrast !== 'high') stored.contrast = 'standard'
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
           ...stored,
@@ -225,12 +236,7 @@ export function App(): React.JSX.Element {
 
   const handleSettingChange = (key: string, value: any) => {
     setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
-    try {
-      chrome.storage?.sync?.set?.({ [key]: value })
-      chrome.storage?.local?.set?.({ [key]: value })
-    } catch (err) {
-      // ignore
-    }
+    persistSettings({ [key]: value })
   }
 
   const handleModeChange = (mode: ThemeMode) => {
