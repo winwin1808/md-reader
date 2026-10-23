@@ -268,3 +268,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink);
   pointer-events: none;
 }
+
+/* Editor / split modes: give the chain a definite height so .cm-editor fills the pane. */
+.editor-mode-container,
+.split-mode-container {
+  height: calc(100vh - 48px);
+  min-height: 0 !important;
+  flex: none !important;
+  overflow: hidden;
+}
+
+.editor-mode-container > :last-child,
+.split-mode-container > :last-child {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+.editor-mode-container > :last-child > *,
+.split-mode-container > :last-child > * {
+  flex: 1;
+  min-height: 0;
+}
