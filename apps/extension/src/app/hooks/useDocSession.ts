@@ -9,6 +9,11 @@ import { readCacheEntry } from '../../shared/md-url'
 
 let migrationOnce: Promise<unknown> | null = null
 
+function safeName(url: string): string {
+  const seg = url.split('/').pop() || 'Untitled.md'
+  try { return decodeURIComponent(seg) } catch { return seg }
+}
+
 export interface DocSession {
   docId: string | null
   record: DocRecord | null
@@ -60,7 +65,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           }
         } else if (fileUrlParam) {
           rec = await findOrCreateByOrigin({
-            title: decodeURIComponent(fileUrlParam.split('/').pop() || 'Untitled.md'),
+            title: safeName(fileUrlParam),
             originKind: 'url',
             originPath: fileUrlParam,
           })
@@ -145,6 +150,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     }
     text.observe(observer)
     meta.observe(updateTitle)
+    const onPageHide = () => { tracker?.flush('auto', 'Bạn') }
+    window.addEventListener('pagehide', onPageHide)
     // Wait for initial sync from IDB
     if (persistence) {
       persistence.once('synced', () => {
@@ -160,6 +167,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
     return () => {
       cancelled = true
+      window.removeEventListener('pagehide', onPageHide)
       tracker?.flush('auto', 'Bạn')
       tracker?.dispose()
       if (checkpointsRef.current === tracker) checkpointsRef.current = null
@@ -184,7 +192,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         if (cancelled) return
         const ytext = doc.getText('source')
         const meta = doc.getMap('meta')
-        const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
+        const name = safeName(fileUrl)
         const local = ytext.toString()
         const rec0Id = record!.docId
         const rememberBase = () => {
@@ -194,6 +202,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
             meta.set('title', name)
+            meta.set('remoteHash', h)
             meta.set('originHash', h)
           }, ORIGIN_LOAD)
           setContent(remote)
@@ -202,9 +211,16 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           rememberBase()
           checkpointsRef.current?.flush('import', 'Bạn')
         }
+        const keepLocal = (dirty: boolean) => {
+          setContent(local)
+          setHasContent(local.length > 0)
+          setIsDirty(dirty)
+          rememberBase()
+        }
         isFileContentSetRef.current = true
         const origin0 = meta.get('originHash') as string | undefined
-        if (origin0 == null && local === '') {
+        const base0 = (meta.get('remoteHash') as string | undefined) ?? origin0
+        if (base0 == null && local === '') {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
             meta.set('title', name)
@@ -215,23 +231,24 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           rememberBase()
           checkpointsRef.current?.flush('import', 'Bạn')
           const h0 = await hashText(remote)
-          if (!cancelled) meta.set('originHash', h0)
+          if (!cancelled) {
+            meta.set('remoteHash', h0)
+            meta.set('originHash', h0)
+          }
         } else {
           const [h, lh] = await Promise.all([hashText(remote), hashText(local)])
           if (cancelled) return
           const origin = meta.get('originHash') as string | undefined
+          const remoteBase = meta.get('remoteHash') as string | undefined
+          const base = remoteBase ?? origin
           if (lh === h) {
-            if (origin !== h) meta.set('originHash', h)
-            setContent(local)
-            setHasContent(local.length > 0)
-            setIsDirty(false)
-            rememberBase()
-          } else if (origin === h) {
-            setContent(local)
-            setHasContent(local.length > 0)
-            setIsDirty(lh !== origin)
-            rememberBase()
-          } else if (lh === origin) {
+            meta.set('remoteHash', h)
+            if (origin == null || origin !== h) meta.set('originHash', h)
+            keepLocal(false)
+          } else if (base === h) {
+            if (remoteBase == null) meta.set('remoteHash', h)
+            keepLocal(lh !== origin)
+          } else if (lh === base && !(remoteBase == null && record!.hasHandle)) {
             applyRemote(h)
           } else {
             setContent(local)
@@ -310,6 +327,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     if (!ext) return
     doc.transact(() => {
       applyTextChange(doc.getText('source'), ext.remoteText, ORIGIN_LOAD)
+      doc.getMap('meta').set('remoteHash', ext.remoteHash)
       doc.getMap('meta').set('originHash', ext.remoteHash)
     }, ORIGIN_LOAD)
     setContent(ext.remoteText)
