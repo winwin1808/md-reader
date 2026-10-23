@@ -14,12 +14,13 @@
   --ok: #2F6B45;
   --code-keyword: #7A3E9D;
   --code-string: #2F6B45;
-  --code-comment: #6E7A77;
-  --code-number: #9A5B13;
+  --code-comment: #5A6663;
+  --code-number: #8A500F;
   --code-function: #23568C;
   --code-type: #8C4A2F;
   --code-attr: #5A6B1F;
   --code-meta: #5E6A67;
+  --md-selection: color-mix(in srgb, var(--hl) 55%, var(--paper));
 }
 
 [data-theme="dark"] {
@@ -41,6 +42,7 @@
   --code-type: #E7A487;
   --code-attr: #C6D68A;
   --code-meta: #A3AFAC;
+  --md-selection: color-mix(in srgb, var(--accent) 30%, var(--paper));
 }
 
 [data-contrast="high"][data-theme="light"],
@@ -57,12 +59,13 @@
   --ok: #005A1F;
   --code-keyword: #7A3E9D;
   --code-string: #2F6B45;
-  --code-comment: #6E7A77;
-  --code-number: #9A5B13;
+  --code-comment: #5A6663;
+  --code-number: #8A500F;
   --code-function: #23568C;
   --code-type: #8C4A2F;
   --code-attr: #5A6B1F;
   --code-meta: #5E6A67;
+  --md-selection: #FFE600;
 }
 
 [data-contrast="high"][data-theme="dark"] {
@@ -84,6 +87,7 @@
   --code-type: #E7A487;
   --code-attr: #C6D68A;
   --code-meta: #A3AFAC;
+  --md-selection: #1F4E99;
 }
 
 :root {
@@ -142,7 +146,6 @@
   --md-active-bg: var(--active);
   --bg-active: var(--active);
   --md-error: var(--danger);
-  --md-selection: color-mix(in srgb, var(--hl) 55%, transparent);
   --md-doc-shadow: var(--elev-1);
   --md-font-sans: var(--font-ui);
   --md-font-serif: var(--font-body);
@@ -163,8 +166,8 @@
 }
 
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 :where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
@@ -181,5 +184,6 @@
 }
 
 ::selection {
-  background: var(--md-selection);
+  background: var(--hl);
+  color: var(--hl-ink);
 }

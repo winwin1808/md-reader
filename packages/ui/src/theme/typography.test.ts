@@ -43,7 +43,7 @@ describe('tokens.css Lề sách token layer', () => {
     'md-surface-subtle','bg-secondary','bg-subtle','bg-surface','md-bg-card','md-controls-bg','md-code-bg',
     'md-table-alt','md-fg','md-text','text-primary','md-code-fg','md-fg-muted','md-muted','text-muted',
     'md-blockquote-fg','md-border','md-border-subtle','border-color','md-quote-border','md-link','md-accent',
-    'color-accent','md-hover','md-hover-bg','bg-hover','md-active-bg','bg-active','md-error','md-selection',
+    'color-accent','md-hover','md-hover-bg','bg-hover','md-active-bg','bg-active','md-error',
     'md-doc-shadow','md-font-sans','md-font-serif','md-font-mono','md-hljs-keyword','md-hljs-doctag',
     'md-hljs-meta-string','md-hljs-string','md-hljs-regexp','md-hljs-comment','md-hljs-number',
     'md-hljs-function','md-hljs-type','md-hljs-tag','md-hljs-attr','md-hljs-meta','md-hljs-link',
@@ -98,12 +98,39 @@ describe('tokens.css Lề sách token layer', () => {
       expect(contrast(hex(b, 'pencil'), hex(b, 'paper'))).toBeGreaterThanOrEqual(4.5);
       expect(contrast(hex(b, 'hl-ink'), hex(b, 'hl'))).toBeGreaterThanOrEqual(7);
       expect(contrast(hex(b, 'accent'), hex(b, 'paper'))).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(hex(b, 'ink'), hex(b, 'surface'))).toBeGreaterThanOrEqual(7);
+      for (const n of ['pencil', 'accent', 'danger', 'ok', ...codes]) {
+        for (const bg of ['paper', 'surface']) {
+          expect(contrast(hex(b, n), hex(b, bg)), `${n} vs ${bg} in palette ${i}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
     }
+  });
+
+  it('declares --md-selection in each palette, once overall per palette', () => {
+    expect(tokens.match(/^\s*--md-selection:/gm)?.length).toBe(4);
+    for (let i = 0; i < 4; i++) expect(block(i)).toMatch(/--md-selection:/);
+  });
+
+  it('Than chi selection keeps ink readable', () => {
+    const b = block(1);
+    const mix = (a: string, p: string, pct: number) => '#' + [1, 3, 5].map((k) => {
+      const x = parseInt(a.slice(k, k + 2), 16), y = parseInt(p.slice(k, k + 2), 16);
+      return Math.round(x * pct + y * (1 - pct)).toString(16).padStart(2, '0');
+    }).join('');
+    const sel = mix(hex(b, 'accent'), hex(b, 'paper'), 0.3);
+    expect(contrast(hex(b, 'ink'), sel)).toBeGreaterThanOrEqual(4.5);
+    expect(b).toContain('--md-selection: color-mix(in srgb, var(--accent) 30%, var(--paper))');
+  });
+
+  it('selection uses solid highlighter and its ink', () => {
+    expect(tokens).toMatch(/::selection\s*\{\s*background:\s*var\(--hl\);\s*color:\s*var\(--hl-ink\);/);
   });
 
   it('has focus-visible and reduced-motion rules', () => {
     expect(tokens).toContain(':focus-visible');
-    expect(tokens).toContain('box-shadow: var(--focus)');
+    expect(tokens).toContain('outline: 2px solid var(--accent)');
+    expect(tokens).toContain('--focus:');
     expect(tokens).toContain('prefers-reduced-motion: reduce');
   });
 
