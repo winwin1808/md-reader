@@ -6,6 +6,8 @@ import { App } from '../src/app/App'
 import { createRecord, writeDocText } from '../src/app/doc-registry'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
+import * as deckMod from '@md-reader/ui/deck'
+import * as docxMod from '@md-reader/core/docx'
 
 
 async function openDroppedDoc(title: string, text: string): Promise<void> {
@@ -46,7 +48,7 @@ describe('E2E smoke test for themes and export formats', () => {
 
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
-    const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
+    const docxSpy = vi.spyOn(docxMod, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
 
 
 
@@ -123,9 +125,8 @@ describe('E2E smoke test for themes and export formats', () => {
     const wordOptionBtn = screen.getByText('Microsoft Word (.docx)').closest('button')!
     fireEvent.click(wordOptionBtn)
 
-    // Allow promise microtasks to run
-    await Promise.resolve()
-    await Promise.resolve()
+    // docx is loaded on demand via dynamic import
+    await vi.waitFor(() => expect(docxSpy).toHaveBeenCalled())
 
     expect(docxSpy).toHaveBeenCalledWith(
       expect.objectContaining({
