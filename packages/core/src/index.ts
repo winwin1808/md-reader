@@ -22,6 +22,7 @@ export {
   importText,
   exportText,
   migrateDoc,
+  ensureDoc,
 } from './doc/doc.js'
 export * from './doc/apply.js'
 export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
