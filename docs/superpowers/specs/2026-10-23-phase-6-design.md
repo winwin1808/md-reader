@@ -85,6 +85,7 @@ export interface FileSave {
   keepLocal(): Promise<void>
   revertToDisk(): Promise<void>
   closeConflict(): void
+  saveAs(): Promise<void>            // added in 6d: always opens the Save As picker
 }
 export function useFileSave(session: DocSession, settings: { formatOnSave: boolean }): FileSave
 ```
@@ -460,7 +461,7 @@ moves (6b*) count moved lines once.
 - 6b2: done
 - 6b3: done
 - 6c: done
-- 6d: pending
+- 6d: planned
 - 6e1: pending
 - 6e2: pending
 - 6e3: pending
