@@ -7,7 +7,7 @@ export { sanitizeSchema } from './parse/index.js'
 export { extractToc, renderToHtml } from './render/index.js'
 export { HIGHLIGHT_LANGUAGES } from './render/languages.js'
 export type { TocEntry, RenderOptions, RenderResult } from './render/index.js'
-export { applyTypographer, applyExternalLinks, applyGitHubAlerts, processFrontmatter } from './render/index.js'
+export { processFrontmatter } from './render/index.js'
 export type { HighlightLanguage } from './render/languages.js'
 
 export { FORMAT_VERSION, DOC_KEYS, UnsupportedFormatVersionError } from './doc/schema.js'

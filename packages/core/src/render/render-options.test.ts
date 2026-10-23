@@ -1,60 +1,78 @@
 import { describe, it, expect } from 'vitest'
-import { applyTypographer, applyExternalLinks, applyGitHubAlerts, processFrontmatter } from './options.js'
+import { processFrontmatter } from './options.js'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from './render.js'
 
 describe('Render Options', () => {
-  describe('applyTypographer', () => {
+  const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), o as any).html
+
+  describe('typographer', () => {
     it('replaces symbols and smart quotes', () => {
-      const input = '<p>Hello "world", it\'s a test (c) (tm) (r) -- ---</p>'
-      const expected = '<p>Hello “world”, it’s a test © ™ ® – —</p>'
-      expect(applyTypographer(input)).toBe(expected)
+      const html = r('Hello "world", it\'s a test (c) (tm) (r) -- ---', { typographer: true })
+      expect(html).toContain('Hello “world”, it’s a test © ™ ® – —')
     })
     it('preserves code blocks', () => {
-      const input = '<pre><code>"test" (c)</code></pre><p>"test"</p>'
-      const expected = '<pre><code>"test" (c)</code></pre><p>“test”</p>'
-      expect(applyTypographer(input)).toBe(expected)
+      const html = r('```\n"test" (c)\n```\n\n"test"', { typographer: true, highlight: false })
+      expect(html).toContain('<code>"test" (c)\n</code>')
+      expect(html).toContain('<p>“test”</p>')
+    })
+    it('leaves inline code untouched', () => {
+      const html = r('a -- b `--x--`', { typographer: true })
+      expect(html).toContain('a – b')
+      expect(html).toContain('<code>--x--</code>')
     })
   })
 
-  describe('applyExternalLinks', () => {
+  describe('external links', () => {
     it('adds attributes and svg to external links', () => {
-      const input = '<a href="https://example.com">Example</a>'
-      const result = applyExternalLinks(input)
+      const result = r('[Example](https://example.com)', { externalLinks: true })
       expect(result).toContain('class="external-link"')
       expect(result).toContain('target="_blank"')
       expect(result).toContain('rel="noopener noreferrer"')
       expect(result).toContain('external-link-icon')
     })
-    it('does not double apply to existing external links', () => {
-      const input = '<a href="https://example.com" class="external-link">Example</a>'
-      const result = applyExternalLinks(input)
-      expect(result).toBe(input)
+    it('does not touch relative links', () => {
+      const result = r('[Example](./a.md)', { externalLinks: true })
+      expect(result).not.toContain('external-link')
+    })
+    it('javascript: links get no target/rel and no javascript: href', () => {
+      const result = r('[x](javascript:alert(1))', { externalLinks: true })
+      expect(result).not.toContain('target')
+      expect(result).not.toContain('rel=')
+      expect(result).not.toContain('javascript:')
     })
   })
 
-  describe('applyGitHubAlerts', () => {
+  describe('github alerts', () => {
     it('transforms note alert', () => {
-      const input = '<blockquote><p>[!NOTE]<br>This is a note.</p></blockquote>'
-      const result = applyGitHubAlerts(input)
+      const result = r('> [!NOTE]\n> This is a note.', { githubAlerts: true })
       expect(result).toContain('markdown-alert-note')
-      expect(result).toContain('Note') // Default title
+      expect(result).toContain('Note')
       expect(result).toContain('This is a note.')
+      expect(result).not.toContain('[!NOTE]')
     })
     it('localizes alert title to vi', () => {
-      const input = '<blockquote>\n<p>[!TIP]\nThis is a tip.</p>\n</blockquote>'
-      const result = applyGitHubAlerts(input, 'vi')
+      const result = r('> [!TIP]\n> This is a tip.', { githubAlerts: true, localizeAlerts: 'vi' })
       expect(result).toContain('markdown-alert-tip')
       expect(result).toContain('Mẹo')
     })
     it('renders alert svg icons with attributes', () => {
-      const input = '<blockquote><p>[!WARNING]<br>Watch out!</p></blockquote>'
-      const result = applyGitHubAlerts(input)
+      const result = r('> [!WARNING]\n> Watch out!', { githubAlerts: true })
       expect(result).toContain('markdown-alert-warning')
       expect(result).toContain('class="markdown-alert-icon"')
       expect(result).toContain('viewBox="0 0 16 16"')
       expect(result).toContain('aria-hidden="true"')
       expect(result).toContain('<path')
+      expect(result).toContain('role="region"')
+    })
+    it('does not let alert content bypass sanitize (raw html off)', () => {
+      const result = r('> [!NOTE]\n> <img src=x onerror=alert(1)>', { githubAlerts: true, allowRawHtml: false })
+      expect(result).not.toContain('<img')
+      expect(result).not.toContain('onerror')
+    })
+    it('does not let alert content bypass sanitize (raw html on)', () => {
+      const result = r('> [!NOTE]\n> <img src=x onerror=alert(1)>', { githubAlerts: true, allowRawHtml: true })
+      expect(result).not.toContain('onerror')
     })
   })
 
@@ -102,8 +120,8 @@ describe('Render Options', () => {
       const parsed = parseMarkdown('---\ntitle: <script>xss</script>\nauthor: Alice & Bob\n---\n# Content')
       const result = renderToHtml(parsed, { displayMetadata: true })
       expect(result.html).toContain('markdown-metadata-card')
-      expect(result.html).toContain('&lt;script&gt;xss&lt;/script&gt;')
-      expect(result.html).toContain('Alice &amp; Bob')
+      expect(result.html).toContain('&#x3C;script>xss&#x3C;/script>')
+      expect(result.html).toContain('Alice &#x26; Bob')
       expect(result.html).not.toContain('<script>xss</script>')
       expect(result.html.startsWith('<div class="markdown-metadata-card">')).toBe(true)
     })
