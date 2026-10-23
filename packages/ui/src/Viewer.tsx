@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { Icon } from './components/Icon'
+import { iconSvg } from './components/Icon'
 import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
 import { ExcalidrawBlock } from './components/ExcalidrawBlock'
@@ -229,7 +228,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
       const header = document.createElement('div')
       header.className = 'code-block-header md-no-print'
-      const copyIcon = renderToStaticMarkup(<Icon name="copy" size={16} />)
+      const copyIcon = iconSvg('copy', 16)
       const copyLabel = (text: string) => `${copyIcon}<span>${text}</span>`
       header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" aria-label="Sao chép mã">${copyLabel('Sao chép')}</button>`
 

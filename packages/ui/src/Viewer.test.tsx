@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import React from 'react'
 import { Viewer, Toc } from './index'
+import { Icon, iconSvg } from './components/Icon'
 import type { TocEntry } from '@md-reader/core'
 
 describe('Viewer', () => {
@@ -207,5 +208,20 @@ describe('reading-surface CSS text', () => {
     expect(read('table-enhanced.css')).not.toContain('!important')
     const n = (read('typography.css') + read('table-enhanced.css')).match(/nth-child\(even\)/g) ?? []
     expect(n.length).toBe(1)
+  })
+})
+
+describe('iconSvg / no react-dom/server', () => {
+  it('iconSvg matches <Icon> markup', () => {
+    const { container } = render(<Icon name="copy" size={16} />)
+    const tpl = document.createElement('div')
+    tpl.innerHTML = iconSvg('copy', 16)
+    expect(tpl.innerHTML).toBe(container.innerHTML)
+  })
+  it('Viewer.tsx does not import react-dom/server', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'Viewer.tsx'), 'utf-8')).not.toContain('react-dom/server')
+  })
+  it('sidenote query threshold is 54rem', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 54rem)')
   })
 })
