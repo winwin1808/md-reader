@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import type { Slide } from '@md-reader/core'
+import { Icon } from './Icon'
 
 export interface SpeakerViewProps {
   slides: Slide[]
@@ -132,7 +133,7 @@ export function SpeakerView({
       <header className="speaker-view-header">
         <div className="speaker-view-header-left">
           <div className="speaker-slide-counter">
-            Slide {totalSlides > 0 ? currentSlideIndex + 1 : 0} / {totalSlides}
+            Trang {totalSlides > 0 ? currentSlideIndex + 1 : 0} / {totalSlides}
           </div>
           <button
             type="button"
@@ -140,7 +141,7 @@ export function SpeakerView({
             onClick={goToPrev}
             disabled={!hasPrev}
           >
-            ← Trước
+            <Icon name="chevron-left" size={16} /> Trước
           </button>
           <button
             type="button"
@@ -148,7 +149,7 @@ export function SpeakerView({
             onClick={goToNext}
             disabled={!hasNext}
           >
-            Tiếp →
+            Tiếp <Icon name="chevron-right" size={16} />
           </button>
         </div>
 
@@ -181,7 +182,7 @@ export function SpeakerView({
 
       <main className="speaker-view-body">
         <section className="speaker-current-slide-wrapper">
-          <div className="speaker-section-label">SLIDE HIỆN TẠI</div>
+          <div className="speaker-section-label">TRANG HIỆN TẠI</div>
           <div className="speaker-slide-frame">
             <div
               className="md-viewer"
@@ -192,7 +193,7 @@ export function SpeakerView({
 
         <section className="speaker-sidebar-wrapper">
           <div className="speaker-next-slide-wrapper">
-            <div className="speaker-section-label">SLIDE KẾ TIẾP</div>
+            <div className="speaker-section-label">TRANG TIẾP THEO</div>
             {nextSlide ? (
               <div className="speaker-slide-frame">
                 <div

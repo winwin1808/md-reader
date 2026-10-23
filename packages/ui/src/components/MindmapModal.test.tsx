@@ -175,6 +175,7 @@ describe('MindmapModal', () => {
 
     // Section 1 is the second node with children (root is first, section 1 is second)
     const sec1Handle = screen.getByRole('button', { name: /collapse section 1/i })
+    expect(sec1Handle.querySelector('line')).not.toBeNull()
     fireEvent.click(sec1Handle)
 
     // Subsection 1.1 should now be hidden
