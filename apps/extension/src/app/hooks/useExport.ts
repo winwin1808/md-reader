@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { printDocument, printSlides, getDefaultExportCss } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
-import { exportToHtml, mdastToDocx } from '@md-reader/core'
+import { exportToHtml } from '@md-reader/core'
 import type { ParseResult } from '@md-reader/core'
 
 function download(blob: Blob, filename: string): void {
@@ -20,13 +20,17 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
   exportAs(format: ExportFormat): Promise<void>
   isExporting: boolean
   isPrintingSlides: boolean
+  exportError: string | null
+  clearExportError(): void
 } {
   const { html, parseResult } = args
   const [isExporting, setIsExporting] = useState<boolean>(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
 
   const exportAs = async (format: ExportFormat): Promise<void> => {
     setIsExporting(true)
+    setExportError(null)
     try {
       const title = args.title || 'document'
       if (format === 'pdf') {
@@ -46,13 +50,17 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
         const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
         download(new Blob([exportHtml], { type: 'text/html;charset=utf-8' }), `${title}.html`)
       } else if (format === 'docx') {
-        const blob = await mdastToDocx({ mdast: (parseResult as any).ast, title })
+        const { mdastToDocx } = await import('@md-reader/core/docx')
+        const blob = await mdastToDocx({ mdast: parseResult.tree, title })
         download(blob, `${title}.docx`)
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setExportError(`Không xuất được tệp: ${message}`)
     } finally {
       setIsExporting(false)
     }
   }
 
-  return { exportAs, isExporting, isPrintingSlides }
+  return { exportAs, isExporting, isPrintingSlides, exportError, clearExportError: () => setExportError(null) }
 }
