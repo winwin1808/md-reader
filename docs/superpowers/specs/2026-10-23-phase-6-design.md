@@ -483,7 +483,7 @@ moves (6b*) count moved lines once.
 - 6k1: done
 - 6k2: done
 - 6k3: done
-- 6l: planned   (added after the end-of-phase review: URL vs disk baselines, Cmd+S re-grant, pagehide flush)
+- 6l: done   (added after the end-of-phase review: URL vs disk baselines, Cmd+S re-grant, pagehide flush)
 
 ## Deferred
 
