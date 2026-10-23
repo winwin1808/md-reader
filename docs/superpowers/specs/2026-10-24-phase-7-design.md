@@ -96,7 +96,7 @@ interface ThemeProviderProps { mode: ThemeMode; contrast?: Contrast; onModeChang
 //   data-theme = resolved 'light' | 'dark' (system resolved via matchMedia, live)
 //   data-contrast = contrast ?? 'standard'
 //   style.colorScheme = resolved
-export function useResolvedTheme(): 'light' | 'dark'   // context hook, for mermaid / mindmap export
+export function useResolvedTheme(): 'light' | 'dark'   // context hook — added in 7q1 where it is first consumed
 ```
 `ReaderSettings` gains `contrast: Contrast` (default 'standard') and `settingsVersion: number`
 (2); `colorTheme` becomes optional/deprecated in 7c and is deleted in 7h2.
@@ -188,7 +188,7 @@ to `--font-body` override. Font scale steps stay. Delete typography.css's own `-
 the token aliases, so the bundled fonts would never apply). The A4 sheet: paper on `--surface`
 ground, `--elev-1`, `--r-s`; on ≤ 720px the sheet loses its border and shadow.
 
-### 7c — palettes and settings migration
+### 7c — palettes and settings migration (split at plan time: 7c1 ThemeProvider · 7c2 settings v2)
 FILES `packages/ui/src/theme/ThemeProvider.tsx` · `packages/ui/src/theme/ThemeProvider.test.tsx`
 · `packages/ui/src/theme/color-themes.css` (delete) · `packages/ui/src/components/SettingsModal.tsx`
 (type only: `contrast`, `settingsVersion`, `colorTheme?` deprecated) · `apps/extension/src/app/App.tsx`
@@ -385,7 +385,8 @@ and Quote has no italic run property by default.
 FILES `packages/ui/src/components/MermaidBlock.tsx` (`theme: 'default' | 'dark'` prop,
 part of the cache key) · `MermaidBlock.test.tsx` · `packages/ui/src/Viewer.tsx` (pass
 `useResolvedTheme()`) · `packages/ui/src/components/Deck.tsx` (honour the same `mermaid`
-switch as Viewer — deferred from 6j2 — and pass the theme).
+switch as Viewer — deferred from 6j2 — and pass the theme) · `packages/ui/src/theme/ThemeProvider.tsx`
+(adds the `useResolvedTheme` context hook; ui-internal import, no index export needed).
 Test: switching theme re-renders mermaid with the other theme; cache keeps both; Deck with
 `mermaid={false}` mounts no MermaidBlock.
 
@@ -426,7 +427,8 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7b1: done
 - 7b2: done
 - 7b3: planned
-- 7c: pending
+- 7c1: pending   (ThemeProvider; split from 7c at plan time)
+- 7c2: pending   (settings v2 wiring)
 - 7d: pending
 - 7e: pending
 - 7f: pending
