@@ -130,6 +130,16 @@ describe('App', () => {
     window.URL.revokeObjectURL = vi.fn()
   })
 
+  it('shows a visible, dismissible error when export fails', async () => {
+    vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
+    await act(async () => { render(<App />) })
+    await act(async () => { fireEvent.click(screen.getByTitle('Xuất tài liệu')) })
+    await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
+    expect(await screen.findByText('Không xuất được tệp: boom')).toBeDefined()
+    await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
+    expect(screen.queryByText('Không xuất được tệp: boom')).toBeNull()
+  })
+
   it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})

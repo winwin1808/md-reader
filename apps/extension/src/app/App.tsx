@@ -286,7 +286,7 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
-  const { exportAs, isExporting, isPrintingSlides } = useExport({
+  const { exportAs, isExporting, isPrintingSlides, exportError, clearExportError } = useExport({
     html,
     title: docTitle,
     parseResult,
@@ -436,6 +436,14 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop>
+          {exportError && (
+            <div className="error-banner" role="alert" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>{exportError}</div>
+              <div>
+                <button type="button" onClick={clearExportError}>Đóng</button>
+              </div>
+            </div>
+          )}
           {session.externalChange && (
             <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontWeight: 600 }}>File gốc đã thay đổi kể từ lần mở trước.</div>
@@ -536,7 +544,7 @@ export function App(): React.JSX.Element {
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
-                  editor={<Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />}
+                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
                   preview={
                     <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
                       <Viewer html={html} />
