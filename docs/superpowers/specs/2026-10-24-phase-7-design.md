@@ -441,7 +441,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7g2: done   (search bar + highlight)
 - 7h1: done
 - 7h2: done
-- 7i1: pending
+- 7i1: planned
 - 7i2: pending
 - 7i3: pending
 - 7j: pending
