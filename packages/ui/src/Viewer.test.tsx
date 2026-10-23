@@ -221,7 +221,7 @@ describe('iconSvg / no react-dom/server', () => {
   it('Viewer.tsx does not import react-dom/server', () => {
     expect(fs.readFileSync(path.resolve(__dirname, 'Viewer.tsx'), 'utf-8')).not.toContain('react-dom/server')
   })
-  it('sidenote query threshold is 54rem', () => {
-    expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 54rem)')
+  it('sidenote query threshold is 49rem', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 49rem)')
   })
 })
