@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { ContentApp } from './ContentApp'
-import { isMarkdownUrl, makeCacheEntry } from '../shared/md-url'
+import { ContentApp, openInApp, FAIL_TEXT } from './ContentApp'
+import { isMarkdownUrl } from '../shared/md-url'
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: () => void }, { hasError: boolean }> {
   constructor(props: any) {
@@ -106,25 +106,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 
   // If "Always open app" is enabled (default: false), hand off via the worker.
   // app.html is not web-accessible, so the content script never navigates there itself.
+  let initialError: string | null = null
   if (alwaysOpenApp && isMdFile) {
-    try {
-      await chrome.storage?.local?.set?.({
-        ['file_content_' + window.location.href]: makeCacheEntry(markdownText),
-      })
-    } catch (e) {
-      console.warn('Failed to cache file content:', e)
-    }
-    try {
-      chrome.runtime?.sendMessage?.({
-        action: 'openApp',
-        fileUrl: window.location.href,
-        content: markdownText,
-        replace: true,
-      })
-    } catch (e) {
-      console.warn('MD Reader worker message failed:', e)
-    }
-    return
+    if (await openInApp(markdownText, true)) return
+    initialError = FAIL_TEXT
   }
 
   // Mount the floating widget (when alwaysOpenApp is false)
@@ -155,7 +140,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       React.createElement(
         ErrorBoundary,
         { onError: restore },
-        React.createElement(ContentApp, { markdown: markdownText })
+        React.createElement(ContentApp, { markdown: markdownText, initialError })
       )
     )
   } catch (error) {

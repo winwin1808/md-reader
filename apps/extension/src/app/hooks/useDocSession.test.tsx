@@ -182,14 +182,14 @@ describe('useDocSession safe load', () => {
 
   describe('page cache entry', () => {
     const key = 'file_content_https://x.test/a.md'
-    const runCached = async (value: unknown) => {
+    const runCached = async (value: unknown, expired = false) => {
       const remove = vi.fn(async () => {})
       vi.stubGlobal('chrome', { storage: { local: { get: async () => ({ [key]: value }), remove } } })
       const fetchMock = vi.fn(async () => ({ ok: true, text: async () => 'FETCHED' }))
       vi.stubGlobal('fetch', fetchMock)
       const r = renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
       await flush()
-      expect(remove).not.toHaveBeenCalled()
+      if (!expired) expect(remove).not.toHaveBeenCalled()
       await act(async () => { resolveSync() })
       await flush()
       return { r, remove, fetchMock }
@@ -198,6 +198,11 @@ describe('useDocSession safe load', () => {
       const { r, remove, fetchMock } = await runCached({ text: 'cached new', ts: Date.now() })
       expect(r.result.current.yText.toString()).toBe('cached new')
       expect(fetchMock).not.toHaveBeenCalled()
+      expect(remove).toHaveBeenCalledWith(key)
+    })
+    it('treats an expired entry as a miss: fetches and removes the key', async () => {
+      const { fetchMock, remove } = await runCached({ text: 'stale', ts: Date.now() - 11 * 60_000 }, true)
+      expect(fetchMock).toHaveBeenCalled()
       expect(remove).toHaveBeenCalledWith(key)
     })
     it('reads a legacy string value', async () => {

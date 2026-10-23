@@ -1,50 +1,60 @@
 import React, { useState } from 'react'
 import { makeCacheEntry } from '../shared/md-url'
 
-export interface ContentAppProps {
-  markdown: string
+export const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
+
+/** Cache page text only while an open is in flight; a failed open removes it. */
+export async function openInApp(markdown: string, replace = true): Promise<boolean> {
+  const fileUrl = window.location.href
+  const key = 'file_content_' + fileUrl
+  const fail = (): false => {
+    try {
+      Promise.resolve(chrome.storage?.local?.remove?.(key)).catch(() => {})
+    } catch {
+      /* ignore */
+    }
+    return false
+  }
+  try {
+    await chrome.storage?.local?.set?.({ [key]: makeCacheEntry(markdown) })
+    if (!chrome.runtime?.sendMessage) return fail()
+    const ok = await new Promise<boolean>((resolve) => {
+      try {
+        const r: any = chrome.runtime.sendMessage(
+          { action: 'openApp', fileUrl, content: markdown, replace },
+          (response: any) => {
+            resolve(!chrome.runtime.lastError && !(response && response.success === false))
+          }
+        )
+        if (r && typeof r.then === 'function') r.catch(() => resolve(false))
+      } catch {
+        resolve(false)
+      }
+    })
+    return ok ? true : fail()
+  } catch (e) {
+    console.warn('MD Reader open failed:', e)
+    return fail()
+  }
 }
 
-export function ContentApp({ markdown }: ContentAppProps) {
+export interface ContentAppProps {
+  markdown: string
+  initialError?: string | null
+}
+
+export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError)
 
-  const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
-
-  const handleOpen = (replace = true) => {
+  const handleOpen = async (replace = true) => {
     setIsOpening(true)
     setErrorMsg(null)
-
-    const fileUrl = window.location.href
-    const fail = () => {
+    const ok = await openInApp(markdown, replace)
+    if (!ok) {
       setErrorMsg(FAIL_TEXT)
       setIsOpening(false)
-    }
-
-    // Cache page text only because the user asked to open it in the app
-    try {
-      chrome.storage?.local?.set?.({
-        ['file_content_' + fileUrl]: makeCacheEntry(markdown),
-      })
-    } catch (e) {
-      console.warn('Failed to cache file content:', e)
-    }
-
-    try {
-      if (!chrome.runtime?.sendMessage) {
-        fail()
-        return
-      }
-      chrome.runtime.sendMessage(
-        { action: 'openApp', fileUrl, content: markdown, replace },
-        (response) => {
-          if (chrome.runtime.lastError || (response && !response.success)) fail()
-        }
-      )
-    } catch (e) {
-      console.warn('sendMessage failed', e)
-      fail()
     }
   }
 
