@@ -68,8 +68,12 @@ export function App(): React.JSX.Element {
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
-  const fileUrlParam = new URLSearchParams(window.location.search).get('file')
-  const session = useDocSession({ fileUrl: fileUrlParam })
+  const [urlParams] = useState(() => {
+    const sp = new URLSearchParams(window.location.search)
+    return { docId: sp.get('doc'), fileUrl: sp.get('file') }
+  })
+  const fileUrlParam = urlParams.fileUrl
+  const session = useDocSession({ docId: urlParams.docId, fileUrl: urlParams.fileUrl })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.autoFormatMd !== false })
@@ -325,8 +329,9 @@ export function App(): React.JSX.Element {
           onOpenSpeakerView={() =>
             window.open(
               window.location.pathname +
-                '?speaker=true' +
-                (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : ''),
+                (session.docId
+                  ? '?doc=' + encodeURIComponent(session.docId) + '&speaker=true'
+                  : '?speaker=true' + (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : '')),
               'md-speaker',
               'width=1080,height=680'
             )

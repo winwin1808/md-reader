@@ -5,7 +5,7 @@ import { IndexeddbPersistence } from 'y-indexeddb'
 import { getMeta, getSource, hashText } from '@md-reader/core'
 import {
   __resetForTests, createRecord, findByOrigin, getRecord, touchRecord, listRecent,
-  storeHandle, getHandle, storeBase, getBase, migrateLegacyRegistry, writeDocText,
+  storeHandle, getHandle, storeBase, getBase, migrateLegacyRegistry, writeDocText, findOrCreateByOrigin,
 } from './doc-registry'
 
 let legacy: unknown[] = []
@@ -89,6 +89,22 @@ describe('doc-registry', () => {
     expect(d.originKind).toBe('drop')
     expect(d.persistenceName).toBe('md-reader')
     expect(d.originPath).toBeNull()
+  })
+
+  it('findOrCreateByOrigin is atomic across concurrent callers', async () => {
+    const init = { title: 'A', originKind: 'url' as const, originPath: 'https://x.com/a.md' }
+    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => findOrCreateByOrigin(init)))
+    expect(new Set(rs.map((r) => r.docId)).size).toBe(1)
+    expect((await listRecent()).length).toBe(1)
+  })
+
+  it('migrateLegacyRegistry racing findOrCreateByOrigin yields one record', async () => {
+    legacy = [{ id: 'https://x.com/b.md', name: 'b', lastOpened: 100 }]
+    await Promise.all([
+      migrateLegacyRegistry(),
+      findOrCreateByOrigin({ title: 'b', originKind: 'url', originPath: 'https://x.com/b.md' }),
+    ])
+    expect((await listRecent()).length).toBe(1)
   })
 
   it('migrate tolerates missing chrome', async () => {

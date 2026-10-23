@@ -1,17 +1,21 @@
+import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Y from 'yjs'
 import { hashText } from '@md-reader/core'
+import { __resetForTests, createRecord, findByOrigin, listRecent } from '../doc-registry'
 
 let idbUpdate: Uint8Array | null = null
 let resolveSync: () => void = () => {}
 let emitSynced: () => void = () => {}
+let names: string[] = []
 
 vi.mock('y-indexeddb', () => ({
   IndexeddbPersistence: class {
     whenSynced: Promise<unknown>
     private handlers: Array<() => void> = []
-    constructor(_n: string, doc: Y.Doc) {
+    constructor(n: string, doc: Y.Doc) {
+      names.push(n)
       this.whenSynced = new Promise<void>((res) => {
         resolveSync = () => {
           if (idbUpdate) Y.applyUpdate(doc, idbUpdate)
@@ -25,7 +29,6 @@ vi.mock('y-indexeddb', () => ({
     destroy() {}
   },
 }))
-vi.mock('../registry', () => ({ addRecentFile: async () => {} }))
 
 import { useDocSession } from './useDocSession'
 
@@ -39,12 +42,16 @@ async function prepareIdb(text: string, originText: string) {
 function setup(remote: string) {
   vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => remote })))
-  return renderHook(() => useDocSession({ fileUrl: 'https://x.test/a.md' }))
+  return renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
 }
-const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 60)) })
 
 describe('useDocSession safe load', () => {
-  beforeEach(() => { idbUpdate = null; void emitSynced })
+  beforeEach(async () => {
+    idbUpdate = null; names = []; void emitSynced
+    await __resetForTests()
+    await new Promise<void>((r) => { const q = indexedDB.deleteDatabase('md-reader'); q.onsuccess = () => r(); q.onerror = () => r(); q.onblocked = () => r() })
+  })
 
   it('keeps local edits when remote equals origin (no duplication)', async () => {
     await prepareIdb('old + my edits', 'old')
@@ -110,5 +117,61 @@ describe('useDocSession safe load', () => {
     expect(result.current.externalChange).toBeNull()
     expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('same'))
     expect(result.current.isDirty).toBe(false)
+  })
+
+  it('?file= for a known URL reuses the record and rewrites the URL to ?doc=', async () => {
+    const spy = vi.spyOn(window.history, 'replaceState')
+    const first = setup('x')
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    first.unmount()
+    const second = setup('x')
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    const all = await listRecent(10)
+    expect(all).toHaveLength(1)
+    const rec = await findByOrigin('https://x.test/a.md')
+    expect(second.result.current.docId).toBe(rec!.docId)
+    expect(spy).toHaveBeenCalledWith(null, '', '?doc=' + rec!.docId)
+    spy.mockRestore()
+  })
+
+  it('?doc= opens the record persistenceName and restores its text', async () => {
+    const rec = await createRecord({ title: 'n.md', originKind: 'drop', originPath: null, persistenceName: 'pname-1' })
+    await prepareIdb('stored text', 'stored text')
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    expect(names).toContain('pname-1')
+    expect(result.current.yText.toString()).toBe('stored text')
+    expect(result.current.record?.docId).toBe(rec.docId)
+  })
+
+  it('unknown docId -> error, no doc load', async () => {
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    const { result } = renderHook(() => useDocSession({ docId: 'nope', fileUrl: null }))
+    await flush()
+    expect(result.current.error).toBe('Không tìm thấy tài liệu này.')
+    expect(names).toHaveLength(0)
+    expect(result.current.hasContent).toBe(false)
+  })
+
+  it('v1 meta (name,size) in IDB -> title from name after ensureDoc', async () => {
+    const rec = await createRecord({ title: 'fallback', originKind: 'drop', originPath: null, persistenceName: 'pname-2' })
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'body')
+    d.getMap('meta').set('name', 'old-name.md')
+    d.getMap('meta').set('size', 4)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    await waitFor(() => expect(result.current.title).toContain('old-name'))
   })
 })

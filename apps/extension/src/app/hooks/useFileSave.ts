@@ -81,7 +81,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
           await executeSave(handle, explicit)
           setActiveHandle(handle)
           await storeFileHandle(handle).catch(() => {})
-          doc.getMap('meta').set('name', handle.name)
+          doc.getMap('meta').set('title', handle.name)
           next = { kind: 'saved', at: Date.now() }
         }
         return
