@@ -1,42 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from './Icon'
+import type { IconName } from './Icon'
 
-export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
+export type ExportFormat = 'html' | 'pdf' | 'docx' | 'slides-pdf'
 
 export interface ExportModalProps {
-  onExport: (format: ExportFormat) => Promise<void> | void
-  isExporting?: boolean
+  onExport: (format: ExportFormat) => Promise<void>
+  hasSlides: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
 interface FormatOption {
   format: ExportFormat
+  icon: IconName
   title: string
   description: string
+  working: string
 }
 
 const FORMAT_OPTIONS: FormatOption[] = [
-  {
-    format: 'html',
-    title: 'HTML Độc lập (.html)',
-    description: 'Nhúng toàn bộ hình ảnh và style để xem offline',
-  },
-  {
-    format: 'docx',
-    title: 'Microsoft Word (.docx)',
-    description: 'Văn bản định dạng Word chuẩn, hỗ trợ bảng và biểu đồ',
-  },
-  {
-    format: 'pdf',
-    title: 'Tài liệu PDF (.pdf)',
-    description: 'In ra giấy hoặc lưu thành file PDF chuẩn sách',
-  },
-  {
-    format: 'slide-pdf',
-    title: 'Slide PDF (Khổ ngang)',
-    description: 'In các trang trình chiếu thành file PDF khổ ngang (16:9)',
-  },
+  { format: 'html', icon: 'export', title: 'Trang web (.html)', description: 'Một file mở được không cần mạng.', working: 'Đang tạo trang web…' },
+  { format: 'pdf', icon: 'book', title: 'PDF để in', description: 'Mở hộp thoại in của trình duyệt.', working: 'Đang chuẩn bị bản in…' },
+  { format: 'docx', icon: 'edit', title: 'Word (.docx)', description: 'Sửa tiếp được trong Word hoặc Google Docs.', working: 'Đang tạo file Word…' },
+  { format: 'slides-pdf', icon: 'present', title: 'PDF trình chiếu', description: 'Mỗi trang chiếu một trang ngang.', working: 'Đang chuẩn bị trang chiếu…' },
 ]
 
 function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
@@ -61,13 +49,40 @@ function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) 
 }
 
 export function ExportModal(props: ExportModalProps): React.JSX.Element {
-  const { onExport, isExporting = false } = props
+  const { onExport, hasSlides } = props
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange)
+  const [working, setWorking] = useState<ExportFormat | null>(null)
+  const [error, setError] = useState<{ format: ExportFormat; message: string } | null>(null)
+  const workingRef = useRef<ExportFormat | null>(null)
+
+  const run = async (format: ExportFormat) => {
+    if (workingRef.current) return
+    workingRef.current = format
+    setWorking(format)
+    setError(null)
+    try {
+      await onExport(format)
+      workingRef.current = null
+      setWorking(null)
+      setIsOpen(false)
+    } catch (err) {
+      workingRef.current = null
+      setWorking(null)
+      setError({ format, message: err instanceof Error ? err.message : String(err) })
+    }
+  }
+
+  const requestClose = () => {
+    if (workingRef.current) return
+    setError(null)
+    setIsOpen(false)
+  }
 
   useEffect(() => {
     if (!isOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !workingRef.current) {
+        setError(null)
         setIsOpen(false)
       }
     }
@@ -75,12 +90,14 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
+  const options = FORMAT_OPTIONS.filter((o) => o.format !== 'slides-pdf' || hasSlides)
 
   const modalContent = isOpen ? (
     <div
       role="dialog"
       aria-modal="true"
-      onClick={() => setIsOpen(false)}
+      aria-busy={working !== null}
+      onClick={requestClose}
       style={{
         position: 'fixed',
         inset: 0,
@@ -134,20 +151,20 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
               </h2>
               <button
                 type="button"
-                aria-label="✕"
-                onClick={() => setIsOpen(false)}
+                aria-label="Đóng"
+                disabled={working !== null}
+                onClick={requestClose}
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  fontSize: '16px',
-                  lineHeight: 1,
-                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  cursor: working ? 'not-allowed' : 'pointer',
                   color: 'var(--md-fg)',
                   padding: '4px 8px',
                   borderRadius: '6px',
                 }}
               >
-                ✕
+                <Icon name="close" size={16} />
               </button>
             </div>
 
@@ -158,64 +175,51 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                 gap: '12px',
               }}
             >
-              {FORMAT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.format}
-                  type="button"
-                  disabled={isExporting}
-                  onClick={() => {
-                    setIsOpen(false)
-                    onExport(opt.format)
-                  }}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    textAlign: 'left',
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--md-border, #d0d7de)',
-                    background: 'var(--md-bg-secondary, rgba(125, 125, 125, 0.08))',
-                    color: 'var(--md-fg, #24292f)',
-                    cursor: isExporting ? 'not-allowed' : 'pointer',
-                    opacity: isExporting ? 0.6 : 1,
-                    transition: 'all 0.15s ease',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <span
+              {options.map((opt) => {
+                const isWorking = working === opt.format
+                return (
+                  <button
+                    key={opt.format}
+                    type="button"
+                    disabled={working !== null}
+                    onClick={() => { void run(opt.format) }}
                     style={{
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      marginBottom: '3px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      textAlign: 'left',
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--md-border, #d0d7de)',
+                      background: 'var(--md-bg-secondary, rgba(125, 125, 125, 0.08))',
+                      color: 'var(--md-fg, #24292f)',
+                      cursor: working ? 'not-allowed' : 'pointer',
+                      opacity: working && !isWorking ? 0.6 : 1,
+                      transition: 'all 0.15s ease',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    {opt.title}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: 'var(--md-fg-muted, #888)',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {opt.description}
-                  </span>
-                </button>
-              ))}
+                    <Icon name={opt.icon} size={20} />
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>
+                        {isWorking ? opt.working : opt.title}
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--pencil)', lineHeight: 1.4 }}>
+                        {opt.description}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
-            {isExporting && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  textAlign: 'center',
-                  fontSize: '13px',
-                  color: 'var(--md-fg-muted, #888)',
-                }}
-              >
-                Đang xuất tài liệu...
+            {error && (
+              <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--md-fg)' }}>
+                <span>{error.message}</span>{' '}
+                <button type="button" onClick={() => { void run(error.format) }}>
+                  Thử lại
+                </button>
               </div>
             )}
           </div>

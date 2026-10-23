@@ -153,10 +153,11 @@ describe('App', () => {
     vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
     await act(async () => { render(<App />) })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
-    await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
-    expect(await screen.findByText('Không xuất được file. boom')).toBeDefined()
-    await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
-    expect(screen.queryByText('Không xuất được file. boom')).toBeNull()
+    await act(async () => { fireEvent.click(screen.getByText('Word (.docx)')) })
+    expect((await screen.findByRole('alert')).textContent).toContain('boom')
+    expect(screen.getByRole('button', { name: 'Thử lại' })).toBeDefined()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Đóng' })) })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   describe('notices', () => {
@@ -225,7 +226,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const pdfOption = screen.getByText('Tài liệu PDF (.pdf)')
+    const pdfOption = screen.getByText('PDF để in')
     await act(async () => {
       fireEvent.click(pdfOption)
     })
@@ -235,7 +236,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const htmlOption = screen.getByText('HTML Độc lập (.html)')
+    const htmlOption = screen.getByText('Trang web (.html)')
     await act(async () => {
       fireEvent.click(htmlOption)
     })
@@ -256,7 +257,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const docxOption = screen.getByText('Microsoft Word (.docx)')
+    const docxOption = screen.getByText('Word (.docx)')
     await act(async () => {
       fireEvent.click(docxOption)
     })
@@ -270,26 +271,11 @@ describe('App', () => {
     })
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
 
-    // 4. Trigger Slide PDF export
-    // Container should NOT be in DOM normally to save memory
-    expect(document.querySelector('.deck-print-container')).toBeNull()
-    
+    // 4. A document without slides does not offer the slides PDF
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const slidePdfOption = screen.getByText('Slide PDF (Khổ ngang)')
-    await act(async () => {
-      fireEvent.click(slidePdfOption)
-    })
-    
-    expect(printSlidesSpy).toHaveBeenCalled()
-    // It should be rendered now
-    expect(document.querySelector('.deck-print-container')).not.toBeNull()
-    
-    // Wait for the timeout to remove it
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
+    expect(screen.queryByText('PDF trình chiếu')).toBeNull()
     expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()

@@ -35,7 +35,7 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
       const title = args.title || 'document'
       if (format === 'pdf') {
         printDocument()
-      } else if (format === 'slide-pdf') {
+      } else if (format === 'slides-pdf') {
         flushSync(() => {
           setIsPrintingSlides(true)
         })
@@ -57,6 +57,7 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setExportError(message)
+      throw err instanceof Error ? err : new Error(message)
     } finally {
       setIsExporting(false)
     }
