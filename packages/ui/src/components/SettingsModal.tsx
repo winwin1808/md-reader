@@ -85,7 +85,7 @@ function ToggleRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   checked?: boolean;
   onChange: (checked: boolean) => void;
 }): React.JSX.Element {
@@ -95,7 +95,7 @@ function ToggleRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
       </div>
       <label className="settings-toggle-switch">
         <input
@@ -120,7 +120,7 @@ function InputRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value?: string | number;
   type?: 'text' | 'number';
   onChange: (val: string | number | undefined) => void;
@@ -131,7 +131,7 @@ function InputRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
       </div>
       <input
         id={id}
@@ -162,7 +162,7 @@ function ColorPickerRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value?: string;
   onChange: (val: string | undefined) => void;
 }): React.JSX.Element {
@@ -175,7 +175,7 @@ function ColorPickerRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
         <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
           {QUICK_COLORS.map((c) => (
             <button
@@ -267,9 +267,9 @@ function ColorPickerRow({
 
 const FONT_PRESETS = [
   { label: 'Mặc định', value: '' },
-  { label: 'Inter / Sans', value: 'Inter, system-ui, sans-serif' },
-  { label: 'Serif / Merriweather', value: 'Georgia, Cambria, serif' },
-  { label: 'Monospace / JetBrains', value: 'ui-monospace, Menlo, monospace' },
+  { label: 'Không chân / Inter', value: 'Inter, system-ui, sans-serif' },
+  { label: 'Có chân / Merriweather', value: 'Georgia, Cambria, serif' },
+  { label: 'Đơn cách / JetBrains', value: 'ui-monospace, Menlo, monospace' },
   { label: 'Roboto', value: 'Roboto, sans-serif' },
   { label: 'Playfair Display', value: 'Playfair Display, serif' },
 ];
@@ -283,7 +283,7 @@ function FontSelectRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value?: string;
   onChange: (val: string | undefined) => void;
 }): React.JSX.Element {
@@ -293,7 +293,7 @@ function FontSelectRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
         <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
           {FONT_PRESETS.filter((f) => f.value).map((f) => (
             <button
@@ -321,7 +321,7 @@ function FontSelectRow({
           type="text"
           className="settings-input-field"
           style={{ width: '180px', fontSize: '13px' }}
-          placeholder="Mặc định theo theme"
+          placeholder="Mặc định theo giao diện"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value ? e.target.value : undefined)}
         />
@@ -339,7 +339,7 @@ function SliderNumberRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value?: number;
   onChange: (val: number | undefined) => void;
 }): React.JSX.Element {
@@ -351,7 +351,7 @@ function SliderNumberRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <input
@@ -392,7 +392,7 @@ function ImageInputRow({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   value?: string;
   onChange: (val: string | undefined) => void;
 }): React.JSX.Element {
@@ -404,7 +404,7 @@ function ImageInputRow({
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
-        <div className="settings-row-desc">{description}</div>
+        {description && <div className="settings-row-desc">{description}</div>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', width: '220px' }}>
         <div style={{ display: 'flex', width: '100%', gap: '4px' }}>
@@ -642,12 +642,12 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-look" className="settings-group-title">Chữ và màu</h3>
                   {currentMode && (
                     <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Chế độ hiển thị</div>
+                      <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Giao diện</div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         {([
                           { key: 'light', label: 'Sáng' },
                           { key: 'dark', label: 'Tối' },
-                          { key: 'system', label: 'Hệ thống' },
+                          { key: 'system', label: 'Theo hệ thống' },
                         ] as const).map((opt) => {
                           const isSelected = currentMode === opt.key;
                           return (
@@ -693,12 +693,12 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       ) : null)}
                   </div>
                   <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Kiểu phông chữ</div>
+                    <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Phông chữ thân</div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       {([
-                        { key: 'sans', label: 'Sans-serif' },
-                        { key: 'serif', label: 'Serif' },
-                        { key: 'mono', label: 'Monospace' },
+                        { key: 'sans', label: 'Không chân (IBM Plex Sans)' },
+                        { key: 'serif', label: 'Có chân (Literata)' },
+                        { key: 'mono', label: 'Đơn cách (IBM Plex Mono)' },
                       ] as const).map((opt) => {
                         const isSelected = currentFontFamily === opt.key;
                         return (
@@ -736,55 +736,49 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-content" className="settings-group-title">Nội dung trong tài liệu</h3>
                   <ToggleRow
                     id="settings-stripFrontmatter"
-                    title="Front Matter"
-                    description="Strip YAML front matter (---) blocks instead of rendering them as text"
+                    title="Ẩn phần thông tin đầu file (frontmatter)"
                     checked={settings?.stripFrontmatter}
                     onChange={(val) => handleSettingChange('stripFrontmatter', val)}
                   />
                   <ToggleRow
                     id="settings-displayMetadata"
-                    title="Display Metadata"
-                    description="Show YAML front matter as a formatted metadata card at the top of the document"
+                    title="Hiện thông tin đầu file thành thẻ"
                     checked={settings?.displayMetadata}
                     onChange={(val) => handleSettingChange('displayMetadata', val)}
                   />                  <ToggleRow
                     id="settings-enableMath"
-                    title="Math Equations"
-                    description="Render LaTeX math equations ($...$ inline, $$...$$ display)"
+                    title="Hiển thị công thức toán"
                     checked={settings?.enableMath}
                     onChange={(val) => handleSettingChange('enableMath', val)}
                   />
                   <ToggleRow
                     id="settings-enableMermaid"
-                    title="Mermaid Diagrams"
-                    description="Render flowcharts, sequence diagrams, class diagrams, and more"
+                    title="Vẽ sơ đồ Mermaid"
+                    description="Tắt nếu tài liệu có nhiều sơ đồ và mở chậm."
                     checked={settings?.enableMermaid}
                     onChange={(val) => handleSettingChange('enableMermaid', val)}
                   />
                   <ToggleRow
                     id="settings-githubAlerts"
-                    title="GitHub Alerts"
-                    description="Render [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION] blocks"
+                    title="Hộp ghi chú kiểu GitHub ([!NOTE], [!WARNING]…)"
                     checked={settings?.githubAlerts}
                     onChange={(val) => handleSettingChange('githubAlerts', val)}
                   />
                   <ToggleRow
                     id="settings-localizeAlerts"
-                    title="Localize Alert Titles"
-                    description="Display alert block titles in the selected language"
+                    title="Tiêu đề ghi chú bằng tiếng Việt"
                     checked={settings?.localizeAlerts}
                     onChange={(val) => handleSettingChange('localizeAlerts', val)}
                   />                  <ToggleRow
                     id="settings-typographer"
-                    title="Typographer"
-                    description="Auto-convert typography: (c) → ©, (tm) → ™, -- → –, --- → —, and smart quotes"
+                    title="Dấu câu đẹp (ngoặc kép cong, gạch dài)"
+                    description="Không đổi nội dung file, chỉ đổi cách hiển thị."
                     checked={settings?.typographer}
                     onChange={(val) => handleSettingChange('typographer', val)}
                   />
                   <ToggleRow
                     id="settings-externalLinks"
-                    title="External Link Indicators"
-                    description="Show preview icons next to external links"
+                    title="Đánh dấu và mở liên kết ngoài ở thẻ mới"
                     checked={settings?.externalLinks}
                     onChange={(val) => handleSettingChange('externalLinks', val)}
                   />
@@ -793,24 +787,23 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-open" className="settings-group-title">Khi mở file .md</h3>
                   <ToggleRow
                     id="settings-autoFormatMd"
-                    title="Kích hoạt tiện ích (Auto-format .md)"
-                    description="Tự động nhận diện file Markdown và hiển thị widget nổi 📖 ở góc màn hình"
+                    title="Định dạng lại Markdown khi lưu"
+                    description="Chỉ khi bạn bấm Lưu, không trong lúc gõ."
                     checked={currentAutoFormat}
                     onChange={(val) => handleSettingChange('autoFormatMd', val)}
                   />
 
                   <ToggleRow
                     id="settings-formatOnSave"
-                    title="Định dạng Markdown khi lưu (Cmd+S)"
-                    description="Tự động định dạng lại Markdown mỗi khi lưu file"
+                    title="Định dạng Markdown khi bấm Lưu"
                     checked={settings?.formatOnSave ?? currentAutoFormat}
                     onChange={(val) => handleSettingChange('formatOnSave', val)}
                   />
 
                   <ToggleRow
                     id="settings-alwaysOpenApp"
-                    title="Tự động chuyển hướng vào app (Always open app)"
-                    description="Bật: Mở thẳng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
+                    title="Luôn mở file .md trong MD Reader"
+                    description="Bấm vào link .md sẽ mở thẳng tab đọc thay vì xem trên trang."
                     checked={currentAlwaysOpenApp}
                     onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
                   />
@@ -819,29 +812,25 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-aids" className="settings-group-title">Hỗ trợ đọc</h3>
                   <ToggleRow
                     id="settings-showWordCount"
-                    title="Show word count"
-                    description="Display word count, character count, and reading time"
+                    title="Hiện số từ và thời gian đọc"
                     checked={settings?.showWordCount}
                     onChange={(val) => handleSettingChange('showWordCount', val)}
                   />
                   <ToggleRow
                     id="settings-autoHideWordCount"
-                    title="Auto-hide word count"
-                    description="Hide the word count bar when scrolled near the bottom of the page"
+                    title="Tự ẩn khi đọc tới cuối"
                     checked={settings?.autoHideWordCount}
                     onChange={(val) => handleSettingChange('autoHideWordCount', val)}
                   />
                   <ToggleRow
                     id="settings-showReadingProgress"
-                    title="Show reading progress"
-                    description="Display a progress bar at the top showing your reading position"
+                    title="Thanh tiến độ đọc"
                     checked={settings?.showReadingProgress}
                     onChange={(val) => handleSettingChange('showReadingProgress', val)}
                   />
                   <ToggleRow
                     id="settings-celebrationConfetti"
-                    title="Celebration animation"
-                    description="Show confetti animation when you reach the end of a document"
+                    title="Pháo giấy khi đọc xong"
                     checked={settings?.celebrationConfetti}
                     onChange={(val) => handleSettingChange('celebrationConfetti', val)}
                   />
@@ -850,50 +839,43 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-slides" className="settings-group-title">Trình chiếu</h3>
                   <ColorPickerRow
                     id="settings-slideBgColor"
-                    title="Background Color"
-                    description="Slide background color (leave empty for theme default)"
+                    title="Nền trang chiếu"
                     value={settings?.slideBgColor}
                     onChange={(val) => handleSettingChange('slideBgColor', val)}
                   />
                   <ColorPickerRow
                     id="settings-slideTextColor"
-                    title="Text Color"
-                    description="Body text color"
+                    title="Chữ"
                     value={settings?.slideTextColor}
                     onChange={(val) => handleSettingChange('slideTextColor', val)}
                   />
                   <ColorPickerRow
                     id="settings-slideHeadingColor"
-                    title="Heading Color"
-                    description="Heading text color (h1, h2, h3)"
+                    title="Tiêu đề"
                     value={settings?.slideHeadingColor}
                     onChange={(val) => handleSettingChange('slideHeadingColor', val)}
                   />
                   <ColorPickerRow
                     id="settings-slideAccentColor"
-                    title="Accent Color"
-                    description="Progress bar, links, inline code, and blockquotes"
+                    title="Màu nhấn"
                     value={settings?.slideAccentColor}
                     onChange={(val) => handleSettingChange('slideAccentColor', val)}
                   />
                   <FontSelectRow
                     id="settings-slideFont"
-                    title="Slide Font"
-                    description="Font for slide content"
+                    title="Phông chữ trang chiếu"
                     value={settings?.slideFont}
                     onChange={(val) => handleSettingChange('slideFont', val)}
                   />
                   <ImageInputRow
                     id="settings-slideBgImage"
-                    title="Background Image URL"
-                    description="Image URL for slide background (leave empty for none)"
+                    title="Ảnh nền (URL)"
                     value={settings?.slideBgImage}
                     onChange={(val) => handleSettingChange('slideBgImage', val)}
                   />
                   <SliderNumberRow
                     id="settings-slideImageOpacity"
-                    title="Image Opacity"
-                    description="How visible the background image is (0% = hidden, 100% = full)"
+                    title="Độ mờ ảnh nền"
                     value={settings?.slideImageOpacity}
                     onChange={(val) => handleSettingChange('slideImageOpacity', val)}
                   />
