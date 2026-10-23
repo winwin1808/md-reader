@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { listRecent } from './doc-registry';
+import { listRecent, migrateLegacyRegistry } from './doc-registry';
 import type { DocRecord } from './doc-registry';
 
 export function RecentFiles(): React.JSX.Element {
   const [files, setFiles] = useState<DocRecord[]>([]);
 
   useEffect(() => {
-    listRecent().then(setFiles).catch(console.error);
+    (async () => {
+      try {
+        await migrateLegacyRegistry();
+      } catch (err) {
+        console.error('Legacy registry migration failed', err);
+      }
+      setFiles(await listRecent());
+    })().catch(console.error);
   }, []);
 
   const handleClick = (file: DocRecord) => {
