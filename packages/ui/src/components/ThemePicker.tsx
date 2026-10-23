@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import { Icon } from './Icon'
 import type { Contrast, ThemeMode } from '../theme/ThemeProvider'
 
 export interface PalettePickerProps {
@@ -54,6 +55,7 @@ function Preview(props: { kind: ThemeMode }): React.JSX.Element {
 export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
   const { mode, contrast, onModeChange, onContrastChange } = props
   const refs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const keyHandled = useRef(false)
   const idx = Math.max(0, OPTIONS.findIndex((o) => o.key === mode))
 
   const onKeyDown = (e: React.KeyboardEvent, i: number) => {
@@ -65,6 +67,7 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
       refs.current[next.key]?.focus()
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
+      keyHandled.current = true
       onModeChange(OPTIONS[i]!.key)
     }
   }
@@ -82,7 +85,11 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
               role="radio"
               aria-checked={selected}
               tabIndex={i === idx ? 0 : -1}
-              onClick={() => onModeChange(o.key)}
+              onClick={() => {
+                if (keyHandled.current) { keyHandled.current = false; return }
+                onModeChange(o.key)
+              }}
+              onKeyUp={() => { setTimeout(() => { keyHandled.current = false }, 0) }}
               onKeyDown={(e) => onKeyDown(e, i)}
               className="palette-card"
               style={{
@@ -90,14 +97,20 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 6,
-                padding: 8,
+                padding: selected ? 7 : 8,
+                position: 'relative',
                 cursor: 'pointer',
                 background: 'var(--md-surface, transparent)',
                 color: 'var(--md-text, inherit)',
-                border: selected ? '2px solid var(--md-link)' : '2px solid var(--md-border, transparent)',
+                border: selected ? '2px solid var(--ink)' : '1px solid var(--rule)',
                 borderRadius: 8,
               }}
             >
+              {selected && (
+                <span className="palette-check" style={{ position: 'absolute', top: 4, right: 4, display: 'inline-flex', color: 'var(--ink)', background: 'var(--paper)', borderRadius: '50%' }}>
+                  <Icon name="check" size={16} />
+                </span>
+              )}
               <Preview kind={o.key} />
               <span>{o.label}</span>
             </button>
@@ -110,8 +123,38 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
         aria-checked={contrast === 'high'}
         onClick={() => onContrastChange(contrast === 'high' ? 'standard' : 'high')}
         className="settings-choice"
-        style={{ marginTop: 12 }}
+        style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8 }}
       >
+        <span
+          className="palette-switch-track"
+          data-on={contrast === 'high' ? 'true' : 'false'}
+          aria-hidden="true"
+          style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: 40,
+            height: 22,
+            borderRadius: 22,
+            flexShrink: 0,
+            background: contrast === 'high' ? 'var(--accent)' : 'var(--rule)',
+            transition: '0.2s',
+          }}
+        >
+          <span
+            className="palette-switch-thumb"
+            style={{
+              position: 'absolute',
+              top: 3,
+              left: 3,
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              background: 'var(--paper)',
+              transition: '0.2s',
+              transform: contrast === 'high' ? 'translateX(18px)' : 'none',
+            }}
+          />
+        </span>
         Tăng tương phản
       </button>
     </div>

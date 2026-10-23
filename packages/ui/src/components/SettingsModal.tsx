@@ -541,14 +541,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const resolvedMode = currentMode === 'system'
-    ? (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : (currentMode || 'light');
-
   const modalContent = isOpen ? (
     <div
       className="settings-overlay"
-      data-theme={resolvedMode}
       onClick={(e) => {
         if (e.target === e.currentTarget) setIsOpen(false);
       }}

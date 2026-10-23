@@ -58,6 +58,39 @@ describe('PalettePicker', () => {
     expect(onContrastChange).toHaveBeenCalledWith('standard')
   })
 
+  test('switch has a track whose state follows aria-checked', () => {
+    setup('light', 'standard')
+    const off = screen.getByRole('switch').querySelector('.palette-switch-track')
+    expect(off?.getAttribute('data-on')).toBe('false')
+    cleanup()
+    setup('light', 'high')
+    expect(screen.getByRole('switch').querySelector('.palette-switch-track')?.getAttribute('data-on')).toBe('true')
+  })
+
+  test('selected card has check svg; others do not', () => {
+    setup('dark')
+    expect(screen.getByRole('radio', { name: /Than chì/ }).querySelector('svg.palette-check, .palette-check')).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /Giấy/ }).querySelector('.palette-check')).toBeNull()
+  })
+
+  test('Space press selects exactly once', () => {
+    const { onModeChange } = setup()
+    const r = screen.getByRole('radio', { name: /Than chì/ })
+    fireEvent.keyDown(r, { key: ' ' })
+    fireEvent.keyUp(r, { key: ' ' })
+    fireEvent.click(r)
+    expect(onModeChange).toHaveBeenCalledTimes(1)
+  })
+
+  test('css/source checks', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, '../theme/toolbar.css'), 'utf8')
+    const m = css.match(/\.tb-seg-btn\[aria-checked='true'\]\s*\{([^}]*)\}/)!
+    expect(m[1]).toMatch(/background:\s*var\(--paper\)/)
+    expect(m[1]).toMatch(/color:\s*var\(--ink\)/)
+    for (const f of ['SettingsModal.tsx', 'ExportModal.tsx'])
+      expect(fs.readFileSync(path.resolve(__dirname, f), 'utf8')).not.toContain('data-theme')
+  })
+
   test('no retired colour-theme references remain in ui src', () => {
     const re = new RegExp(['color' + 'Theme', 'Color' + 'Theme', 'data-color' + '-theme'].join('|'))
     const hits: string[] = []

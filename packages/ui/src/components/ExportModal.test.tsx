@@ -87,7 +87,7 @@ describe('ExportModal', () => {
     render(<ExportModal onExport={vi.fn()} />)
     fireEvent.click(screen.getByTitle('Xuất tài liệu'))
     const dialog = screen.getByRole('dialog')
-    expect(dialog.getAttribute('data-theme')).toBeTruthy()
+    expect(dialog.getAttribute('data-theme')).toBeNull()
     const dialogCard = dialog.firstChild as HTMLElement
     expect(dialogCard.style.background).toContain('var(--md-bg')
   })
