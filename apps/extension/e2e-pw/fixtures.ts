@@ -7,22 +7,6 @@ import type { AddressInfo } from 'node:net'
 
 const builtDist = path.resolve(process.cwd(), 'dist')
 
-/**
- * KNOWN PRODUCT BUG (not fixed here, 6k1 forbids product changes): dist/manifest.json
- * web_accessible_resources[].matches contain path patterns (e.g. "*://*\/*.md"), which
- * Chromium 156 rejects ("Invalid match pattern") so the extension does not load at all.
- * The harness loads a temp copy with those matches widened to origin-level patterns.
- */
-function stageExtension(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdr-ext-'))
-  fs.cpSync(builtDist, dir, { recursive: true })
-  const mf = path.join(dir, 'manifest.json')
-  const m = JSON.parse(fs.readFileSync(mf, 'utf8'))
-  for (const r of m.web_accessible_resources ?? []) r.matches = ['*://*/*', 'file:///*']
-  fs.writeFileSync(mf, JSON.stringify(m))
-  return dir
-}
-
 export interface MdServer {
   origin: string
   write(name: string, content: string): void
@@ -58,7 +42,7 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
   // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdr-pw-'))
-    const dist = stageExtension()
+    const dist = builtDist
     const context = await chromium.launchPersistentContext(userDir, {
       headless: true,
       channel: 'chromium',
@@ -69,7 +53,6 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
     } finally {
       await context.close()
       fs.rmSync(userDir, { recursive: true, force: true })
-      fs.rmSync(dist, { recursive: true, force: true })
     }
   },
   extensionId: async ({ context }, use) => {
