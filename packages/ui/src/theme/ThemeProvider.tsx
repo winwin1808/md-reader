@@ -8,6 +8,7 @@ export type ColorTheme = 'navy' | 'green' | 'orange' | 'pink' | 'black'
 export interface ThemeContextValue {
   mode: ThemeMode
   resolved: 'light' | 'dark'
+  contrast: Contrast
   setMode: (mode: ThemeMode) => void
   colorTheme: ColorTheme
   setColorTheme: (theme: ColorTheme) => void
@@ -32,7 +33,9 @@ function readSystemMode(): 'light' | 'dark' {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
-  const { mode, contrast = 'standard', colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
+  const parent = useContext(ThemeContext)
+  const isRoot = parent === undefined
+  const { mode, contrast = parent?.contrast ?? 'standard', colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
   const [systemMode, setSystemMode] = useState<'light' | 'dark'>(readSystemMode)
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
   const resolved = mode === 'system' ? systemMode : mode
 
   useLayoutEffect(() => {
-    if (typeof document === 'undefined') return
+    if (!isRoot || typeof document === 'undefined') return
     const root = document.documentElement
     root.setAttribute('data-theme', resolved)
     root.setAttribute('data-contrast', contrast)
@@ -72,7 +75,17 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     if (root.style) {
       root.style.colorScheme = resolved
     }
-  }, [resolved, contrast])
+  }, [isRoot, resolved, contrast])
+
+  useLayoutEffect(() => {
+    if (!isRoot || typeof document === 'undefined') return
+    return () => {
+      const root = document.documentElement
+      root.removeAttribute('data-theme')
+      root.removeAttribute('data-contrast')
+      if (root.style) root.style.colorScheme = ''
+    }
+  }, [isRoot])
 
   const setMode = (newMode: ThemeMode) => {
     if (onModeChange) {
@@ -89,6 +102,7 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
   const value = {
     mode,
     resolved,
+    contrast,
     setMode,
     colorTheme,
     setColorTheme
