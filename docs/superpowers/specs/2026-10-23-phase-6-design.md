@@ -458,7 +458,7 @@ moves (6b*) count moved lines once.
 - 6a: done
 - 6b1: done
 - 6b2: done
-- 6b3: planned
+- 6b3: done
 - 6c: pending
 - 6d: pending
 - 6e1: pending
