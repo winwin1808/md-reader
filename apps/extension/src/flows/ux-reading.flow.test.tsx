@@ -108,8 +108,8 @@ const greeting = "Hello World";
     const searchBtn = screen.getByRole('button', { name: 'Tìm' })
     fireEvent.click(searchBtn)
 
-    // Verify input with placeholder="Tìm trong tài liệu..." appears.
-    const searchInput = screen.getByPlaceholderText('Tìm trong tài liệu...')
+    // Verify input with placeholder="Tìm trong tài liệu" appears.
+    const searchInput = screen.getByPlaceholderText('Tìm trong tài liệu')
     expect(searchInput).toBeDefined()
 
     // Fire change on input to "Hello", verify mark.md-search-highlight is in DOM and match counter shows "1 / 1".
@@ -123,7 +123,7 @@ const greeting = "Hello World";
     const closeSearchBtn = screen.getByRole('button', { name: /đóng/i })
     fireEvent.click(closeSearchBtn)
     expect(document.querySelector('mark.md-search-highlight')).toBeNull()
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
 
     // 6. Code Copy:
     // Find copy button with class .code-copy-btn or text "Copy".
