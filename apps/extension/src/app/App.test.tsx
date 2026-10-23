@@ -339,6 +339,32 @@ describe('App', () => {
     expect(placeholder).not.toBeNull()
   })
 
+  it('narrow screens: ToC is a dialog drawer closed by Esc, focus returns to toggle', async () => {
+    const orig = window.matchMedia
+    window.matchMedia = ((q: string) => ({
+      matches: true, media: q, addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+    })) as any
+    try {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=test.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# One\n\n## Two\n\ntext'),
+      } as any)
+      await act(async () => { render(<App />) })
+      expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+      const toggle = screen.getByRole('button', { name: 'Mục lục' })
+      await act(async () => { fireEvent.click(toggle) })
+      expect(screen.getByRole('dialog', { name: 'Mục lục' })).toBeDefined()
+      await act(async () => { fireEvent.keyDown(document, { key: 'Escape' }) })
+      expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mục lục' }))
+    } finally {
+      window.matchMedia = orig
+    }
+  })
+
   it('renders ReadingProgress and .a4-document-container when content is loaded', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?file=test.md') as any

@@ -88,7 +88,7 @@ describe('Toc', () => {
     
     expect(h1Link).toBeDefined()
     expect(h2Link).toBeDefined()
-    expect(h2Link.getAttribute('aria-current')).toBe('true')
+    expect(h2Link.getAttribute('aria-current')).toBe('location')
     expect(h1Link.getAttribute('aria-current')).toBeNull()
   })
 })

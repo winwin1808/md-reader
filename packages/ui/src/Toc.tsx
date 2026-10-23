@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import type { TocEntry } from '@md-reader/core'
 
 export interface TocProps {
   entries: TocEntry[]
   activeId?: string | null
   onSelect?: (id: string) => void
+  onNavigate?: (id: string) => void
 }
 
 interface TocNode {
@@ -68,7 +69,8 @@ function buildTree(entries: TocEntry[]): TocNode[] {
 }
 
 export function Toc(props: TocProps): React.JSX.Element | null {
-  const { entries, activeId, onSelect } = props
+  const { entries, activeId, onSelect, onNavigate } = props
+  const navRef = useRef<HTMLElement>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   const toggleCollapse = (slug: string) => {
@@ -79,6 +81,11 @@ export function Toc(props: TocProps): React.JSX.Element | null {
   }
 
   const tree = useMemo(() => buildTree(entries), [entries])
+
+  useEffect(() => {
+    const el = navRef.current?.querySelector('a[aria-current="location"]') as HTMLElement | null
+    el?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeId])
 
   if (!entries || entries.length === 0) {
     return null
@@ -129,7 +136,7 @@ export function Toc(props: TocProps): React.JSX.Element | null {
             <a
               href={`#${entry.slug}`}
               title={entry.text}
-              aria-current={isActive ? 'true' : undefined}
+              aria-current={isActive ? 'location' : undefined}
               className="md-toc-link"
               style={{
                 flex: 1,
@@ -142,6 +149,7 @@ export function Toc(props: TocProps): React.JSX.Element | null {
                   e.preventDefault()
                   onSelect(entry.slug)
                 }
+                onNavigate?.(entry.slug)
               }}
             >
               {entry.text}
@@ -154,8 +162,8 @@ export function Toc(props: TocProps): React.JSX.Element | null {
   }
 
   return (
-    <nav className="md-toc">
-      <div className="md-toc-title">Mục lục</div>
+    <nav className="md-toc" ref={navRef}>
+      <h2 className="sr-only">Mục lục</h2>
       <ul>
         {renderEntries(tree)}
       </ul>

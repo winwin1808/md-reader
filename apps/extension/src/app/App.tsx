@@ -74,6 +74,39 @@ export function App(): React.JSX.Element {
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocOpen, setTocOpen] = useState<boolean>(true)
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null)
+  const [narrow, setNarrow] = useState<boolean>(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1080px)').matches)
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const tocWasOpenRef = useRef(false)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(max-width: 1080px)')
+    const onChange = () => { setNarrow(mq.matches); if (mq.matches) setTocOpen(false) }
+    if (mq.matches) setTocOpen(false)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+
+  const drawerOpen = narrow && tocOpen
+  useEffect(() => {
+    if (drawerOpen) {
+      tocWasOpenRef.current = true
+      const d = drawerRef.current
+      const target = d?.querySelector<HTMLElement>('a[aria-current="location"]') ?? d?.querySelector<HTMLElement>('a')
+      target?.focus()
+    } else if (tocWasOpenRef.current) {
+      tocWasOpenRef.current = false
+      document.querySelector<HTMLElement>('button[aria-label="Mục lục"][aria-pressed]')?.focus()
+    }
+  }, [drawerOpen])
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTocOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
@@ -515,13 +548,21 @@ export function App(): React.JSX.Element {
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
+                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
-              {toc && toc.length > 0 && tocOpen && !isReadingMode && (
+              {toc && toc.length > 0 && tocOpen && !isReadingMode && !narrow && (
                 <div className="sidebar-toc">
-                  <Toc entries={toc} />
+                  <Toc entries={toc} activeId={activeHeadingId} />
                 </div>
+              )}
+              {toc && toc.length > 0 && drawerOpen && !isReadingMode && (
+                <>
+                  <div className="toc-backdrop" data-testid="toc-backdrop" onClick={() => setTocOpen(false)} />
+                  <div className="toc-drawer" role="dialog" aria-modal="true" aria-label="Mục lục" ref={drawerRef}>
+                    <Toc entries={toc} activeId={activeHeadingId} onNavigate={() => setTocOpen(false)} />
+                  </div>
+                </>
               )}
             </div>
           )}
