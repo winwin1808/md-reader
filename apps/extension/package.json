@@ -14,6 +14,7 @@
   "dependencies": {
     "@md-reader/core": "workspace:*",
     "@md-reader/ui": "workspace:*",
+    "katex": "0.16.22",
     "preact": "^10.29.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",

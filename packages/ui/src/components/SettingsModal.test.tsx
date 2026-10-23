@@ -156,16 +156,16 @@ describe('SettingsModal', () => {
     expect(screen.getByText('Front Matter')).toBeInTheDocument();
     expect(screen.getByText('Strip YAML front matter (---) blocks instead of rendering them as text')).toBeInTheDocument();
     expect(screen.getByText('Display Metadata')).toBeInTheDocument();
-    expect(screen.getByText('Advanced Tables')).toBeInTheDocument();
-    expect(screen.getByText('Task Lists')).toBeInTheDocument();
+    expect(screen.queryByText("Advanced Tables")).toBeNull();
+    expect(screen.queryByText("Task Lists")).toBeNull();
 
     // Switch to Media tab
     fireEvent.click(mediaTab);
     expect(screen.getByText('Math Equations')).toBeInTheDocument();
     expect(screen.getByText('Render LaTeX math equations ($...$ inline, $$...$$ display)')).toBeInTheDocument();
     expect(screen.getByText('Mermaid Diagrams')).toBeInTheDocument();
-    expect(screen.getByText('PlantUML Diagrams')).toBeInTheDocument();
-    expect(screen.getByText('Graphviz Diagrams')).toBeInTheDocument();
+    expect(screen.queryByText("PlantUML Diagrams")).toBeNull();
+    expect(screen.queryByText("Graphviz Diagrams")).toBeNull();
     expect(screen.getByText('GitHub Alerts')).toBeInTheDocument();
     expect(screen.getByText('Localize Alert Titles')).toBeInTheDocument();
 
@@ -196,7 +196,8 @@ describe('SettingsModal', () => {
         {...defaultProps}
         settings={{
           stripFrontmatter: false,
-          advancedTables: false,
+          enableMath: false,
+          formatOnSave: false,
           enableMermaid: false,
           slideFont: 'Georgia',
         }}
@@ -206,15 +207,25 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
 
-    // Core tab toggle
+    // Removed dead rows
     fireEvent.click(screen.getByRole('tab', { name: /core rendering/i }));
-    const advTablesCheckbox = screen.getByLabelText(/advanced tables/i);
-    expect(advTablesCheckbox).not.toBeChecked();
-    fireEvent.click(advTablesCheckbox);
-    expect(onSettingChange).toHaveBeenCalledWith('advancedTables', true);
+    expect(screen.queryByLabelText(/advanced tables/i)).toBeNull();
+    expect(screen.queryByLabelText(/task lists/i)).toBeNull();
+
+    // Display tab: format on save
+    fireEvent.click(screen.getByRole('tab', { name: /giao diện/i }));
+    const fmt = screen.getByLabelText(/Định dạng Markdown khi lưu/i);
+    expect(fmt).not.toBeChecked();
+    fireEvent.click(fmt);
+    expect(onSettingChange).toHaveBeenCalledWith('formatOnSave', true);
 
     // Media tab toggle
     fireEvent.click(screen.getByRole('tab', { name: /nội dung & sơ đồ/i }));
+    const mathCheckbox = screen.getByLabelText(/math equations/i);
+    fireEvent.click(mathCheckbox);
+    expect(onSettingChange).toHaveBeenCalledWith('enableMath', true);
+    expect(screen.queryByLabelText(/plantuml/i)).toBeNull();
+    expect(screen.queryByLabelText(/graphviz/i)).toBeNull();
     const mermaidCheckbox = screen.getByLabelText(/mermaid diagrams/i);
     expect(mermaidCheckbox).not.toBeChecked();
     fireEvent.click(mermaidCheckbox);
