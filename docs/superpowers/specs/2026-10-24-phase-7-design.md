@@ -418,7 +418,7 @@ Plus the redundant `expect(getBy…).toBeDefined()` sweep only inside files alre
 here; the rest stays a documented no-op (they are redundant, not wrong).
 
 ## Sub-phase queue
-- 7a1: pending
+- 7a1: planned
 - 7a2: pending
 - 7b1: pending
 - 7b2: pending
