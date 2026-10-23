@@ -71,9 +71,10 @@ export function App(): React.JSX.Element {
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
   const [urlParams] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
-    return { docId: sp.get('doc'), fileUrl: sp.get('file') }
+    return { docId: sp.get('doc'), fileUrl: sp.get('file'), kept: sp.get('kept') === '1' }
   })
   const fileUrlParam = urlParams.fileUrl
+  const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
   const session = useDocSession({ docId: urlParams.docId, fileUrl: urlParams.fileUrl })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
@@ -183,8 +184,8 @@ export function App(): React.JSX.Element {
 
   const handleOpenFile = async () => {
     try {
-      const id = await openLocalFileAsDoc()
-      if (id) window.location.assign('?doc=' + id)
+      const res = await openLocalFileAsDoc()
+      if (res) window.location.assign('?doc=' + res.docId + (res.kept ? '&kept=1' : ''))
     } catch (err) {
       setError((err as Error)?.message || 'Không mở được file.')
     }
@@ -431,6 +432,14 @@ export function App(): React.JSX.Element {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
                 <button type="button" onClick={session.dismissExternal}>Giữ bản đang sửa</button>
+              </div>
+            </div>
+          )}
+          {keptNoticeOpen && (
+            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</div>
+              <div>
+                <button type="button" onClick={() => setKeptNoticeOpen(false)}>Đã hiểu</button>
               </div>
             </div>
           )}

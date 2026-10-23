@@ -43,6 +43,9 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   const record = session.record
   const sessionDocId = session.docId
   useEffect(() => {
+    setActiveHandle(null)
+    pendingHandleRef.current = null
+    setSaveState((s) => (s.kind === 'needs-permission' ? { kind: 'idle' } : s))
     if (!record || !record.hasHandle || !sessionDocId) return
     let cancelled = false
     void (async () => {
@@ -68,7 +71,13 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   const grantPermission = async () => {
     const h = pendingHandleRef.current
     if (!h) return
-    const r = await (h as any).requestPermission({ mode: 'readwrite' })
+    let r: string
+    try {
+      r = await (h as any).requestPermission({ mode: 'readwrite' })
+    } catch (err) {
+      console.warn('requestPermission failed:', err)
+      return
+    }
     if (r === 'granted') {
       pendingHandleRef.current = null
       setActiveHandle(h)

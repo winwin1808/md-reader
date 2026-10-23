@@ -293,6 +293,56 @@ describe('useFileSave', () => {
     expect(result.current.saveState).toEqual({ kind: 'idle' })
   })
 
+  it('rerender with a different record without handle -> activeHandle reset', async () => {
+    const doc = new Y.Doc()
+    const h = storedHandle('granted')
+    getHandle.mockResolvedValue(h)
+    const hook = renderHook(({ s }) => useFileSave(s, { formatOnSave: false }), {
+      initialProps: { s: makeSession(doc, { docId: 'doc-1', record: rec }) },
+    })
+    await waitFor(() => expect(hook.result.current.activeHandle).toBe(h))
+    hook.rerender({ s: makeSession(doc, { docId: 'doc-2', record: { ...rec, docId: 'doc-2', hasHandle: false } }) })
+    await waitFor(() => expect(hook.result.current.activeHandle).toBeNull())
+  })
+
+  it('requestPermission rejecting -> still needs-permission, no throw', async () => {
+    const doc = new Y.Doc()
+    const h = storedHandle('prompt')
+    h.requestPermission = vi.fn(async () => { throw new Error('boom') })
+    getHandle.mockResolvedValue(h)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    await act(async () => { await result.current.grantPermission() })
+    expect(result.current.saveState.kind).toBe('needs-permission')
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('requestPermission denied -> still needs-permission', async () => {
+    const doc = new Y.Doc()
+    const h = storedHandle('prompt', 'denied')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    await act(async () => { await result.current.grantPermission() })
+    expect(result.current.saveState.kind).toBe('needs-permission')
+    expect(result.current.activeHandle).toBeNull()
+  })
+
+  it('autosave does not run while needs-permission', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const h = storedHandle('prompt')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec, isDirty: true }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    vi.useFakeTimers()
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+    expect(saveToHandle).not.toHaveBeenCalled()
+    expect(saveFileAs).not.toHaveBeenCalled()
+  })
+
   it('Save As stores the handle for session.docId', async () => {
     const doc = new Y.Doc()
     doc.getText('source').insert(0, 'x')
@@ -321,10 +371,44 @@ describe('openLocalFileAsDoc', () => {
       return r
     })
     ;(window as any).showOpenFilePicker = vi.fn(async () => [stored])
-    expect(await openLocalFileAsDoc()).toBe('new-1')
-    expect(await openLocalFileAsDoc()).toBe('new-1')
+    expect(await openLocalFileAsDoc()).toEqual({ docId: 'new-1', kept: false })
+    expect(await openLocalFileAsDoc()).toEqual({ docId: 'new-1', kept: false })
     expect(createRecord).toHaveBeenCalledTimes(1)
     expect(writeDocText).toHaveBeenCalledWith(expect.objectContaining({ docId: 'new-1' }), 'hello', 'if-clean')
+    delete (window as any).showOpenFilePicker
+  })
+
+  it('reuses the record whose handle isSameEntry; skips broken handles', async () => {
+    const { openLocalFileAsDoc } = await vi.importActual<typeof import('../fs/file-system')>('../fs/file-system')
+    createRecord.mockClear(); writeDocText.mockClear(); storeHandle.mockClear()
+    const records: any[] = [
+      { docId: 'r0', hasHandle: true, persistenceName: 'p0' },
+      { docId: 'r1', hasHandle: true, persistenceName: 'p1' },
+      { docId: 'r2', hasHandle: true, persistenceName: 'p2' },
+    ]
+    listRecent.mockReset(); listRecent.mockImplementation(async () => records)
+    getHandle.mockReset()
+    getHandle.mockImplementation(async (id: unknown) => {
+      if (id === 'r0') throw new Error('broken')
+      if (id === 'r1') return { isSameEntry: async () => false }
+      return { isSameEntry: async () => true }
+    })
+    const picked: any = { name: 'n.md', getFile: async () => ({ text: async () => 'hi' }) }
+    ;(window as any).showOpenFilePicker = vi.fn(async () => [picked])
+    expect(await openLocalFileAsDoc()).toEqual({ docId: 'r2', kept: false })
+    expect(createRecord).not.toHaveBeenCalled()
+    expect(listRecent).toHaveBeenCalledWith(100_000)
+    delete (window as any).showOpenFilePicker
+  })
+
+  it('writeDocText kept -> kept true', async () => {
+    const { openLocalFileAsDoc } = await vi.importActual<typeof import('../fs/file-system')>('../fs/file-system')
+    listRecent.mockReset(); listRecent.mockResolvedValue([])
+    createRecord.mockReset(); createRecord.mockImplementation(async (i: any) => ({ docId: 'k1', persistenceName: 'p', hasHandle: false, ...i }))
+    writeDocText.mockResolvedValueOnce('kept')
+    const picked: any = { name: 'n.md', getFile: async () => ({ text: async () => 'hi' }) }
+    ;(window as any).showOpenFilePicker = vi.fn(async () => [picked])
+    expect(await openLocalFileAsDoc()).toEqual({ docId: 'k1', kept: true })
     delete (window as any).showOpenFilePicker
   })
 
