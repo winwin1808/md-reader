@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Y from 'yjs'
 import { hashText } from '@md-reader/core'
-import { __resetForTests, createRecord, findByOrigin, listRecent } from '../doc-registry'
+import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase } from '../doc-registry'
+
+vi.mock('../doc-registry', async (orig) => {
+  const actual = await orig<typeof import('../doc-registry')>()
+  return { ...actual, storeBase: vi.fn(actual.storeBase) }
+})
 
 let idbUpdate: Uint8Array | null = null
 let resolveSync: () => void = () => {}
@@ -48,7 +53,7 @@ const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 60)
 
 describe('useDocSession safe load', () => {
   beforeEach(async () => {
-    idbUpdate = null; names = []; void emitSynced
+    idbUpdate = null; names = []; void emitSynced; vi.mocked(storeBase).mockClear()
     await __resetForTests()
     await new Promise<void>((r) => { const q = indexedDB.deleteDatabase('md-reader'); q.onsuccess = () => r(); q.onerror = () => r(); q.onblocked = () => r() })
   })
@@ -173,5 +178,44 @@ describe('useDocSession safe load', () => {
     await act(async () => { resolveSync() })
     await flush()
     await waitFor(() => expect(result.current.title).toContain('old-name'))
+  })
+
+  describe('base storage on load', () => {
+    const run = async (remote: string) => {
+      const r = setup(remote)
+      await flush()
+      await act(async () => { resolveSync() })
+      await flush()
+      return r
+    }
+    const idOf = async () => (await findByOrigin('https://x.test/a.md'))!.docId
+
+    it('fresh import (d) stores base', async () => {
+      await run('hello')
+      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'hello')
+    })
+    it('local equals remote (e) stores base', async () => {
+      await prepareIdb('same', 'same')
+      await run('same')
+      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'same')
+    })
+    it('apply remote (g) stores base', async () => {
+      await prepareIdb('old', 'old')
+      await run('new')
+      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
+    })
+    it('disk unchanged with local edits (f) stores base', async () => {
+      await prepareIdb('old + my edits', 'old')
+      await run('old')
+      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'old')
+    })
+    it('diverged (h) does not store base; acceptExternal does', async () => {
+      await prepareIdb('old + my edits', 'old')
+      const { result } = await run('new')
+      expect(result.current.externalChange?.remoteText).toBe('new')
+      expect(storeBase).not.toHaveBeenCalled()
+      act(() => result.current.acceptExternal())
+      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
+    })
   })
 })

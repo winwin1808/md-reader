@@ -17,6 +17,8 @@ const storeHandle = vi.fn(async (..._a: unknown[]) => {})
 const getHandle = vi.fn(async (..._a: unknown[]): Promise<any> => null)
 const listRecent = vi.fn(async (..._a: unknown[]): Promise<any[]> => [])
 const createRecord = vi.fn(async (i: any) => ({ docId: 'new-1', persistenceName: 'p', hasHandle: false, ...i }))
+const storeBase = vi.fn(async (..._a: unknown[]) => {})
+const getBase = vi.fn(async (..._a: unknown[]): Promise<string | null> => null)
 const writeDocText = vi.fn(async (..._a: unknown[]) => 'written')
 vi.mock('../doc-registry', () => ({
   storeHandle: (...a: unknown[]) => storeHandle(...a),
@@ -24,6 +26,8 @@ vi.mock('../doc-registry', () => ({
   listRecent: (...a: unknown[]) => listRecent(...a),
   createRecord: (i: unknown) => createRecord(i),
   writeDocText: (...a: unknown[]) => writeDocText(...a),
+  storeBase: (...a: unknown[]) => storeBase(...a),
+  getBase: (...a: unknown[]) => getBase(...a),
 }))
 
 function fakeHandle() {
@@ -49,6 +53,7 @@ function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
 describe('useFileSave', () => {
   beforeEach(() => {
     disk = ''; saveToHandle.mockClear(); saveFileAs.mockReset()
+    storeBase.mockClear(); getBase.mockReset(); getBase.mockResolvedValue(null)
     storeHandle.mockClear(); getHandle.mockReset(); getHandle.mockResolvedValue(null)
   })
   afterEach(() => { vi.useRealTimers() })
@@ -341,6 +346,44 @@ describe('useFileSave', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
     expect(saveToHandle).not.toHaveBeenCalled()
     expect(saveFileAs).not.toHaveBeenCalled()
+  })
+
+  it('successful save stores the saved text as base', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'saved text')
+    saveFileAs.mockResolvedValue({ handle: fakeHandle() })
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'd1', isDirty: true }), { formatOnSave: false }))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(storeBase).toHaveBeenCalledWith('d1', 'saved text')
+  })
+
+  async function toConflict(docId: string | null) {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'local text')
+    saveFileAs.mockResolvedValue({ handle: fakeHandle() })
+    const hook = renderHook(() => useFileSave(makeSession(doc, { docId, isDirty: true }), { formatOnSave: false }))
+    await act(async () => { await hook.result.current.save({ explicit: true }) })
+    storeBase.mockClear()
+    disk = 'disk text'
+    doc.getMap('meta').set('originHash', 'stale')
+    await act(async () => { await hook.result.current.save({ explicit: true }) })
+    return hook
+  }
+
+  it('conflict carries the stored base', async () => {
+    getBase.mockResolvedValue('common')
+    const { result } = await toConflict('d2')
+    expect(result.current.conflict.open).toBe(true)
+    expect(result.current.conflict.baseContent).toBe('common')
+    await act(async () => { await result.current.revertToDisk() })
+    expect(storeBase).toHaveBeenCalledWith('d2', 'disk text')
+  })
+
+  it('no docId -> no storeBase, baseContent undefined', async () => {
+    const { result } = await toConflict(null)
+    expect(result.current.conflict.baseContent).toBeUndefined()
+    await act(async () => { await result.current.revertToDisk() })
+    expect(storeBase).not.toHaveBeenCalled()
   })
 
   it('Save As stores the handle for session.docId', async () => {
