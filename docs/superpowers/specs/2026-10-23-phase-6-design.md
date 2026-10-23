@@ -456,7 +456,7 @@ moves (6b*) count moved lines once.
 ## Sub-phase queue
 
 - 6a: done
-- 6b1: pending
+- 6b1: planned
 - 6b2: pending
 - 6b3: pending
 - 6c: pending
