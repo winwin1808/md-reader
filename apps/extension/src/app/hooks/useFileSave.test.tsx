@@ -382,6 +382,35 @@ describe('useFileSave', () => {
     expect(result.current.activeHandle).toBeNull()
   })
 
+  it('Cmd+S while needs-permission re-grants and writes to the stored handle', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const h = storedHandle('prompt', 'granted')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec, isDirty: true }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    doc.getMap('meta').set('originHash', await (await import('@md-reader/core')).hashText(''))
+    disk = ''
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(h.requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' })
+    expect(disk).toBe('x')
+    expect(saveFileAs).not.toHaveBeenCalled()
+    expect(result.current.activeHandle).toBe(h)
+  })
+
+  it('Cmd+S while needs-permission and denied -> no write, no picker', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const h = storedHandle('prompt', 'denied')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec, isDirty: true }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(saveToHandle).not.toHaveBeenCalled()
+    expect(saveFileAs).not.toHaveBeenCalled()
+    expect(result.current.saveState.kind).toBe('needs-permission')
+  })
+
   it('autosave does not run while needs-permission', async () => {
     const doc = new Y.Doc()
     doc.getText('source').insert(0, 'x')
