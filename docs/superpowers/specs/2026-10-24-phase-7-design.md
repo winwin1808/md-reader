@@ -416,7 +416,7 @@ Also adds one Playwright case: the app page computed `body` background equals th
 paper colour and `font-family` starts with Literata.
 
 ### 7s2 — remove legacy aliases; sweep
-FILES `packages/ui/src/theme/tokens.css` (delete the legacy alias block) + up to 4 CSS/TSX
+FILES `packages/ui/src/theme/tokens.css` (delete the legacy alias block; also the dead `.toolbar-modal-hosts` rule in toolbar.css) + up to 4 CSS/TSX
 files still using a legacy name (guard lists them at plan time; if > 4, split 7s2/7s3).
 Plus the redundant `expect(getBy…).toBeDefined()` sweep only inside files already touched
 here; the rest stays a documented no-op (they are redundant, not wrong).
