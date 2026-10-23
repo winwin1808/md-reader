@@ -56,7 +56,7 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      setExportError(`Không xuất được tệp: ${message}`)
+      setExportError(message)
     } finally {
       setIsExporting(false)
     }

@@ -15,6 +15,7 @@ import {
   ConflictModal,
   FormattingToolbar,
   applyFormat,
+  Icon,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
@@ -447,58 +448,52 @@ export function App(): React.JSX.Element {
             className="exit-reading-mode-btn md-no-print"
             onClick={() => setIsReadingMode(false)}
           >
-            Thoát đọc tập trung ✕
+            <Icon name="close" size={16} />
+            Thoát chế độ đọc
           </button>
         )}
         <FileDrop>
           {exportError && (
-            <div className="error-banner" role="alert" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{exportError}</div>
-              <div>
+            <div className="error-banner notice notice--danger" role="alert">
+              <span>Không xuất được file. {exportError}</span>
+              <div className="notice__actions">
                 <button type="button" onClick={clearExportError}>Đóng</button>
               </div>
             </div>
           )}
           {session.externalChange && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>File gốc đã thay đổi kể từ lần mở trước.</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="error-banner notice" role="status">
+              <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
+              <div className="notice__actions">
                 <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
-                <button type="button" onClick={session.dismissExternal}>Giữ bản đang sửa</button>
+                <button type="button" onClick={session.dismissExternal}>Giữ bản của tôi</button>
               </div>
             </div>
           )}
           {keptNoticeOpen && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</div>
-              <div>
+            <div className="error-banner notice" role="status">
+              <span>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</span>
+              <div className="notice__actions">
                 <button type="button" onClick={() => setKeptNoticeOpen(false)}>Đã hiểu</button>
               </div>
             </div>
           )}
-          {fileSave.saveState.kind === 'needs-permission' && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>Cần cấp lại quyền ghi cho {fileSave.saveState.fileName}.</div>
-              <div>
-                <button type="button" onClick={() => { void fileSave.grantPermission() }}>Cấp quyền</button>
+          {fileSave.saveState.kind === 'error' && (
+            <div className="error-banner notice notice--danger" role="alert">
+              <span>Không lưu được: {fileSave.saveState.message}</span>
+              <div className="notice__actions">
+                <button type="button" onClick={() => { void fileSave.save({ explicit: true }) }}>Thử lại</button>
+                {fileSave.saveState.canSaveAs && (
+                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành file khác…</button>
+                )}
               </div>
             </div>
           )}
-          {fileSave.saveState.kind === 'error' && (
-            <div className="error-banner" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{fileSave.saveState.message}</div>
-              {fileSave.saveState.canSaveAs && (
-                <div>
-                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành…</button>
-                </div>
-              )}
-            </div>
-          )}
           {error && (
-            <div style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{error}</div>
+            <div className="notice notice--danger" role="alert">
+              <span>{error}</span>
               {fileUrlParam?.startsWith('file:') && (
-                <div>
+                <div className="notice__actions">
                   <button
                     type="button"
                     onClick={() => {
@@ -508,16 +503,6 @@ export function App(): React.JSX.Element {
                         window.open('chrome://extensions')
                       }
                     }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#0070f3',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                    }}
                   >
                     Mở Cài đặt Tiện ích để Bật "Cho phép truy cập vào các URL tệp"
                   </button>
@@ -525,7 +510,7 @@ export function App(): React.JSX.Element {
               )}
             </div>
           )}
-          
+
           {viewMode === 'reading' && hasContent && (
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
