@@ -142,3 +142,23 @@ describe('tokens.css Lề sách token layer', () => {
     expect(read('./a4.css')).not.toMatch(/--md-doc-bg\s*:/);
   });
 });
+
+describe('fonts.css local font imports', () => {
+  const css = fs.readFileSync(path.resolve(__dirname, './fonts.css'), 'utf-8');
+
+  it('imports all three families', () => {
+    expect(css).toContain('@fontsource/literata/');
+    expect(css).toContain('@fontsource/ibm-plex-sans/');
+    expect(css).toContain('@fontsource/ibm-plex-mono/');
+  });
+
+  it('includes the vietnamese subset for every family', () => {
+    for (const fam of ['literata', 'ibm-plex-sans', 'ibm-plex-mono']) {
+      expect(css).toContain(`@fontsource/${fam}/vietnamese-`);
+    }
+  });
+
+  it('uses no network fonts', () => {
+    expect(css).not.toMatch(/googleapis|gstatic|https?:/);
+  });
+});
