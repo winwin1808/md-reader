@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 describe('Service Worker', () => {
   let actionListener: ((tab?: any) => Promise<void> | void) | null = null
   let updatedListener: ((tabId: number, changeInfo: any, tab: any) => Promise<void>) | null = null
+  let startupListener: (() => Promise<void>) | null = null
+  let installedListener: (() => Promise<void>) | null = null
+  let removeMock = vi.fn()
   let tabsUpdateMock = vi.fn()
   let tabsCreateMock = vi.fn()
 
@@ -10,6 +13,9 @@ describe('Service Worker', () => {
     vi.resetModules()
     actionListener = null
     updatedListener = null
+    startupListener = null
+    installedListener = null
+    removeMock = vi.fn().mockResolvedValue(undefined)
     tabsUpdateMock = vi.fn().mockResolvedValue(undefined)
     tabsCreateMock = vi.fn().mockResolvedValue(undefined)
 
@@ -18,6 +24,8 @@ describe('Service Worker', () => {
     globalThis.chrome = {
       runtime: {
         getURL: vi.fn((path) => `chrome-extension://test-id/${path}`),
+        onStartup: { addListener: vi.fn((cb) => { startupListener = cb }) },
+        onInstalled: { addListener: vi.fn((cb) => { installedListener = cb }) },
         onMessage: {
           addListener: vi.fn((cb) => {
             messageListener = cb
@@ -46,6 +54,13 @@ describe('Service Worker', () => {
         },
         local: {
           set: vi.fn().mockResolvedValue(undefined),
+          get: vi.fn().mockResolvedValue({
+            file_content_legacy: '# x',
+            file_content_old: { text: 'x', ts: 0 },
+            file_content_fresh: { text: 'x', ts: Date.now() },
+            other_key: '# keep',
+          }),
+          remove: removeMock,
         },
       },
     } as any
@@ -109,44 +124,26 @@ describe('Service Worker', () => {
     })
   })
 
-  it('does not intercept file:// URLs in tabs.onUpdated', async () => {
+  it('action click on non-markdown tab opens blank app', async () => {
     await import('./index')
-    expect(updatedListener).not.toBeNull()
-
-    await updatedListener!(1, { url: 'file:///Users/me/document.md' }, {})
+    await actionListener!({ id: 3, url: 'https://example.com/page.html' } as any)
     expect(tabsUpdateMock).not.toHaveBeenCalled()
+    expect(tabsCreateMock).toHaveBeenCalledWith({ url: 'chrome-extension://test-id/app.html' })
   })
 
-  it('does not intercept .md navigation by default (alwaysOpenApp is false)', async () => {
+  it('registers no tabs.onUpdated listener', async () => {
     await import('./index')
-    expect(updatedListener).not.toBeNull()
-
-    await updatedListener!(1, { url: 'https://example.com/docs/readme.md' }, {})
-    expect(tabsUpdateMock).not.toHaveBeenCalled()
+    expect(updatedListener).toBeNull()
   })
 
-  it('intercepts .md navigation and updates tab url when alwaysOpenApp is true', async () => {
-    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
+  it('purges only stale/legacy file_content_* keys on startup and install', async () => {
     await import('./index')
-    expect(updatedListener).not.toBeNull()
-
-    await updatedListener!(1, { url: 'https://example.com/docs/readme.md' }, {})
-    expect(tabsUpdateMock).toHaveBeenCalledWith(1, {
-      url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('https://example.com/docs/readme.md'),
-    })
-  })
-
-  it('does not intercept GitHub web blob pages', async () => {
-    await import('./index')
-
-    await updatedListener!(1, { url: 'https://github.com/facebook/react/blob/main/README.md' }, {})
-    expect(tabsUpdateMock).not.toHaveBeenCalled()
-  })
-
-  it('does not intercept extension URLs', async () => {
-    await import('./index')
-
-    await updatedListener!(1, { url: 'chrome-extension://test-id/app.html?file=abc.md' }, {})
-    expect(tabsUpdateMock).not.toHaveBeenCalled()
+    expect(startupListener).not.toBeNull()
+    expect(installedListener).not.toBeNull()
+    await startupListener!()
+    expect(removeMock).toHaveBeenCalledWith(['file_content_legacy', 'file_content_old'])
+    removeMock.mockClear()
+    await installedListener!()
+    expect(removeMock).toHaveBeenCalledWith(['file_content_legacy', 'file_content_old'])
   })
 })

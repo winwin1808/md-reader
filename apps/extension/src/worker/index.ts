@@ -1,7 +1,8 @@
+import { isMarkdownUrl, isStaleCacheEntry } from '../shared/md-url'
+
 chrome.action.onClicked.addListener(async (tab) => {
   const tabUrl = tab?.url || ''
-  const cleanUrl = tabUrl.split('?')[0]?.split('#')[0] || ''
-  if (cleanUrl.match(/\.(md|markdown)$/i) && tab?.id) {
+  if (isMarkdownUrl(tabUrl) && tab?.id) {
     const appUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(tabUrl))
     await chrome.tabs.update(tab.id, { url: appUrl })
     return
@@ -51,69 +52,21 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
   }
 })
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  const targetUrl = changeInfo.url || tab.url
-  if (!targetUrl) return
-
-  // Do not redirect extension pages
-  const appBaseUrl = chrome.runtime.getURL('')
-  if (targetUrl.startsWith(appBaseUrl)) return
-
-  // Check if URL ends with markdown extension (strip query params and hash)
-  const cleanUrl = targetUrl.split('?')[0]?.split('#')[0] || ''
-  if (!cleanUrl.match(/\.(md|markdown|mdown|mkd|mdx)$/i)) return
-
-  // Skip GitHub web blob pages (e.g. github.com/owner/repo/blob/...)
-  if (targetUrl.includes('github.com') && targetUrl.includes('/blob/')) return
-
-  // Skip file:// URLs here because content.js must run first to extract and cache DOM content!
-  if (targetUrl.startsWith('file:')) return
-
+async function purgeStaleCache(): Promise<void> {
   try {
-    let localSettings: any = {}
-    let syncSettings: any = {}
-    if (typeof chrome.storage?.local?.get === 'function') {
-      localSettings = (await chrome.storage.local.get(['alwaysOpenApp', 'autoFormatMd'])) || {}
-    }
-    if (typeof chrome.storage?.sync?.get === 'function') {
-      syncSettings = (await chrome.storage.sync.get(['alwaysOpenApp', 'autoFormatMd'])) || {}
-    }
-
-    let autoFormatMd = true
-    let alwaysOpenApp = false
-    if (typeof localSettings.autoFormatMd === 'boolean') {
-      autoFormatMd = localSettings.autoFormatMd
-    } else if (typeof syncSettings.autoFormatMd === 'boolean') {
-      autoFormatMd = syncSettings.autoFormatMd
-    }
-
-    if (typeof localSettings.alwaysOpenApp === 'boolean') {
-      alwaysOpenApp = localSettings.alwaysOpenApp
-    } else if (typeof syncSettings.alwaysOpenApp === 'boolean') {
-      alwaysOpenApp = syncSettings.alwaysOpenApp
-    }
-
-    if (autoFormatMd === false) return
-    if (alwaysOpenApp === false) {
-      if ((chrome as any).scripting?.executeScript) {
-        try {
-          await (chrome as any).scripting.executeScript({
-            target: { tabId },
-            files: ['content.js'],
-          })
-        } catch {
-          // Ignored
-        }
-      }
-      return
-    }
-
-    const appUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(targetUrl))
-    await chrome.tabs.update(tabId, { url: appUrl })
+    const all = (await chrome.storage?.local?.get?.(null)) || {}
+    const now = Date.now()
+    const stale = Object.keys(all).filter(
+      (k) => k.startsWith('file_content_') && isStaleCacheEntry(all[k], now),
+    )
+    if (stale.length) await chrome.storage.local.remove(stale)
   } catch (err) {
-    console.warn('MD Reader worker navigation error:', err)
+    console.warn('Failed to purge stale cache:', err)
   }
-})
+}
+
+chrome.runtime?.onStartup?.addListener(purgeStaleCache)
+chrome.runtime?.onInstalled?.addListener(purgeStaleCache)
 
 export {}
 
