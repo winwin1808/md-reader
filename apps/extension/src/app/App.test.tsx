@@ -1246,7 +1246,7 @@ describe('App', () => {
     })
 
     // User chooses to keep local
-    const keepLocalBtn = screen.getByText(/giữ bản sửa|keep local/i)
+    const keepLocalBtn = screen.getByText(/giữ bản của tôi|keep local/i)
     await act(async () => {
       fireEvent.click(keepLocalBtn)
       await Promise.resolve()
