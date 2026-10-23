@@ -96,8 +96,8 @@ export function App(): React.JSX.Element {
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
-  const exportHostRef = useRef<HTMLDivElement | null>(null)
-  const settingsHostRef = useRef<HTMLDivElement | null>(null)
+  const [exportOpen, setExportOpen] = useState<boolean>(false)
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -337,13 +337,10 @@ export function App(): React.JSX.Element {
               ? { kind: 'saved', at: ss.at }
               : { kind: 'none' }
 
-  const clickHosted = (host: React.RefObject<HTMLDivElement | null>) => () => {
-    host.current?.querySelector('button')?.click()
-  }
   const toolbarActions: ToolbarAction[] = [
     { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
-    { id: 'export', label: 'Xuất file', icon: 'export', onSelect: clickHosted(exportHostRef) },
-    { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: clickHosted(settingsHostRef) },
+    { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
+    { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
   ]
 
   return (
@@ -441,14 +438,10 @@ export function App(): React.JSX.Element {
           onSave={() => fileSave.save({ explicit: true })}
           actions={toolbarActions}
         />
-        <div className="toolbar-modal-hosts md-no-print" inert>
-          <div ref={exportHostRef}>
-            <ExportModal onExport={exportAs} isExporting={isExporting} />
-          </div>
-          <div ref={settingsHostRef}>
-            <SettingsModal settings={readerSettings} onSettingChange={handleSettingChange} />
-          </div>
-        </div>
+        <>
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} isExporting={isExporting} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
+        </>
         {isReadingMode && (
           <button
             className="exit-reading-mode-btn md-no-print"

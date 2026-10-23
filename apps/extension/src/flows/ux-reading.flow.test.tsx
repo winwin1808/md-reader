@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { App } from '../app/App'
 import { createRecord, writeDocText } from '../app/doc-registry'
 
@@ -158,12 +158,38 @@ const greeting = "Hello World";
 
     // 8. SettingsModal Font Family:
     // Open Settings button (title="Settings" / "Cài đặt").
-    const settingsBtn = screen.getByRole('button', { name: 'Settings' })
+    const settingsBtn = screen.getByRole('button', { name: 'Cài đặt' })
     fireEvent.click(settingsBtn)
 
     // Click font option "Serif". Verify data-font-family="serif" is set on container.
     const serifOption = screen.getByRole('button', { name: 'Serif' })
     fireEvent.click(serifOption)
     expect(document.querySelector('[data-font-family="serif"]')).not.toBeNull()
+  })
+
+  it('opens settings/export from the app bar, returns focus on Esc, and closes the menu on Tab out', async () => {
+    await openDroppedDoc('F', '# Focus\n\nbody')
+    render(<App />)
+    await waitFor(() => expect(document.querySelector('header.top-toolbar')).not.toBeNull())
+    const bar = within(document.querySelector('header.top-toolbar') as HTMLElement)
+    expect(document.querySelector('.toolbar-modal-hosts')).toBeNull()
+
+    for (const [name] of [['Cài đặt'], ['Xuất file']] as const) {
+      const btn = bar.getByRole('button', { name })
+      btn.focus()
+      fireEvent.click(btn)
+      expect(screen.getByRole('dialog')).toBeDefined()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(document.activeElement).toBe(btn)
+    }
+
+    const more = bar.getByRole('button', { name: 'Thêm' })
+    fireEvent.click(more)
+    const items = screen.getAllByRole('menuitem')
+    const last = items[items.length - 1] as HTMLElement
+    last.focus()
+    fireEvent.blur(last, { relatedTarget: document.body })
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
   })
 })
