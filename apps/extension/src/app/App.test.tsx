@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto'
 import React from 'react'
 import { render, screen, act, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -19,6 +20,17 @@ vi.mock('y-indexeddb', () => {
         once: vi.fn(),
       }
     }),
+  }
+})
+
+vi.mock('./doc-registry', () => {
+  const recs = new Map<string, any>()
+  return {
+    migrateLegacyRegistry: async () => 0,
+    findByOrigin: async (o: string) => recs.get(o) ?? null,
+    getRecord: async () => null,
+    createRecord: async (i: any) => { const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
+    touchRecord: async () => {},
   }
 })
 
@@ -1083,6 +1095,7 @@ describe('App', () => {
         fireEvent.keyDown(window, { key: 's', metaKey: true })
         for (let i = 0; i < 20; i++) await Promise.resolve()
       })
+      await act(async () => { await vi.advanceTimersByTimeAsync(0) })
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)
       saveToHandleSpy.mockClear()
 

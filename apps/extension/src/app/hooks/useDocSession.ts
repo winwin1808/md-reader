@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { hashText, applyTextChange, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
-import { addRecentFile } from '../registry'
+import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
+import { findByOrigin, getRecord, createRecord, touchRecord, migrateLegacyRegistry } from '../doc-registry'
+import type { DocRecord } from '../doc-registry'
+
+let migrationOnce: Promise<unknown> | null = null
 
 export interface DocSession {
+  docId: string | null
+  record: DocRecord | null
   doc: Y.Doc; yText: Y.Text; undoManager: Y.UndoManager
   content: string
   title: string
@@ -19,44 +24,92 @@ export interface DocSession {
   dismissExternal(): void
 }
 
-export function useDocSession(opts: { fileUrl: string | null }): DocSession {
-  const fileUrlParam = opts.fileUrl
+export function useDocSession(opts: { docId: string | null; fileUrl: string | null }): DocSession {
+  const { docId: docIdParam, fileUrl: fileUrlParam } = opts
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
   const [docTitle, setDocTitle] = useState<string>('')
   const [hasContent, setHasContent] = useState(false)
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
+  const [record, setRecord] = useState<DocRecord | null>(null)
   const isFileContentSetRef = useRef<boolean>(false)
   const syncedPromiseRef = useRef<Promise<unknown>>(Promise.resolve())
   const [externalChange, setExternalChange] = useState<{ remoteText: string; remoteHash: string } | null>(null)
 
-  const persistenceName = useMemo(() => {
-    if (!fileUrlParam) return 'md-reader'
-    return `md-reader-${encodeURIComponent(fileUrlParam)}`
-  }, [fileUrlParam])
+  // Resolve the registry record (async, once per opts change)
+  useEffect(() => {
+    let cancelled = false
+    setRecord(null)
+    if (!docIdParam && !fileUrlParam) return
+    ;(async () => {
+      try {
+        if (!migrationOnce) migrationOnce = migrateLegacyRegistry().catch(() => 0)
+        await migrationOnce
+        let rec: DocRecord | null = null
+        if (docIdParam) {
+          rec = await getRecord(docIdParam)
+          if (!rec) {
+            if (!cancelled) setError('Không tìm thấy tài liệu này.')
+            return
+          }
+        } else if (fileUrlParam) {
+          rec =
+            (await findByOrigin(fileUrlParam)) ??
+            (await createRecord({
+              title: decodeURIComponent(fileUrlParam.split('/').pop() || 'Untitled.md'),
+              originKind: 'url',
+              originPath: fileUrlParam,
+            }))
+          try {
+            window.history.replaceState(null, '', '?doc=' + rec.docId)
+          } catch {
+            /* ignore */
+          }
+        }
+        if (!cancelled) setRecord(rec)
+      } catch (err) {
+        console.warn('Failed to resolve document record:', err)
+        if (!cancelled) setError('Không thể mở tài liệu này.')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [docIdParam, fileUrlParam])
 
-  const doc = useMemo(() => new Y.Doc(), [fileUrlParam])
+  const persistenceName = record ? record.persistenceName : (!docIdParam && !fileUrlParam ? 'md-reader' : null)
+
+  const doc = useMemo(() => new Y.Doc({ gc: false }), [record?.docId])
   const yText = useMemo(() => doc.getText('source'), [doc])
   const undoManager = useMemo(() => new Y.UndoManager(yText), [yText])
 
   useEffect(() => {
     setSynced(false)
+    let cancelled = false
     let persistence: IndexeddbPersistence | null = null
-    try {
-      persistence = new IndexeddbPersistence(persistenceName, doc)
-    } catch (err) {
-      console.warn('Failed to initialize IndexeddbPersistence:', err)
-    }
-    syncedPromiseRef.current = persistence ? persistence.whenSynced : Promise.resolve()
-    
-    const text = doc.getText('source')
-    const meta = doc.getMap('meta')
-    const updateTitle = () => {
-      const name = (meta.get('name') as string) || ''
-      if (name) {
-        setDocTitle(name.replace(/\.[^/.]+$/, ''))
+    if (persistenceName) {
+      try {
+        persistence = new IndexeddbPersistence(persistenceName, doc)
+      } catch (err) {
+        console.warn('Failed to initialize IndexeddbPersistence:', err)
       }
+    }
+    const rec = record
+    const whenSynced = persistence ? persistence.whenSynced : Promise.resolve()
+    syncedPromiseRef.current = (async () => {
+      await whenSynced
+      if (rec && !cancelled) {
+        ensureDoc(doc, { title: rec.title })
+        touchRecord(rec.docId).catch(console.error)
+      }
+    })()
+
+    const text = doc.getText('source')
+    const meta = getMeta(doc)
+    const updateTitle = () => {
+      // legacy 'name' is still written by FileDrop until 6e4 moves it to 'title'
+      const legacy = meta.get('name')
+      const t = typeof legacy === 'string' && legacy ? legacy : meta.get('title') !== undefined ? readMeta(doc).title : ''
+      if (t) setDocTitle(t.replace(/\.[^/.]+$/, ''))
     }
     const observer = (event: Y.YTextEvent) => {
       setHasContent(text.length > 0)
@@ -82,19 +135,20 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
     }
 
     return () => {
+      cancelled = true
       text.unobserve(observer)
       meta.unobserve(updateTitle)
       if (persistence) {
         persistence.destroy()
       }
     }
-  }, [doc, persistenceName])
+  }, [doc, persistenceName, record])
 
   // Handle URL file param
   useEffect(() => {
     isFileContentSetRef.current = false
     setExternalChange(null)
-    const fileUrl = fileUrlParam
+    const fileUrl = record && record.originKind === 'url' ? record.originPath : null
     if (fileUrl) {
       let cancelled = false
       const loadContent = async (remote: string) => {
@@ -107,7 +161,7 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
         const applyRemote = (h: string) => {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
-            meta.set('name', name)
+            meta.set('title', name)
             meta.set('originHash', h)
           }, ORIGIN_LOAD)
           setContent(remote)
@@ -119,12 +173,11 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
         if (origin0 == null && local === '') {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
-            meta.set('name', name)
+            meta.set('title', name)
           }, ORIGIN_LOAD)
           setContent(remote)
           setHasContent(remote.length > 0)
           setIsDirty(false)
-          setDocTitle(name.replace(/\.[^/.]+$/, ''))
           const h0 = await hashText(remote)
           if (!cancelled) meta.set('originHash', h0)
         } else {
@@ -149,13 +202,6 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
             setExternalChange({ remoteText: remote, remoteHash: h })
           }
         }
-        setDocTitle(name.replace(/\.[^/.]+$/, ''))
-
-        addRecentFile({
-          id: fileUrl,
-          name,
-          lastOpened: Date.now()
-        }).catch(console.error)
       }
 
       const cacheKey = 'file_content_' + fileUrl
@@ -214,7 +260,7 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
       }
       return () => { cancelled = true }
     }
-  }, [doc, fileUrlParam])
+  }, [doc, record])
 
   const acceptExternal = () => {
     const ext = externalChange
@@ -231,6 +277,8 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
   const dismissExternal = () => setExternalChange(null)
 
   return {
+    docId: record ? record.docId : null,
+    record,
     doc, yText, undoManager,
     content,
     title: docTitle,
