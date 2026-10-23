@@ -37,14 +37,12 @@ describe('E2E integration test for A4 layout, toolbar, search, code copy, ToC, a
   })
 
   afterEach(() => {
+    window.history.replaceState(null, '', '/')
     vi.useRealTimers()
   })
 
   it('verifies A4 layout, toolbar, reading mode, search, code copy, ToC collapse, and font family', async () => {
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).toBeNull()
-    })
 
     const fileContent = `# Main Guide
 
@@ -64,7 +62,6 @@ const greeting = "Hello World";
 - [ ] Pending task`
 
     const file = new File([fileContent], 'ux-doc.md', { type: 'text/markdown' })
-    file.text = async () => fileContent
 
     await openDroppedDoc(file.name, fileContent)
     render(React.createElement(App))

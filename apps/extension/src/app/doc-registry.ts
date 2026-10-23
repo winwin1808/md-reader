@@ -158,6 +158,15 @@ export async function touchRecord(docId: string, patch?: Partial<Omit<DocRecord,
   await done(tx)
 }
 
+export async function deleteRecord(docId: string): Promise<void> {
+  const db = await openDb()
+  const tx = db.transaction(['docs', 'handles', 'bases'], 'readwrite')
+  tx.objectStore('docs').delete(docId)
+  tx.objectStore('handles').delete(docId)
+  tx.objectStore('bases').delete(docId)
+  await done(tx)
+}
+
 export async function listRecent(limit = 10): Promise<DocRecord[]> {
   const db = await openDb()
   const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]

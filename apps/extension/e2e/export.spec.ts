@@ -34,6 +34,7 @@ describe('E2E smoke test for themes and export formats', () => {
   })
 
   afterEach(() => {
+    window.history.replaceState(null, '', '/')
     vi.useRealTimers()
   })
 
@@ -48,13 +49,9 @@ describe('E2E smoke test for themes and export formats', () => {
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
 
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).toBeNull()
-    })
 
     const fileContent = '# Title\n\n## Subtitle\n\nParagraph text.'
     const file = new File([fileContent], 'my-doc.md', { type: 'text/markdown' })
-    file.text = async () => fileContent
 
     await openDroppedDoc(file.name, fileContent)
     render(React.createElement(App))
