@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import type { DragEvent } from 'react';
 import * as Y from 'yjs';
+import { applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core';
 import { addRecentFile } from './registry';
 
 interface FileDropProps {
@@ -28,16 +29,17 @@ export function FileDrop({ doc, children }: FileDropProps): React.JSX.Element {
       }
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const content = event.target?.result as string;
         if (typeof content === 'string') {
           const source = doc.getText('source');
-          source.delete(0, source.length);
-          source.insert(0, content);
-
           const meta = doc.getMap('meta');
-          meta.set('name', file.name);
-          meta.set('size', file.size);
+          doc.transact(() => {
+            applyTextChange(source, content);
+            meta.set('name', file.name);
+            meta.set('size', file.size);
+          }, ORIGIN_LOAD);
+          meta.set('originHash', await hashText(content));
 
           addRecentFile({
             id: file.name,

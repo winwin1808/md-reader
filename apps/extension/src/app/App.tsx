@@ -25,6 +25,8 @@ import {
   renderToHtml,
   splitIntoSlides,
   extractMindmap,
+  applyTextChange,
+  computeTextChanges,
 } from '@md-reader/core'
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -179,14 +181,15 @@ export function App(): React.JSX.Element {
     if (view) {
       const { from, to } = view.state.selection.main
       const current = yText.toString()
-      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(current, from, to, action)
-      doc.transact(() => {
-        yText.delete(0, yText.length)
-        yText.insert(0, newText)
-      })
+      const r = applyFormat(current, from, to, action)
       view.dispatch({
-        selection: { anchor: newSelectionStart, head: newSelectionEnd },
-        scrollIntoView: true,
+        changes: computeTextChanges(current, r.newText).map((c) => ({
+          from: c.index,
+          to: c.index + c.deleteCount,
+          insert: c.insert,
+        })),
+        selection: { anchor: r.newSelectionStart, head: r.newSelectionEnd },
+        userEvent: 'input.format',
       })
       view.focus()
       return
@@ -196,23 +199,15 @@ export function App(): React.JSX.Element {
     if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
       const start = activeEl.selectionStart ?? 0
       const end = activeEl.selectionEnd ?? 0
-      const current = yText.toString()
-      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(current, start, end, action)
-      doc.transact(() => {
-        yText.delete(0, yText.length)
-        yText.insert(0, newText)
-      })
+      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(yText.toString(), start, end, action)
+      applyTextChange(yText, newText)
       setTimeout(() => {
         activeEl.focus()
         activeEl.setSelectionRange?.(newSelectionStart, newSelectionEnd)
       }, 0)
     } else {
-      const current = yText.toString()
-      const { newText } = applyFormat(current, 0, 0, action)
-      doc.transact(() => {
-        yText.delete(0, yText.length)
-        yText.insert(0, newText)
-      })
+      const { newText } = applyFormat(yText.toString(), 0, 0, action)
+      applyTextChange(yText, newText)
     }
   }
 
@@ -393,7 +388,7 @@ export function App(): React.JSX.Element {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           isDirty={isDirty}
-          onSave={() => fileSave.save()}
+          onSave={() => fileSave.save({ explicit: true })}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={exportAs} isExporting={isExporting} />
