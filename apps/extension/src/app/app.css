@@ -4,8 +4,8 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
-  color: var(--md-fg, #24292f);
+  background-color: var(--surface);
+  color: var(--ink);
 }
 
 #root {
@@ -18,8 +18,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
-  color: var(--md-fg, #24292f);
+  background-color: var(--surface);
+  color: var(--ink);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -52,7 +52,7 @@ body {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
   padding-left: 12px;
-  border-left: 1px solid var(--md-border-subtle, var(--md-border));
+  border-left: 1px solid var(--rule);
 }
 
 .md-toc {
@@ -65,7 +65,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--md-fg-muted);
+  color: var(--pencil);
   margin-bottom: 12px;
   padding-left: 8px;
 }
@@ -83,9 +83,9 @@ body {
 .md-toc li a {
   display: block;
   padding: 6px 10px;
-  color: var(--md-fg-muted);
+  color: var(--pencil);
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: var(--r-m);
   border-left: 2px solid transparent;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -94,15 +94,15 @@ body {
 }
 
 .md-toc li a:hover {
-  color: var(--md-fg);
-  background-color: var(--md-hover-bg, rgba(125, 125, 125, 0.08));
+  color: var(--ink);
+  background-color: var(--hover);
 }
 
 .md-toc li a[aria-current="true"] {
-  color: var(--md-link);
+  color: var(--accent);
   font-weight: 600;
-  background-color: var(--md-active-bg, rgba(125, 125, 125, 0.08));
-  border-left-color: var(--md-link);
+  background-color: var(--active);
+  border-left-color: var(--accent);
 }
 
 @media (max-width: 1080px) {
