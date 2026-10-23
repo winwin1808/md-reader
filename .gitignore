@@ -13,3 +13,5 @@ spike/
 
 # Cursor rules do codegraph sinh ra — dự án này dùng Claude Code
 .cursor/
+
+.claude/settings.local.json
