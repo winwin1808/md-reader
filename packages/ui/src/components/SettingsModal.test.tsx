@@ -1,13 +1,18 @@
 import React from 'react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { SettingsModal } from './SettingsModal';
 
+
+const section = (name: string) => screen.getByRole('region', { name });
 
 describe('SettingsModal', () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   const defaultProps = {
@@ -58,9 +63,10 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
 
     expect(screen.getByText('Kiểu phông chữ')).toBeInTheDocument();
-    const sansBtn = screen.getByRole('button', { name: 'Sans-serif' });
-    const serifBtn = screen.getByRole('button', { name: 'Serif' });
-    const monoBtn = screen.getByRole('button', { name: 'Monospace' });
+    const look = within(section('Chữ và màu'));
+    const sansBtn = look.getByRole('button', { name: 'Sans-serif' });
+    const serifBtn = look.getByRole('button', { name: 'Serif' });
+    const monoBtn = look.getByRole('button', { name: 'Monospace' });
 
     expect(sansBtn).toBeInTheDocument();
     expect(serifBtn).toBeInTheDocument();
@@ -76,117 +82,119 @@ describe('SettingsModal', () => {
     expect(onFontFamilyChange).toHaveBeenCalledWith('sans');
   });
 
-  it('uses proper CSS variables for background and text colors', () => {
-    render(
-      <SettingsModal 
-        {...defaultProps}
-      />
-    );
+  it('is a labelled modal dialog with one Đóng button and Esc closes', () => {
+    const onOpenChange = vi.fn();
+    render(<SettingsModal {...defaultProps} open onOpenChange={onOpenChange} />);
+    const dialog = screen.getByRole('dialog', { name: 'Cài đặt' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getAllByRole('button', { name: 'Đóng' })).toHaveLength(1);
+    expect(dialog.textContent).not.toContain('\u2715');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 
+  it('close button closes the dialog', () => {
+    render(<SettingsModal {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
-    
-    // The dialog content is the first child of the dialog overlay
-    const dialog = screen.getByRole('dialog');
-    const content = dialog.firstChild as HTMLElement;
-    
-    expect(content).toHaveStyle({
-      background: 'var(--md-bg)',
-      color: 'var(--md-fg)',
-    });
-
-    const closeBtn = screen.getByRole('button', { name: /close/i });
-    expect(closeBtn).toHaveStyle({
-      color: 'var(--md-fg)',
-    });
-
-    fireEvent.click(closeBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('applies polished styling to trigger button, backdrop, and modal container', () => {
-    render(
-      <SettingsModal 
-        {...defaultProps}
-      />
-    );
-
-    const gearButton = screen.getByRole('button', { name: /settings/i });
-    expect(gearButton.style.borderRadius).toBe('10px');
-    expect(gearButton.style.boxShadow).toBe('0 4px 12px rgba(0,0,0,0.08)');
-    expect(gearButton.style.backdropFilter).toBe('blur(8px)');
-    expect(gearButton.style.cursor).toBe('pointer');
-
-    fireEvent.click(gearButton);
-
+  it('traps Tab inside the dialog', () => {
+    render(<SettingsModal {...defaultProps} open />);
     const dialog = screen.getByRole('dialog');
-    expect(dialog.style.backgroundColor).toBe('rgba(0, 0, 0, 0.45)');
-    expect(dialog.style.backdropFilter).toBe('blur(8px)');
-
-    const modalContainer = dialog.firstChild as HTMLElement;
-    expect(modalContainer.style.borderRadius).toBe('16px');
-    expect(modalContainer.style.border).toBe('1px solid var(--md-border)');
-    expect(modalContainer.style.boxShadow).toBe('0 24px 48px -12px rgba(0,0,0,0.25)');
-    expect(modalContainer.style.padding).toBe('24px 28px');
-    expect(modalContainer.style.minWidth).toBe('340px');
+    const items = Array.from(dialog.querySelectorAll<HTMLElement>('button, input'));
+    const last = items[items.length - 1]!;
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(items[0]!, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
   });
 
-  it('supports 5-tab navigation and displays respective sections', () => {
-    render(<SettingsModal {...defaultProps} />);
+  it('renders the five section headings in order', () => {
+    render(<SettingsModal {...defaultProps} open />);
+    const hs = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(hs).toEqual(['Chữ và màu', 'Nội dung trong tài liệu', 'Khi mở file .md', 'Hỗ trợ đọc', 'Trình chiếu']);
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+  it('every listed key has a control in its section and fires the same onChange', () => {
+    const onSettingChange = vi.fn();
+    render(
+      <SettingsModal
+        {...defaultProps}
+        open
+        settings={{ contrast: 'standard', settingsVersion: 2 }}
+        onSettingChange={onSettingChange}
+      />,
+    );
+    const toggles: Array<[string, string, string]> = [
+      ['Nội dung trong tài liệu', 'stripFrontmatter', 'settings-stripFrontmatter'],
+      ['Nội dung trong tài liệu', 'displayMetadata', 'settings-displayMetadata'],
+      ['Nội dung trong tài liệu', 'enableMath', 'settings-enableMath'],
+      ['Nội dung trong tài liệu', 'enableMermaid', 'settings-enableMermaid'],
+      ['Nội dung trong tài liệu', 'githubAlerts', 'settings-githubAlerts'],
+      ['Nội dung trong tài liệu', 'localizeAlerts', 'settings-localizeAlerts'],
+      ['Nội dung trong tài liệu', 'typographer', 'settings-typographer'],
+      ['Nội dung trong tài liệu', 'externalLinks', 'settings-externalLinks'],
+      ['Khi mở file .md', 'alwaysOpenApp', 'settings-alwaysOpenApp'],
+      ['Khi mở file .md', 'autoFormatMd', 'settings-autoFormatMd'],
+      ['Khi mở file .md', 'formatOnSave', 'settings-formatOnSave'],
+      ['Hỗ trợ đọc', 'showWordCount', 'settings-showWordCount'],
+      ['Hỗ trợ đọc', 'autoHideWordCount', 'settings-autoHideWordCount'],
+      ['Hỗ trợ đọc', 'showReadingProgress', 'settings-showReadingProgress'],
+      ['Hỗ trợ đọc', 'celebrationConfetti', 'settings-celebrationConfetti'],
+    ];
+    for (const [sec, key, id] of toggles) {
+      const el = section(sec).querySelector<HTMLInputElement>(`#${id}`);
+      expect(el, key).not.toBeNull();
+      fireEvent.click(el!);
+      expect(onSettingChange).toHaveBeenCalledWith(key, true);
+    }
+    const slides = section('Trình chiếu');
+    for (const key of ['slideBgColor', 'slideTextColor', 'slideHeadingColor', 'slideAccentColor', 'slideFont', 'slideBgImage']) {
+      const el = slides.querySelector<HTMLInputElement>(`#settings-${key}`);
+      expect(el, key).not.toBeNull();
+      fireEvent.change(el!, { target: { value: 'x' } });
+      expect(onSettingChange).toHaveBeenCalledWith(key, 'x');
+    }
+    fireEvent.change(slides.querySelector<HTMLInputElement>('#settings-slideImageOpacity')!, { target: { value: '40' } });
+    expect(onSettingChange).toHaveBeenCalledWith('slideImageOpacity', 40);
 
-    // 5 tabs should be visible
-    const displayTab = screen.getByRole('tab', { name: /giao diện/i });
-    const coreTab = screen.getByRole('tab', { name: /core rendering/i });
-    const mediaTab = screen.getByRole('tab', { name: /nội dung & sơ đồ/i });
-    const readingTab = screen.getByRole('tab', { name: /hỗ trợ đọc/i });
-    const presentationTab = screen.getByRole('tab', { name: /trình chiếu/i });
+    const look = section('Chữ và màu');
+    fireEvent.click(within(look).getByRole('button', { name: 'Tối' }));
+    expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
+    fireEvent.click(within(look).getByRole('button', { name: 'Serif' }));
+    expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
+  });
 
-    expect(displayTab).toBeInTheDocument();
-    expect(coreTab).toBeInTheDocument();
-    expect(mediaTab).toBeInTheDocument();
-    expect(readingTab).toBeInTheDocument();
-    expect(presentationTab).toBeInTheDocument();
+  it('shows an index at >= 900px that scrolls the section into view', () => {
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes('900'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    const spy = vi.fn();
+    Element.prototype.scrollIntoView = spy;
+    render(<SettingsModal {...defaultProps} open />);
+    const nav = screen.getByRole('navigation', { name: 'Mục cài đặt' });
+    const buttons = within(nav).getAllByRole('button');
+    expect(buttons).toHaveLength(5);
+    expect(buttons[0]).toHaveAttribute('aria-current', 'true');
+    fireEvent.click(buttons[3]!);
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }));
+    expect(spy.mock.instances[0]).toBe(section('Hỗ trợ đọc'));
+    expect(buttons[3]).toHaveAttribute('aria-current', 'true');
+    // @ts-expect-error cleanup
+    delete window.matchMedia;
+  });
 
-    // Default tab is display
-    expect(screen.getByText('Chế độ hiển thị')).toBeInTheDocument();
-
-    // Switch to Core tab
-    fireEvent.click(coreTab);
-    expect(screen.getByText('Front Matter')).toBeInTheDocument();
-    expect(screen.getByText('Strip YAML front matter (---) blocks instead of rendering them as text')).toBeInTheDocument();
-    expect(screen.getByText('Display Metadata')).toBeInTheDocument();
-    expect(screen.queryByText("Advanced Tables")).toBeNull();
-    expect(screen.queryByText("Task Lists")).toBeNull();
-
-    // Switch to Media tab
-    fireEvent.click(mediaTab);
-    expect(screen.getByText('Math Equations')).toBeInTheDocument();
-    expect(screen.getByText('Render LaTeX math equations ($...$ inline, $$...$$ display)')).toBeInTheDocument();
-    expect(screen.getByText('Mermaid Diagrams')).toBeInTheDocument();
-    expect(screen.queryByText("PlantUML Diagrams")).toBeNull();
-    expect(screen.queryByText("Graphviz Diagrams")).toBeNull();
-    expect(screen.getByText('GitHub Alerts')).toBeInTheDocument();
-    expect(screen.getByText('Localize Alert Titles')).toBeInTheDocument();
-
-    // Switch to Reading tab
-    fireEvent.click(readingTab);
-    expect(screen.getByText('Typographer')).toBeInTheDocument();
-    expect(screen.getByText('External Link Indicators')).toBeInTheDocument();
-    expect(screen.getByText('Show word count')).toBeInTheDocument();
-    expect(screen.getByText('Auto-hide word count')).toBeInTheDocument();
-    expect(screen.getByText('Show reading progress')).toBeInTheDocument();
-    expect(screen.getByText('Celebration animation')).toBeInTheDocument();
-
-    // Switch to Presentation tab
-    fireEvent.click(presentationTab);
-    expect(screen.getByText('Background Color')).toBeInTheDocument();
-    expect(screen.getByText('Text Color')).toBeInTheDocument();
-    expect(screen.getByText('Heading Color')).toBeInTheDocument();
-    expect(screen.getByText('Accent Color')).toBeInTheDocument();
-    expect(screen.getByText('Slide Font')).toBeInTheDocument();
-    expect(screen.getByText('Background Image URL')).toBeInTheDocument();
-    expect(screen.getByText('Image Opacity')).toBeInTheDocument();
+  it('settings.css has no outline: none and no rgba( literal', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/theme/settings.css'), 'utf8');
+    expect(css).not.toMatch(/outline:\s*none/);
+    expect(css).not.toContain('rgba(');
   });
 
   it('triggers onSettingChange when toggling switches or typing in fields', () => {
@@ -210,19 +218,16 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
 
     // Removed dead rows
-    fireEvent.click(screen.getByRole('tab', { name: /core rendering/i }));
     expect(screen.queryByLabelText(/advanced tables/i)).toBeNull();
     expect(screen.queryByLabelText(/task lists/i)).toBeNull();
 
     // Display tab: format on save
-    fireEvent.click(screen.getByRole('tab', { name: /giao diện/i }));
     const fmt = screen.getByLabelText(/Định dạng Markdown khi lưu/i);
     expect(fmt).not.toBeChecked();
     fireEvent.click(fmt);
     expect(onSettingChange).toHaveBeenCalledWith('formatOnSave', true);
 
     // Media tab toggle
-    fireEvent.click(screen.getByRole('tab', { name: /nội dung & sơ đồ/i }));
     const mathCheckbox = screen.getByLabelText(/math equations/i);
     fireEvent.click(mathCheckbox);
     expect(onSettingChange).toHaveBeenCalledWith('enableMath', true);
@@ -234,7 +239,6 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('enableMermaid', true);
 
     // Presentation tab input
-    fireEvent.click(screen.getByRole('tab', { name: /trình chiếu/i }));
     const fontInput = screen.getByLabelText(/slide font/i);
     expect(fontInput).toHaveValue('Georgia');
     fireEvent.change(fontInput, { target: { value: 'Inter' } });
@@ -268,7 +272,7 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
 
     // Font
-    fireEvent.click(screen.getByRole('button', { name: 'Serif' }));
+    fireEvent.click(within(section('Chữ và màu')).getByRole('button', { name: 'Serif' }));
     expect(onFontFamilyChange).toHaveBeenCalledTimes(1);
     expect(onFontFamilyChange).toHaveBeenCalledWith('serif');
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
@@ -298,7 +302,6 @@ describe('SettingsModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
-    fireEvent.click(screen.getByRole('tab', { name: /trình chiếu/i }));
 
     // Color quick preset
     const blueBtn = screen.getAllByTitle('#2563eb')[0]!;
@@ -306,7 +309,7 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('slideBgColor', '#2563eb');
 
     // Font preset button
-    const monoFontBtn = screen.getByRole('button', { name: 'Monospace' });
+    const monoFontBtn = within(section('Trình chiếu')).getByRole('button', { name: 'Monospace' });
     fireEvent.click(monoFontBtn);
     expect(onSettingChange).toHaveBeenCalledWith('slideFont', expect.stringContaining('monospace'));
 

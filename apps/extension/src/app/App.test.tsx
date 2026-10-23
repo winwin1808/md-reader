@@ -583,7 +583,7 @@ describe('App', () => {
     })
 
     // Font family options should be shown (e.g., serif button or option)
-    const monoOption = screen.getByRole('button', { name: 'Monospace' })
+    const monoOption = screen.getAllByRole('button', { name: 'Monospace' })[0]!
     expect(monoOption).toBeDefined()
 
     await act(async () => {
@@ -614,7 +614,7 @@ describe('App', () => {
       const sync = (window as any).chrome.storage.sync
       const local = (window as any).chrome.storage.local
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Monospace' })) })
+      await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Monospace' })[0]!) })
       const all = [...sync.set.mock.calls, ...local.set.mock.calls]
       expect(all.length).toBeGreaterThan(0)
       expect(all.some((c: any[]) => 'colorTheme' in c[0])).toBe(false)
