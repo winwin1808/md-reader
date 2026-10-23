@@ -2,12 +2,12 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--paper);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   box-sizing: border-box;
 }
 
@@ -16,14 +16,14 @@
 }
 
 .speaker-view-header {
-  height: 56px;
+  min-height: 72px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
   font-size: 14px;
 }
 
@@ -37,24 +37,31 @@
 
 .speaker-slide-counter {
   font-weight: 600;
-  font-size: 15px;
-  color: #f1f5f9;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
   min-width: 100px;
 }
 
 .speaker-btn {
-  background: #334155;
-  color: #f8fafc;
-  border: 1px solid #475569;
-  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-m);
   padding: 6px 12px;
-  font-size: 13px;
+  font-family: var(--font-ui);
+  font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .speaker-btn:hover:not(:disabled) {
-  background: #475569;
+  background: var(--hl);
+  color: var(--hl-ink);
+}
+
+.speaker-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .speaker-btn:disabled {
@@ -68,21 +75,27 @@
   gap: 8px;
 }
 
+.speaker-timer-label {
+  font-size: 14px;
+  color: var(--pencil);
+}
+
 .speaker-timer-display {
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 16px;
+  font-family: var(--font-ui);
+  font-size: 32px;
   font-weight: 600;
-  color: #38bdf8;
-  min-width: 54px;
+  color: var(--ink);
+  min-width: 90px;
   text-align: center;
 }
 
 .speaker-clock-display {
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 14px;
-  color: #94a3b8;
+  font-family: var(--font-ui);
+  font-size: 44px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .speaker-view-body {
@@ -91,6 +104,7 @@
   overflow: hidden;
   padding: 16px;
   gap: 16px;
+  min-height: 0;
 }
 
 .speaker-current-slide-wrapper {
@@ -100,6 +114,7 @@
   flex-direction: column;
   overflow: hidden;
   gap: 8px;
+  min-height: 0;
 }
 
 .speaker-sidebar-wrapper {
@@ -109,36 +124,57 @@
   flex-direction: column;
   gap: 16px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .speaker-section-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: #94a3b8;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pencil);
 }
 
 .speaker-slide-frame {
   flex: 1;
-  aspect-ratio: 16 / 9;
-  max-width: 100%;
-  max-height: 100%;
-  background: var(--md-bg, #ffffff);
-  color: var(--md-fg, #000000);
-  border-radius: 6px;
-  overflow: auto;
-  padding: 24px;
-  border: 1px solid #334155;
+  min-height: 0;
+  background: var(--ink);
+  border-radius: var(--r-m);
+  overflow: hidden;
+  border: 1px solid var(--rule);
   position: relative;
-}
-
-.speaker-slide-frame.speaker-slide-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1e293b;
-  color: #64748b;
+}
+
+.speaker-slide-box {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.speaker-slide-canvas {
+  transform-origin: top left;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 32px;
+  line-height: 1.45;
+  padding: 64px 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.speaker-slide-canvas .md-viewer {
+  width: 100%;
+  background-color: transparent !important;
+  color: inherit;
+}
+
+.speaker-slide-frame.speaker-slide-empty {
+  background: var(--surface);
+  color: var(--pencil);
   font-style: italic;
 }
 
@@ -149,6 +185,7 @@
   flex-direction: column;
   overflow: hidden;
   gap: 8px;
+  min-height: 0;
 }
 
 .speaker-notes-wrapper {
@@ -158,18 +195,20 @@
   flex-direction: column;
   overflow: hidden;
   gap: 8px;
+  min-height: 0;
 }
 
 .speaker-notes-box {
   flex: 1;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 6px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-m);
   padding: 16px;
   overflow-y: auto;
-  color: #e2e8f0;
-  font-size: 15px;
-  line-height: 1.6;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1.5;
 }
 
 .speaker-notes-box p {
@@ -181,6 +220,6 @@
 }
 
 .speaker-notes-empty {
-  color: #64748b;
+  color: var(--pencil);
   font-style: italic;
 }

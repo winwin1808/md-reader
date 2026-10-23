@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
 import type { Slide } from '@md-reader/core'
 import { ThemeProvider } from '../theme/ThemeProvider'
@@ -26,6 +26,14 @@ export interface DeckProps {
   presentationSettings?: PresentationSettings
 }
 
+export const SLIDE_W = 1280
+export const SLIDE_H = 720
+
+export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slideH = SLIDE_H): number {
+  if (!(stageW > 0) || !(stageH > 0)) return 1
+  return Math.min(stageW / slideW, stageH / slideH)
+}
+
 export function Deck(props: DeckProps): React.JSX.Element {
   const {
     slides,
@@ -46,6 +54,35 @@ export function Deck(props: DeckProps): React.JSX.Element {
     if (slides.length === 0) return 0
     return Math.max(0, Math.min(slides.length - 1, startingIndex))
   })
+
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      const w = rect?.width ?? el.clientWidth
+      const h = rect?.height ?? el.clientHeight
+      setScale(fitScale(w, h))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const revealControls = useCallback(() => {
+    setControlsVisible(true)
+    if (hideTimer.current) clearTimeout(hideTimer.current)
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 2000)
+  }, [])
+  useEffect(() => {
+    revealControls()
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current)
+    }
+  }, [revealControls])
 
   useEffect(() => {
     const start = props.initialIndex ?? props.initialSlide
@@ -136,13 +173,22 @@ export function Deck(props: DeckProps): React.JSX.Element {
     backgroundColor: presentationSettings?.slideBgColor || undefined,
     color: presentationSettings?.slideTextColor || undefined,
     fontFamily: presentationSettings?.slideFont || undefined,
+    '--slide-bg': presentationSettings?.slideBgColor,
+    '--slide-fg': presentationSettings?.slideTextColor,
+    '--slide-font': presentationSettings?.slideFont,
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,
     '--slide-custom-accent': presentationSettings?.slideAccentColor,
   }
 
   return (
     <ThemeProvider mode={props.mode ?? 'system'}>
-      <div className="deck-overlay" style={overlayStyle}>
+      <div
+        className="deck-overlay"
+        style={overlayStyle}
+        ref={stageRef}
+        onMouseMove={revealControls}
+        onFocus={revealControls}
+      >
         {Boolean(presentationSettings?.slideBgImage) && (
           <div
             className="deck-custom-bg-image"
@@ -153,14 +199,22 @@ export function Deck(props: DeckProps): React.JSX.Element {
             aria-hidden="true"
           />
         )}
-        <div className="deck-slide deck-slide-container deck-slide-content">
+        <div
+          className="deck-slide-box"
+          style={{ width: SLIDE_W * scale, height: SLIDE_H * scale }}
+        >
           <div
-            className="md-viewer deck-slide-content"
-            dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
-          />
+            className="deck-slide deck-slide-frame deck-slide-container deck-slide-content"
+            style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}
+          >
+            <div
+              className="md-viewer deck-slide-content"
+              dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
+            />
+          </div>
         </div>
 
-        <div className="deck-controls">
+        <div className={`deck-controls${controlsVisible ? '' : ' deck-controls-hidden'}`}>
           <span className="deck-counter">{counterText}</span>
           <button
             type="button"
