@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import * as Y from 'yjs'
-import { IndexeddbPersistence } from 'y-indexeddb'
 import {
   ThemeProvider,
   SettingsModal,
@@ -41,7 +40,7 @@ import {
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
-import { addRecentFile } from './registry'
+import { useDocSession } from './hooks/useDocSession'
 import { saveToHandle, saveFileAs, storeFileHandle } from './fs/file-system'
 import './app.css'
 
@@ -77,13 +76,12 @@ export function App(): React.JSX.Element {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
-  const [content, setContent] = useState<string>('')
-  const [docTitle, setDocTitle] = useState<string>('')
-  // Re-render when doc text changes to hide placeholder
-  const [hasContent, setHasContent] = useState(false)
+  const fileUrlParam = new URLSearchParams(window.location.search).get('file')
+  const session = useDocSession({ fileUrl: fileUrlParam })
+  const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
+  const docTitle = session.title
+  const setIsDirty = session.setDirty
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
-  const [isDirty, setIsDirty] = useState<boolean>(false)
   const [activeHandle, setActiveHandle] = useState<FileSystemFileHandle | null>(null)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false)
   const [conflictData, setConflictData] = useState<{ localContent: string; diskContent: string }>({
@@ -100,21 +98,12 @@ export function App(): React.JSX.Element {
   const editorViewRef = useRef<EditorView | null>(null)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
-  const fileUrlParam = new URLSearchParams(window.location.search).get('file')
 
   const slides = useMemo(() => splitIntoSlides(content), [content])
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
-  const isFileContentSetRef = useRef<boolean>(false)
 
-  const persistenceName = useMemo(() => {
-    if (!fileUrlParam) return 'md-reader'
-    return `md-reader-${encodeURIComponent(fileUrlParam)}`
-  }, [fileUrlParam])
 
-  const doc = useMemo(() => new Y.Doc(), [fileUrlParam])
-  const yText = useMemo(() => doc.getText('source'), [doc])
-  const undoManager = useMemo(() => new Y.UndoManager(yText), [yText])
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   useEffect(() => {
@@ -190,53 +179,6 @@ export function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    let persistence: IndexeddbPersistence | null = null
-    try {
-      persistence = new IndexeddbPersistence(persistenceName, doc)
-    } catch (err) {
-      console.warn('Failed to initialize IndexeddbPersistence:', err)
-    }
-    
-    const text = doc.getText('source')
-    const meta = doc.getMap('meta')
-    const updateTitle = () => {
-      const name = (meta.get('name') as string) || ''
-      if (name) {
-        setDocTitle(name.replace(/\.[^/.]+$/, ''))
-      }
-    }
-    const observer = (event: Y.YTextEvent) => {
-      setHasContent(text.length > 0)
-      if (event.transaction.origin !== 'save-format' && event.transaction.origin !== 'load-file') {
-        setIsDirty(true)
-      }
-      setContent(text.toString())
-      updateTitle()
-    }
-    text.observe(observer)
-    meta.observe(updateTitle)
-    // Wait for initial sync from IDB
-    if (persistence) {
-      persistence.once('synced', () => {
-        if (!isFileContentSetRef.current) {
-          setHasContent(text.length > 0)
-          setContent(text.toString())
-          updateTitle()
-          setIsDirty(false)
-        }
-      })
-    }
-
-    return () => {
-      text.unobserve(observer)
-      meta.unobserve(updateTitle)
-      if (persistence) {
-        persistence.destroy()
-      }
-    }
-  }, [doc, persistenceName])
-
-  useEffect(() => {
     hasCelebratedRef.current = false
     setIsConfettiActive(false)
   }, [content])
@@ -301,92 +243,6 @@ export function App(): React.JSX.Element {
     fetchSettings()
   }, [])
 
-  // Handle URL file param
-  useEffect(() => {
-    isFileContentSetRef.current = false
-    const fileUrl = fileUrlParam
-    if (fileUrl) {
-      const loadContent = async (text: string) => {
-        isFileContentSetRef.current = true
-        const ytext = doc.getText('source')
-        doc.transact(() => {
-          ytext.delete(0, ytext.length)
-          ytext.insert(0, text)
-        }, 'load-file')
-        setIsDirty(false)
-        const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
-        doc.getMap('meta').set('name', name)
-        const originHash = await hashText(text)
-        doc.getMap('meta').set('originHash', originHash)
-        setDocTitle(name.replace(/\.[^/.]+$/, ''))
-        setContent(text)
-        setHasContent(text.length > 0)
-        setIsDirty(false)
-        
-        addRecentFile({
-          id: fileUrl,
-          name,
-          lastOpened: Date.now()
-        }).catch(console.error)
-      }
-
-      const cacheKey = 'file_content_' + fileUrl
-      const tryFetch = () => {
-        if (fileUrl.startsWith('file:')) {
-          try {
-            const xhr = new XMLHttpRequest()
-            xhr.open('GET', fileUrl, true)
-            xhr.onload = () => {
-              if ((xhr.status === 200 || xhr.status === 0) && xhr.responseText) {
-                loadContent(xhr.responseText)
-              } else {
-                setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
-              }
-            }
-            xhr.onerror = () => {
-              setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
-            }
-            xhr.send()
-          } catch (err) {
-            console.error('XHR file read error:', err)
-            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
-          }
-          return
-        }
-
-        const fetchUrl =
-          fileUrl.includes('github.com/') && fileUrl.includes('/blob/')
-            ? fileUrl.replace('github.com/', 'raw.githubusercontent.com/').replace('/blob/', '/')
-            : fileUrl
-        fetch(fetchUrl)
-          .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.text()
-          })
-          .then(loadContent)
-          .catch(err => {
-            console.error('Failed to load file from URL:', err)
-            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
-          })
-      }
-
-      if (chrome.storage?.local?.get) {
-        chrome.storage.local.get(cacheKey).then((cached) => {
-          if (cached && typeof cached[cacheKey] === 'string' && cached[cacheKey].length > 0) {
-            loadContent(cached[cacheKey])
-            chrome.storage.local.remove(cacheKey).catch(() => {})
-          } else {
-            tryFetch()
-          }
-        }).catch(() => {
-          tryFetch()
-        })
-      } else {
-        tryFetch()
-      }
-    }
-  }, [doc, fileUrlParam])
-
   const executeSave = async (handle: FileSystemFileHandle, _textToSave?: string) => {
     const textBeforeFormat = yText.toString()
     const formattedText =
@@ -432,7 +288,6 @@ export function App(): React.JSX.Element {
             setActiveHandle(handle)
             await storeFileHandle(handle).catch(() => {})
             doc.getMap('meta').set('name', handle.name)
-            setDocTitle(handle.name.replace(/\.[^/.]+$/, ''))
             await executeSave(handle)
           }
         } catch (err) {
