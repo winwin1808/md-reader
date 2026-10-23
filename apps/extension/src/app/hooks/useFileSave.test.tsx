@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import * as Y from 'yjs'
+// Y.Text is invariant in its event type, so changed.has needs a narrow cast.
 import { useFileSave } from './useFileSave'
 import type { DocSession } from './useDocSession'
 
@@ -86,7 +87,7 @@ describe('useFileSave', () => {
     const handle = fakeHandle()
     saveFileAs.mockResolvedValue({ handle })
     const origins: unknown[] = []
-    doc.on('afterTransaction', (tr: Y.Transaction) => { if (tr.changed.has(yText)) origins.push(tr.origin) })
+    doc.on('afterTransaction', (tr: Y.Transaction) => { if (tr.changed.has(yText as unknown as Y.AbstractType<Y.YEvent<any>>)) origins.push(tr.origin) })
     const { result } = renderHook(() => useFileSave(makeSession(doc, { isDirty: true }), { formatOnSave: true }))
     await act(async () => { await result.current.save({ explicit: true }) })
     expect(yText.toString()).toBe('- a\n')
@@ -109,7 +110,7 @@ describe('useFileSave', () => {
     await act(async () => { await result.current.save({ explicit: true }) }) // conflict
     expect(result.current.conflict.open).toBe(true)
     const origins: unknown[] = []
-    doc.on('afterTransaction', (tr: Y.Transaction) => { if (tr.changed.has(yText)) origins.push(tr.origin) })
+    doc.on('afterTransaction', (tr: Y.Transaction) => { if (tr.changed.has(yText as unknown as Y.AbstractType<Y.YEvent<any>>)) origins.push(tr.origin) })
     await act(async () => { await result.current.revertToDisk() })
     expect(yText.toString()).toBe('disk text')
     expect(origins).toEqual(['md:revert'])
