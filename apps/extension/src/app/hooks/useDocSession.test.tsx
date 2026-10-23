@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { renderHook, act, waitFor, cleanup } from '@testing-library/react'
 import * as Y from 'yjs'
 import { hashText, ORIGIN_LOAD } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase } from '../doc-registry'
@@ -36,6 +36,12 @@ vi.mock('y-indexeddb', () => ({
 }))
 
 import { useDocSession } from './useDocSession'
+
+afterEach(async () => {
+  cleanup()
+  vi.unstubAllGlobals()
+  await new Promise((r) => setTimeout(r, 0))
+})
 
 async function prepareIdb(text: string, originText: string) {
   const d = new Y.Doc()
@@ -295,6 +301,31 @@ describe('useDocSession separate URL and disk baselines', () => {
     const { result } = await run('changed')
     await waitFor(() => expect(result.current.externalChange?.remoteText).toBe('changed'))
     expect(result.current.yText.toString()).toBe('edited')
+  })
+
+  const withHandle = async () => {
+    const rec = await createRecord({ title: 'a.md', originKind: 'url', originPath: 'https://x.test/a.md' })
+    await (await import('../doc-registry')).storeHandle(rec.docId, {} as any)
+  }
+
+  it('handle: URL change with local === remote base applies remote, keeps disk baseline, dirty', async () => {
+    await withHandle()
+    await prepareSaved('orig', 'orig', 'DISK')
+    const { result } = await run('changed')
+    await waitFor(() => expect(result.current.yText.toString()).toBe('changed'))
+    expect(result.current.externalChange).toBeNull()
+    expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('DISK'))
+    expect(result.current.doc.getMap('meta').get('remoteHash')).toBe(await hashText('changed'))
+    expect(result.current.isDirty).toBe(true)
+  })
+
+  it('handle: (e) local equals remote keeps originHash', async () => {
+    await withHandle()
+    await prepareSaved('same', 'old', 'DISK')
+    const { result } = await run('same')
+    expect(result.current.externalChange).toBeNull()
+    expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('DISK'))
+    expect(result.current.doc.getMap('meta').get('remoteHash')).toBe(await hashText('same'))
   })
 
   it('malformed %E0 in the URL path does not throw; title is the raw segment', async () => {
