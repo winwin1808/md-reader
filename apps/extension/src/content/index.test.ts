@@ -42,7 +42,7 @@ describe('Content script entry point', () => {
 
   it('detects markdown in pre and mounts shadow dom when alwaysOpenApp is false', async () => {
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     
     await import('./index')
 
@@ -57,7 +57,7 @@ describe('Content script entry point', () => {
 
   it('restores body on render error when alwaysOpenApp is false', async () => {
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     
     const { createRoot } = await import('react-dom/client')
     vi.mocked(createRoot).mockImplementationOnce(() => {
@@ -81,7 +81,7 @@ describe('Content script entry point', () => {
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
   it('does nothing if autoFormatMd is false', async () => {
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ autoFormatMd: false })
     
     await import('./index')
@@ -89,7 +89,7 @@ describe('Content script entry point', () => {
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
 
-  it('redirects to app.html and caches markdown in storage when alwaysOpenApp is true', async () => {
+  it('alwaysOpenApp: caches { text, ts } then messages worker; no location.replace', async () => {
     const replaceMock = vi.fn()
     Object.defineProperty(window, 'location', {
       value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:', replace: replaceMock },
@@ -97,17 +97,22 @@ describe('Content script entry point', () => {
       configurable: true,
     })
     document.body.innerHTML = '<pre># My Markdown Content</pre>'
-    
+
     const localSetMock = vi.fn().mockResolvedValue(undefined)
     ;(chrome.storage as any).local = { set: localSetMock }
+    const sendMessage = vi.fn()
+    ;(chrome.runtime as any).sendMessage = sendMessage
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
 
     await import('./index')
 
-    expect(localSetMock).toHaveBeenCalledWith({
-      'file_content_file:///test.md': '# My Markdown Content',
+    expect(localSetMock).toHaveBeenCalledTimes(1)
+    expect(localSetMock.mock.calls[0]![0]['file_content_file:///test.md']).toEqual({
+      text: '# My Markdown Content',
+      ts: expect.any(Number),
     })
-    expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ action: 'openApp', fileUrl: 'file:///test.md' }))
+    expect(replaceMock).not.toHaveBeenCalled()
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
 
@@ -126,5 +131,6 @@ describe('Content script entry point', () => {
     await import('./index')
 
     expect(document.getElementById('md-reader-root')).not.toBeNull()
+    expect(localSetMock).not.toHaveBeenCalled()
   })
 })

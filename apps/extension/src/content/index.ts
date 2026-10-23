@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ContentApp } from './ContentApp'
+import { isMarkdownUrl, makeCacheEntry } from '../shared/md-url'
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: () => void }, { hasError: boolean }> {
   constructor(props: any) {
@@ -54,7 +55,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 
   const cleanPath = window.location.pathname.split('?')[0]?.split('#')[0] || ''
-  const isMdFile = Boolean(cleanPath.match(/\.(md|markdown|mdown|mkd|mdx)$/i))
+  const isMdFile = isMarkdownUrl(window.location.href)
   const isTxtFile = Boolean(cleanPath.match(/\.txt$/i))
   const isFileProtocol = window.location.protocol === 'file:'
 
@@ -103,19 +104,16 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  // Pre-cache markdown content into local storage
-  if (markdownText) {
+  // If "Always open app" is enabled (default: false), hand off via the worker.
+  // app.html is not web-accessible, so the content script never navigates there itself.
+  if (alwaysOpenApp && isMdFile) {
     try {
       await chrome.storage?.local?.set?.({
-        ['file_content_' + window.location.href]: markdownText,
+        ['file_content_' + window.location.href]: makeCacheEntry(markdownText),
       })
     } catch (e) {
       console.warn('Failed to cache file content:', e)
     }
-  }
-
-  // If "Always open app" is enabled (default: false), attempt redirect
-  if (alwaysOpenApp && isMdFile) {
     try {
       chrome.runtime?.sendMessage?.({
         action: 'openApp',
@@ -126,18 +124,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     } catch (e) {
       console.warn('MD Reader worker message failed:', e)
     }
-
-    try {
-      const targetAppUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
-      if (typeof window.location.replace === 'function') {
-        window.location.replace(targetAppUrl)
-      } else {
-        window.location.href = targetAppUrl
-      }
-    } catch (e) {
-      // Ignored
-    }
-
     return
   }
 
@@ -178,8 +164,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 
   window.addEventListener('popstate', () => {
-    const currentPath = window.location.pathname.split('?')[0]?.split('#')[0] || ''
-    if (!currentPath.match(/\.(md|markdown|mdown|mkd|mdx)$/i)) {
+    if (!isMarkdownUrl(window.location.href)) {
       document.getElementById('md-reader-root')?.remove()
     }
   })
