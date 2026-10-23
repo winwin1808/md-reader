@@ -419,7 +419,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 ## Sub-phase queue
 - 7a1: done
 - 7a2: done
-- 7b1: pending
+- 7b1: planned
 - 7b2: pending
 - 7b3: pending
 - 7c: pending
