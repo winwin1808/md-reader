@@ -39,7 +39,7 @@ describe('Render Options', () => {
       const result = r('[x](javascript:alert(1))', { externalLinks: true })
       expect(result).not.toContain('target')
       expect(result).not.toContain('rel=')
-      expect(result).not.toMatch(/href="?javascript:/i)
+      expect(result).not.toContain('javascript:')
     })
   })
 
@@ -181,6 +181,17 @@ describe('math', () => {
     const html = rm('$a^2$', { math: false }, { math: false })
     expect(html).toContain('$a^2$')
     expect(html).not.toContain('katex')
+  })
+  it('guards inline $ per Pandoc rules', () => {
+    const t = rm('costs $5 and $10 total')
+    expect(t).not.toContain('katex')
+    expect(t).toContain('costs $5 and $10 total')
+    expect(rm('$a^2$')).toContain('katex')
+    expect(rm('x $a$.')).toContain('katex')
+    expect(rm('$ a$')).not.toContain('katex')
+    expect(rm('$a$5')).not.toContain('katex')
+    expect(rm('$a$5')).toContain('$a$5')
+    expect(rm('$$x$$ inline')).toContain('katex')
   })
   it('does not emit script tags', () => {
     expect(rm('$<script>alert(1)</script>$')).not.toContain('<script')
