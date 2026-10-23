@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { hashText } from '@md-reader/core'
+import { hashText, applyTextChange, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
 import { addRecentFile } from '../registry'
 
 export interface DocSession {
@@ -54,7 +54,7 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
     }
     const observer = (event: Y.YTextEvent) => {
       setHasContent(text.length > 0)
-      if (event.transaction.origin !== 'save-format' && event.transaction.origin !== 'load-file') {
+      if (event.transaction.origin !== ORIGIN_LOAD && event.transaction.origin !== ORIGIN_FORMAT && event.transaction.origin !== ORIGIN_REVERT) {
         setIsDirty(true)
       }
       setContent(text.toString())
@@ -92,13 +92,12 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
       const loadContent = async (text: string) => {
         isFileContentSetRef.current = true
         const ytext = doc.getText('source')
-        doc.transact(() => {
-          ytext.delete(0, ytext.length)
-          ytext.insert(0, text)
-        }, 'load-file')
-        setIsDirty(false)
         const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
-        doc.getMap('meta').set('name', name)
+        doc.transact(() => {
+          applyTextChange(ytext, text)
+          doc.getMap('meta').set('name', name)
+        }, ORIGIN_LOAD)
+        setIsDirty(false)
         const originHash = await hashText(text)
         doc.getMap('meta').set('originHash', originHash)
         setDocTitle(name.replace(/\.[^/.]+$/, ''))

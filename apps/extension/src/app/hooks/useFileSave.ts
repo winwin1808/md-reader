@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatMarkdown, detectConflict, appendHistory, hashText } from '@md-reader/core'
+import {
+  formatMarkdown, detectConflict, appendHistory, hashText,
+  applyTextChange, ORIGIN_FORMAT, ORIGIN_REVERT,
+} from '@md-reader/core'
 import { saveToHandle, saveFileAs, storeFileHandle } from '../fs/file-system'
 import type { DocSession } from './useDocSession'
 
@@ -32,20 +35,18 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   const isSavingRef = useRef<boolean>(false)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const executeSave = async (handle: FileSystemFileHandle, _textToSave?: string) => {
+  const executeSave = async (handle: FileSystemFileHandle, explicit = false) => {
     const textBeforeFormat = yText.toString()
-    const formattedText = settings.formatOnSave ? formatMarkdown(textBeforeFormat) : textBeforeFormat
+    const formattedText = explicit && settings.formatOnSave ? formatMarkdown(textBeforeFormat) : textBeforeFormat
     let savedContent = textBeforeFormat
     if (formattedText !== textBeforeFormat) {
       if (yText.toString() === textBeforeFormat) {
-        doc.transact(() => {
-          yText.delete(0, yText.length)
-          yText.insert(0, formattedText)
-        }, 'save-format')
+        applyTextChange(yText, formattedText, ORIGIN_FORMAT)
         savedContent = formattedText
       }
     }
     await saveToHandle(handle, savedContent)
+    setIsDirty(yText.toString() !== savedContent)
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     appendHistory(doc, {
@@ -55,10 +56,10 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       label: 'save',
       clientIds: [],
     } as any)
-    setIsDirty(yText.toString() !== savedContent)
   }
 
-  const save = async (_opts?: { explicit?: boolean }) => {
+  const save = async (opts?: { explicit?: boolean }) => {
+    const explicit = opts?.explicit === true
     if (isSavingRef.current) return
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
@@ -77,7 +78,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
             setActiveHandle(handle)
             await storeFileHandle(handle).catch(() => {})
             doc.getMap('meta').set('name', handle.name)
-            await executeSave(handle)
+            await executeSave(handle, explicit)
           }
         } catch (err) {
           console.error('Error saving file as:', err)
@@ -104,7 +105,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
         return
       }
 
-      await executeSave(activeHandle)
+      await executeSave(activeHandle, explicit)
     } catch (err) {
       console.error('Error saving file:', err)
     } finally {
@@ -125,10 +126,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
   const revertToDisk = async () => {
     setIsConflictModalOpen(false)
-    doc.transact(() => {
-      yText.delete(0, yText.length)
-      yText.insert(0, conflictData.diskContent)
-    }, 'load-file')
+    applyTextChange(yText, conflictData.diskContent, ORIGIN_REVERT)
     const diskHash = await hashText(conflictData.diskContent)
     doc.getMap('meta').set('originHash', diskHash)
     setIsDirty(false)
@@ -145,7 +143,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     }
     autoSaveTimerRef.current = setTimeout(() => {
       autoSaveTimerRef.current = null
-      saveRef.current()
+      saveRef.current({ explicit: false })
     }, 2000)
     return () => {
       if (autoSaveTimerRef.current) {
@@ -160,7 +158,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
         e.preventDefault()
-        saveRef.current()
+        saveRef.current({ explicit: true })
       }
     }
     window.addEventListener('keydown', handleKeyDown)
