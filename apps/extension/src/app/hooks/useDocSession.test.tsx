@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import * as Y from 'yjs'
-import { hashText } from '@md-reader/core'
+import { hashText, ORIGIN_LOAD } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase } from '../doc-registry'
 
 vi.mock('../doc-registry', async (orig) => {
@@ -249,5 +249,35 @@ describe('useDocSession safe load', () => {
       act(() => result.current.acceptExternal())
       expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
     })
+  })
+})
+
+describe('useDocSession debounce', () => {
+  it('debounces user edits and flushes ORIGIN_LOAD immediately', async () => {
+    idbUpdate = null
+    const rec = await createRecord({ title: 'd.md', originKind: 'drop', originPath: null, persistenceName: 'pname-d' })
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    const seen: string[] = []
+    const { result } = renderHook(() => { const r = useDocSession({ docId: rec.docId, fileUrl: null }); seen.push(r.content); return r })
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    vi.useFakeTimers()
+    try {
+      seen.length = 0
+      let text = ''
+      for (let i = 0; i < 10; i++) {
+        act(() => { result.current.yText.insert(text.length, 'a'); text += 'a' })
+        act(() => { vi.advanceTimersByTime(10) })
+      }
+      expect(result.current.content).not.toBe(text)
+      act(() => { vi.advanceTimersByTime(130) })
+      expect(result.current.content).toBe(text)
+      expect(new Set(seen).size).toBeLessThanOrEqual(2)
+      act(() => { result.current.doc.transact(() => { result.current.yText.insert(0, 'L') }, ORIGIN_LOAD) })
+      expect(result.current.content).toBe('L' + text)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
