@@ -18,6 +18,12 @@
   background-color: transparent !important;
 }
 
+.a4-document-container:has(.markdown-alert) {
+  max-width: calc(var(--measure) + 112px + 17rem);
+  container-type: inline-size;
+  container-name: sheet;
+}
+
 @media (max-width: 720px) {
   .a4-document-container {
     border: 0;
