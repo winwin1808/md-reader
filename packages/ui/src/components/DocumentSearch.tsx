@@ -254,7 +254,7 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
         aria-live="polite"
         style={{
           fontSize: '13px',
-          color: 'var(--ink-3, inherit)',
+          color: 'var(--pencil)',
           whiteSpace: 'nowrap',
           minWidth: countDisplay ? '48px' : '0px',
           textAlign: 'center',
