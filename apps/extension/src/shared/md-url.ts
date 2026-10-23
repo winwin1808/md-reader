@@ -29,11 +29,14 @@ export function makeCacheEntry(text: string, now = Date.now()): { text: string; 
   return { text, ts: now }
 }
 
-export function readCacheEntry(value: unknown): string | null {
+export function readCacheEntry(value: unknown, now = Date.now(), maxAgeMs = 600_000): string | null {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') {
-    const t = (value as { text?: unknown }).text
-    if (typeof t === 'string') return t
+    const v = value as { text?: unknown; ts?: unknown }
+    if (typeof v.text === 'string') {
+      if (typeof v.ts === 'number' && now - v.ts > maxAgeMs) return null
+      return v.text
+    }
   }
   return null
 }
@@ -57,5 +60,5 @@ export function isStaleCacheEntry(value: unknown, now: number, maxAgeMs = 600_00
     const v = value as { text?: unknown; ts?: unknown }
     if (typeof v.text === 'string' && typeof v.ts === 'number') return now - v.ts > maxAgeMs
   }
-  return false
+  return true
 }

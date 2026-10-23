@@ -4,6 +4,7 @@ import { IndexeddbPersistence } from 'y-indexeddb'
 import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
 import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
+import { readCacheEntry } from '../../shared/md-url'
 
 let migrationOnce: Promise<unknown> | null = null
 
@@ -250,10 +251,15 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
       if (chrome.storage?.local?.get) {
         chrome.storage.local.get(cacheKey).then((cached) => {
-          if (cached && typeof cached[cacheKey] === 'string' && cached[cacheKey].length > 0) {
-            loadContent(cached[cacheKey])
-            chrome.storage.local.remove(cacheKey).catch(() => {})
+          const text = cached ? readCacheEntry(cached[cacheKey]) : null
+          if (text) {
+            loadContent(text)
+              .then(() => {
+                if (!cancelled) chrome.storage.local.remove(cacheKey).catch(() => {})
+              })
+              .catch((err) => console.warn('Cached load failed:', err))
           } else {
+            if (cached && cached[cacheKey] !== undefined) chrome.storage.local.remove(cacheKey).catch(() => {})
             tryFetch()
           }
         }).catch(() => {
