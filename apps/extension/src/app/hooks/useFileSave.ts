@@ -4,7 +4,7 @@ import {
   applyTextChange, ORIGIN_FORMAT, ORIGIN_REVERT,
 } from '@md-reader/core'
 import { saveToHandle, saveFileAs } from '../fs/file-system'
-import { storeHandle, getHandle } from '../doc-registry'
+import { storeHandle, getHandle, storeBase, getBase } from '../doc-registry'
 import type { DocSession } from './useDocSession'
 
 export type SaveState =
@@ -31,7 +31,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   const [activeHandle, setActiveHandle] = useState<FileSystemFileHandle | null>(null)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false)
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' })
-  const [conflictData, setConflictData] = useState<{ localContent: string; diskContent: string }>({
+  const [conflictData, setConflictData] = useState<{ localContent: string; diskContent: string; baseContent?: string }>({
     localContent: '',
     diskContent: '',
   })
@@ -85,6 +85,11 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     }
   }
 
+  const rememberBase = (text: string) => {
+    if (!session.docId) return
+    void Promise.resolve(storeBase(session.docId, text)).catch((err) => console.warn('storeBase failed:', err))
+  }
+
   const executeSave = async (handle: FileSystemFileHandle, explicit = false) => {
     const textBeforeFormat = yText.toString()
     const formattedText = explicit && settings.formatOnSave ? formatMarkdown(textBeforeFormat) : textBeforeFormat
@@ -100,6 +105,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     setIsDirty(yText.toString() !== savedContent)
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
+    rememberBase(savedContent)
     appendHistory(doc, {
       source: savedContent,
       timestamp: Date.now(),
@@ -148,7 +154,13 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       const currentOriginHash = (doc.getMap('meta').get('originHash') as string) || ''
       const hasConflict = await detectConflict(currentOriginHash, diskText)
       if (hasConflict) {
-        setConflictData({ localContent: yText.toString(), diskContent: diskText })
+        let baseContent: string | undefined
+        try {
+          baseContent = (session.docId ? await getBase(session.docId) : null) ?? undefined
+        } catch (err) {
+          console.warn('getBase failed:', err)
+        }
+        setConflictData({ localContent: yText.toString(), diskContent: diskText, baseContent })
         setIsConflictModalOpen(true)
         next = { kind: 'conflict' }
         return
@@ -194,6 +206,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     applyTextChange(yText, conflictData.diskContent, ORIGIN_REVERT)
     const diskHash = await hashText(conflictData.diskContent)
     doc.getMap('meta').set('originHash', diskHash)
+    rememberBase(conflictData.diskContent)
     setIsDirty(false)
     setSaveState({ kind: 'idle' })
   }

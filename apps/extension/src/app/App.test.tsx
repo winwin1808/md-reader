@@ -36,6 +36,8 @@ vi.mock('./doc-registry', () => {
     storeHandle: async () => {},
     getHandle: async () => null,
     writeDocText: async () => 'written',
+    storeBase: async () => {},
+    getBase: async () => null,
   }
 })
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
-import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry } from '../doc-registry'
+import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
 
 let migrationOnce: Promise<unknown> | null = null
@@ -154,6 +154,10 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         const meta = doc.getMap('meta')
         const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
         const local = ytext.toString()
+        const rec0Id = record!.docId
+        const rememberBase = () => {
+          void Promise.resolve(storeBase(rec0Id, remote)).catch((err) => console.warn('storeBase failed:', err))
+        }
         const applyRemote = (h: string) => {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
@@ -163,6 +167,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           setContent(remote)
           setHasContent(remote.length > 0)
           setIsDirty(false)
+          rememberBase()
         }
         isFileContentSetRef.current = true
         const origin0 = meta.get('originHash') as string | undefined
@@ -174,6 +179,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           setContent(remote)
           setHasContent(remote.length > 0)
           setIsDirty(false)
+          rememberBase()
           const h0 = await hashText(remote)
           if (!cancelled) meta.set('originHash', h0)
         } else {
@@ -185,6 +191,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
             setContent(local)
             setHasContent(local.length > 0)
             setIsDirty(false)
+            rememberBase()
           } else if (origin === h) {
             setContent(local)
             setHasContent(local.length > 0)
@@ -269,6 +276,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     setHasContent(ext.remoteText.length > 0)
     setIsDirty(false)
     setExternalChange(null)
+    if (record) void Promise.resolve(storeBase(record.docId, ext.remoteText)).catch((err) => console.warn('storeBase failed:', err))
   }
   const dismissExternal = () => setExternalChange(null)
 
