@@ -155,15 +155,68 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('resolved')).toHaveTextContent('light')
   })
 
-  it('dark mode sets data-theme and colorScheme on html and wrapper synchronously', () => {
-    const { container } = render(
-      <ThemeProvider mode="dark">
-        <TestComponent />
+  it('system mode resolves dark on first render (initializer, not effect)', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    const seen: string[] = []
+    const Probe = () => {
+      seen.push(useTheme().resolved)
+      return null
+    }
+    render(
+      <ThemeProvider mode="system">
+        <Probe />
+      </ThemeProvider>
+    )
+    expect(seen[0]).toBe('dark')
+  })
+
+  it('nested provider stays scoped and does not touch html', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    const { container, rerender } = render(
+      <ThemeProvider mode="dark" contrast="high">
+        <div data-testid="slot" />
       </ThemeProvider>
     )
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    rerender(
+      <ThemeProvider mode="dark" contrast="high">
+        <ThemeProvider mode="system">
+          <span data-testid="inner" />
+        </ThemeProvider>
+      </ThemeProvider>
+    )
+    const inner = screen.getByTestId('inner').parentElement!
+    expect(inner).toHaveAttribute('data-theme', 'light')
+    expect(inner).toHaveAttribute('data-contrast', 'high')
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'high')
     expect(document.documentElement.style.colorScheme).toBe('dark')
+    rerender(
+      <ThemeProvider mode="dark" contrast="high">
+        <div data-testid="slot" />
+      </ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'high')
     expect(container.firstChild).toHaveAttribute('data-theme', 'dark')
+  })
+
+  it('outermost provider removes html attributes on unmount', () => {
+    const { unmount } = render(
+      <ThemeProvider mode="dark"><TestComponent /></ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    unmount()
+    expect(document.documentElement).not.toHaveAttribute('data-theme')
+    expect(document.documentElement).not.toHaveAttribute('data-contrast')
   })
 
   it('system mode follows matchMedia live and updates html', () => {
