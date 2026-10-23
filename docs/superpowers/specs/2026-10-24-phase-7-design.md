@@ -400,7 +400,7 @@ Test: default black stroke renders as `var(--ink)`.
 ### 7r — reading aids in tokens
 FILES `packages/ui/src/components/CelebrationConfetti.tsx` (token colours, skip under
 reduced motion) · `WordCountBar.tsx` (Vietnamese "1.240 từ · 6 phút đọc", vi-VN number
-format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/reading-aids.css`
+format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/reading-aids.css` (also delete its old `.markdown-alert` rules, superseded in 7g1)
 · `packages/ui/src/components/reading-aids.test.tsx`.
 Test: reduced-motion matchMedia true → confetti renders nothing; word count text format.
 
