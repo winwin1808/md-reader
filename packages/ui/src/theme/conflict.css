@@ -155,3 +155,15 @@
 .conflict-btn-close:hover {
   background: var(--bg-hover, #e2e8f0);
 }
+
+.conflict-diff-counts {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+  background: var(--bg-subtle, #f1f5f9);
+  color: var(--text-primary, #334155);
+  border: 1px solid var(--border-color, #cbd5e1);
+}

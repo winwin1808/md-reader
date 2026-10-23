@@ -373,6 +373,7 @@ export function App(): React.JSX.Element {
         fileName={fileSave.activeHandle?.name || docTitle || 'document.md'}
         localContent={fileSave.conflict.localContent}
         diskContent={fileSave.conflict.diskContent}
+        baseContent={fileSave.conflict.baseContent}
         onKeepLocal={fileSave.keepLocal}
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
