@@ -433,7 +433,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7e1: done   (toolbar + save status; split from 7e at plan time)
 - 7e2: done   (banners and notices in tokens)
 - 7f: done
-- 7g1: planned   (alerts/tables/code/metadata; split from 7g at plan time)
+- 7g1: done   (alerts/tables/code/metadata; split from 7g at plan time)
 - 7g2: pending   (search bar + highlight)
 - 7h1: pending
 - 7h2: pending
