@@ -142,9 +142,25 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
     const onDown = (e: MouseEvent) => {
       if (rightRef.current && !rightRef.current.contains(e.target as Node)) setMenuOpen(false)
     }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        moreRef.current?.focus()
+      }
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onEsc)
+    }
   }, [menuOpen])
+
+  const onFocusOut = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null
+    if (next && (menuRef.current?.contains(next) || moreRef.current === next)) return
+    setMenuOpen(false)
+  }
 
   const closeMenu = (restoreFocus: boolean) => {
     setMenuOpen(false)
@@ -172,6 +188,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
   const select = (fn?: () => void) => () => {
     setMenuOpen(false)
     fn?.()
+    moreRef.current?.focus()
   }
 
   const onSegKeyDown = (e: React.KeyboardEvent, i: number) => {
@@ -256,11 +273,12 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((o) => !o)}
+          onBlur={menuOpen ? onFocusOut : undefined}
         >
           <Icon name="more" size={20} />
         </button>
         {menuOpen && (
-          <div ref={menuRef} className="tb-menu" role="menu" aria-label="Thêm" onKeyDown={onMenuKeyDown}>
+          <div ref={menuRef} className="tb-menu" role="menu" aria-label="Thêm" onKeyDown={onMenuKeyDown} onBlur={onFocusOut}>
             {overflowItems.map((it) => (
               <button key={it.id} type="button" role="menuitem" className="tb-menu-item" onClick={select(it.onSelect)}>
                 <Icon name={it.icon} size={20} />
