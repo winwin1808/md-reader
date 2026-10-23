@@ -430,7 +430,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7c1: done   (ThemeProvider; split from 7c at plan time)
 - 7c2: done   (settings v2 wiring)
 - 7d: done
-- 7e1: planned   (toolbar + save status; split from 7e at plan time)
+- 7e1: done   (toolbar + save status; split from 7e at plan time)
 - 7e2: pending   (banners and notices in tokens)
 - 7f: pending
 - 7g: pending
