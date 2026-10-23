@@ -215,7 +215,6 @@ export function App(): React.JSX.Element {
           (syncRes?.theme as ThemeMode) ||
           DEFAULT_READER_SETTINGS.mode
         const stored: any = { ...syncRes, ...localRes }
-        delete stored.colorTheme
         if ((stored.settingsVersion ?? 1) < 2) {
           if (!stored.fontFamily || stored.fontFamily === 'sans') stored.fontFamily = 'serif'
           stored.settingsVersion = 2

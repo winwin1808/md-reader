@@ -17,11 +17,9 @@ describe('SettingsModal', () => {
 
   const defaultProps = {
     mode: 'light' as const,
-    colorTheme: 'navy' as const,
     autoFormatMd: false,
     fontFamily: 'sans' as const,
     onModeChange: vi.fn(),
-    onColorThemeChange: vi.fn(),
     onAutoFormatChange: vi.fn(),
     onFontFamilyChange: vi.fn(),
   };
@@ -36,7 +34,7 @@ describe('SettingsModal', () => {
       />
     );
 
-    const gearButton = screen.getByRole('button', { name: /settings/i });
+    const gearButton = screen.getByRole('button', { name: /cài đặt/i });
     expect(screen.queryByRole('dialog')).toBeNull();
 
     fireEvent.click(gearButton);
@@ -60,7 +58,7 @@ describe('SettingsModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
 
     expect(screen.getByText('Phông chữ thân')).toBeInTheDocument();
     const look = within(section('Chữ và màu'));
@@ -95,7 +93,7 @@ describe('SettingsModal', () => {
 
   it('close button closes the dialog', () => {
     render(<SettingsModal {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -163,7 +161,7 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('slideImageOpacity', 40);
 
     const look = section('Chữ và màu');
-    fireEvent.click(within(look).getByRole('button', { name: 'Tối' }));
+    fireEvent.click(within(look).getByRole('radio', { name: /Than chì/ }));
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
     fireEvent.click(within(look).getByRole('button', { name: 'Có chân (Literata)' }));
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
@@ -202,9 +200,11 @@ describe('SettingsModal', () => {
       'Nền trang chiếu', 'Chữ', 'Tiêu đề', 'Màu nhấn', 'Phông chữ trang chiếu', 'Ảnh nền (URL)', 'Độ mờ ảnh nền',
     ];
     for (const l of labels) expect(screen.getByLabelText(l), l).toBeInTheDocument();
-    for (const n of ['Sáng', 'Tối', 'Theo hệ thống', 'Có chân (Literata)', 'Không chân (IBM Plex Sans)', 'Đơn cách (IBM Plex Mono)']) {
+    for (const n of ['Có chân (Literata)', 'Không chân (IBM Plex Sans)', 'Đơn cách (IBM Plex Mono)']) {
       expect(screen.getByRole('button', { name: n }), n).toBeInTheDocument();
     }
+    for (const n of [/Giấy/, /Than chì/, /Theo hệ thống/]) expect(screen.getByRole('radio', { name: n })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Tăng tương phản' })).toBeInTheDocument();
     for (const d of ['Bấm vào link .md sẽ mở thẳng tab đọc thay vì xem trên trang.', 'Tắt thì trang .md giữ nguyên dạng văn bản thô, không được thay bằng trình đọc.',
       'Không đổi nội dung file, chỉ đổi cách hiển thị.', 'Tắt nếu tài liệu có nhiều sơ đồ và mở chậm.']) {
       expect(screen.getByText(d)).toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('SettingsModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
 
     // Removed dead rows
     expect(screen.queryByLabelText(/advanced tables/i)).toBeNull();
@@ -285,10 +285,10 @@ describe('SettingsModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
 
     // Mode
-    fireEvent.click(screen.getByRole('button', { name: 'Tối' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Than chì/ }));
     expect(onModeChange).toHaveBeenCalledTimes(1);
     expect(onModeChange).toHaveBeenCalledWith('dark');
     expect(onSettingChange).toHaveBeenCalledWith('mode', 'dark');
@@ -323,7 +323,7 @@ describe('SettingsModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
 
     // Color quick preset
     const blueBtn = screen.getAllByTitle('#2563eb')[0]!;
@@ -358,7 +358,7 @@ describe('SettingsModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
     const checkbox = screen.getByLabelText(/Luôn mở file .md/i);
     expect(checkbox).not.toBeChecked();
 
@@ -369,7 +369,7 @@ describe('SettingsModal', () => {
 
   it('defaults alwaysOpenApp to false when not provided', () => {
     render(<SettingsModal {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cài đặt/i }));
     const checkbox = screen.getByLabelText(/Luôn mở file .md/i);
     expect(checkbox).not.toBeChecked();
   });
@@ -418,9 +418,9 @@ describe('SettingsModal', () => {
       expect(buttons[4]).toHaveAttribute('aria-current', 'true');
     });
 
-    it('wires the Giao diện and Phông chữ thân labels to their groups', () => {
+    it('wires the Bảng màu and Phông chữ thân labels to their groups', () => {
       render(<SettingsModal {...defaultProps} open />);
-      expect(screen.getByRole('group', { name: 'Giao diện' })).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: 'Bảng màu' })).toBeInTheDocument();
       expect(screen.getByRole('group', { name: 'Phông chữ thân' })).toBeInTheDocument();
     });
 
