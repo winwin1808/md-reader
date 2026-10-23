@@ -160,6 +160,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
     return () => {
       cancelled = true
+      tracker?.flush('auto', 'Bạn')
       tracker?.dispose()
       if (checkpointsRef.current === tracker) checkpointsRef.current = null
       clearContentTimer()

@@ -106,7 +106,9 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     rememberBase(savedContent)
-    session.checkpoints?.flush('save', 'Bạn')
+    // Accepted: the snapshot may include keystrokes typed during the disk write.
+    // Autosave stays quiet: the 30 s quiet 'auto' checkpoint covers typing sessions.
+    if (explicit) session.checkpoints?.flush('save', 'Bạn', { force: true })
   }
 
   const runSave = async (opts: { explicit?: boolean } | undefined, forcePicker: boolean) => {
@@ -197,7 +199,9 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
   const revertToDisk = async () => {
     setIsConflictModalOpen(false)
+    session.checkpoints?.flush('auto', 'Bạn')
     applyTextChange(yText, conflictData.diskContent, ORIGIN_REVERT)
+    session.checkpoints?.flush('import', 'Bạn', { force: true })
     const diskHash = await hashText(conflictData.diskContent)
     doc.getMap('meta').set('originHash', diskHash)
     rememberBase(conflictData.diskContent)
