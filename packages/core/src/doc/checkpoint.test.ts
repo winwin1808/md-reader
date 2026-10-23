@@ -106,6 +106,17 @@ describe('checkpoint tracker', () => {
     expect(t.flush('save', 'me')).toBeNull()
   })
 
+  it('force flush with no changes records an entry with a snapshot; non-forced is null', () => {
+    const a = createDoc({ source: 'x' })
+    const t = createCheckpointTracker(a)
+    expect(t.flush('save', 'me')).toBeNull()
+    const e = t.flush('save', 'me', { force: true })
+    expect(e).not.toBeNull()
+    expect(e!.clientIds).toEqual([])
+    expect(e!.snapshot!.length).toBeGreaterThan(0)
+    t.dispose()
+  })
+
   it('flush cancels a pending auto timer', () => {
     vi.useFakeTimers()
     const a = createDoc({ source: 'x' })
