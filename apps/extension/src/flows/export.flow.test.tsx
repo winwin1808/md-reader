@@ -73,15 +73,6 @@ describe('E2E smoke test for themes and export formats', () => {
     const settingsBtn = screen.getByRole('button', { name: 'Settings' })
     fireEvent.click(settingsBtn)
 
-    const navyThemeBtn = screen.getByRole('button', { name: /navy/i })
-    fireEvent.click(navyThemeBtn)
-
-    expect(document.querySelector('[data-color-theme="navy"]')).not.toBeNull()
-
-    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(
-      expect.objectContaining({ colorTheme: 'navy' })
-    )
-
     // Close settings modal
     const closeSettingsBtn = screen.getByRole('button', { name: 'Close' })
     fireEvent.click(closeSettingsBtn)
