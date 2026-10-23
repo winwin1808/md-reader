@@ -1,7 +1,7 @@
 import type { Root } from 'mdast'
 import { Slugger } from './slug.js'
 import type { TocEntry, RenderOptions, RenderResult } from './types.js'
-import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard } from './plugins.js'
+import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets } from './plugins.js'
 
 function getHeadingText(node: any): string {
   if (node.type === 'text' || node.type === 'inlineCode') {
@@ -147,6 +147,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     processor.use(rehypeMetadataCard, parsed.frontmatter as Record<string, unknown>)
   }
 
+  processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
