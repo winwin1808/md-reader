@@ -1,13 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 
 afterEach(() => {
   cleanup()
 })
 import type { Slide } from '@md-reader/core'
-import { Deck } from './Deck'
+import { Deck, fitScale } from './Deck'
 
 const mockSlides: Slide[] = [
   { id: 'slide-0', index: 0, html: '<h1>Slide 1 Title</h1>', rawMarkdown: '# Slide 1 Title', notes: ['Speaker note 1'] },
@@ -322,5 +322,50 @@ describe('Deck component', () => {
       expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s+p,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+li,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+span\s*\{[^}]*color:\s*inherit;/)
       expect(css).toMatch(/\.deck-slide-content\s*\{[^}]*color:\s*inherit;/)
     })
+  })
+})
+
+describe('Deck scaling and controls', () => {
+  it('fitScale fits the logical 1280x720 box', () => {
+    expect(fitScale(1920, 1080)).toBe(1.5)
+    expect(fitScale(800, 800)).toBe(0.625)
+    expect(fitScale(0, 0)).toBe(1)
+  })
+
+  it('scales the slide frame from a ResizeObserver callback', () => {
+    let cb: ResizeObserverCallback = () => {}
+    class MockRO {
+      constructor(c: ResizeObserverCallback) { cb = c }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    }
+    vi.stubGlobal('ResizeObserver', MockRO)
+    try {
+      const { container } = render(<Deck slides={mockSlides} />)
+      const frame = container.querySelector('.deck-slide-frame') as HTMLElement
+      expect(frame.style.width).toBe('1280px')
+      act(() => {
+        cb([{ contentRect: { width: 1920, height: 1080 } } as ResizeObserverEntry], {} as ResizeObserver)
+      })
+      expect(frame.style.transform).toBe('scale(1.5)')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('hides controls after 2s idle and shows them on mousemove', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = render(<Deck slides={mockSlides} />)
+      const controls = container.querySelector('.deck-controls') as HTMLElement
+      expect(controls.classList.contains('deck-controls-hidden')).toBe(false)
+      act(() => { vi.advanceTimersByTime(2100) })
+      expect(controls.classList.contains('deck-controls-hidden')).toBe(true)
+      fireEvent.mouseMove(container.querySelector('.deck-overlay') as HTMLElement)
+      expect(controls.classList.contains('deck-controls-hidden')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
