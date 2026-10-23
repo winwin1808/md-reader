@@ -5,14 +5,12 @@ import { ThemeProvider, useTheme } from './ThemeProvider'
 import React from 'react'
 
 const TestComponent = () => {
-  const { mode, resolved, setMode, colorTheme, setColorTheme } = useTheme()
+  const { mode, resolved, setMode } = useTheme()
   return (
     <div>
       <span data-testid="mode">{mode}</span>
       <span data-testid="resolved">{resolved}</span>
-      <span data-testid="color-theme">{colorTheme}</span>
       <button onClick={() => setMode('dark')}>Set Dark</button>
-      {setColorTheme && <button onClick={() => setColorTheme('navy')}>Set Navy</button>}
     </div>
   )
 }
@@ -27,41 +25,6 @@ describe('ThemeProvider', () => {
   afterEach(() => {
     window.matchMedia = originalMatchMedia
     cleanup()
-  })
-
-  it('never sets data-color-theme', () => {
-    const { container } = render(
-      <ThemeProvider mode="light">
-        <TestComponent />
-      </ThemeProvider>
-    )
-    
-    expect(container.firstChild).not.toHaveAttribute('data-color-theme')
-    expect(document.documentElement).not.toHaveAttribute('data-color-theme')
-  })
-
-  it('ignores deprecated colorTheme for styling', () => {
-    const { container } = render(
-      <ThemeProvider mode="light" colorTheme="green">
-        <TestComponent />
-      </ThemeProvider>
-    )
-    
-    expect(container.firstChild).not.toHaveAttribute('data-color-theme')
-    expect(document.documentElement).not.toHaveAttribute('data-color-theme')
-    expect(screen.getByTestId('color-theme')).toHaveTextContent('green')
-  })
-
-  it('calls onColorThemeChange when setColorTheme is called', () => {
-    const onColorThemeChange = vi.fn()
-    render(
-      <ThemeProvider mode="light" colorTheme="black" onColorThemeChange={onColorThemeChange}>
-        <TestComponent />
-      </ThemeProvider>
-    )
-
-    screen.getByText('Set Navy').click()
-    expect(onColorThemeChange).toHaveBeenCalledWith('navy')
   })
 
   // ... copy the rest of existing tests

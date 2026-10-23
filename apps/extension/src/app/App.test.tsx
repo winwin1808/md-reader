@@ -139,7 +139,7 @@ describe('App', () => {
           set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: vi.fn().mockResolvedValue({ theme: 'dark', colorTheme: 'green' }),
+          get: vi.fn().mockResolvedValue({ theme: 'dark' }),
           set: vi.fn().mockResolvedValue(undefined),
         },
       },
@@ -309,7 +309,7 @@ describe('App', () => {
     expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(null)
   })
   
-  it('falls back to system theme and black colorTheme when storage throws', async () => {
+  it('falls back to system theme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
@@ -322,8 +322,6 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
-    
-    expect(document.querySelector('[data-color-theme="black"]')).not.toBeNull()
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
@@ -609,16 +607,6 @@ describe('App', () => {
       const c = await load({ fontFamily: 'sans', settingsVersion: 2 })
       expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
     })
-    it('never writes stored colorTheme back', async () => {
-      await load({ colorTheme: 'green' })
-      const sync = (window as any).chrome.storage.sync
-      const local = (window as any).chrome.storage.local
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Đơn cách (IBM Plex Mono)' })) })
-      const all = [...sync.set.mock.calls, ...local.set.mock.calls]
-      expect(all.length).toBeGreaterThan(0)
-      expect(all.some((c: any[]) => 'colorTheme' in c[0])).toBe(false)
-    })
     it('defaults confetti off', async () => {
       const spy = vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { return <div data-active={String(p.active)} /> })
       await load({ settingsVersion: 2 })
@@ -664,7 +652,6 @@ describe('App', () => {
   it('loads fontFamily from chrome.storage if already stored', async () => {
     ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({
       theme: 'dark',
-      colorTheme: 'green',
       fontFamily: 'mono',
     })
 

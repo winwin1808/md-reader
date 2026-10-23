@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Icon } from './Icon'
 import type { Slide } from '@md-reader/core'
-import { ThemeProvider, type ColorTheme } from '../theme/ThemeProvider'
+import { ThemeProvider } from '../theme/ThemeProvider'
 
 export interface PresentationSettings {
   slideBgColor?: string
@@ -22,7 +22,6 @@ export interface DeckProps {
   onIndexChange?: (index: number) => void
   onOpenSpeakerView?: () => void
   onOpenSpeaker?: () => void
-  colorTheme?: ColorTheme
   mode?: 'light' | 'dark' | 'system'
   presentationSettings?: PresentationSettings
 }
@@ -142,7 +141,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
   }
 
   return (
-    <ThemeProvider mode={props.mode ?? 'system'} colorTheme={props.colorTheme}>
+    <ThemeProvider mode={props.mode ?? 'system'}>
       <div className="deck-overlay" style={overlayStyle}>
         {Boolean(presentationSettings?.slideBgImage) && (
           <div

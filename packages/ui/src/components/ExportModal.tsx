@@ -76,7 +76,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
-  let themeContext: { resolved: 'light' | 'dark'; colorTheme: string } | undefined
+  let themeContext: { resolved: 'light' | 'dark' } | undefined
   try {
     themeContext = useTheme()
   } catch {
@@ -88,7 +88,6 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
       role="dialog"
       aria-modal="true"
       data-theme={themeContext?.resolved || 'light'}
-      data-color-theme={themeContext?.colorTheme || 'black'}
       onClick={() => setIsOpen(false)}
       style={{
         position: 'fixed',

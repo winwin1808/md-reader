@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { ColorTheme, Contrast } from '../theme/ThemeProvider';
-import { ThemePicker } from './ThemePicker';
+import type { Contrast } from '../theme/ThemeProvider';
+import { PalettePicker } from './ThemePicker';
 import { Icon } from './Icon';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
@@ -9,8 +9,6 @@ export type FontFamily = 'sans' | 'serif' | 'mono';
 export interface ReaderSettings {
   // Display
   mode?: 'light' | 'dark' | 'system';
-  /** @deprecated replaced by contrast (settings v2) */
-  colorTheme?: ColorTheme;
   contrast: Contrast;
   settingsVersion: number;
   fontFamily?: FontFamily;
@@ -51,13 +49,11 @@ export interface SettingsModalProps {
   onSettingChange?: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
   // Legacy / convenience props:
   mode?: 'light' | 'dark' | 'system';
-  colorTheme?: ColorTheme;
   fontFamily?: FontFamily;
   autoFormatMd?: boolean;
   autoFormat?: boolean;
   alwaysOpenApp?: boolean;
   onModeChange?: (mode: 'light' | 'dark' | 'system') => void;
-  onColorThemeChange?: (colorTheme: ColorTheme) => void;
   onAutoFormatChange?: (autoFormat: boolean) => void;
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
   onAlwaysOpenAppChange?: (alwaysOpenApp: boolean) => void;
@@ -415,10 +411,8 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     onSettingChange,
     mode,
     onModeChange,
-    colorTheme,
     autoFormatMd,
     fontFamily = 'sans',
-    onColorThemeChange,
     onAutoFormatChange,
     onFontFamilyChange,
     themePicker,
@@ -505,7 +499,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   };
 
   const currentMode = settings?.mode ?? mode;
-  const currentColorTheme = settings?.colorTheme ?? colorTheme;
+  const currentContrast: Contrast = settings?.contrast ?? 'standard';
   const currentFontFamily = settings?.fontFamily ?? fontFamily;
   const currentAutoFormat =
     typeof settings?.autoFormatMd === 'boolean'
@@ -524,9 +518,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     onSettingChange?.(key, value);
     if (key === 'mode' && onModeChange) {
       onModeChange(value as 'light' | 'dark' | 'system');
-    }
-    if (key === 'colorTheme' && onColorThemeChange) {
-      onColorThemeChange(value as ColorTheme);
     }
     if (key === 'fontFamily' && onFontFamilyChange) {
       onFontFamilyChange(value as FontFamily);
@@ -558,7 +549,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     <div
       className="settings-overlay"
       data-theme={resolvedMode}
-      data-color-theme={currentColorTheme || 'black'}
       onClick={(e) => {
         if (e.target === e.currentTarget) setIsOpen(false);
       }}
@@ -596,43 +586,15 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
           <div className="settings-body" ref={bodyRef} onScroll={handleScroll}>
 <section aria-labelledby="settings-h-look" id="settings-sec-look" data-section={"look"} className="settings-group" ref={(el) => { sectionRefs.current['look'] = el }}>
 <h3 id="settings-h-look" className="settings-group-title">Chữ và màu</h3>
-                  {currentMode && (
-                    <div className="settings-field">
-                      <span id="settings-l-mode" className="settings-field-label">Giao diện</span>
-                      <div className="settings-btn-group" role="group" aria-labelledby="settings-l-mode">
-                        {([
-                          { key: 'light', label: 'Sáng' },
-                          { key: 'dark', label: 'Tối' },
-                          { key: 'system', label: 'Theo hệ thống' },
-                        ] as const).map((opt) => {
-                          const isSelected = currentMode === opt.key;
-                          return (
-                            <button
-                              key={opt.key}
-                              type="button"
-                              onClick={() => {
-                                handleSettingChange('mode', opt.key);
-                              }}
-                              aria-pressed={isSelected}
-                              className="settings-choice"
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                   <div className="settings-field">
-                    {themePicker ??
-                      (currentColorTheme ? (
-                        <ThemePicker
-                          currentTheme={currentColorTheme}
-                          onSelect={(t) => {
-                            handleSettingChange('colorTheme', t);
-                          }}
-                        />
-                      ) : null)}
+                    {themePicker ?? (
+                      <PalettePicker
+                        mode={currentMode ?? 'light'}
+                        contrast={currentContrast}
+                        onModeChange={(m) => handleSettingChange('mode', m)}
+                        onContrastChange={(c) => handleSettingChange('contrast', c)}
+                      />
+                    )}
                   </div>
                   <div className="settings-field">
                     <span id="settings-l-font" className="settings-field-label">Phông chữ thân</span>
@@ -821,8 +783,8 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
       {props.open === undefined && <button
         type="button"
         onClick={() => setIsOpen(true)}
-        title="Settings"
-        aria-label="Settings"
+        title="Cài đặt"
+        aria-label="Cài đặt"
         className="settings-trigger"
       >
         <svg
