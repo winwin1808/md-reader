@@ -17,7 +17,7 @@ function initDoc(doc: Y.Doc, init?: InitOpts): void {
     meta.set('originPath', init?.originPath ?? null)
     meta.set('originHash', init?.originHash ?? null)
     meta.set('createdAt', Date.now())
-    meta.set('actors', {})
+    meta.set('actors', new Y.Map<string>())
     const source = getSource(doc)
     if (init?.source && source.length === 0) {
       source.insert(0, init.source)
@@ -53,9 +53,12 @@ export function readMeta(doc: Y.Doc): DocMeta {
   const originHash = typeof m.get('originHash') === 'string' ? (m.get('originHash') as string) : null
   const createdAt = typeof m.get('createdAt') === 'number' ? (m.get('createdAt') as number) : 0
   const rawActors = m.get('actors')
-  const actors = rawActors && typeof rawActors === 'object' && !Array.isArray(rawActors)
-    ? (rawActors as Record<string, string>)
-    : {}
+  const actors: Record<string, string> =
+    rawActors instanceof Y.Map
+      ? (rawActors.toJSON() as Record<string, string>)
+      : rawActors && typeof rawActors === 'object' && !Array.isArray(rawActors)
+        ? (rawActors as Record<string, string>)
+        : {}
 
   return {
     title,
@@ -102,7 +105,14 @@ export function migrateDoc(doc: Y.Doc): { from: number; to: number } {
     meta.delete('name')
     meta.delete('size')
     if (meta.get('createdAt') === undefined) meta.set('createdAt', Date.now())
-    if (meta.get('actors') === undefined) meta.set('actors', {})
+    const rawActors = meta.get('actors')
+    if (!(rawActors instanceof Y.Map)) {
+      const map = new Y.Map<string>()
+      meta.set('actors', map)
+      if (rawActors && typeof rawActors === 'object' && !Array.isArray(rawActors)) {
+        for (const [k, v] of Object.entries(rawActors as Record<string, string>)) map.set(k, v)
+      }
+    }
     if (meta.get('originPath') === undefined) meta.set('originPath', null)
     meta.set('formatVersion', FORMAT_VERSION)
   })
