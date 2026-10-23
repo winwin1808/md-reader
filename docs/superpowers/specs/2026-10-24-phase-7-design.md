@@ -443,7 +443,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7h2: done
 - 7i1: done
 - 7i2: done
-- 7i3: planned
+- 7i3: done
 - 7j: pending
 - 7k: pending
 - 7l1: pending
