@@ -195,3 +195,71 @@ body {
 .notice button:hover {
   background: var(--hover);
 }
+
+/* First screen */
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.first-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 34rem;
+  margin: 12vh auto;
+  font-family: var(--font-ui);
+}
+.first-screen h1 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: var(--ink);
+  margin: 16px 0 8px;
+}
+.first-screen p { color: var(--pencil); margin: 0 0 20px; }
+.first-screen__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--r-m);
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.recent { width: 100%; margin-top: 40px; text-align: left; }
+.recent__heading { font-family: var(--font-ui); font-weight: 600; font-size: 15px; color: var(--ink); margin: 0 0 8px; }
+.recent__list { list-style: none; margin: 0; padding: 0; }
+.recent__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.recent__item:hover { background: var(--hover); }
+.recent__title { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent__meta { color: var(--pencil); font-size: 13px; }
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  border: 3px dashed var(--accent);
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--ink);
+  pointer-events: none;
+}

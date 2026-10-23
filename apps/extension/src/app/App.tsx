@@ -16,6 +16,7 @@ import {
   FormattingToolbar,
   applyFormat,
   Icon,
+  Logo,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
@@ -608,10 +609,13 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'reading' && !hasContent && !error && (
-            <div data-testid="app-placeholder" style={{ padding: '40px', textAlign: 'center' }}>
-              <h2>MD Reader</h2>
-              <p>Drag and drop a Markdown file here, or click "Open in MD Reader" from any Markdown file in Chrome.</p>
-              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
+            <div data-testid="app-placeholder" className="first-screen">
+              <Logo size={56} />
+              <h1>Mở một tài liệu Markdown</h1>
+              <p>Kéo file .md vào cửa sổ này, hoặc chọn từ máy.</p>
+              <button type="button" className="first-screen__open" onClick={() => { void handleOpenFile() }}>
+                <Icon name="open-file" size={16} /> Mở file…
+              </button>
               <RecentFiles />
             </div>
           )}
