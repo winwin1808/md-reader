@@ -39,7 +39,7 @@ function fakeHandle() {
 }
 
 const flush = vi.fn((..._a: unknown[]) => null)
-const tracker = { flush: (l: string, a: string) => flush(l, a), dispose: vi.fn() } as any
+const tracker = { flush: (l: string, a: string, o?: unknown) => (o === undefined ? flush(l, a) : flush(l, a, o)), dispose: vi.fn() } as any
 
 function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
   const yText = doc.getText('source')
@@ -167,11 +167,37 @@ describe('useFileSave', () => {
     expect(saveToHandle).not.toHaveBeenCalled()
   })
 
-  it('successful save flushes a save checkpoint', async () => {
+  it('successful explicit save flushes a forced save checkpoint', async () => {
     const doc = new Y.Doc()
     doc.getText('source').insert(0, 'x')
     await withHandle(doc)
-    expect(flush).toHaveBeenCalledWith('save', 'Bạn')
+    expect(flush).toHaveBeenCalledWith('save', 'Bạn', { force: true })
+  })
+
+  it('autosave does not flush a checkpoint', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const { result } = await withHandle(doc)
+    flush.mockClear()
+    await act(async () => { await result.current.save({ explicit: false }) })
+    expect(flush).not.toHaveBeenCalled()
+  })
+
+  it('revertToDisk flushes auto before applying, then forced import', async () => {
+    const doc = new Y.Doc()
+    const yText = doc.getText('source')
+    yText.insert(0, 'local')
+    const { result } = await withHandle(doc)
+    disk = 'disk text'
+    doc.getMap('meta').set('originHash', 'stale')
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.conflict.open).toBe(true)
+    flush.mockClear()
+    const seen: string[] = []
+    flush.mockImplementation((...a: unknown[]) => { seen.push(String(a[0]) + ':' + yText.toString()); return null })
+    await act(async () => { await result.current.revertToDisk() })
+    expect(flush.mock.calls).toEqual([['auto', 'Bạn'], ['import', 'Bạn', { force: true }]])
+    expect(seen).toEqual(['auto:local', 'import:disk text'])
   })
 
   it('failed write does not flush a checkpoint', async () => {

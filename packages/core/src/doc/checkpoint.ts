@@ -5,7 +5,7 @@ import { getHistory, getMeta, getSource } from './doc.js'
 export const ORIGIN_CHECKPOINT = 'md:checkpoint'
 
 export interface CheckpointTracker {
-  flush(label: 'save' | 'auto' | 'import', actor: string): HistoryEntry | null
+  flush(label: 'save' | 'auto' | 'import', actor: string, opts?: { force?: boolean }): HistoryEntry | null
   dispose(): void
 }
 
@@ -29,8 +29,8 @@ export function createCheckpointTracker(
     }
   }
 
-  const flush: CheckpointTracker['flush'] = (label, actor) => {
-    if (clients.size === 0) return null
+  const flush: CheckpointTracker['flush'] = (label, actor, fopts) => {
+    if (clients.size === 0 && !fopts?.force) return null
     const entry: HistoryEntry = {
       id: crypto.randomUUID(),
       actor,
