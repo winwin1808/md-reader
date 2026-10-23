@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { Viewer, Toc } from './index'
@@ -90,5 +90,28 @@ describe('Toc', () => {
     expect(h2Link).toBeDefined()
     expect(h2Link.getAttribute('aria-current')).toBe('true')
     expect(h1Link.getAttribute('aria-current')).toBeNull()
+  })
+})
+
+describe('Viewer anchors and mermaid toggle', () => {
+  it('resolves in-page anchor clicks to the prefixed id', () => {
+    const html = '<a href="#sec">go</a><h2 id="user-content-sec">Sec</h2>'
+    const { container } = render(<Viewer html={html} />)
+    const target = container.querySelector('#user-content-sec') as HTMLElement
+    const spy = vi.fn()
+    target.scrollIntoView = spy
+    const a = container.querySelector('a') as HTMLElement
+    const ev = new MouseEvent('click', { bubbles: true, cancelable: true })
+    a.dispatchEvent(ev)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(ev.defaultPrevented).toBe(true)
+  })
+
+  it('mermaid={false} leaves mermaid code blocks alone', () => {
+    const html = '<pre><code class="language-mermaid">graph TD; A-->B;</code></pre>'
+    const { container } = render(<Viewer html={html} mermaid={false} />)
+    const pre = container.querySelector('pre') as HTMLElement
+    expect(pre.style.display).not.toBe('none')
+    expect(pre.nextElementSibling).toBeNull()
   })
 })

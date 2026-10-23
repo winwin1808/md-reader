@@ -12,10 +12,12 @@ export interface ViewerProps {
   /** Gọi khi heading đang đọc đổi, để Toc highlight. */
   onActiveHeadingChange?: (id: string | null) => void
   isAppPage?: boolean
+  /** Dựng sơ đồ mermaid cho code.language-mermaid (mặc định true). */
+  mermaid?: boolean
 }
 
 export function Viewer(props: ViewerProps): React.JSX.Element {
-  const { html, className = '', onActiveHeadingChange, isAppPage = true } = props
+  const { html, className = '', onActiveHeadingChange, isAppPage = true, mermaid = true } = props
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Use a ref to store onActiveHeadingChange to avoid re-triggering observer on every render
@@ -77,6 +79,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
   // Mermaid
   useEffect(() => {
+    if (!mermaid) return
     const container = containerRef.current
     if (!container) return
 
@@ -106,6 +109,32 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
         pre.style.display = ''
       })
     }
+  }, [html, mermaid])
+
+  // In-page anchor clicks: resolve against prefixed ids
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const esc = (v: string) =>
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(v)
+        : v.replace(/([^a-zA-Z0-9_-])/g, '\\$1')
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a[href^="#"]')
+      if (!a || !container.contains(a)) return
+      let hash = (a.getAttribute('href') ?? '').slice(1)
+      try { hash = decodeURIComponent(hash) } catch { /* keep raw */ }
+      if (!hash) return
+      const target =
+        container.querySelector(`#${esc('user-content-' + hash)}`) ??
+        container.querySelector(`#${esc(hash)}`)
+      if (!target) return
+      e.preventDefault()
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      history.replaceState(null, '', '#' + hash)
+    }
+    container.addEventListener('click', onClick)
+    return () => container.removeEventListener('click', onClick)
   }, [html])
 
   // Excalidraw

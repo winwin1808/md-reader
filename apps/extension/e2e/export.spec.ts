@@ -64,8 +64,8 @@ describe('E2E smoke test for themes and export formats', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Title' })).toBeDefined()
     expect(screen.getByRole('heading', { level: 2, name: 'Subtitle' })).toBeDefined()
     expect(screen.getByText('Paragraph text.')).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Title' }).getAttribute('href')).toBe('#title')
-    expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#subtitle')
+    expect(screen.getByRole('link', { name: 'Title' }).getAttribute('href')).toBe('#user-content-title')
+    expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#user-content-subtitle')
 
     // Click Settings button, select a new theme ('navy'), verify chrome.storage.sync.set called
     const settingsBtn = screen.getByRole('button', { name: 'Settings' })

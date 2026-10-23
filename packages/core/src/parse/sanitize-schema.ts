@@ -20,7 +20,7 @@ const spanAttributes = (defaultSchema.attributes?.span ?? []).filter(
 
 export const sanitizeSchema: typeof defaultSchema = {
   ...defaultSchema,
-  clobberPrefix: '',
+  clobberPrefix: 'user-content-',
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
     'svg',
@@ -36,7 +36,6 @@ export const sanitizeSchema: typeof defaultSchema = {
     'tspan',
     'defs',
     'marker',
-    'foreignObject',
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -67,6 +66,5 @@ export const sanitizeSchema: typeof defaultSchema = {
     tspan: svgAttributes,
     defs: svgAttributes,
     marker: svgAttributes,
-    foreignObject: svgAttributes,
   },
 }
