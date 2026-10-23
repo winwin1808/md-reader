@@ -28,7 +28,12 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore('bases')
         db.createObjectStore('meta')
       }
-      req.onsuccess = () => resolve(req.result)
+      req.onsuccess = () => {
+        const db = req.result
+        db.onversionchange = () => { db.close(); dbPromise = null }
+        db.onclose = () => { dbPromise = null }
+        resolve(db)
+      }
       req.onerror = () => reject(req.error)
     })
     dbPromise.catch(() => { dbPromise = null })
@@ -52,6 +57,7 @@ function done(tx: IDBTransaction): Promise<void> {
 }
 
 export async function __resetForTests(): Promise<void> {
+  migrationPromise = null
   if (dbPromise) {
     try { (await dbPromise).close() } catch { /* ignore */ }
     dbPromise = null
@@ -147,7 +153,15 @@ export async function getBase(docId: string): Promise<string | null> {
   return (v as string | undefined) ?? null
 }
 
-export async function migrateLegacyRegistry(): Promise<number> {
+let migrationPromise: Promise<number> | null = null
+
+export function migrateLegacyRegistry(): Promise<number> {
+  if (migrationPromise) return migrationPromise.then(() => 0)
+  migrationPromise = runMigration().finally(() => { migrationPromise = null })
+  return migrationPromise
+}
+
+async function runMigration(): Promise<number> {
   const db = await openDb()
   const flag = await req(db.transaction('meta').objectStore('meta').get('migratedV1'))
   if (flag) return 0
@@ -179,7 +193,8 @@ export async function migrateLegacyRegistry(): Promise<number> {
 
   try {
     const dbs = await indexedDB.databases?.()
-    if (dbs?.some((d) => d.name === 'md-reader')) {
+    const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]
+    if (dbs?.some((d) => d.name === 'md-reader') && !all.some((r) => r.persistenceName === 'md-reader')) {
       await createRecord({
         title: 'Tài liệu đã kéo thả',
         originKind: 'drop',
@@ -210,16 +225,20 @@ export async function writeDocText(
     ensureDoc(doc, { title: record.title })
     const local = getSource(doc).toString()
     const originHash = getMeta(doc).get('originHash')
-    if (mode === 'if-clean' && local !== '' && (originHash == null || (await hashText(local)) !== originHash)) {
-      return 'kept'
+    const newHash = await hashText(text)
+    if (mode === 'if-clean' && local !== '' && local !== text) {
+      if (originHash == null || (await hashText(local)) !== originHash) return 'kept'
     }
     doc.transact(() => {
-      applyTextChange(getSource(doc), text)
+      if (local !== text) applyTextChange(getSource(doc), text)
+      getMeta(doc).set('originHash', newHash)
     }, ORIGIN_LOAD)
-    getMeta(doc).set('originHash', await hashText(text))
     return 'written'
   } finally {
-    await storeState(p, true)
-    await p.destroy()
+    try {
+      await storeState(p, true)
+    } finally {
+      await p.destroy()
+    }
   }
 }
