@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react'
 import './tokens.css'
-import './color-themes.css'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type Contrast = 'standard' | 'high'
 export type ColorTheme = 'navy' | 'green' | 'orange' | 'pink' | 'black'
 
 export interface ThemeContextValue {
@@ -15,17 +15,25 @@ export interface ThemeContextValue {
 
 export interface ThemeProviderProps {
   mode: ThemeMode
+  contrast?: Contrast
+  /** @deprecated ignored; removed in 7h2 */
   colorTheme?: ColorTheme
   onModeChange?: (mode: ThemeMode) => void
+  /** @deprecated */
   onColorThemeChange?: (theme: ColorTheme) => void
   children: React.ReactNode
+}
+
+function readSystemMode(): 'light' | 'dark' {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light'
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
-  const { mode, colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
-  const [resolvedSystemMode, setResolvedSystemMode] = useState<'light' | 'dark'>('light')
+  const { mode, contrast = 'standard', colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
+  const [systemMode, setSystemMode] = useState<'light' | 'dark'>(readSystemMode)
 
   useEffect(() => {
     if (mode !== 'system') return
@@ -33,7 +41,7 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = (e: MediaQueryListEvent) => {
-      setResolvedSystemMode(e.matches ? 'dark' : 'light')
+      setSystemMode(e.matches ? 'dark' : 'light')
     }
 
     if (mediaQuery.addEventListener) {
@@ -42,7 +50,7 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
       ;(mediaQuery as any).addListener(handleChange)
     }
 
-    setResolvedSystemMode(mediaQuery.matches ? 'dark' : 'light')
+    setSystemMode(mediaQuery.matches ? 'dark' : 'light')
 
     return () => {
       if (mediaQuery.removeEventListener) {
@@ -53,16 +61,18 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     }
   }, [mode])
 
-  const resolved = mode === 'system' ? resolvedSystemMode : mode
+  const resolved = mode === 'system' ? systemMode : mode
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof document === 'undefined') return
-    document.documentElement.setAttribute('data-theme', resolved)
-    document.documentElement.setAttribute('data-color-theme', colorTheme)
-    if (document.documentElement.style) {
-      document.documentElement.style.colorScheme = resolved
+    const root = document.documentElement
+    root.setAttribute('data-theme', resolved)
+    root.setAttribute('data-contrast', contrast)
+    root.removeAttribute('data-color-theme')
+    if (root.style) {
+      root.style.colorScheme = resolved
     }
-  }, [resolved, colorTheme])
+  }, [resolved, contrast])
 
   const setMode = (newMode: ThemeMode) => {
     if (onModeChange) {
@@ -86,7 +96,7 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
 
   return (
     <ThemeContext.Provider value={value}>
-      <div data-theme={resolved} data-color-theme={colorTheme}>
+      <div data-theme={resolved} data-contrast={contrast}>
         {children}
       </div>
     </ThemeContext.Provider>
