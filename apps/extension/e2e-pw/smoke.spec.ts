@@ -23,7 +23,7 @@ async function openViaContentScript(context: any, url: string): Promise<Page> {
 }
 
 async function toEditor(app: Page) {
-  await app.getByRole('button', { name: 'Chế độ Soạn thảo' }).click()
+  await app.getByRole('radio', { name: 'Soạn' }).click()
   const cm = app.locator('.cm-content')
   await expect(cm).toBeVisible()
   return cm

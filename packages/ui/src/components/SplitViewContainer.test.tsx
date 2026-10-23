@@ -262,9 +262,9 @@ describe('TopToolbar ViewMode buttons', () => {
       />
     )
 
-    const readingBtn = screen.getByRole('button', { name: /Chế độ Đọc/i })
-    const editorBtn = screen.getByRole('button', { name: /Chế độ Soạn thảo/i })
-    const splitBtn = screen.getByRole('button', { name: /Chế độ Chia đôi/i })
+    const readingBtn = screen.getByRole('radio', { name: 'Đọc' })
+    const editorBtn = screen.getByRole('radio', { name: 'Soạn' })
+    const splitBtn = screen.getByRole('radio', { name: 'Chia đôi' })
 
     expect(readingBtn.classList.contains('active')).toBe(true)
     expect(editorBtn.classList.contains('active')).toBe(false)

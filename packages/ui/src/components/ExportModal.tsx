@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '../theme/ThemeProvider'
 
@@ -7,6 +7,8 @@ export type ExportFormat = 'html' | 'docx' | 'pdf' | 'slide-pdf'
 export interface ExportModalProps {
   onExport: (format: ExportFormat) => Promise<void> | void
   isExporting?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 interface FormatOption {
@@ -38,9 +40,30 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
 ]
 
+function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
+  const [inner, setInner] = useState(false)
+  const controlled = open !== undefined
+  const isOpen = controlled ? Boolean(open) : inner
+  const returnRef = useRef<Element | null>(null)
+  useEffect(() => {
+    if (isOpen) {
+      returnRef.current = document.activeElement
+      return
+    }
+    const el = returnRef.current as HTMLElement | null
+    returnRef.current = null
+    if (el && el.isConnected && typeof el.focus === 'function') el.focus()
+  }, [isOpen])
+  const setIsOpen = (v: boolean) => {
+    if (!controlled) setInner(v)
+    onOpenChange?.(v)
+  }
+  return [isOpen, setIsOpen]
+}
+
 export function ExportModal(props: ExportModalProps): React.JSX.Element {
-  const [isOpen, setIsOpen] = useState(false)
   const { onExport, isExporting = false } = props
+  const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange)
 
   useEffect(() => {
     if (!isOpen) return
@@ -210,7 +233,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
 
   return (
     <>
-      <button
+      {props.open === undefined && <button
         type="button"
         title="Xuất tài liệu"
         aria-label="Xuất tài liệu"
@@ -247,7 +270,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-      </button>
+      </button>}
 
       {isOpen && (typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent)}
     </>

@@ -133,7 +133,7 @@ describe('App', () => {
   it('shows a visible, dismissible error when export fails', async () => {
     vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
     await act(async () => { render(<App />) })
-    await act(async () => { fireEvent.click(screen.getByTitle('Xuất tài liệu')) })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
     await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
     expect(await screen.findByText('Không xuất được tệp: boom')).toBeDefined()
     await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
@@ -155,7 +155,7 @@ describe('App', () => {
       render(<App />)
     })
 
-    const exportBtn = screen.getByTitle('Xuất tài liệu')
+    const exportBtn = screen.getByRole('button', { name: 'Xuất file' })
     expect(exportBtn).toBeDefined()
 
     // 1. Trigger PDF export
@@ -257,7 +257,7 @@ describe('App', () => {
     expect(placeholder).not.toBeNull()
     // open settings modal
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
     
     expect(document.querySelector('[data-color-theme="black"]')).not.toBeNull()
@@ -320,6 +320,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Font scale increase: click "Tăng cỡ chữ"
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
     const incBtn = screen.getByTitle('Tăng cỡ chữ')
     await act(async () => {
       fireEvent.click(incBtn)
@@ -341,7 +342,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Reading mode button in TopToolbar
-    const readingModeBtn = screen.getByTitle('Chế độ tập trung')
+    const readingModeBtn = screen.getByRole('menuitem', { name: 'Chế độ đọc' })
     expect(readingModeBtn).toBeDefined()
 
     await act(async () => {
@@ -427,7 +428,7 @@ describe('App', () => {
 
     // Open settings modal
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
 
     // Font family options should be shown (e.g., serif button or option)
@@ -461,7 +462,7 @@ describe('App', () => {
       await load({ colorTheme: 'green' })
       const sync = (window as any).chrome.storage.sync
       const local = (window as any).chrome.storage.local
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Settings' })) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Monospace' })) })
       const all = [...sync.set.mock.calls, ...local.set.mock.calls]
       expect(all.length).toBeGreaterThan(0)
@@ -486,7 +487,7 @@ describe('App', () => {
       await act(async () => { r = render(<App />) })
       expect(chromeMock.sync.set).toHaveBeenCalledWith(expect.objectContaining({ settingsVersion: 2, fontFamily: 'serif' }))
       expect(store.settingsVersion).toBe(2)
-      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Settings' })) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Sans-serif' })) })
       expect(store.fontFamily).toBe('sans')
       r.unmount()
@@ -880,7 +881,7 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     // 1. Open via Toolbar button
-    const mindmapBtn = screen.getByRole('button', { name: /mindmap/i })
+    const mindmapBtn = screen.getByRole('button', { name: 'Sơ đồ' })
     await act(async () => {
       fireEvent.click(mindmapBtn)
     })

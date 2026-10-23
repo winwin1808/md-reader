@@ -20,7 +20,7 @@ const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ defa
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
+import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
 import {
   parseMarkdown,
   renderToHtml,
@@ -96,6 +96,8 @@ export function App(): React.JSX.Element {
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
+  const [exportOpen, setExportOpen] = useState<boolean>(false)
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -321,6 +323,26 @@ export function App(): React.JSX.Element {
 
   const themeMode = readerSettings.mode || 'system'
 
+  const ss = fileSave.saveState
+  const saveStatus: SaveStatus =
+    ss.kind === 'saving'
+      ? { kind: 'saving' }
+      : ss.kind === 'error'
+        ? { kind: 'error', message: ss.message, onRetry: () => { void fileSave.save({ explicit: true }) } }
+        : ss.kind === 'needs-permission'
+          ? { kind: 'needs-permission', onGrant: () => { void fileSave.grantPermission() } }
+          : isDirty || ss.kind === 'conflict'
+            ? { kind: 'dirty' }
+            : ss.kind === 'saved'
+              ? { kind: 'saved', at: ss.at }
+              : { kind: 'none' }
+
+  const toolbarActions: ToolbarAction[] = [
+    { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
+    { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
+    { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
+  ]
+
   return (
     <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
       {isPrintingSlides && (
@@ -412,19 +434,14 @@ export function App(): React.JSX.Element {
           onOpenMindmap={() => setIsMindmapOpen(true)}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          isDirty={isDirty}
+          saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
-          rightActions={
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
-              <ExportModal onExport={exportAs} isExporting={isExporting} />
-              <SettingsModal
-                settings={readerSettings}
-                onSettingChange={handleSettingChange}
-              />
-            </div>
-          }
+          actions={toolbarActions}
         />
+        <>
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} isExporting={isExporting} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
+        </>
         {isReadingMode && (
           <button
             className="exit-reading-mode-btn md-no-print"
