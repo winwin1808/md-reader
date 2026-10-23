@@ -491,5 +491,6 @@ moves (6b*) count moved lines once.
   aria-labelledby, a visible +/− marker per changed line.
 - To 7n (review 6e2/6e3): cross-tab dedupe for registry migration (in-tab is done).
 - To 7l: content script renders Markdown in place (read-only).
+- To 7 (review 6j2): the mermaid setting gates only Viewer, not Deck/slides.
 - To 8x: PlantUML/Graphviz only if a self-hosted renderer exists; raw-HTML
   "tin tài liệu này" per-doc toggle UI.
