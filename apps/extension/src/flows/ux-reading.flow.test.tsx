@@ -80,19 +80,20 @@ const greeting = "Hello World";
 
     // 3. TopToolbar:
     // Find button "Tăng cỡ chữ" (or button with title/aria-label "Tăng cỡ chữ"), click it. Verify container element has attribute data-font-scale="lg".
-    const zoomInBtn = screen.getByRole('button', { name: /tăng cỡ chữ/i })
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
+    const zoomInBtn = screen.getByRole('menuitem', { name: /tăng cỡ chữ/i })
     fireEvent.click(zoomInBtn)
     expect(document.querySelector('[data-font-scale="lg"]')).not.toBeNull()
 
     // Find button "Giảm cỡ chữ", click it twice. Verify attribute data-font-scale="sm".
-    const zoomOutBtn = screen.getByRole('button', { name: /giảm cỡ chữ/i })
+    const zoomOutBtn = screen.getByRole('menuitem', { name: /giảm cỡ chữ/i })
     fireEvent.click(zoomOutBtn)
     fireEvent.click(zoomOutBtn)
     expect(document.querySelector('[data-font-scale="sm"]')).not.toBeNull()
 
     // 4. Reading Mode:
     // Click button with title "Chế độ tập trung". Verify container has class reading-mode and button "Thoát đọc tập trung ✕" appears.
-    const readingModeBtn = screen.getByRole('button', { name: /chế độ tập trung/i })
+    const readingModeBtn = screen.getByRole('menuitem', { name: /chế độ đọc/i })
     fireEvent.click(readingModeBtn)
     expect(document.querySelector('.reading-mode')).not.toBeNull()
     const exitReadingBtn = screen.getByRole('button', { name: /thoát đọc tập trung ✕/i })
@@ -104,7 +105,7 @@ const greeting = "Hello World";
 
     // 5. In-document Search:
     // Click search button with title="Tìm kiếm (Cmd+F)" or fireEvent keydown metaKey: true, key: 'f'.
-    const searchBtn = screen.getByRole('button', { name: /tìm kiếm/i })
+    const searchBtn = screen.getByRole('button', { name: 'Tìm' })
     fireEvent.click(searchBtn)
 
     // Verify input with placeholder="Tìm trong tài liệu..." appears.
@@ -157,7 +158,7 @@ const greeting = "Hello World";
 
     // 8. SettingsModal Font Family:
     // Open Settings button (title="Settings" / "Cài đặt").
-    const settingsBtn = screen.getByRole('button', { name: /settings|cài đặt/i })
+    const settingsBtn = screen.getByRole('button', { name: 'Settings' })
     fireEvent.click(settingsBtn)
 
     // Click font option "Serif". Verify data-font-family="serif" is set on container.

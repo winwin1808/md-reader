@@ -320,6 +320,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Font scale increase: click "Tăng cỡ chữ"
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
     const incBtn = screen.getByTitle('Tăng cỡ chữ')
     await act(async () => {
       fireEvent.click(incBtn)
@@ -341,7 +342,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Reading mode button in TopToolbar
-    const readingModeBtn = screen.getByTitle('Chế độ tập trung')
+    const readingModeBtn = screen.getByRole('menuitem', { name: 'Chế độ đọc' })
     expect(readingModeBtn).toBeDefined()
 
     await act(async () => {
@@ -880,7 +881,7 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     // 1. Open via Toolbar button
-    const mindmapBtn = screen.getByRole('button', { name: /mindmap/i })
+    const mindmapBtn = screen.getByRole('button', { name: 'Sơ đồ' })
     await act(async () => {
       fireEvent.click(mindmapBtn)
     })
