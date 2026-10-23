@@ -69,6 +69,10 @@ thể lệch nhau. Chính sách (phase 5, nhưng `originHash` phải có từ ph
 đầu tiên. Mọi ghi vào `Y.Text` từ app phải là delta nhỏ nhất
 (`applyTextChange`) hoặc transaction của CodeMirror — cấm xoá toàn bộ rồi chèn lại.
 
+**Cập nhật 2026-10-24 (6l):** `meta.remoteHash?` (tuỳ chọn, không đổi `formatVersion`) = hash
+bản URL nhập lần cuối; `originHash` = mốc đĩa/lần lưu. Quyết định nạp lại URL dựa vào
+`remoteHash ?? originHash`, nên một doc đã lưu ra đĩa không bao giờ bị bản URL cũ ghi đè.
+
 **Vì sao Yjs ngay từ phase 1 dù phase 1 chưa có editor.** Phase 1 chỉ đọc, nên
 Yjs lúc đó thuần overhead. Cái nó mua là: phase 5 (edit) và phase 8 (collab)
 không phải viết lại doc-model, và mọi thứ đọc `Y.Text` ở phase 1 vẫn đúng

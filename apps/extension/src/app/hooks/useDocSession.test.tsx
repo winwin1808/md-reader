@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { renderHook, act, waitFor, cleanup } from '@testing-library/react'
 import * as Y from 'yjs'
 import { hashText, ORIGIN_LOAD } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase } from '../doc-registry'
@@ -36,6 +36,12 @@ vi.mock('y-indexeddb', () => ({
 }))
 
 import { useDocSession } from './useDocSession'
+
+afterEach(async () => {
+  cleanup()
+  vi.unstubAllGlobals()
+  await new Promise((r) => setTimeout(r, 0))
+})
 
 async function prepareIdb(text: string, originText: string) {
   const d = new Y.Doc()
@@ -249,6 +255,96 @@ describe('useDocSession safe load', () => {
       act(() => result.current.acceptExternal())
       expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
     })
+  })
+})
+
+describe('useDocSession separate URL and disk baselines', () => {
+  beforeEach(async () => {
+    idbUpdate = null; names = []
+    await __resetForTests()
+    await new Promise<void>((r) => { const q = indexedDB.deleteDatabase('md-reader'); q.onsuccess = () => r(); q.onerror = () => r(); q.onblocked = () => r() })
+  })
+  async function prepareSaved(text: string, remoteText: string, originText: string, withRemote = true) {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, text)
+    if (withRemote) d.getMap('meta').set('remoteHash', await hashText(remoteText))
+    d.getMap('meta').set('originHash', await hashText(originText))
+    idbUpdate = Y.encodeStateAsUpdate(d)
+  }
+  const run = async (remote: string) => {
+    const r = setup(remote)
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    return r
+  }
+
+  it('saved edits survive reload when remote is unchanged (no banner)', async () => {
+    await prepareSaved('edited', 'orig', 'edited')
+    const { result } = await run('orig')
+    expect(result.current.yText.toString()).toBe('edited')
+    expect(result.current.externalChange).toBeNull()
+    expect(result.current.isDirty).toBe(false)
+  })
+
+  it('remote changed after saved edits -> banner, text kept', async () => {
+    await prepareSaved('edited', 'orig', 'edited')
+    const { result } = await run('changed')
+    await waitFor(() => expect(result.current.externalChange?.remoteText).toBe('changed'))
+    expect(result.current.yText.toString()).toBe('edited')
+  })
+
+  it('legacy doc with handle and no remoteHash never auto-applies remote over saved edits', async () => {
+    const rec = await createRecord({ title: 'a.md', originKind: 'url', originPath: 'https://x.test/a.md' })
+    await (await import('../doc-registry')).storeHandle(rec.docId, {} as any).catch(() => {})
+    await prepareSaved('edited', '', 'edited', false)
+    const { result } = await run('changed')
+    await waitFor(() => expect(result.current.externalChange?.remoteText).toBe('changed'))
+    expect(result.current.yText.toString()).toBe('edited')
+  })
+
+  const withHandle = async () => {
+    const rec = await createRecord({ title: 'a.md', originKind: 'url', originPath: 'https://x.test/a.md' })
+    await (await import('../doc-registry')).storeHandle(rec.docId, {} as any)
+  }
+
+  it('handle: URL change with local === remote base applies remote, keeps disk baseline, dirty', async () => {
+    await withHandle()
+    await prepareSaved('orig', 'orig', 'DISK')
+    const { result } = await run('changed')
+    await waitFor(() => expect(result.current.yText.toString()).toBe('changed'))
+    expect(result.current.externalChange).toBeNull()
+    expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('DISK'))
+    expect(result.current.doc.getMap('meta').get('remoteHash')).toBe(await hashText('changed'))
+    expect(result.current.isDirty).toBe(true)
+  })
+
+  it('handle: (e) local equals remote keeps originHash', async () => {
+    await withHandle()
+    await prepareSaved('same', 'old', 'DISK')
+    const { result } = await run('same')
+    expect(result.current.externalChange).toBeNull()
+    expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('DISK'))
+    expect(result.current.doc.getMap('meta').get('remoteHash')).toBe(await hashText('same'))
+  })
+
+  it('malformed %E0 in the URL path does not throw; title is the raw segment', async () => {
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => 'hi' })))
+    const { result } = renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/%E0.md' }))
+    await flush()
+    await act(async () => { resolveSync() })
+    await flush()
+    expect(result.current.error).toBeNull()
+    await waitFor(() => expect(result.current.title).toBe('%E0'))
+  })
+
+  it('pagehide flushes the checkpoint tracker', async () => {
+    const { result } = await run('hello')
+    await waitFor(() => expect(result.current.checkpoints).not.toBeNull())
+    const spy = vi.spyOn(result.current.checkpoints!, 'flush')
+    window.dispatchEvent(new Event('pagehide'))
+    expect(spy).toHaveBeenCalledWith('auto', 'Bạn')
   })
 })
 
