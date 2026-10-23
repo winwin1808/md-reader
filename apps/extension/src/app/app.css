@@ -206,7 +206,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   text-align: center;
   max-width: 34rem;
   margin: 12vh auto;
+  padding: 0 16px;
   font-family: var(--font-ui);
+}
+.first-screen > svg:first-child, .first-screen > img:first-child {
+  box-shadow: 0 0 0 1px var(--rule);
+  border-radius: 22%;
 }
 .first-screen h1 {
   font-family: var(--font-body);

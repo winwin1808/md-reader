@@ -30,7 +30,7 @@ export function RecentFiles(): React.JSX.Element {
           <li key={file.docId}>
             <button type="button" className="recent__item" onClick={() => handleClick(file)}>
               <span className="recent__title">{file.title}</span>
-              <span className="recent__meta">{originLabel(file)} · {relativeTime(file.lastOpenedAt)}</span>
+              <span className="recent__meta">{[originLabel(file), relativeTime(file.lastOpenedAt)].filter(Boolean).join(' · ')}</span>
             </button>
           </li>
         ))}
@@ -51,9 +51,10 @@ function originLabel(file: DocRecord): string {
   }
 }
 
-function relativeTime(ts: number): string {
+function relativeTime(ts: number | undefined): string {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return '';
   const diff = Date.now() - ts;
-  const min = Math.floor(diff / 60000);
+  const min = Math.max(0, Math.floor(diff / 60000));
   if (min < 1) return 'vừa xong';
   if (min < 60) return min + ' phút trước';
   const h = Math.floor(min / 60);
