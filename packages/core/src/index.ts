@@ -42,3 +42,5 @@ export type { MindNode } from './mindmap/mindmap.js'
 export { computeLineDiff, detectConflict } from './diff/diff.js'
 export type { DiffLine } from './diff/diff.js'
 
+export { createCheckpointTracker, registerActor } from './doc/checkpoint.js'
+export type { CheckpointTracker } from './doc/checkpoint.js'
