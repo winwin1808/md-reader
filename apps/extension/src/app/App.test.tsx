@@ -246,30 +246,6 @@ describe('App', () => {
     expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(null)
   })
   
-  it('loads colorTheme and renders ThemePicker', async () => {
-    await act(async () => {
-      render(<App />)
-    })
-    // open settings modal
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    })
-    
-    const navyBtn = screen.getByRole('button', { name: 'Select navy theme' })
-    expect(navyBtn).toBeDefined()
-    
-    // the green one should be selected
-    const greenBtn = screen.getByRole('button', { name: 'Select green theme' })
-    expect(greenBtn.style.border).toContain('2px solid rgb(59, 130, 246)')
-    
-    // changing color theme
-    await act(async () => {
-      fireEvent.click(navyBtn)
-    })
-    
-    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ colorTheme: 'navy' }))
-  })
-
   it('falls back to system theme and black colorTheme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
@@ -446,8 +422,8 @@ describe('App', () => {
     })
     const { container } = renderResult
 
-    // Initial data-font-family attribute should be 'sans'
-    expect(container.querySelector('[data-font-family="sans"]')).not.toBeNull()
+    // Initial data-font-family attribute is migrated to 'serif'
+    expect(container.querySelector('[data-font-family="serif"]')).not.toBeNull()
 
     // Open settings modal
     await act(async () => {
@@ -455,16 +431,50 @@ describe('App', () => {
     })
 
     // Font family options should be shown (e.g., serif button or option)
-    const serifOption = screen.getByRole('button', { name: 'Serif' })
-    expect(serifOption).toBeDefined()
+    const monoOption = screen.getByRole('button', { name: 'Monospace' })
+    expect(monoOption).toBeDefined()
 
-    // Select serif font family
     await act(async () => {
-      fireEvent.click(serifOption)
+      fireEvent.click(monoOption)
     })
 
-    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ fontFamily: 'serif' }))
-    expect(container.querySelector('[data-font-family="serif"]')).not.toBeNull()
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ fontFamily: 'mono' }))
+    expect(container.querySelector('[data-font-family="mono"]')).not.toBeNull()
+  })
+
+  describe('settings v2', () => {
+    const load = async (stored: any) => {
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue(stored)
+      let r: any
+      await act(async () => { r = render(<App />) })
+      return r.container as HTMLElement
+    }
+    it('migrates sans to serif when settingsVersion is absent', async () => {
+      const c = await load({ fontFamily: 'sans' })
+      expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('serif')
+    })
+    it('keeps sans when settingsVersion is 2', async () => {
+      const c = await load({ fontFamily: 'sans', settingsVersion: 2 })
+      expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
+    })
+    it('ignores stored colorTheme', async () => {
+      await load({ colorTheme: 'green', settingsVersion: 2 })
+      expect(document.documentElement.getAttribute('data-color-theme')).not.toBe('green')
+    })
+    it('defaults confetti off', async () => {
+      let props: any = null
+      vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { props = p; return <div /> })
+      await load({ settingsVersion: 2 })
+      Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
+      Object.defineProperty(window, 'scrollY', { value: 1000, writable: true, configurable: true })
+      Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1800, writable: true, configurable: true })
+      await act(async () => { fireEvent.scroll(window) })
+      expect(props?.active ?? false).toBe(false)
+    })
+    it('applies stored contrast high to html', async () => {
+      await load({ contrast: 'high', settingsVersion: 2 })
+      expect(document.documentElement.getAttribute('data-contrast')).toBe('high')
+    })
   })
 
   it('loads fontFamily from chrome.storage if already stored', async () => {
@@ -509,7 +519,6 @@ describe('App', () => {
       expect.objectContaining({
         initialSlide: 0,
         slides: expect.any(Array),
-        colorTheme: 'green',
         mode: 'dark',
       })
     )
@@ -725,6 +734,7 @@ describe('App', () => {
       return <div data-testid="mock-deck" />
     })
 
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ theme: 'dark', celebrationConfetti: true, settingsVersion: 2 })
     await act(async () => {
       render(<App />)
     })

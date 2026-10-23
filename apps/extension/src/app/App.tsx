@@ -20,7 +20,7 @@ const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ defa
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import type { ThemeMode, ColorTheme, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
+import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
 import {
   parseMarkdown,
   renderToHtml,
@@ -41,7 +41,8 @@ import './app.css'
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
   mode: 'system',
-  colorTheme: 'black',
+  contrast: 'standard',
+  settingsVersion: 2,
   fontFamily: 'sans',
   autoFormatMd: true,
   alwaysOpenApp: false,
@@ -56,7 +57,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   showWordCount: true,
   autoHideWordCount: true,
   showReadingProgress: true,
-  celebrationConfetti: true,
+  celebrationConfetti: false,
 }
 
 export function App(): React.JSX.Element {
@@ -157,16 +158,16 @@ export function App(): React.JSX.Element {
           (syncRes?.mode as ThemeMode) ||
           (syncRes?.theme as ThemeMode) ||
           DEFAULT_READER_SETTINGS.mode
-        const colorTheme =
-          (localRes?.colorTheme as ColorTheme) ||
-          (syncRes?.colorTheme as ColorTheme) ||
-          DEFAULT_READER_SETTINGS.colorTheme
+        const stored: any = { ...syncRes, ...localRes }
+        delete stored.colorTheme
+        if ((stored.settingsVersion ?? 1) < 2) {
+          if (!stored.fontFamily || stored.fontFamily === 'sans') stored.fontFamily = 'serif'
+          stored.settingsVersion = 2
+        }
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
-          ...syncRes,
-          ...localRes,
+          ...stored,
           mode,
-          colorTheme,
         })
         setFontScale((localRes?.fontScale as FontScale) || (syncRes?.fontScale as FontScale) || 'md')
       } catch (err) {
@@ -234,10 +235,6 @@ export function App(): React.JSX.Element {
 
   const handleModeChange = (mode: ThemeMode) => {
     handleSettingChange('mode', mode)
-  }
-
-  const handleColorThemeChange = (color: ColorTheme) => {
-    handleSettingChange('colorTheme', color)
   }
 
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
@@ -317,10 +314,9 @@ export function App(): React.JSX.Element {
   }
 
   const themeMode = readerSettings.mode || 'system'
-  const colorTheme = readerSettings.colorTheme
 
   return (
-    <ThemeProvider mode={themeMode} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+    <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
           {slides.map((slide, idx) => (
@@ -350,7 +346,6 @@ export function App(): React.JSX.Element {
               'width=1080,height=680'
             )
           }
-          colorTheme={colorTheme}
           mode={themeMode}
           presentationSettings={{
             slideBgColor: readerSettings.slideBgColor,
