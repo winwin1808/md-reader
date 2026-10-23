@@ -113,23 +113,27 @@ export async function verifyHandlePermission(
   }
 }
 
-export async function openLocalFileAsDoc(): Promise<string | null> {
+export async function openLocalFileAsDoc(): Promise<{ docId: string; kept: boolean } | null> {
   const opened = await openLocalFile()
   if (!opened) return null
   const { handle, content } = opened
   let record = null as Awaited<ReturnType<typeof createRecord>> | null
-  for (const r of await listRecent(1000)) {
+  for (const r of await listRecent(100_000)) {
     if (!r.hasHandle) continue
-    const h = await getHandle(r.docId)
-    if (h && (await h.isSameEntry(handle))) {
-      record = r
-      break
+    try {
+      const h = await getHandle(r.docId)
+      if (h && (await h.isSameEntry(handle))) {
+        record = r
+        break
+      }
+    } catch (err) {
+      console.warn('Skipping unreadable handle for', r.docId, err)
     }
   }
   if (!record) {
     record = await createRecord({ title: handle.name, originKind: 'file', originPath: `file:${handle.name}` })
   }
-  await writeDocText(record, content, 'if-clean')
+  const result = await writeDocText(record, content, 'if-clean')
   await storeHandle(record.docId, handle)
-  return record.docId
+  return { docId: record.docId, kept: result === 'kept' }
 }
