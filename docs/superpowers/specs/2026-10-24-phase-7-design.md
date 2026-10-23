@@ -61,8 +61,8 @@ Rejected:
 --ink     body text            #1B2422 · #E3E8E6 · #000000 · #FFFFFF
 --pencil  secondary text       #5E6A67 · #A3AFAC · #333333 · #D0D0D0
 --rule    hairlines            #D3DAD7 · #2E3836 · #000000 · #FFFFFF
---hl      highlighter          #F3DE4A · #8A7A12 · #FFE600 · #FFE600   (text on --hl is always --hl-ink)
---hl-ink  text on highlighter  #1B2422 · #FFFFFF · #000000 · #000000
+--hl      highlighter          #F3DE4A · #D9C640 · #FFE600 · #FFE600   (text on --hl is always --hl-ink)
+--hl-ink  text on highlighter  #1B2422 · #161C1B · #000000 · #000000
 --accent  links / focus        #23568C · #8DB6E8 · #0B3D91 · #9CC7FF
 --danger  errors               #A2352B · #F08A7E · #8B0000 · #FF9C9C
 --ok      success              #2F6B45 · #8CCB9F · #005A1F · #8CFFB0
@@ -184,7 +184,8 @@ FILES `packages/ui/src/theme/typography.css` · `packages/ui/src/theme/a4.css` �
 Body `var(--font-body)` 18px/1.62, column `max-width: var(--measure)`; heading scale
 1.25 ratio (h1 2.4em/600, h2 1.6em/600, h3 1.25em italic 400, h4 1.05em/600, h5–h6 1em/600
 no uppercase, no letter-spacing); `fontFamily` setting maps `data-font="sans|serif|mono"`
-to `--font-body` override. Font scale steps stay. The A4 sheet: paper on `--surface`
+to `--font-body` override. Font scale steps stay. Delete typography.css's own `--md-font-*` declarations (review 7b1: they override
+the token aliases, so the bundled fonts would never apply). The A4 sheet: paper on `--surface`
 ground, `--elev-1`, `--r-s`; on ≤ 720px the sheet loses its border and shadow.
 
 ### 7c — palettes and settings migration
@@ -193,7 +194,9 @@ FILES `packages/ui/src/theme/ThemeProvider.tsx` · `packages/ui/src/theme/ThemeP
 (type only: `contrast`, `settingsVersion`, `colorTheme?` deprecated) · `apps/extension/src/app/App.tsx`
 (defaults `contrast: 'standard'`, `settingsVersion: 2`, `celebrationConfetti: false`, no
 `colorTheme`; on load: v<2 and fontFamily 'sans' → 'serif'; pass `contrast` to ThemeProvider).
-Interfaces: Theme above. Tests: data-theme resolves system via matchMedia mock and
+Set data-theme / data-contrast synchronously before first paint (useLayoutEffect, plus an initial
+value computed from matchMedia) on BOTH documentElement and the wrapper (review 7b1: one-frame light flash,
+wrapper re-declaring non-HC tokens). Interfaces: Theme above. Tests: data-theme resolves system via matchMedia mock and
 updates on change; data-contrast set; old stored `{ fontFamily: 'sans' }` without
 settingsVersion → 'serif'; with settingsVersion 2 → kept.
 
@@ -254,7 +257,8 @@ external links) · "Khi mở file .md" (alwaysOpenApp, autoFormatMd) · "Hỗ tr
 count, auto-hide, reading progress, confetti) · "Trình chiếu" (slide colours, font,
 background image, opacity). Every label Vietnamese, with a one-line description in
 `--pencil` where the effect isn't obvious. A left index of the 5 headings (anchor links)
-at ≥ 900px. Modal = `role="dialog"`, aria-labelledby, Esc, focus trap. Same setting keys
+at ≥ 900px. Modal = `role="dialog"`, aria-labelledby, Esc, focus trap. Remove settings.css `:focus { outline: none; box-shadow: rgba(9,105,218,…) }`
+rules so the global outline focus ring applies (review 7b1). Same setting keys
 and onChange calls as today (behaviour unchanged). Palette control here is temporary
 radios for mode + checkbox contrast (7h2 makes it the picker).
 
@@ -419,7 +423,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 ## Sub-phase queue
 - 7a1: done
 - 7a2: done
-- 7b1: pending
+- 7b1: planned
 - 7b2: pending
 - 7b3: pending
 - 7c: pending
