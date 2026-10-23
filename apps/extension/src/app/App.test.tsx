@@ -153,10 +153,11 @@ describe('App', () => {
     vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
     await act(async () => { render(<App />) })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
-    await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
-    expect(await screen.findByText('Không xuất được file. boom')).toBeDefined()
-    await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
-    expect(screen.queryByText('Không xuất được file. boom')).toBeNull()
+    await act(async () => { fireEvent.click(screen.getByText('Word (.docx)')) })
+    expect((await screen.findByRole('alert')).textContent).toContain('boom')
+    expect(screen.getByRole('button', { name: 'Thử lại' })).toBeDefined()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Đóng' })) })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   describe('notices', () => {
@@ -203,7 +204,7 @@ describe('App', () => {
     })
   })
 
-  it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
+  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
@@ -225,7 +226,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const pdfOption = screen.getByText('Tài liệu PDF (.pdf)')
+    const pdfOption = screen.getByText('PDF để in')
     await act(async () => {
       fireEvent.click(pdfOption)
     })
@@ -235,7 +236,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const htmlOption = screen.getByText('HTML Độc lập (.html)')
+    const htmlOption = screen.getByText('Trang web (.html)')
     await act(async () => {
       fireEvent.click(htmlOption)
     })
@@ -256,7 +257,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const docxOption = screen.getByText('Microsoft Word (.docx)')
+    const docxOption = screen.getByText('Word (.docx)')
     await act(async () => {
       fireEvent.click(docxOption)
     })
@@ -270,29 +271,33 @@ describe('App', () => {
     })
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
 
-    // 4. Trigger Slide PDF export
-    // Container should NOT be in DOM normally to save memory
-    expect(document.querySelector('.deck-print-container')).toBeNull()
-    
+    // 4. A document without slides does not offer the slides PDF
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const slidePdfOption = screen.getByText('Slide PDF (Khổ ngang)')
-    await act(async () => {
-      fireEvent.click(slidePdfOption)
-    })
-    
-    expect(printSlidesSpy).toHaveBeenCalled()
-    // It should be rendered now
-    expect(document.querySelector('.deck-print-container')).not.toBeNull()
-    
-    // Wait for the timeout to remove it
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
+    expect(screen.queryByText('PDF trình chiếu')).toBeNull()
     expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()
+  })
+
+  it('offers slides PDF for a doc with breaks, calls printSlides with deck container, and skips slide detection while closed', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# A\n\nx\n---\n\n# B\n\ny'),
+    } as any)
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
+    const splitSpy = vi.spyOn(core, 'splitIntoSlides')
+
+    await act(async () => { render(<App />) })
+    expect(splitSpy).not.toHaveBeenCalled()
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+    expect(splitSpy).toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+    expect(printSlidesSpy).toHaveBeenCalled()
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {

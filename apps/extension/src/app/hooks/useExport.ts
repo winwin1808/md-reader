@@ -18,24 +18,17 @@ function download(blob: Blob, filename: string): void {
 
 export function useExport(args: { html: string; title: string; parseResult: ParseResult }): {
   exportAs(format: ExportFormat): Promise<void>
-  isExporting: boolean
   isPrintingSlides: boolean
-  exportError: string | null
-  clearExportError(): void
 } {
   const { html, parseResult } = args
-  const [isExporting, setIsExporting] = useState<boolean>(false)
-  const [exportError, setExportError] = useState<string | null>(null)
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
 
   const exportAs = async (format: ExportFormat): Promise<void> => {
-    setIsExporting(true)
-    setExportError(null)
     try {
       const title = args.title || 'document'
       if (format === 'pdf') {
         printDocument()
-      } else if (format === 'slide-pdf') {
+      } else if (format === 'slides-pdf') {
         flushSync(() => {
           setIsPrintingSlides(true)
         })
@@ -55,12 +48,9 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
         download(blob, `${title}.docx`)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setExportError(message)
-    } finally {
-      setIsExporting(false)
+      throw err instanceof Error ? err : new Error(String(err))
     }
   }
 
-  return { exportAs, isExporting, isPrintingSlides, exportError, clearExportError: () => setExportError(null) }
+  return { exportAs, isPrintingSlides }
 }

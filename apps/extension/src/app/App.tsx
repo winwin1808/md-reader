@@ -333,11 +333,16 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
-  const { exportAs, isExporting, isPrintingSlides, exportError, clearExportError } = useExport({
+  const { exportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
   })
+
+  const hasSlides = useMemo(
+    () => (exportOpen ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }).length > 1 : false),
+    [exportOpen, content, readerSettings.enableMath],
+  )
 
   const slides = useMemo(
     () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }) : []),
@@ -484,7 +489,7 @@ export function App(): React.JSX.Element {
           actions={toolbarActions}
         />
         <>
-          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} isExporting={isExporting} />
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
           <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
         </>
         {isReadingMode && (
@@ -497,14 +502,6 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop>
-          {exportError && (
-            <div className="error-banner notice notice--danger" role="alert">
-              <span>Không xuất được file. {exportError}</span>
-              <div className="notice__actions">
-                <button type="button" onClick={clearExportError}>Đóng</button>
-              </div>
-            </div>
-          )}
           {session.externalChange && (
             <div className="error-banner notice" role="status">
               <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
