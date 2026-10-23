@@ -482,7 +482,7 @@ moves (6b*) count moved lines once.
 - 6j4: done   (split from 6j3 at plan time: wiring into session + saves)
 - 6k1: done
 - 6k2: done
-- 6k3: pending
+- 6k3: done
 
 ## Deferred
 
