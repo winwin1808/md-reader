@@ -59,14 +59,3 @@
 [data-theme="dark"] .cm-editor .cm-content ::selection {
   background: var(--md-selection);
 }
-
-/* Markdown syntax tones (CodeMirror highlight classes) */
-.cm-editor .tok-heading { color: var(--ink); font-weight: 600; }
-.cm-editor .tok-emphasis { font-style: italic; }
-.cm-editor .tok-strong { font-weight: 600; }
-.cm-editor .tok-link,
-.cm-editor .tok-url { color: var(--accent); }
-.cm-editor .tok-monospace { color: var(--code-string); }
-.cm-editor .tok-quote { color: var(--pencil); }
-.cm-editor .tok-list,
-.cm-editor .tok-meta { color: var(--code-keyword); }
