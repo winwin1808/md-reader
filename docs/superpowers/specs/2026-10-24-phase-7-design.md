@@ -400,7 +400,7 @@ Test: default black stroke renders as `var(--ink)`.
 ### 7r — reading aids in tokens
 FILES `packages/ui/src/components/CelebrationConfetti.tsx` (token colours, skip under
 reduced motion) · `WordCountBar.tsx` (Vietnamese "1.240 từ · 6 phút đọc", vi-VN number
-format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/reading-aids.css`
+format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/reading-aids.css` (also delete its old `.markdown-alert` rules, superseded in 7g1)
 · `packages/ui/src/components/reading-aids.test.tsx`.
 Test: reduced-motion matchMedia true → confetti renders nothing; word count text format.
 
@@ -433,7 +433,8 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7e1: done   (toolbar + save status; split from 7e at plan time)
 - 7e2: done   (banners and notices in tokens)
 - 7f: done
-- 7g: pending
+- 7g1: planned   (alerts/tables/code/metadata; split from 7g at plan time)
+- 7g2: pending   (search bar + highlight)
 - 7h1: pending
 - 7h2: pending
 - 7i1: pending

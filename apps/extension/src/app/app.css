@@ -25,7 +25,7 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: minmax(0, 820px) 260px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   justify-content: center;
   column-gap: 40px;
   max-width: 1200px;
@@ -36,7 +36,7 @@ body {
 }
 
 .app-layout.single-column {
-  grid-template-columns: minmax(0, 820px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .main-content {

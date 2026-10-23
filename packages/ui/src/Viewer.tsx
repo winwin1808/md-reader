@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
+import { iconSvg } from './components/Icon'
 import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
 import { ExcalidrawBlock } from './components/ExcalidrawBlock'
@@ -227,7 +228,9 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
       const header = document.createElement('div')
       header.className = 'code-block-header md-no-print'
-      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" title="Sao chép mã nguồn" aria-label="Sao chép mã nguồn">Copy</button>`
+      const copyIcon = iconSvg('copy', 16)
+      const copyLabel = (text: string) => `${copyIcon}<span>${text}</span>`
+      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" aria-label="Sao chép mã">${copyLabel('Sao chép')}</button>`
 
       const copyBtn = header.querySelector<HTMLButtonElement>('.code-copy-btn')
       if (copyBtn) {
@@ -237,13 +240,13 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
           try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
               await navigator.clipboard.writeText(codeText)
-              copyBtn.textContent = 'Copied ✓'
+              copyBtn.innerHTML = copyLabel('Đã chép')
               copyBtn.classList.add('copied')
               if (timeoutId) {
                 clearTimeout(timeoutId)
               }
               timeoutId = setTimeout(() => {
-                copyBtn.textContent = 'Copy'
+                copyBtn.innerHTML = copyLabel('Sao chép')
                 copyBtn.classList.remove('copied')
                 timeoutId = null
               }, 1500)
