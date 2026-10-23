@@ -125,7 +125,9 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
 | 3 | Trình chiếu | Bấm Present là trình bày được, có speaker view |
 | 4 | Mindmap & Excalidraw | Nhìn cấu trúc dạng cây; xem được sơ đồ excalidraw nhúng |
 | 5 | Chỉnh sửa | Sửa và lưu về đĩa an toàn, có phát hiện lệch file |
-| 6 | Chia sẻ & cộng tác | Link xem → cùng sửa → trace ai sửa chỗ nào (3 lần ship nhỏ) |
+| 6 | Gia cố | Không mất/nhân đôi chữ, lưu thẳng về đĩa sau reload, quyền tối thiểu, Playwright thật |
+| 7 | Giao diện Lề sách | Giao diện phương án A cho mọi bề mặt + logo app |
+| 8 | Chia sẻ & cộng tác | Link xem → cùng sửa → trace ai sửa chỗ nào (3 lần ship nhỏ) |
 
 ## Status
 

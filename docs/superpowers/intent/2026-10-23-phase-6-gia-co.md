@@ -1,5 +1,6 @@
 # Intent: Phase 6 — Gia cố (Hardening)
-Author: haonq. Status: draft. Phase: 6
+Author: haonq. Status: designed. Phase: 6
+Design: docs/superpowers/specs/2026-10-23-phase-6-design.md
 
 Nguồn: `docs/research/2026-10-23-code-review-roadmap.md` (R1–R13) và
 `docs/design/2026-10-23-ui-audit.md` (các bug chức năng). Đánh số lại phase được

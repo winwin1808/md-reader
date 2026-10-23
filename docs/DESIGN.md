@@ -31,7 +31,7 @@ Mọi tính năng nặng sống ở app page vì ở đó CSP do mình kiểm so
 ### Không làm (non-goals)
 
 - Không phải IDE hay thay thế Obsidian/Typora. Không plugin system.
-- Không realtime trước phase 6. Không mobile. Không đồng bộ cloud storage
+- Không realtime trước phase 8. Không mobile. Không đồng bộ cloud storage
   (Drive/Dropbox) — file đến từ đĩa của người dùng hoặc từ URL.
 - Không hỗ trợ Firefox/Safari trong phase 1-5. Code giữ portable (mọi lời gọi
   `chrome.*` gom trong `apps/extension`) nhưng không tốn công test.
@@ -62,8 +62,15 @@ thể lệch nhau. Chính sách (phase 5, nhưng `originHash` phải có từ ph
   diff ba chiều (đĩa / Y.Doc / tổ tiên chung) và bắt người dùng chọn.
 - Không bao giờ tự merge im lặng nội dung từ đĩa vào Y.Doc.
 
+**Cập nhật 2026-10-23 (phase 6, `formatVersion: 2`):** mọi Y.Doc tạo với
+`gc: false`; mỗi entry `history` có thêm `snapshot?: Uint8Array`
+(`Y.encodeSnapshot`) để phase 8g tua lại được từng mốc kèm attribution. Nội dung
+đã bị gc trước bản 2 không khôi phục được — timeline bắt đầu từ checkpoint v2
+đầu tiên. Mọi ghi vào `Y.Text` từ app phải là delta nhỏ nhất
+(`applyTextChange`) hoặc transaction của CodeMirror — cấm xoá toàn bộ rồi chèn lại.
+
 **Vì sao Yjs ngay từ phase 1 dù phase 1 chưa có editor.** Phase 1 chỉ đọc, nên
-Yjs lúc đó thuần overhead. Cái nó mua là: phase 5 (edit) và phase 6 (collab)
+Yjs lúc đó thuần overhead. Cái nó mua là: phase 5 (edit) và phase 8 (collab)
 không phải viết lại doc-model, và mọi thứ đọc `Y.Text` ở phase 1 vẫn đúng
 nguyên khi text bắt đầu thay đổi từ nhiều nguồn. Đổi lại phase 1 gánh ~40KB gz
 và một lớp gián tiếp không sinh lợi ngay. Đây là đánh đổi đã chốt.
@@ -77,12 +84,12 @@ nhưng mất granularity actor, đúng thứ cần cho "trace ai sửa chỗ nà
 
 | Phase | Provider | Ghi ở đâu |
 |---|---|---|
-| 1-5 | `y-indexeddb` | IndexedDB trong extension origin |
-| 6 | `y-indexeddb` + WebSocket provider tới `apps/api` | thêm Postgres phía server |
+| 1-7 | `y-indexeddb` | IndexedDB trong extension origin, một DB mỗi `docId` (từ 6e) |
+| 8 | `y-indexeddb` + WebSocket provider tới `apps/api` | thêm Postgres phía server |
 
 `packages/core` **không được biết provider nào đang chạy** — nó nhận vào một
 `Y.Doc` đã bind sẵn. Việc chọn và gắn provider là của `apps/extension`
-(phase 1-5) và `apps/web` (phase 6). Đây là thứ giữ cho phase 6 không phải
+(phase 1-5) và `apps/web` (phase 8). Đây là thứ giữ cho phase 8 không phải
 đụng vào core.
 
 Ngoài Y.Doc, có một registry nhỏ trong IndexedDB: `docId → { name, originPath,
@@ -101,7 +108,7 @@ Yjs cho sẵn `clientID` trên từng struct trong `Y.Text`. Ghép hai tầng:
   phím gõ. Mỗi entry giữ `clientIds[]` xuất hiện trong khoảng đó.
 
 Hai tầng vì blame trả lời "dòng này ai viết" còn timeline trả lời "hôm qua ai
-đổi gì". Cả hai chỉ có UI ở phase 6; **schema phải đúng từ phase 1** vì đổi
+đổi gì". Cả hai chỉ có UI ở phase 8; **schema phải đúng từ phase 1** vì đổi
 schema Y.Doc sau khi có dữ liệu thật là migration đau.
 
 Có `formatVersion` trong `meta` ngay từ đầu để migration về sau còn có chỗ bám.
@@ -113,10 +120,10 @@ packages/core       thuần TS. Được dùng yjs (chạy cả trên Node).
                     KHÔNG react · KHÔNG chrome.* · KHÔNG document/window
 packages/ui         React. KHÔNG chrome.*
 apps/extension      MV3. Lớp DUY NHẤT được dùng chrome.*
-(phase 6) apps/api · apps/web
+(phase 8) apps/api · apps/web
 ```
 
-Ranh giới này tồn tại để phase 6 chạy được `packages/core` trên Node (render
+Ranh giới này tồn tại để phase 8 chạy được `packages/core` trên Node (render
 preview cho share link) và `packages/ui` trong web app mà không viết lại.
 Vi phạm là blocker cứng ở `review-before-ship`, không phải góp ý.
 
@@ -168,7 +175,7 @@ phòng cho vấn đề CSP ở mục 5.1.
 |---|---|
 | `doc/` | Y.Doc schema, tạo/mở doc, import text→Y.Text, export Y.Text→text, `originHash`, history feed, blame |
 | `parse/` | remark pipeline, mdast, frontmatter, sanitize schema |
-| `render/` | mdast → hast → HTML string (dùng được cả trên Node cho phase 6) |
+| `render/` | mdast → hast → HTML string (dùng được cả trên Node cho phase 8) |
 | `format/` | auto-format round-trip, config chuẩn hoá |
 | `slides/` | mdast → `Slide[]` |
 | `mindmap/` | mdast → `MindNode` tree |
@@ -317,21 +324,47 @@ Ship: *sửa file và lưu lại đĩa an toàn.*
 | 5f | Split view | Source ↔ preview, cuộn đồng bộ |
 | 5g | History checkpoint | Append `Y.Array "history"` lúc lưu / lặng 30s |
 
-### Phase 6 — Chia sẻ & cộng tác
+### Phase 6 — Gia cố
+
+Ship: *sửa, đóng tab, reload, kéo file khác vào: không bao giờ mất hay nhân đôi chữ;
+Cmd+S ghi thẳng về đĩa sau reload; extension xin đúng quyền cần.* Thêm 2026-10-23
+sau code review (`docs/research/2026-10-23-code-review-roadmap.md`). Phase con và
+interface: `docs/superpowers/specs/2026-10-23-phase-6-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 6a | `core/doc` applyTextChange | Ghi delta nhỏ nhất vào Y.Text, test hội tụ |
+| 6b1-6b3 | Tách App.tsx | `useDocSession`, `useFileSave`, `useExport`, `useShortcuts`, ErrorBoundary |
+| 6c | Bỏ ghi đè toàn văn | Mọi ghi Y.Text đi qua delta/CodeMirror; autosave không format |
+| 6d | Mở file an toàn | Đợi `whenSynced`, so `originHash`; lỗi đọc đĩa ≠ xung đột |
+| 6e1-6e3 | Định danh doc | `formatVersion: 2` + migration; registry `docId`; mỗi doc một IDB |
+| 6f1-6f2 | Handle & diff 3 chiều | Khôi phục quyền ghi theo docId; Mở file; base text |
+| 6g1-6g2 | Bảo mật render | Transform thành rehype plugin trước sanitize; `clobberPrefix` |
+| 6h1-6h2 | Quyền & storage | Manifest tối thiểu; cache chỉ khi cần, có TTL |
+| 6i1-6i3 | Hiệu năng | Debounce 120ms; cache mermaid; diff Myers; tách chunk |
+| 6j1-6j3 | Setting & checkpoint | Math thật; bỏ toggle chết; checkpoint `clientIds` + snapshot |
+| 6k1-6k3 | Playwright & dọn | 3 luồng khói load-unpacked; đổi tên flows; xoá file rác |
+
+### Phase 7 — Giao diện Lề sách
+
+Ship: *giao diện "Lề sách" (phương án A, `docs/design/ui-redesign-options.html`) cho
+mọi bề mặt + logo app.* Phase con chốt ở bước design của phase 7.
+
+### Phase 8 — Chia sẻ & cộng tác
 
 Ship: *gửi link cho người khác xem → cho họ sửa → xem ai sửa chỗ nào.*
 
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 6a | `apps/api` scaffold | NestJS + Postgres, lưu Y update binary, migration |
-| 6b | Share link read-only | Token + hạn dùng; `apps/web` render bằng `core/render` chạy trên Node |
-| 6c | WebSocket provider | Đồng bộ hai chiều thật giữa hai client |
-| 6d | Awareness | Con trỏ + presence |
-| 6e | Phân quyền | view / comment / edit theo từng link |
-| 6f | `BlameGutter` | Blame theo ký tự từ `clientID` |
-| 6g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc |
+| 8a | `apps/api` scaffold | NestJS + Postgres, lưu Y update binary, migration |
+| 8b | Share link read-only | Token + hạn dùng; `apps/web` render bằng `core/render` chạy trên Node |
+| 8c | WebSocket provider | Đồng bộ hai chiều thật giữa hai client |
+| 8d | Awareness | Con trỏ + presence |
+| 8e | Phân quyền | view / comment / edit theo từng link |
+| 8f | `BlameGutter` | Blame theo ký tự từ `clientID` |
+| 8g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc |
 
-Danh tính: 6b dùng tên tự khai lưu trong link token. Auth thật chỉ đặt ra khi
+Danh tính: 8b dùng tên tự khai lưu trong link token. Auth thật chỉ đặt ra khi
 có nhu cầu thực — không dựng account system trước.
 
 ## 5. Rủi ro
@@ -432,7 +465,7 @@ Lệnh: `pnpm --filter core test` · `--filter ui` · `--filter extension`.
 
 Với `core/doc`, mỗi tính năng phải có ít nhất một test **hội tụ**: hai Y.Doc
 sửa rời nhau, đồng bộ, phải ra cùng một kết quả. Đây là thứ bắt lỗi doc-model
-trước khi phase 6 tới.
+trước khi phase 8 tới.
 
 ---
 
