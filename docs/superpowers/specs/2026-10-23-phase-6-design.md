@@ -467,7 +467,7 @@ moves (6b*) count moved lines once.
 - 6e3: done
 - 6e4: done      (split from 6e3 at plan time: drop, recent files, delete registry.ts)
 - 6f1: done
-- 6f2: planned   (data half: base storage)
+- 6f2: done   (data half: base storage)
 - 6f3: pending   (split from 6f2 at plan time: three-way ConflictModal UI)
 - 6g1: pending
 - 6g2: pending
