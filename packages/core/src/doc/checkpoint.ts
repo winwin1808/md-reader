@@ -49,10 +49,14 @@ export function createCheckpointTracker(
 
   const onAfter = (tr: Y.Transaction) => {
     if (!tr.changed.has(getSource(doc) as unknown as Y.AbstractType<any>)) return
+    if (tr.origin === ORIGIN_CHECKPOINT) return
     tr.afterState.forEach((clock, client) => {
       if (clock > (tr.beforeState.get(client) ?? 0)) clients.add(client)
     })
-    tr.deleteSet.clients.forEach((_v, client) => clients.add(client))
+    // deleteSet.clients are the deleted items' authors, not the deleters, so unused.
+    // Local delete-only edits are covered by doc.clientID; remote delete-only edits
+    // are not attributed yet — phase 8: provider supplies the sender.
+    if (tr.local) clients.add(doc.clientID)
     clearTimer()
     timer = setTimeout(() => {
       timer = null
@@ -74,7 +78,17 @@ export function createCheckpointTracker(
 
 export function registerActor(doc: Y.Doc, name: string): void {
   const meta = getMeta(doc)
-  const raw = meta.get('actors')
-  const actors = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, string>) : {}
-  meta.set('actors', { ...actors, [String(doc.clientID)]: name })
+  doc.transact(() => {
+    const raw = meta.get('actors')
+    if (raw instanceof Y.Map) {
+      raw.set(String(doc.clientID), name)
+      return
+    }
+    const map = new Y.Map<string>()
+    meta.set('actors', map)
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      for (const [k, v] of Object.entries(raw as Record<string, string>)) map.set(k, v)
+    }
+    map.set(String(doc.clientID), name)
+  })
 }
