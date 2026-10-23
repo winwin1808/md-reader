@@ -31,6 +31,7 @@ import {
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
+import { openLocalFileAsDoc } from './fs/file-system'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useExport } from './hooks/useExport'
@@ -179,6 +180,15 @@ export function App(): React.JSX.Element {
     }
     fetchSettings()
   }, [])
+
+  const handleOpenFile = async () => {
+    try {
+      const id = await openLocalFileAsDoc()
+      if (id) window.location.assign('?doc=' + id)
+    } catch (err) {
+      setError((err as Error)?.message || 'Không mở được file.')
+    }
+  }
 
   const handleFormatAction = (action: FormatAction) => {
     const view = editorViewRef.current
@@ -397,6 +407,7 @@ export function App(): React.JSX.Element {
           onSave={() => fileSave.save({ explicit: true })}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
               <ExportModal onExport={exportAs} isExporting={isExporting} />
               <SettingsModal
                 settings={readerSettings}
@@ -420,6 +431,14 @@ export function App(): React.JSX.Element {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
                 <button type="button" onClick={session.dismissExternal}>Giữ bản đang sửa</button>
+              </div>
+            </div>
+          )}
+          {fileSave.saveState.kind === 'needs-permission' && (
+            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>Cần cấp lại quyền ghi cho {fileSave.saveState.fileName}.</div>
+              <div>
+                <button type="button" onClick={() => { void fileSave.grantPermission() }}>Cấp quyền</button>
               </div>
             </div>
           )}
@@ -510,6 +529,7 @@ export function App(): React.JSX.Element {
             <div data-testid="app-placeholder" style={{ padding: '40px', textAlign: 'center' }}>
               <h2>MD Reader</h2>
               <p>Drag and drop a Markdown file here, or click "Open in MD Reader" from any Markdown file in Chrome.</p>
+              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
               <RecentFiles />
             </div>
           )}
