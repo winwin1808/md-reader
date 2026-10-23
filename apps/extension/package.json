@@ -10,6 +10,7 @@
     "dev:content": "vite build --config vite.content.config.ts --watch",
     "test": "vitest run",
     "e2e": "pnpm build && playwright test",
+    "icons": "node scripts/render-icons.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
