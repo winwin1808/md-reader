@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import React from 'react'
-import { render, screen, act, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import * as Y from 'yjs'
@@ -302,7 +302,8 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
-    expect(placeholder.textContent).toContain('MD Reader')
+    expect(placeholder.textContent).toContain('Mở một tài liệu Markdown')
+    expect(within(placeholder).getByRole('button', { name: /Mở file…/ })).not.toBeNull()
     
     // no ?doc / ?file -> no persistence is opened
     expect(IndexeddbPersistence).not.toHaveBeenCalled()
