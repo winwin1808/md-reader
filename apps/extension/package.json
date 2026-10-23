@@ -9,6 +9,7 @@
     "dev": "vite build --watch",
     "dev:content": "vite build --config vite.content.config.ts --watch",
     "test": "vitest run",
+    "e2e": "pnpm build && playwright test",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "yjs": "13.6.32"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@testing-library/react": "16.3.3",
     "@types/chrome": "0.2.9",
     "@types/react": "19.3.0",
