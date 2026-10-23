@@ -204,7 +204,7 @@ describe('App', () => {
     })
   })
 
-  it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
+  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
@@ -279,6 +279,25 @@ describe('App', () => {
     expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()
+  })
+
+  it('offers slides PDF for a doc with breaks, calls printSlides with deck container, and skips slide detection while closed', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# A\n\nx\n---\n\n# B\n\ny'),
+    } as any)
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
+    const splitSpy = vi.spyOn(core, 'splitIntoSlides')
+
+    await act(async () => { render(<App />) })
+    expect(splitSpy).not.toHaveBeenCalled()
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+    expect(splitSpy).toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+    expect(printSlidesSpy).toHaveBeenCalled()
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {
