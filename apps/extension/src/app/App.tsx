@@ -290,8 +290,8 @@ export function App(): React.JSX.Element {
   })
 
   const slides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content) : []),
-    [content, isPresenting, isPrintingSlides, isSpeakerMode],
+    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }) : []),
+    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath],
   )
 
   useShortcuts({
