@@ -418,6 +418,16 @@ export function App(): React.JSX.Element {
               </div>
             </div>
           )}
+          {fileSave.saveState.kind === 'error' && (
+            <div className="error-banner" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>{fileSave.saveState.message}</div>
+              {fileSave.saveState.canSaveAs && (
+                <div>
+                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành…</button>
+                </div>
+              )}
+            </div>
+          )}
           {error && (
             <div style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontWeight: 600 }}>{error}</div>

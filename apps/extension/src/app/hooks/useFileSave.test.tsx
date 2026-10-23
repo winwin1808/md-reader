@@ -116,4 +116,94 @@ describe('useFileSave', () => {
     expect(yText.toString()).toBe('disk text')
     expect(origins).toEqual(['md:revert'])
   })
+
+  async function withHandle(doc: Y.Doc, formatOnSave = false) {
+    const handle = fakeHandle()
+    saveFileAs.mockResolvedValue({ handle })
+    const hook = renderHook(({ s }) => useFileSave(s, { formatOnSave }), { initialProps: { s: makeSession(doc, { isDirty: true }) } })
+    await act(async () => { await hook.result.current.save({ explicit: true }) })
+    return { handle, ...hook }
+  }
+
+  it('getFile rejects -> error state, no conflict, text untouched', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'local')
+    const { result } = await withHandle(doc)
+    expect(result.current.saveState.kind).toBe('saved')
+    result.current.activeHandle!.getFile = async () => { throw new Error('gone') }
+    saveToHandle.mockClear()
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.saveState).toEqual({
+      kind: 'error', canSaveAs: true,
+      message: 'Không đọc được file trên đĩa (đã bị xoá hoặc di chuyển?).',
+    })
+    expect(result.current.conflict.open).toBe(false)
+    expect(doc.getText('source').toString()).toBe('local')
+    expect(saveToHandle).not.toHaveBeenCalled()
+  })
+
+  it('successful save -> saved', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const { result } = await withHandle(doc)
+    expect(result.current.saveState.kind).toBe('saved')
+  })
+
+  it('write throws -> error with message', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const { result } = await withHandle(doc)
+    saveToHandle.mockRejectedValueOnce(new Error('disk full'))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.saveState).toEqual({ kind: 'error', message: 'disk full', canSaveAs: true })
+  })
+
+  it('conflict -> closeConflict -> autosave does nothing', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'local')
+    const { result, rerender } = await withHandle(doc)
+    disk = 'other'
+    doc.getMap('meta').set('originHash', 'stale')
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.conflict.open).toBe(true)
+    act(() => { result.current.closeConflict() })
+    expect(result.current.conflict.open).toBe(false)
+    expect(result.current.saveState.kind).toBe('conflict')
+    saveToHandle.mockClear()
+    vi.useFakeTimers()
+    rerender({ s: makeSession(doc, { isDirty: true, content: 'local!' }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+    expect(saveToHandle).not.toHaveBeenCalled()
+    expect(result.current.conflict.open).toBe(false)
+  })
+
+  it('cancelled picker -> idle', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    saveFileAs.mockResolvedValue(null)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { isDirty: true }), { formatOnSave: false }))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(result.current.saveState).toEqual({ kind: 'idle' })
+  })
+
+  it('keepLocal while in flight does not write twice', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'local')
+    const { result } = await withHandle(doc)
+    disk = 'other'
+    doc.getMap('meta').set('originHash', 'stale')
+    await act(async () => { await result.current.save({ explicit: true }) })
+    saveToHandle.mockClear()
+    let release!: () => void
+    saveToHandle.mockImplementationOnce(async (_h, t) => { await new Promise<void>(r => { release = r }); disk = t })
+    await act(async () => {
+      const a = result.current.keepLocal()
+      const b = result.current.keepLocal()
+      await Promise.resolve()
+      release()
+      await Promise.all([a, b])
+    })
+    expect(saveToHandle).toHaveBeenCalledTimes(1)
+    expect(result.current.saveState.kind).toBe('saved')
+  })
 })
