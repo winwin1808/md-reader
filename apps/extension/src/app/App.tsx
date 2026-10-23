@@ -340,8 +340,8 @@ export function App(): React.JSX.Element {
   })
 
   const hasSlides = useMemo(
-    () => splitIntoSlides(content, { math: readerSettings.enableMath !== false }).length > 1,
-    [content, readerSettings.enableMath],
+    () => (exportOpen ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }).length > 1 : false),
+    [exportOpen, content, readerSettings.enableMath],
   )
 
   const slides = useMemo(
