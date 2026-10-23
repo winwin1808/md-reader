@@ -56,6 +56,7 @@ import { unified } from 'unified'
 import remarkRehype from 'remark-rehype'
 import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeStringify from 'rehype-stringify'
 import type { ParseResult } from '../parse/index.js'
@@ -93,11 +94,11 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
       ...sanitizeSchema.attributes,
       code: [
         ...codeAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/],
+        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
       ],
       span: [
         ...spanAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/],
+        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
       ],
     },
   }
@@ -118,7 +119,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     ...baseSchema,
     attributes: {
       ...baseSchema.attributes,
-      div: ext('div', ['className', 'markdown-metadata-card', /^markdown-alert(-[a-z]+)?$/], 'role', 'ariaLabel'),
+      div: ext('div', ['className', 'math', 'math-display', /^math-/, 'markdown-metadata-card', /^markdown-alert(-[a-z]+)?$/], 'role', 'ariaLabel'),
       p: ext('p', ['className', 'markdown-alert-title']),
       span: ext('span'),
       a: ext('a', ['className', 'external-link'], 'target', 'rel'),
@@ -152,6 +153,9 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   processor.use(rehypePrefixFragmentLinks, HEADING_ID_PREFIX)
   processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
+  if (options?.math !== false) {
+    processor.use(rehypeKatex, { throwOnError: false, strict: 'ignore' } as any)
+  }
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
   try {
