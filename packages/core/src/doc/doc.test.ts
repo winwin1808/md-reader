@@ -182,6 +182,52 @@ describe('importText and exportText', () => {
   })
 })
 
+describe('importText minimal delta', () => {
+  it('changes only the differing word, keeping untouched chars original clientID', () => {
+    const doc = createDoc({ source: 'alpha beta gamma' })
+    const source = getSource(doc)
+    const origId = doc.clientID
+    const other = new Y.Doc()
+    other.clientID = origId + 1
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc))
+    // run import on the other replica so new chars get a different clientID
+    importText(other, 'alpha delta gamma', { originHash: 'h2' })
+    expect(exportText(other)).toBe('alpha delta gamma')
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(other))
+    expect(source.toString()).toBe('alpha delta gamma')
+    const chars: string[] = []
+    const ownerOf: number[] = []
+    const t = getSource(other)
+    for (let item = t._start; item; item = item.right) {
+      if (item.deleted) continue
+      const s = (item.content as { str?: string }).str ?? ''
+      for (const ch of s) {
+        chars.push(ch)
+        ownerOf.push(item.id.client)
+      }
+    }
+    const text = chars.join('')
+    const idx = text.indexOf('delta')
+    for (let i = 0; i < text.length; i++) {
+      const inWord = i >= idx && i < idx + 5
+      if (!inWord) expect(ownerOf[i]).toBe(origId)
+    }
+    expect(ownerOf.slice(idx, idx + 5).some((c) => c === other.clientID)).toBe(true)
+    // convergence
+    expect(exportText(doc)).toBe(exportText(other))
+  })
+
+  it('uses origin md:load for the transaction', () => {
+    const doc = createDoc({ source: 'one two' })
+    const origins: unknown[] = []
+    doc.on('afterTransaction', (tr: Y.Transaction) => {
+      origins.push(tr.origin)
+    })
+    importText(doc, 'one three', { originHash: 'h' })
+    expect(origins).toEqual(['md:load'])
+  })
+})
+
 describe('migrateDoc', () => {
   it('returns { from: 1, to: 1 } for normal v1 doc', () => {
     const doc = createDoc()

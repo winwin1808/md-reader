@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import { applyTextChange, ORIGIN_LOAD } from './apply.js'
 import { DOC_KEYS, FORMAT_VERSION, UnsupportedFormatVersionError, type DocMeta, type HistoryEntry } from './schema.js'
 
 export function createDoc(init?: {
@@ -60,24 +61,20 @@ export function readMeta(doc: Y.Doc): DocMeta {
   }
 }
 
-/** Thay toàn bộ Y.Text bằng text, trong MỘT transaction. Set originPath/originHash. */
+/** Đưa Y.Text về text bằng delta tối thiểu, trong MỘT transaction. Set originPath/originHash. */
 export function importText(
   doc: Y.Doc,
   text: string,
   opts: { originPath?: string | null; originHash: string },
 ): void {
   doc.transact(() => {
-    const source = getSource(doc)
-    if (source.length > 0) {
-      source.delete(0, source.length)
-    }
-    source.insert(0, text)
+    applyTextChange(getSource(doc), text)
     const meta = getMeta(doc)
     if (opts.originPath !== undefined) {
       meta.set('originPath', opts.originPath)
     }
     meta.set('originHash', opts.originHash)
-  })
+  }, ORIGIN_LOAD)
 }
 
 export function exportText(doc: Y.Doc): string {
