@@ -87,7 +87,7 @@ describe('FileDrop', () => {
     fireEvent.drop(container.firstChild as Element, {
       dataTransfer: { files: [new File(['bad'], 'test.bad')] },
     });
-    await findByText('Chỉ hỗ trợ tệp .md, .markdown, .mdown, .mkd, .mdx.');
+    await findByText('Chỉ mở được file .md, .markdown, .mdx hoặc .txt.');
     expect(alertMock).not.toHaveBeenCalled();
     expect(await listRecent()).toHaveLength(0);
     expect(navigate).not.toHaveBeenCalled();
@@ -132,5 +132,47 @@ describe('FileDrop', () => {
     });
     const { findByText } = render(<RecentFiles />);
     await findByText('legacy.md');
+  });
+
+  it('dropping a .png on window shows the notice, no import, no alert', async () => {
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const createSpy = vi.spyOn(registry, 'createRecord');
+    const { findByRole, getByText } = render(<FileDrop><div /></FileDrop>);
+    fireEvent.drop(window, { dataTransfer: { files: [new File(['x'], 'p.PNG')], types: ['Files'] } });
+    const n = await findByRole('alert');
+    expect(n.className).toContain('notice--danger');
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(alertMock).not.toHaveBeenCalled();
+    fireEvent.click(getByText('Đóng'));
+    expect(document.body.textContent).not.toContain('Chỉ mở được file');
+  });
+
+  it('dragenter shows overlay; dragleave and drop hide it', async () => {
+    const { queryByText } = render(<FileDrop><div /></FileDrop>);
+    const dt = { files: [], types: ['Files'] };
+    fireEvent.dragEnter(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).not.toBeNull();
+    fireEvent.dragLeave(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).toBeNull();
+    fireEvent.dragEnter(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).not.toBeNull();
+    fireEvent.drop(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).toBeNull();
+  });
+
+  it('RecentFiles rows show origin and relative time', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(10_000_000_000);
+    const base = { persistenceName: 'p', hasHandle: false };
+    vi.spyOn(registry, 'migrateLegacyRegistry').mockResolvedValue(0);
+    vi.spyOn(registry, 'listRecent').mockResolvedValue([
+      { ...base, docId: '1', title: 'A.md', originKind: 'file', originPath: null, lastOpenedAt: 10_000_000_000 - 5 * 60000 },
+      { ...base, docId: '2', title: 'B.md', originKind: 'url', originPath: 'https://ex.test/docs/b.md', lastOpenedAt: 10_000_000_000 - 2 * 3600000 },
+      { ...base, docId: '3', title: 'C.md', originKind: 'drop', originPath: null, lastOpenedAt: 10_000_000_000 - 86400000 },
+    ]);
+    const { findByText } = render(<RecentFiles />);
+    await findByText('Mở gần đây');
+    await findByText('Trên máy · 5 phút trước');
+    await findByText('ex.test/docs/b.md · 2 giờ trước');
+    await findByText('Kéo thả · hôm qua');
   });
 });

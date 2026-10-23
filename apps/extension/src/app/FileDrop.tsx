@@ -1,5 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
-import type { DragEvent } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRecord, deleteRecord, writeDocText } from './doc-registry';
 
 interface FileDropProps {
@@ -14,6 +13,9 @@ const defaultNavigate = (url: string): void => {
 export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const depth = useRef(0);
   const busyRef = useRef(false);
 
   const finish = useCallback(() => {
@@ -21,26 +23,23 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
     setBusy(false);
   }, []);
 
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: DragEvent<HTMLDivElement>) => {
+  const processDrop = useCallback(
+    (e: globalThis.DragEvent) => {
       e.preventDefault();
       if (busyRef.current) return;
-      const file = e.dataTransfer.files?.[0];
+      const file = e.dataTransfer?.files?.[0];
       if (!file) return;
 
-      const validExtensions = ['.md', '.markdown', '.mdown', '.mkd', '.mdx'];
+      const validExtensions = ['.md', '.markdown', '.mdx', '.txt'];
       const isValid = validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
 
       if (!isValid) {
-        setError('Chỉ hỗ trợ tệp .md, .markdown, .mdown, .mkd, .mdx.');
+        setNotice(true);
         return;
       }
 
       setError(null);
+      setNotice(false);
       busyRef.current = true;
       setBusy(true);
       const reader = new FileReader();
@@ -79,9 +78,54 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
     [navigate, finish]
   );
 
+  const handleDrop = processDrop;
+
+  useEffect(() => {
+    const hasFiles = (e: globalThis.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    const enter = (e: globalThis.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth.current += 1;
+      setDragging(true);
+    };
+    const over = (e: globalThis.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+    };
+    const leave = (e: globalThis.DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth.current = Math.max(0, depth.current - 1);
+      if (depth.current === 0) setDragging(false);
+    };
+    const drop = (e: globalThis.DragEvent) => {
+      depth.current = 0;
+      setDragging(false);
+      handleDrop(e);
+    };
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragover', over);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('drop', drop);
+    };
+  }, [handleDrop]);
+
   return (
-    <div onDragOver={handleDragOver} onDrop={handleDrop} style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%' }}>
+      {dragging && <div className="drop-overlay" data-testid="drop-overlay">Thả để mở</div>}
       {busy && <div role="status">Đang mở tệp…</div>}
+      {notice && (
+        <div className="notice notice--danger" role="alert">
+          <span>Chỉ mở được file .md, .markdown, .mdx hoặc .txt.</span>
+          <span className="notice__actions">
+            <button type="button" onClick={() => setNotice(false)}>Đóng</button>
+          </span>
+        </div>
+      )}
       {error && <div role="alert">{error}</div>}
       {children}
     </div>
