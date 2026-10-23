@@ -26,7 +26,7 @@ describe('E2E smoke test for themes and export formats', () => {
           set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: vi.fn().mockResolvedValue({ theme: 'light', colorTheme: 'black', autoFormatMd: true }),
+          get: vi.fn().mockResolvedValue({ theme: 'light', autoFormatMd: true }),
           set: vi.fn().mockResolvedValue(undefined),
         },
       },
