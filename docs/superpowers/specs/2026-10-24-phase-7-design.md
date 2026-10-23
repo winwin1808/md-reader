@@ -280,6 +280,8 @@ Empty state: Logo 56 + "Mở một tài liệu Markdown" + two actions ("Mở fi
 line, relative time "hôm qua", "3 ngày trước"). The whole window is the drop target
 (dragover anywhere shows a full-window `--hl`-bordered overlay "Thả để mở"). Wrong type →
 inline message "Chỉ mở được file .md, .markdown, .mdx hoặc .txt" in `--danger`, no `alert()`.
+app.css also gets the global `button, input, select, textarea { font: inherit; }` (form controls
+otherwise fall back to the browser's system font — seen in 7h1 review).
 Test: drop of a .png shows the message and calls nothing; recent items render title + origin.
 
 ### 7i2 — export dialog that tells what it is doing
@@ -435,7 +437,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7f: done
 - 7g1: done   (alerts/tables/code/metadata; split from 7g at plan time)
 - 7g2: done   (search bar + highlight)
-- 7h1: pending
+- 7h1: planned
 - 7h2: pending
 - 7i1: pending
 - 7i2: pending

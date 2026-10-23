@@ -74,7 +74,7 @@ describe('E2E smoke test for themes and export formats', () => {
     fireEvent.click(settingsBtn)
 
     // Close settings modal
-    const closeSettingsBtn = screen.getByRole('button', { name: 'Close' })
+    const closeSettingsBtn = screen.getByRole('button', { name: 'Đóng' })
     fireEvent.click(closeSettingsBtn)
 
     // Open ExportModal, click PDF -> verify printSpy called
