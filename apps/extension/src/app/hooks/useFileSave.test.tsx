@@ -28,6 +28,7 @@ function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
     doc, yText, undoManager: new Y.UndoManager(yText),
     content: yText.toString(), title: 'a', hasContent: true,
     isDirty: false, setDirty: () => {}, error: null, setError: () => {}, synced: true,
+    externalChange: null, acceptExternal: () => {}, dismissExternal: () => {},
     ...over,
   }
 }

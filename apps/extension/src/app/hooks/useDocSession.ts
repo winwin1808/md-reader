@@ -14,6 +14,9 @@ export interface DocSession {
   error: string | null
   setError(message: string | null): void
   synced: boolean
+  externalChange: { remoteText: string; remoteHash: string } | null
+  acceptExternal(): void
+  dismissExternal(): void
 }
 
 export function useDocSession(opts: { fileUrl: string | null }): DocSession {
@@ -25,6 +28,8 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
   const isFileContentSetRef = useRef<boolean>(false)
+  const syncedPromiseRef = useRef<Promise<unknown>>(Promise.resolve())
+  const [externalChange, setExternalChange] = useState<{ remoteText: string; remoteHash: string } | null>(null)
 
   const persistenceName = useMemo(() => {
     if (!fileUrlParam) return 'md-reader'
@@ -43,6 +48,7 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
     } catch (err) {
       console.warn('Failed to initialize IndexeddbPersistence:', err)
     }
+    syncedPromiseRef.current = persistence ? persistence.whenSynced : Promise.resolve()
     
     const text = doc.getText('source')
     const meta = doc.getMap('meta')
@@ -89,22 +95,54 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
     isFileContentSetRef.current = false
     const fileUrl = fileUrlParam
     if (fileUrl) {
-      const loadContent = async (text: string) => {
-        isFileContentSetRef.current = true
+      let cancelled = false
+      const loadContent = async (remote: string) => {
+        await syncedPromiseRef.current
+        if (cancelled) return
         const ytext = doc.getText('source')
+        const meta = doc.getMap('meta')
         const name = decodeURIComponent(fileUrl.split('/').pop() || 'Untitled.md')
-        doc.transact(() => {
-          applyTextChange(ytext, text)
-          doc.getMap('meta').set('name', name)
-        }, ORIGIN_LOAD)
-        setIsDirty(false)
-        const originHash = await hashText(text)
-        doc.getMap('meta').set('originHash', originHash)
+        const local = ytext.toString()
+        const applyRemote = (h: string) => {
+          doc.transact(() => {
+            applyTextChange(ytext, remote, ORIGIN_LOAD)
+            meta.set('name', name)
+            meta.set('originHash', h)
+          }, ORIGIN_LOAD)
+          setContent(remote)
+          setHasContent(remote.length > 0)
+          setIsDirty(false)
+        }
+        isFileContentSetRef.current = true
+        if (local === '') {
+          doc.transact(() => {
+            applyTextChange(ytext, remote, ORIGIN_LOAD)
+            meta.set('name', name)
+          }, ORIGIN_LOAD)
+          setContent(remote)
+          setHasContent(remote.length > 0)
+          setIsDirty(false)
+          setDocTitle(name.replace(/\.[^/.]+$/, ''))
+          const h0 = await hashText(remote)
+          if (!cancelled) meta.set('originHash', h0)
+        } else {
+          const [h, localHash] = await Promise.all([hashText(remote), hashText(local)])
+          if (cancelled) return
+          const origin = meta.get('originHash') as string | undefined
+          if (origin === h) {
+            setContent(local)
+            setHasContent(local.length > 0)
+            setIsDirty(localHash !== origin)
+          } else if (localHash === origin) {
+            applyRemote(h)
+          } else {
+            setContent(local)
+            setHasContent(local.length > 0)
+            setExternalChange({ remoteText: remote, remoteHash: h })
+          }
+        }
         setDocTitle(name.replace(/\.[^/.]+$/, ''))
-        setContent(text)
-        setHasContent(text.length > 0)
-        setIsDirty(false)
-        
+
         addRecentFile({
           id: fileUrl,
           name,
@@ -166,8 +204,23 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
       } else {
         tryFetch()
       }
+      return () => { cancelled = true }
     }
   }, [doc, fileUrlParam])
+
+  const acceptExternal = () => {
+    const ext = externalChange
+    if (!ext) return
+    doc.transact(() => {
+      applyTextChange(doc.getText('source'), ext.remoteText, ORIGIN_LOAD)
+      doc.getMap('meta').set('originHash', ext.remoteHash)
+    }, ORIGIN_LOAD)
+    setContent(ext.remoteText)
+    setHasContent(ext.remoteText.length > 0)
+    setIsDirty(false)
+    setExternalChange(null)
+  }
+  const dismissExternal = () => setExternalChange(null)
 
   return {
     doc, yText, undoManager,
@@ -179,5 +232,8 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
     error,
     setError,
     synced,
+    externalChange,
+    acceptExternal,
+    dismissExternal,
   }
 }
