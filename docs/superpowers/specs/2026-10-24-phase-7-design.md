@@ -61,8 +61,8 @@ Rejected:
 --ink     body text            #1B2422 · #E3E8E6 · #000000 · #FFFFFF
 --pencil  secondary text       #5E6A67 · #A3AFAC · #333333 · #D0D0D0
 --rule    hairlines            #D3DAD7 · #2E3836 · #000000 · #FFFFFF
---hl      highlighter          #F3DE4A · #8A7A12 · #FFE600 · #FFE600   (text on --hl is always --hl-ink)
---hl-ink  text on highlighter  #1B2422 · #FFFFFF · #000000 · #000000
+--hl      highlighter          #F3DE4A · #D9C640 · #FFE600 · #FFE600   (text on --hl is always --hl-ink)
+--hl-ink  text on highlighter  #1B2422 · #161C1B · #000000 · #000000
 --accent  links / focus        #23568C · #8DB6E8 · #0B3D91 · #9CC7FF
 --danger  errors               #A2352B · #F08A7E · #8B0000 · #FF9C9C
 --ok      success              #2F6B45 · #8CCB9F · #005A1F · #8CFFB0
