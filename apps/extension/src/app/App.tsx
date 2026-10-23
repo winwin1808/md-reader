@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react'
+import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import {
   ThemeProvider,
   SettingsModal,
@@ -8,17 +8,18 @@ import {
   ReadingProgress,
   TopToolbar,
   DocumentSearch,
-  Deck,
   SpeakerView,
   WordCountBar,
   CelebrationConfetti,
   MindmapModal,
-  Editor,
-  SplitViewContainer,
   ConflictModal,
   FormattingToolbar,
   applyFormat,
 } from "@md-reader/ui"
+const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
+const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
+const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
+const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
 import type { ThemeMode, ColorTheme, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
 import {
   parseMarkdown,
@@ -249,7 +250,7 @@ export function App(): React.JSX.Element {
       return {
         html: '',
         toc: [],
-        parseResult: { ast: emptyTree },
+        parseResult: { tree: emptyTree, frontmatter: {}, raw: '' },
         parsedDoc: { tree: emptyTree },
       }
     }
@@ -265,7 +266,7 @@ export function App(): React.JSX.Element {
     return {
       html: rendered.html,
       toc: rendered.toc,
-      parseResult: { ast: parsed.tree, ...parsed },
+      parseResult: parsed,
       parsedDoc: parsed,
     }
   }, [content, readerSettings])
@@ -288,7 +289,7 @@ export function App(): React.JSX.Element {
   const { exportAs, isExporting, isPrintingSlides } = useExport({
     html,
     title: docTitle,
-    parseResult: parseResult as any,
+    parseResult,
   })
 
   const slides = useMemo(
@@ -333,6 +334,7 @@ export function App(): React.JSX.Element {
         </div>
       )}
       {isPresenting && (
+        <Suspense fallback={<LazyFallback />}>
         <Deck
           slides={slides}
           initialSlide={currentSlideIndex}
@@ -363,6 +365,7 @@ export function App(): React.JSX.Element {
             slideImageOpacity: readerSettings.slideImageOpacity,
           }}
         />
+        </Suspense>
       )}
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
       {mindmapRoot && (
@@ -519,7 +522,9 @@ export function App(): React.JSX.Element {
             <div className="editor-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
               <FormattingToolbar onAction={handleFormatAction} />
               <div style={{ flex: 1, overflow: 'auto' }}>
-                <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
+                <Suspense fallback={<LazyFallback />}>
+                  <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
+                </Suspense>
               </div>
             </div>
           )}
@@ -528,6 +533,7 @@ export function App(): React.JSX.Element {
             <div className="split-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
               <FormattingToolbar onAction={handleFormatAction} />
               <div style={{ flex: 1, overflow: 'hidden' }}>
+                <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
                   editor={<Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />}
@@ -537,6 +543,7 @@ export function App(): React.JSX.Element {
                     </div>
                   }
                 />
+                </Suspense>
               </div>
             </div>
           )}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { printDocument, printSlides, getDefaultExportCss } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
-import { exportToHtml, mdastToDocx } from '@md-reader/core'
+import { exportToHtml } from '@md-reader/core'
 import type { ParseResult } from '@md-reader/core'
 
 function download(blob: Blob, filename: string): void {
@@ -46,7 +46,8 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
         const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
         download(new Blob([exportHtml], { type: 'text/html;charset=utf-8' }), `${title}.html`)
       } else if (format === 'docx') {
-        const blob = await mdastToDocx({ mdast: (parseResult as any).ast, title })
+        const { mdastToDocx } = await import('@md-reader/core/docx')
+        const blob = await mdastToDocx({ mdast: parseResult.tree, title })
         download(blob, `${title}.docx`)
       }
     } finally {
