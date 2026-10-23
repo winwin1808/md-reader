@@ -427,7 +427,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7b1: done
 - 7b2: done
 - 7b3: done
-- 7c1: planned   (ThemeProvider; split from 7c at plan time)
+- 7c1: done   (ThemeProvider; split from 7c at plan time)
 - 7c2: pending   (settings v2 wiring)
 - 7d: pending
 - 7e: pending
