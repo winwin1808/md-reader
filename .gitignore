@@ -15,3 +15,4 @@ spike/
 .cursor/
 
 .claude/settings.local.json
+.vitest/

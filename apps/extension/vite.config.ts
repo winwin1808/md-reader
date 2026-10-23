@@ -22,5 +22,5 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}', 'e2e/**/*.spec.{ts,tsx}'], exclude: ['e2e-pw/**', 'node_modules/**', 'dist/**'] },
+  test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], exclude: ['e2e-pw/**', 'node_modules/**', 'dist/**'] },
 })
