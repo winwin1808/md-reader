@@ -170,13 +170,13 @@ function ColorPickerRow({
   const pickerColor = value && value.startsWith('#') && (value.length === 7 || value.length === 4) ? value : '#000000';
 
   return (
-    <div className="settings-row" style={{ alignItems: 'flex-start' }}>
+    <div className="settings-row settings-row-top">
       <div className="settings-row-info">
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
         {description && <div className="settings-row-desc">{description}</div>}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+        <div className="settings-swatches">
           {QUICK_COLORS.map((c) => (
             <button
               key={c}
@@ -184,38 +184,17 @@ function ColorPickerRow({
               onClick={() => onChange(c)}
               title={c}
               aria-label={`Chọn màu ${c}`}
-              style={{
-                width: '18px',
-                height: '18px',
-                borderRadius: '50%',
-                backgroundColor: c,
-                border: '1px solid rgba(125, 125, 125, 0.3)',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+              className="settings-swatch"
+              style={{ backgroundColor: c }}
             />
           ))}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className="settings-color-ctl">
         <label
           htmlFor={`${id}-color`}
-          style={{
-            position: 'relative',
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            border: '1px solid var(--md-border, #d0d7de)',
-            backgroundColor: value || 'transparent',
-            backgroundImage: isDefault
-              ? 'repeating-linear-gradient(45deg, #ccc 0, #ccc 2px, transparent 0, transparent 6px)'
-              : undefined,
-            overflow: 'hidden',
-            cursor: 'pointer',
-            flexShrink: 0,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            display: 'inline-block',
-          }}
+          className={isDefault ? 'settings-color-well is-default' : 'settings-color-well'}
+          style={{ backgroundColor: value || 'transparent' }}
           title="Bấm để chọn màu"
         >
           <input
@@ -223,22 +202,13 @@ function ColorPickerRow({
             type="color"
             value={pickerColor}
             onChange={(e) => onChange(e.target.value)}
-            style={{
-              position: 'absolute',
-              top: '-8px',
-              left: '-8px',
-              width: '48px',
-              height: '48px',
-              opacity: 0,
-              cursor: 'pointer',
-            }}
+            className="settings-color-native"
           />
         </label>
         <input
           id={id}
           type="text"
-          className="settings-input-field"
-          style={{ width: '90px', fontSize: '12px', fontFamily: 'ui-monospace, monospace' }}
+          className="settings-input-field settings-input-color"
           placeholder="Mặc định"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value ? e.target.value : undefined)}
@@ -248,14 +218,7 @@ function ColorPickerRow({
             type="button"
             onClick={() => onChange(undefined)}
             title="Đặt lại màu mặc định"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--md-fg-muted, #666)',
-              fontSize: '12px',
-              padding: '4px 6px',
-            }}
+            className="settings-icon-btn"
           >
             <Icon name="close" size={16} />
           </button>
@@ -288,39 +251,30 @@ function FontSelectRow({
   onChange: (val: string | undefined) => void;
 }): React.JSX.Element {
   return (
-    <div className="settings-row" style={{ alignItems: 'flex-start' }}>
+    <div className="settings-row settings-row-top">
       <div className="settings-row-info">
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
         {description && <div className="settings-row-desc">{description}</div>}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
+        <div className="settings-chips">
           {FONT_PRESETS.filter((f) => f.value).map((f) => (
             <button
               key={f.label}
               type="button"
               onClick={() => onChange(f.value)}
-              style={{
-                background: value === f.value ? 'var(--md-link, #0969da)' : 'var(--md-surface-subtle, rgba(125,125,125,0.1))',
-                color: value === f.value ? '#ffffff' : 'var(--md-fg)',
-                border: '1px solid var(--md-border, #d0d7de)',
-                borderRadius: '4px',
-                fontSize: '11px',
-                padding: '2px 6px',
-                cursor: 'pointer',
-              }}
+              className={value === f.value ? 'settings-chip is-selected' : 'settings-chip'}
             >
               {f.label.split(' / ')[0]}
             </button>
           ))}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+      <div className="settings-font-ctl">
         <input
           id={id}
           type="text"
-          className="settings-input-field"
-          style={{ width: '180px', fontSize: '13px' }}
+          className="settings-input-field settings-input-font"
           placeholder="Mặc định theo giao diện"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value ? e.target.value : undefined)}
@@ -353,7 +307,7 @@ function SliderNumberRow({
         </label>
         {description && <div className="settings-row-desc">{description}</div>}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="settings-slider-ctl">
         <input
           type="range"
           min="0"
@@ -361,15 +315,14 @@ function SliderNumberRow({
           step="5"
           value={currentVal}
           onChange={(e) => onChange(Number(e.target.value))}
-          style={{ width: '110px', accentColor: 'var(--md-link, #0969da)', cursor: 'pointer' }}
+          className="settings-range"
         />
         <input
           id={id}
           type="number"
           min="0"
           max="100"
-          className="settings-input-field"
-          style={{ width: '60px', textAlign: 'center', fontSize: '12px' }}
+          className="settings-input-field settings-input-pct"
           value={value ?? ''}
           placeholder="100"
           onChange={(e) => {
@@ -377,7 +330,7 @@ function SliderNumberRow({
             onChange(val);
           }}
         />
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--md-fg)' }}>%</span>
+        <span className="settings-unit">%</span>
       </div>
     </div>
   );
@@ -399,20 +352,19 @@ function ImageInputRow({
   const hasImg = Boolean(value && value.trim());
 
   return (
-    <div className="settings-row" style={{ alignItems: 'flex-start' }}>
+    <div className="settings-row settings-row-top">
       <div className="settings-row-info">
         <label htmlFor={id} className="settings-row-label">
           {title}
         </label>
         {description && <div className="settings-row-desc">{description}</div>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', width: '220px' }}>
-        <div style={{ display: 'flex', width: '100%', gap: '4px' }}>
+      <div className="settings-image-ctl">
+        <div className="settings-image-line">
           <input
             id={id}
             type="text"
-            className="settings-input-field"
-            style={{ flex: 1, fontSize: '12px' }}
+            className="settings-input-field settings-input-url"
             placeholder="https://..."
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value ? e.target.value : undefined)}
@@ -422,32 +374,14 @@ function ImageInputRow({
               type="button"
               onClick={() => onChange(undefined)}
               title="Xóa ảnh nền"
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--md-border, #d0d7de)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: 'var(--md-fg-muted, #666)',
-                padding: '4px 8px',
-                lineHeight: 1,
-              }}
+              className="settings-icon-btn is-bordered"
             >
               <Icon name="close" size={16} />
             </button>
           )}
         </div>
         {hasImg && (
-          <div
-            style={{
-              width: '100%',
-              height: '44px',
-              borderRadius: '6px',
-              border: '1px solid var(--md-border, #d0d7de)',
-              backgroundImage: `url(${value})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
+          <div className="settings-image-preview" style={{ backgroundImage: `url(${value})` }} />
         )}
       </div>
     </div>
@@ -514,14 +448,36 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     if (isOpen) dialogRef.current?.querySelector<HTMLElement>('button, input')?.focus();
   }, [isOpen]);
 
+  const lockRef = useRef(false);
+  const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlock = () => {
+    lockRef.current = false;
+    if (lockTimer.current) clearTimeout(lockTimer.current);
+    lockTimer.current = null;
+  };
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!isOpen || !body) return;
+    body.addEventListener('scrollend', unlock);
+    return () => body.removeEventListener('scrollend', unlock);
+  }, [isOpen]);
+  useEffect(() => () => { if (lockTimer.current) clearTimeout(lockTimer.current); }, []);
+
   const goTo = (id: SectionId) => {
     setCurrent(id);
+    lockRef.current = true;
+    if (lockTimer.current) clearTimeout(lockTimer.current);
+    lockTimer.current = setTimeout(unlock, 600);
     sectionRefs.current[id]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
   };
 
   const handleScroll = () => {
     const body = bodyRef.current;
-    if (!body) return;
+    if (!body || lockRef.current) return;
+    if (body.scrollHeight > body.clientHeight && body.scrollTop + body.clientHeight >= body.scrollHeight - 2) {
+      setCurrent(SECTIONS[SECTIONS.length - 1]!.id);
+      return;
+    }
     let found: SectionId = SECTIONS[0].id;
     for (const s of SECTIONS) {
       const el = sectionRefs.current[s.id];
@@ -641,9 +597,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <section aria-labelledby="settings-h-look" id="settings-sec-look" data-section={"look"} className="settings-group" ref={(el) => { sectionRefs.current['look'] = el }}>
 <h3 id="settings-h-look" className="settings-group-title">Chữ và màu</h3>
                   {currentMode && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Giao diện</div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="settings-field">
+                      <span id="settings-l-mode" className="settings-field-label">Giao diện</span>
+                      <div className="settings-btn-group" role="group" aria-labelledby="settings-l-mode">
                         {([
                           { key: 'light', label: 'Sáng' },
                           { key: 'dark', label: 'Tối' },
@@ -658,21 +614,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                                 handleSettingChange('mode', opt.key);
                               }}
                               aria-pressed={isSelected}
-                              style={{
-                                flex: 1,
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                border: isSelected
-                                  ? '2px solid var(--md-link, #0969da)'
-                                  : '1px solid var(--md-border, #d0d7de)',
-                                background: isSelected
-                                  ? 'var(--md-surface-subtle, rgba(125, 125, 125, 0.1))'
-                                  : 'transparent',
-                                color: 'inherit',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: isSelected ? 600 : 400,
-                              }}
+                              className="settings-choice"
                             >
                               {opt.label}
                             </button>
@@ -681,7 +623,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       </div>
                     </div>
                   )}
-                  <div style={{ marginBottom: '16px' }}>
+                  <div className="settings-field">
                     {themePicker ??
                       (currentColorTheme ? (
                         <ThemePicker
@@ -692,9 +634,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                         />
                       ) : null)}
                   </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Phông chữ thân</div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="settings-field">
+                    <span id="settings-l-font" className="settings-field-label">Phông chữ thân</span>
+                    <div className="settings-btn-group" role="group" aria-labelledby="settings-l-font">
                       {([
                         { key: 'sans', label: 'Không chân (IBM Plex Sans)' },
                         { key: 'serif', label: 'Có chân (Literata)' },
@@ -709,21 +651,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                               handleSettingChange('fontFamily', opt.key);
                             }}
                             aria-pressed={isSelected}
-                            style={{
-                              flex: 1,
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: isSelected
-                                ? '2px solid var(--md-link, #0969da)'
-                                : '1px solid var(--md-border, #d0d7de)',
-                              background: isSelected
-                                ? 'var(--md-surface-subtle, rgba(125, 125, 125, 0.1))'
-                                : 'transparent',
-                              color: 'inherit',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: isSelected ? 600 : 400,
-                            }}
+                            className="settings-choice"
                           >
                             {opt.label}
                           </button>
@@ -787,15 +715,16 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 <h3 id="settings-h-open" className="settings-group-title">Khi mở file .md</h3>
                   <ToggleRow
                     id="settings-autoFormatMd"
-                    title="Định dạng lại Markdown khi lưu"
-                    description="Chỉ khi bạn bấm Lưu, không trong lúc gõ."
+                    title="Tự động hiển thị file .md đẹp"
+                    description="Tắt thì trang .md giữ nguyên dạng văn bản thô, không được thay bằng trình đọc."
                     checked={currentAutoFormat}
                     onChange={(val) => handleSettingChange('autoFormatMd', val)}
                   />
 
                   <ToggleRow
                     id="settings-formatOnSave"
-                    title="Định dạng Markdown khi bấm Lưu"
+                    title="Chỉnh lại Markdown khi bấm Lưu"
+                    description="Khi bạn bấm Lưu, nội dung file được chuẩn hóa (khoảng trắng, danh sách…); không chạy lúc đang gõ."
                     checked={settings?.formatOnSave ?? currentAutoFormat}
                     onChange={(val) => handleSettingChange('formatOnSave', val)}
                   />
@@ -894,22 +823,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
         onClick={() => setIsOpen(true)}
         title="Settings"
         aria-label="Settings"
-        style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '10px',
-          background: 'var(--md-bg)',
-          border: '1px solid var(--md-border)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: 'var(--md-fg)',
-          padding: 0,
-        }}
+        className="settings-trigger"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

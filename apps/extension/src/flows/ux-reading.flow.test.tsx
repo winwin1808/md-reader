@@ -162,7 +162,7 @@ const greeting = "Hello World";
     fireEvent.click(settingsBtn)
 
     // Click font option "Serif". Verify data-font-family="serif" is set on container.
-    const serifOption = screen.getAllByRole('button', { name: 'Có chân (Literata)' })[0]!
+    const serifOption = screen.getByRole('button', { name: 'Có chân (Literata)' })
     fireEvent.click(serifOption)
     expect(document.querySelector('[data-font-family="serif"]')).not.toBeNull()
   })

@@ -43,7 +43,7 @@ describe('SettingsModal', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     
-    const checkbox = screen.getByLabelText(/Định dạng lại Markdown khi lưu/i);
+    const checkbox = screen.getByLabelText(/Tự động hiển thị file .md đẹp/i);
     expect(checkbox).not.toBeChecked();
     
     fireEvent.click(checkbox);
@@ -197,7 +197,7 @@ describe('SettingsModal', () => {
       'Ẩn phần thông tin đầu file (frontmatter)', 'Hiện thông tin đầu file thành thẻ', 'Hiển thị công thức toán',
       'Vẽ sơ đồ Mermaid', 'Hộp ghi chú kiểu GitHub ([!NOTE], [!WARNING]…)', 'Tiêu đề ghi chú bằng tiếng Việt',
       'Dấu câu đẹp (ngoặc kép cong, gạch dài)', 'Đánh dấu và mở liên kết ngoài ở thẻ mới',
-      'Luôn mở file .md trong MD Reader', 'Định dạng lại Markdown khi lưu', 'Định dạng Markdown khi bấm Lưu',
+      'Luôn mở file .md trong MD Reader', 'Tự động hiển thị file .md đẹp', 'Chỉnh lại Markdown khi bấm Lưu',
       'Hiện số từ và thời gian đọc', 'Tự ẩn khi đọc tới cuối', 'Thanh tiến độ đọc', 'Pháo giấy khi đọc xong',
       'Nền trang chiếu', 'Chữ', 'Tiêu đề', 'Màu nhấn', 'Phông chữ trang chiếu', 'Ảnh nền (URL)', 'Độ mờ ảnh nền',
     ];
@@ -205,7 +205,7 @@ describe('SettingsModal', () => {
     for (const n of ['Sáng', 'Tối', 'Theo hệ thống', 'Có chân (Literata)', 'Không chân (IBM Plex Sans)', 'Đơn cách (IBM Plex Mono)']) {
       expect(screen.getByRole('button', { name: n }), n).toBeInTheDocument();
     }
-    for (const d of ['Bấm vào link .md sẽ mở thẳng tab đọc thay vì xem trên trang.', 'Chỉ khi bạn bấm Lưu, không trong lúc gõ.',
+    for (const d of ['Bấm vào link .md sẽ mở thẳng tab đọc thay vì xem trên trang.', 'Tắt thì trang .md giữ nguyên dạng văn bản thô, không được thay bằng trình đọc.',
       'Không đổi nội dung file, chỉ đổi cách hiển thị.', 'Tắt nếu tài liệu có nhiều sơ đồ và mở chậm.']) {
       expect(screen.getByText(d)).toBeInTheDocument();
     }
@@ -244,7 +244,7 @@ describe('SettingsModal', () => {
     expect(screen.queryByLabelText(/task lists/i)).toBeNull();
 
     // Display tab: format on save
-    const fmt = screen.getByLabelText(/Định dạng Markdown khi bấm Lưu/i);
+    const fmt = screen.getByLabelText(/Chỉnh lại Markdown khi bấm Lưu/i);
     expect(fmt).not.toBeChecked();
     fireEvent.click(fmt);
     expect(onSettingChange).toHaveBeenCalledWith('formatOnSave', true);
@@ -300,7 +300,7 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
 
     // Auto format
-    const checkbox = screen.getByLabelText(/Định dạng lại Markdown khi lưu/i);
+    const checkbox = screen.getByLabelText(/Tự động hiển thị file .md đẹp/i);
     fireEvent.click(checkbox);
     expect(onAutoFormatChange).toHaveBeenCalledTimes(1);
     expect(onAutoFormatChange).toHaveBeenCalledWith(true);
@@ -372,5 +372,65 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /settings/i }));
     const checkbox = screen.getByLabelText(/Luôn mở file .md/i);
     expect(checkbox).not.toBeChecked();
+  });
+
+  describe('index scroll-spy and a11y', () => {
+    const wide = () => {
+      window.matchMedia = ((q: string) => ({
+        matches: q.includes('900'),
+        media: q,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      })) as unknown as typeof window.matchMedia;
+      Element.prototype.scrollIntoView = vi.fn();
+    };
+    afterEach(() => {
+      // @ts-expect-error cleanup
+      delete window.matchMedia;
+    });
+
+    it('keeps a clicked index item current when the smooth-scroll event fires', () => {
+      wide();
+      render(<SettingsModal {...defaultProps} open />);
+      const nav = screen.getByRole('navigation', { name: 'Mục cài đặt' });
+      const buttons = within(nav).getAllByRole('button');
+      fireEvent.click(buttons[4]!);
+      const body = document.querySelector('.settings-body')!;
+      fireEvent.scroll(body);
+      expect(buttons[4]).toHaveAttribute('aria-current', 'true');
+      expect(buttons[0]).not.toHaveAttribute('aria-current');
+      document.querySelectorAll<HTMLElement>('[data-section]').forEach((el, i) =>
+        Object.defineProperty(el, 'offsetTop', { configurable: true, value: i * 500 }));
+      fireEvent(body, new Event('scrollend'));
+      fireEvent.scroll(body);
+      expect(buttons[0]).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('marks the last section current when scrolled to the bottom', () => {
+      wide();
+      render(<SettingsModal {...defaultProps} open />);
+      const body = document.querySelector('.settings-body') as HTMLElement;
+      Object.defineProperty(body, 'scrollHeight', { configurable: true, value: 1000 });
+      Object.defineProperty(body, 'clientHeight', { configurable: true, value: 400 });
+      Object.defineProperty(body, 'scrollTop', { configurable: true, writable: true, value: 599 });
+      fireEvent.scroll(body);
+      const buttons = within(screen.getByRole('navigation', { name: 'Mục cài đặt' })).getAllByRole('button');
+      expect(buttons[4]).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('wires the Giao diện and Phông chữ thân labels to their groups', () => {
+      render(<SettingsModal {...defaultProps} open />);
+      expect(screen.getByRole('group', { name: 'Giao diện' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Phông chữ thân' })).toBeInTheDocument();
+    });
+
+    it('has a visible keyboard-focus rule for switches and no colour literals in the component', () => {
+      const css = readFileSync(resolve(process.cwd(), 'src/theme/settings.css'), 'utf8');
+      expect(css).toMatch(/\.settings-toggle-switch input:focus-visible \+ \.settings-toggle-slider\s*\{[^}]*outline:\s*2px solid var\(--accent\)/);
+      const tsx = readFileSync(resolve(process.cwd(), 'src/components/SettingsModal.tsx'), 'utf8');
+      expect(tsx).not.toContain('#0969da');
+      expect(tsx).not.toContain('rgba(');
+      expect(tsx).not.toContain('--md-');
+    });
   });
 });
