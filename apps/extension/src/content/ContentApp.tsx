@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { makeCacheEntry } from '../shared/md-url'
 
 export interface ContentAppProps {
   markdown: string
@@ -9,56 +10,41 @@ export function ContentApp({ markdown }: ContentAppProps) {
   const [isMinimized, setIsMinimized] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
+
   const handleOpen = (replace = true) => {
     setIsOpening(true)
     setErrorMsg(null)
 
     const fileUrl = window.location.href
+    const fail = () => {
+      setErrorMsg(FAIL_TEXT)
+      setIsOpening(false)
+    }
 
-    // Pre-cache markdown content into chrome.storage.local
+    // Cache page text only because the user asked to open it in the app
     try {
       chrome.storage?.local?.set?.({
-        ['file_content_' + fileUrl]: markdown,
+        ['file_content_' + fileUrl]: makeCacheEntry(markdown),
       })
     } catch (e) {
       console.warn('Failed to cache file content:', e)
     }
 
-    // Try sending message to background worker
     try {
-      if (chrome.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(
-          {
-            action: 'openApp',
-            fileUrl,
-            content: markdown,
-            replace,
-          },
-          (response) => {
-            if (chrome.runtime.lastError || (response && !response.success)) {
-              console.warn('Worker navigation failed, fallback to direct open', chrome.runtime.lastError)
-              fallbackOpen(replace)
-            }
-          }
-        )
+      if (!chrome.runtime?.sendMessage) {
+        fail()
         return
       }
+      chrome.runtime.sendMessage(
+        { action: 'openApp', fileUrl, content: markdown, replace },
+        (response) => {
+          if (chrome.runtime.lastError || (response && !response.success)) fail()
+        }
+      )
     } catch (e) {
-      console.warn('sendMessage failed, fallback to direct open', e)
-    }
-
-    fallbackOpen(replace)
-  }
-
-  const fallbackOpen = (_replace?: boolean) => {
-    try {
-      const targetUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
-      window.open(targetUrl)
-    } catch (err) {
-      console.error('Failed to open MD Reader:', err)
-      setErrorMsg('Vui lòng bật "Cho phép truy cập vào URL tệp" trong chrome://extensions')
-    } finally {
-      setIsOpening(false)
+      console.warn('sendMessage failed', e)
+      fail()
     }
   }
 

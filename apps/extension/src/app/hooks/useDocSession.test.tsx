@@ -180,6 +180,33 @@ describe('useDocSession safe load', () => {
     await waitFor(() => expect(result.current.title).toContain('old-name'))
   })
 
+  describe('page cache entry', () => {
+    const key = 'file_content_https://x.test/a.md'
+    const runCached = async (value: unknown) => {
+      const remove = vi.fn(async () => {})
+      vi.stubGlobal('chrome', { storage: { local: { get: async () => ({ [key]: value }), remove } } })
+      const fetchMock = vi.fn(async () => ({ ok: true, text: async () => 'FETCHED' }))
+      vi.stubGlobal('fetch', fetchMock)
+      const r = renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
+      await flush()
+      expect(remove).not.toHaveBeenCalled()
+      await act(async () => { resolveSync() })
+      await flush()
+      return { r, remove, fetchMock }
+    }
+    it('reads { text, ts } and removes the key only after load', async () => {
+      const { r, remove, fetchMock } = await runCached({ text: 'cached new', ts: Date.now() })
+      expect(r.result.current.yText.toString()).toBe('cached new')
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(remove).toHaveBeenCalledWith(key)
+    })
+    it('reads a legacy string value', async () => {
+      const { r, remove } = await runCached('legacy text')
+      expect(r.result.current.yText.toString()).toBe('legacy text')
+      expect(remove).toHaveBeenCalledWith(key)
+    })
+  })
+
   describe('base storage on load', () => {
     const run = async (remote: string) => {
       const r = setup(remote)
