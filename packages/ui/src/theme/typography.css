@@ -1,27 +1,29 @@
-:root {
-  --md-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --md-font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
-  --md-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-[data-font-family="sans"] .md-viewer {
-  font-family: var(--md-font-sans) !important;
+.md-viewer {
+  font-family: var(--font-body);
+  font-size: calc(var(--body-size) * var(--md-font-scale-ratio, 1));
+  line-height: var(--body-lh);
+  color: var(--ink);
+  max-width: var(--measure);
+  hyphens: auto;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  word-wrap: break-word;
 }
 
 [data-font-family="serif"] .md-viewer {
-  font-family: var(--md-font-serif) !important;
+  font-family: var(--font-body);
+  line-height: var(--body-lh);
+}
+
+[data-font-family="sans"] .md-viewer {
+  font-family: var(--font-ui);
+  line-height: 1.55;
 }
 
 [data-font-family="mono"] .md-viewer {
-  font-family: var(--md-font-mono) !important;
-}
-
-.md-viewer {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: calc(0.74375rem * var(--md-font-scale-ratio, 1));
+  font-family: var(--font-code);
+  font-size: calc(var(--body-size) * 0.92 * var(--md-font-scale-ratio, 1));
   line-height: 1.6;
-  color: var(--md-fg);
-  word-wrap: break-word;
 }
 
 .md-viewer h1,
@@ -31,6 +33,8 @@
 .md-viewer h5,
 .md-viewer h6 {
   scroll-margin-top: 80px;
+  font-family: var(--font-body);
+  color: var(--ink);
 }
 
 .md-viewer > *:first-child,
@@ -38,66 +42,15 @@
   margin-top: 0 !important;
 }
 
-.md-viewer h1 {
-  font-size: calc(1.575rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
-}
-
-.md-viewer h2 {
-  font-size: calc(1.225rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.25;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  margin-top: 1.75rem;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--md-border-subtle, var(--md-border));
-  padding-bottom: 0.25rem;
-}
-
-.md-viewer h3 {
-  font-size: calc(0.9625rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.35;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  margin-top: 1.25rem;
-  margin-bottom: 0.35rem;
-}
-
-.md-viewer h4 {
-  font-size: calc(0.7875rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.4;
-  font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.35rem;
-}
-
-.md-viewer h5 {
-  font-size: calc(0.7rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.5;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--md-fg-muted);
-  margin-top: 0.85rem;
-  margin-bottom: 0.25rem;
-}
-
-.md-viewer h6 {
-  font-size: calc(0.6125rem * var(--md-font-scale-ratio, 1));
-  line-height: 1.5;
-  font-weight: 600;
-  color: var(--md-fg-muted);
-  margin-top: 0.85rem;
-  margin-bottom: 0.2rem;
-}
+.md-viewer h1 { font-size: 2.4em; font-weight: 600; line-height: 1.15; margin: 0 0 0.6em; }
+.md-viewer h2 { font-size: 1.6em; font-weight: 600; line-height: 1.25; margin: 1.8em 0 0.5em; }
+.md-viewer h3 { font-size: 1.25em; font-weight: 400; font-style: italic; line-height: 1.3; margin: 1.5em 0 0.4em; }
+.md-viewer h4 { font-size: 1.05em; font-weight: 600; line-height: 1.4; margin: 1.2em 0 0.35em; }
+.md-viewer h5 { font-size: 1em; font-weight: 600; line-height: 1.5; margin: 1.2em 0 0.3em; }
+.md-viewer h6 { font-size: 1em; font-weight: 600; line-height: 1.5; color: var(--pencil); margin: 1.2em 0 0.3em; }
 
 .md-viewer p {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1em;
 }
 
 .md-viewer dl,
@@ -109,51 +62,51 @@
 .md-viewer ul,
 .md-viewer ol {
   padding-left: 1.75rem;
-  margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1em;
 }
 
-.md-viewer li {
-  margin-bottom: 0.45rem;
-  line-height: 1.65;
+.md-viewer li + li {
+  margin-top: 0.25em;
 }
 
 .md-viewer a {
-  color: var(--md-link);
-  text-decoration: none;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
 }
 .md-viewer a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 .md-viewer blockquote {
-  margin: 1.75rem 0;
-  padding: 0.85rem 1.35rem;
-  color: var(--md-blockquote-fg, var(--md-fg));
-  border-left: 3px solid var(--md-link);
-  background-color: var(--md-surface-subtle, rgba(125, 125, 125, 0.05));
-  border-radius: 0 8px 8px 0;
+  margin: 1.5em 0;
+  padding-left: 1em;
+  color: var(--pencil);
+  border-left: 2px solid var(--rule);
+  font-style: normal;
 }
 
 .md-viewer code,
 .md-viewer tt {
-  padding: 0.2em 0.45em;
+  font-family: var(--font-code);
+  font-size: 0.88em;
+  background-color: var(--surface);
+  padding: 0.1em 0.3em;
   margin: 0;
-  font-size: 0.875em;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  background-color: var(--md-code-bg);
-  border-radius: 5px;
+  border-radius: var(--r-s);
 }
 
 .md-viewer pre {
   margin-top: 0;
   margin-bottom: 16px;
-  padding: 1.25rem 1.5rem;
+  padding: 14px 16px;
   overflow: auto;
-  font-size: 85%;
-  line-height: 1.6;
-  background-color: var(--md-code-bg);
-  border-radius: 10px;
+  font-family: var(--font-code);
+  font-size: calc(13.5px * var(--md-font-scale-ratio, 1));
+  line-height: 1.55;
+  background-color: var(--surface);
+  border-radius: var(--r-s);
   border: 1px solid var(--md-border);
 }
 
@@ -198,9 +151,9 @@
 }
 
 .md-viewer hr {
-  height: 0.25em;
+  height: 1px;
   padding: 0;
-  margin: 24px 0;
-  background-color: var(--md-border);
+  margin: 2em 0;
+  background-color: var(--rule);
   border: 0;
 }
