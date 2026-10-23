@@ -477,7 +477,7 @@ moves (6b*) count moved lines once.
 - 6i2: done
 - 6i3: done
 - 6j1: done
-- 6j2: pending
+- 6j2: planned
 - 6j3: pending   (core tracker)
 - 6j4: pending   (split from 6j3 at plan time: wiring into session + saves)
 - 6k1: pending
