@@ -259,6 +259,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
               })
               .catch((err) => console.warn('Cached load failed:', err))
           } else {
+            if (cached && cached[cacheKey] !== undefined) chrome.storage.local.remove(cacheKey).catch(() => {})
             tryFetch()
           }
         }).catch(() => {
