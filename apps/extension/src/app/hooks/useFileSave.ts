@@ -46,6 +46,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       }
     }
     await saveToHandle(handle, savedContent)
+    setIsDirty(yText.toString() !== savedContent)
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     appendHistory(doc, {
@@ -55,7 +56,6 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       label: 'save',
       clientIds: [],
     } as any)
-    setIsDirty(yText.toString() !== savedContent)
   }
 
   const save = async (opts?: { explicit?: boolean }) => {
