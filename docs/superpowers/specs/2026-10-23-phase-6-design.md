@@ -480,7 +480,7 @@ moves (6b*) count moved lines once.
 - 6j2: done
 - 6j3: done   (core tracker)
 - 6j4: done   (split from 6j3 at plan time: wiring into session + saves)
-- 6k1: pending
+- 6k1: planned
 - 6k2: pending
 - 6k3: pending
 
@@ -492,5 +492,7 @@ moves (6b*) count moved lines once.
 - To 7n (review 6e2/6e3): cross-tab dedupe for registry migration (in-tab is done).
 - To 7l: content script renders Markdown in place (read-only).
 - To 7 (review 6j2): the mermaid setting gates only Viewer, not Deck/slides.
+- To 7 (review 6k1): a small dedicated content.css for the widget instead of the full app.css (~100 KB) in the shadow root.
+- To 7n (review 6k1): Playwright — replace waitForTimeout(500) with a persistence signal; resolve dist relative to the config file.
 - To 8x: PlantUML/Graphviz only if a self-hosted renderer exists; raw-HTML
   "tin tài liệu này" per-doc toggle UI.
