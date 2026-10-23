@@ -101,7 +101,7 @@ describe('Service Worker', () => {
     for (let i = 0; i < 5; i++) await Promise.resolve()
 
     expect(chrome.storage.local.set).toHaveBeenCalledWith({
-      'file_content_file:///test.md': '# Hello',
+      'file_content_file:///test.md': { text: '# Hello', ts: expect.any(Number) },
     })
     expect(tabsUpdateMock).toHaveBeenCalledWith(5, {
       url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent('file:///test.md'),
@@ -129,6 +129,15 @@ describe('Service Worker', () => {
     await actionListener!({ id: 3, url: 'https://example.com/page.html' } as any)
     expect(tabsUpdateMock).not.toHaveBeenCalled()
     expect(tabsCreateMock).toHaveBeenCalledWith({ url: 'chrome-extension://test-id/app.html' })
+  })
+
+  it('action click on a github blob md page opens the app', async () => {
+    await import('./index')
+    const u = 'https://github.com/o/r/blob/main/a.md'
+    await actionListener!({ id: 4, url: u } as any)
+    expect(tabsUpdateMock).toHaveBeenCalledWith(4, {
+      url: 'chrome-extension://test-id/app.html?file=' + encodeURIComponent(u),
+    })
   })
 
   it('registers no tabs.onUpdated listener', async () => {

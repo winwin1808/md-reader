@@ -1,8 +1,8 @@
-import { isMarkdownUrl, isStaleCacheEntry } from '../shared/md-url'
+import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry } from '../shared/md-url'
 
 chrome.action.onClicked.addListener(async (tab) => {
   const tabUrl = tab?.url || ''
-  if (isMarkdownUrl(tabUrl) && tab?.id) {
+  if ((isMarkdownUrl(tabUrl) || isGithubBlobMarkdownUrl(tabUrl)) && tab?.id) {
     const appUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(tabUrl))
     await chrome.tabs.update(tab.id, { url: appUrl })
     return
@@ -20,7 +20,7 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
       if (message.content && fileUrl) {
         try {
           await chrome.storage?.local?.set?.({
-            ['file_content_' + fileUrl]: message.content,
+            ['file_content_' + fileUrl]: makeCacheEntry(message.content),
           })
         } catch (err) {
           console.warn('Failed to cache file content in worker:', err)
