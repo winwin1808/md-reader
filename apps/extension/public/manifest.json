@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "permissions": [
     "storage",
-    "tabs",
-    "scripting"
+    "activeTab"
   ],
   "host_permissions": [
     "*://*/*.md",
@@ -13,11 +12,11 @@
     "*://*/*.markdown",
     "*://*/*.MARKDOWN",
     "*://*/*.mdown",
+    "*://*/*.MDOWN",
     "*://*/*.mkd",
-    "http://localhost/*",
-    "https://localhost/*",
-    "http://127.0.0.1/*",
-    "https://127.0.0.1/*",
+    "*://*/*.MKD",
+    "*://*/*.mdx",
+    "*://*/*.MDX",
     "file:///*"
   ],
   "background": {
@@ -32,11 +31,11 @@
         "*://*/*.markdown",
         "*://*/*.MARKDOWN",
         "*://*/*.mdown",
+        "*://*/*.MDOWN",
         "*://*/*.mkd",
-        "http://localhost/*",
-        "https://localhost/*",
-        "http://127.0.0.1/*",
-        "https://127.0.0.1/*",
+        "*://*/*.MKD",
+        "*://*/*.mdx",
+        "*://*/*.MDX",
         "file:///*"
       ],
       "js": [
@@ -50,8 +49,22 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["app.html", "app.css"],
-      "matches": ["*://*/*", "file:///*"]
+      "resources": [
+        "app.css"
+      ],
+      "matches": [
+        "*://*/*.md",
+        "*://*/*.MD",
+        "*://*/*.markdown",
+        "*://*/*.MARKDOWN",
+        "*://*/*.mdown",
+        "*://*/*.MDOWN",
+        "*://*/*.mkd",
+        "*://*/*.MKD",
+        "*://*/*.mdx",
+        "*://*/*.MDX",
+        "file:///*"
+      ]
     }
   ]
 }
