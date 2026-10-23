@@ -88,8 +88,6 @@ export function App(): React.JSX.Element {
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
-  const slides = useMemo(() => splitIntoSlides(content), [content])
-
   const docContainerRef = useRef<HTMLDivElement | null>(null)
 
 
@@ -273,8 +271,9 @@ export function App(): React.JSX.Element {
   }, [content, readerSettings])
 
   const mindmapRoot = useMemo(() => {
+    if (!isMindmapOpen) return null
     return extractMindmap(parsedDoc.tree, docTitle || 'Tài liệu không tên')
-  }, [parsedDoc.tree, docTitle])
+  }, [parsedDoc.tree, docTitle, isMindmapOpen])
 
   const handleMindNodeClick = (node: MindNode) => {
     if (node.headingId) {
@@ -291,6 +290,11 @@ export function App(): React.JSX.Element {
     title: docTitle,
     parseResult: parseResult as any,
   })
+
+  const slides = useMemo(
+    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content) : []),
+    [content, isPresenting, isPrintingSlides, isSpeakerMode],
+  )
 
   useShortcuts({
     onSearch: () => setIsSearchOpen(true),
@@ -361,13 +365,15 @@ export function App(): React.JSX.Element {
         />
       )}
       <DocumentSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} containerRef={docContainerRef} />
-      <MindmapModal
-        root={mindmapRoot}
-        isOpen={isMindmapOpen}
-        onClose={() => setIsMindmapOpen(false)}
-        onNodeClick={handleMindNodeClick}
-        title={docTitle}
-      />
+      {mindmapRoot && (
+        <MindmapModal
+          root={mindmapRoot}
+          isOpen={isMindmapOpen}
+          onClose={() => setIsMindmapOpen(false)}
+          onNodeClick={handleMindNodeClick}
+          title={docTitle}
+        />
+      )}
       <ConflictModal
         isOpen={fileSave.conflict.open}
         fileName={fileSave.activeHandle?.name || docTitle || 'document.md'}

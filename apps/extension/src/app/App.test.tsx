@@ -1127,9 +1127,9 @@ describe('App', () => {
       })
       expect(saveToHandleSpy).not.toHaveBeenCalled()
 
-      // Advance past 2000ms to fire debounced auto-save
+      // Advance past 2000ms to fire debounced auto-save (content debounce of 120ms restarts the timer; act() flushes effects only at its boundary, so allow a full extra window)
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(600)
+        await vi.advanceTimersByTimeAsync(2000)
       })
 
       expect(saveToHandleSpy).toHaveBeenCalledTimes(1)

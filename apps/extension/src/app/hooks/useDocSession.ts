@@ -108,12 +108,28 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       const t = meta.get('title') !== undefined ? readMeta(doc).title : ''
       if (t) setDocTitle(t.replace(/\.[^/.]+$/, ''))
     }
+    let contentTimer: ReturnType<typeof setTimeout> | null = null
+    const clearContentTimer = () => {
+      if (contentTimer !== null) {
+        clearTimeout(contentTimer)
+        contentTimer = null
+      }
+    }
     const observer = (event: Y.YTextEvent) => {
       setHasContent(text.length > 0)
-      if (event.transaction.origin !== ORIGIN_LOAD && event.transaction.origin !== ORIGIN_FORMAT && event.transaction.origin !== ORIGIN_REVERT) {
+      const origin = event.transaction.origin
+      if (origin !== ORIGIN_LOAD && origin !== ORIGIN_FORMAT && origin !== ORIGIN_REVERT) {
         setIsDirty(true)
       }
-      setContent(text.toString())
+      clearContentTimer()
+      if (origin === ORIGIN_LOAD || origin === ORIGIN_REVERT) {
+        setContent(text.toString())
+      } else {
+        contentTimer = setTimeout(() => {
+          contentTimer = null
+          setContent(text.toString())
+        }, 120)
+      }
       updateTitle()
     }
     text.observe(observer)
@@ -133,6 +149,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
     return () => {
       cancelled = true
+      clearContentTimer()
       text.unobserve(observer)
       meta.unobserve(updateTitle)
       if (persistence) {
