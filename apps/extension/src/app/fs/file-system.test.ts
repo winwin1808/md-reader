@@ -4,9 +4,6 @@ import {
   openLocalFile,
   saveToHandle,
   saveFileAs,
-  storeFileHandle,
-  getStoredFileHandle,
-  clearStoredFileHandle,
   verifyHandlePermission,
 } from './file-system'
 
@@ -266,30 +263,6 @@ describe('file-system', () => {
 
       const result = await saveFileAs('custom.md', 'save as content')
       expect(result).toBeNull()
-    })
-  })
-
-  describe('IndexedDB handle persistence', () => {
-    it('storeFileHandle, getStoredFileHandle, and clearStoredFileHandle persist and retrieve handle', async () => {
-      const mockHandle = { name: 'saved.md', kind: 'file' } as any
-
-      // Initially empty
-      const initial = await getStoredFileHandle()
-      expect(initial).toBeNull()
-
-      // Store handle
-      await storeFileHandle(mockHandle)
-
-      // Retrieve handle
-      const retrieved = await getStoredFileHandle()
-      expect(retrieved).toEqual(mockHandle)
-
-      // Clear handle
-      await clearStoredFileHandle()
-
-      // Should now be null
-      const cleared = await getStoredFileHandle()
-      expect(cleared).toBeNull()
     })
   })
 
