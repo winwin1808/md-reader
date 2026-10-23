@@ -3,7 +3,19 @@ import type { Page } from '@playwright/test'
 
 async function openViaContentScript(context: any, url: string): Promise<Page> {
   const page = await context.newPage()
+  const failed: string[] = []
+  page.on('requestfailed', (r: any) => {
+    if (r.url().includes('app.css')) failed.push(r.url())
+  })
   await page.goto(url)
+  await page.waitForFunction(
+    () =>
+      !!(document.querySelector('#md-reader-root')?.shadowRoot?.querySelector('link[href*="app.css"]') as HTMLLinkElement | null)
+        ?.sheet,
+    undefined,
+    { timeout: 5000 },
+  )
+  expect(failed).toEqual([])
   await page.getByRole('button', { name: 'Open in MD Reader' }).click()
   // worker replaces the current tab with app.html?file=... (then ?doc=<id>)
   await page.waitForURL(/^chrome-extension:\/\//)

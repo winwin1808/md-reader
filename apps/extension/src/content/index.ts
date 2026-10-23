@@ -129,13 +129,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   link.rel = 'stylesheet'
   link.href = chrome.runtime.getURL('app.css')
   shadow.appendChild(link)
+  const mount = document.createElement('div')
+  shadow.appendChild(mount)
 
   const restore = () => {
     rootEl.remove()
   }
 
   try {
-    const root = createRoot(shadow)
+    const root = createRoot(mount)
     root.render(
       React.createElement(
         ErrorBoundary,
