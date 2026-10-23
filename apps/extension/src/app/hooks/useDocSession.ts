@@ -74,7 +74,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     return () => { cancelled = true }
   }, [docIdParam, fileUrlParam])
 
-  const persistenceName = record ? record.persistenceName : (!docIdParam && !fileUrlParam ? 'md-reader' : null)
+  const persistenceName = record ? record.persistenceName : null
 
   const doc = useMemo(() => new Y.Doc({ gc: false }), [record?.docId])
   const yText = useMemo(() => doc.getText('source'), [doc])
@@ -104,9 +104,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     const text = doc.getText('source')
     const meta = getMeta(doc)
     const updateTitle = () => {
-      // legacy 'name' is still written by FileDrop until 6e4 moves it to 'title'
-      const legacy = meta.get('name')
-      const t = typeof legacy === 'string' && legacy ? legacy : meta.get('title') !== undefined ? readMeta(doc).title : ''
+      const t = meta.get('title') !== undefined ? readMeta(doc).title : ''
       if (t) setDocTitle(t.replace(/\.[^/.]+$/, ''))
     }
     const observer = (event: Y.YTextEvent) => {
