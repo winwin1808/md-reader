@@ -1,17 +1,18 @@
 .cm-editor {
   height: 100%;
-  font-family: var(--md-font-mono, ui-monospace, monospace);
-  font-size: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: calc(14px * var(--md-font-scale-ratio, 1));
   line-height: 1.6;
-  background-color: var(--md-bg-editor, var(--md-bg, #ffffff));
-  color: var(--md-text, #1e293b);
-  border: 1px solid var(--md-border, #e2e8f0);
-  border-radius: 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-m);
   overflow: auto;
 }
 
 .cm-editor.cm-focused {
   outline: none;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .cm-editor .cm-scroller {
@@ -20,3 +21,52 @@
   height: 100%;
   overflow: auto;
 }
+
+.cm-editor .cm-content {
+  padding: 24px 0;
+  caret-color: var(--ink);
+}
+
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+  border-left: 2px solid var(--ink);
+}
+
+.cm-editor .cm-gutters {
+  background: var(--paper);
+  color: var(--pencil);
+  border: none;
+  border-right: 1px solid var(--rule);
+}
+
+.cm-editor .cm-activeLine {
+  background: var(--hover);
+}
+
+.cm-editor .cm-activeLineGutter {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: color-mix(in srgb, var(--hl) 45%, transparent);
+}
+
+[data-theme="dark"] .cm-editor .cm-selectionBackground,
+[data-theme="dark"] .cm-editor.cm-focused .cm-selectionBackground,
+[data-theme="dark"] .cm-editor .cm-content ::selection {
+  background: var(--md-selection);
+}
+
+/* Markdown syntax tones (CodeMirror highlight classes) */
+.cm-editor .tok-heading { color: var(--ink); font-weight: 600; }
+.cm-editor .tok-emphasis { font-style: italic; }
+.cm-editor .tok-strong { font-weight: 600; }
+.cm-editor .tok-link,
+.cm-editor .tok-url { color: var(--accent); }
+.cm-editor .tok-monospace { color: var(--code-string); }
+.cm-editor .tok-quote { color: var(--pencil); }
+.cm-editor .tok-list,
+.cm-editor .tok-meta { color: var(--code-keyword); }
