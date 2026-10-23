@@ -195,6 +195,8 @@ describe('SettingsModal', () => {
       <SettingsModal
         {...defaultProps}
         settings={{
+          contrast: 'standard',
+          settingsVersion: 2,
           stripFrontmatter: false,
           enableMath: false,
           formatOnSave: false,
@@ -285,6 +287,8 @@ describe('SettingsModal', () => {
       <SettingsModal
         {...defaultProps}
         settings={{
+          contrast: 'standard',
+          settingsVersion: 2,
           slideBgColor: '#000000',
           slideImageOpacity: 80,
           slideBgImage: 'https://example.com/bg.png',
