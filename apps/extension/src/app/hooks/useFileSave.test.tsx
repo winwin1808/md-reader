@@ -78,7 +78,10 @@ describe('useFileSave', () => {
     doc.getText('source').insert(3, '\n')
     rerender({ s: makeSession(doc, { isDirty: true, content: '* a\n' }) })
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
-    expect(saveToHandle).toHaveBeenCalledTimes(1)
+    // The timer callback awaits crypto.subtle (real async, not flushed by fake timers):
+    // go back to real timers and wait for the write instead of assuming it already happened.
+    vi.useRealTimers()
+    await waitFor(() => expect(saveToHandle).toHaveBeenCalledTimes(1))
     expect(disk).toBe('* a\n')
     expect(doc.getText('source').toString()).toBe('* a\n')
   })
