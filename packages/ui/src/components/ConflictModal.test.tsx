@@ -1,6 +1,8 @@
 import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { ConflictModal, computeSideBySideDiff } from './ConflictModal'
 
 describe('ConflictModal', () => {
@@ -23,42 +25,53 @@ describe('ConflictModal', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders modal and warning header when isOpen is true', () => {
+  it('renders dialog labelled by title with a pencil hint line', () => {
     render(<ConflictModal {...defaultProps} />)
-    expect(screen.getByText('Phát hiện xung đột tập tin ngoài đĩa')).toBeDefined()
+    const dlg = screen.getByRole('dialog')
+    expect(dlg.getAttribute('aria-modal')).toBe('true')
+    const id = dlg.getAttribute('aria-labelledby')!
+    expect(document.getElementById(id)?.textContent).toBe('Tài liệu đã đổi ở hai nơi')
+    expect(screen.getByText(/Bản trên đĩa khác với lần bạn mở/)).toBeDefined()
     expect(screen.getByText(/test\.md/)).toBeDefined()
   })
 
-  it('displays local and disk diff content side-by-side', () => {
-    render(<ConflictModal {...defaultProps} />)
-    expect(screen.getByText(/Bản sửa cục bộ/)).toBeDefined()
-    expect(screen.getByText(/Bản trên đĩa/)).toBeDefined()
-    expect(screen.getByText('local line 2')).toBeDefined()
-    expect(screen.getByText('disk line 2')).toBeDefined()
+  it('two h3 headings without base, three with base', () => {
+    const { unmount } = render(<ConflictModal {...defaultProps} />)
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Bản trên đĩa', 'Bản của bạn'])
+    unmount()
+    render(<ConflictModal {...defaultProps} baseContent={'a\nb\nc'} />)
+    const hs = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(hs).toEqual(['Bản trên đĩa', 'Bản của bạn', 'Bản gốc chung'])
+    expect(screen.getAllByRole('region').length).toBe(3)
   })
 
-  it('calls onKeepLocal when clicking "Giữ bản sửa của tôi (Ghi đè)"', () => {
+  it('shows markers + and − for changed lines', () => {
+    const { container } = render(<ConflictModal {...defaultProps} localContent="" diskContent="disk only" />)
+    expect(container.querySelector('.conflict-diff-line.removed .conflict-diff-marker')?.textContent).toBe('\u2212')
+    const r = render(<ConflictModal {...defaultProps} />)
+    expect(r.container.querySelector('.conflict-diff-line.added .conflict-diff-marker')?.textContent).toBe('+')
+  })
+
+  it('calls onKeepLocal from the primary button', () => {
     const onKeepLocal = vi.fn()
     render(<ConflictModal {...defaultProps} onKeepLocal={onKeepLocal} />)
-    const keepBtn = screen.getByRole('button', { name: /Giữ bản sửa của tôi/i })
-    fireEvent.click(keepBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'Giữ bản của tôi và ghi đè' }))
     expect(onKeepLocal).toHaveBeenCalledTimes(1)
   })
 
-  it('calls onRevertToDisk when clicking "Tải lại từ đĩa (Bỏ thay đổi)"', () => {
+  it('calls onRevertToDisk from the secondary button', () => {
     const onRevertToDisk = vi.fn()
     render(<ConflictModal {...defaultProps} onRevertToDisk={onRevertToDisk} />)
-    const revertBtn = screen.getByRole('button', { name: /Tải lại từ đĩa/i })
-    fireEvent.click(revertBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'Lấy bản trên đĩa' }))
     expect(onRevertToDisk).toHaveBeenCalledTimes(1)
   })
 
-  it('calls onClose when clicking "Đóng" button', () => {
+  it('"Để sau" and the close icon call onClose', () => {
     const onClose = vi.fn()
     render(<ConflictModal {...defaultProps} onClose={onClose} />)
-    const closeBtn = screen.getByRole('button', { name: /Đóng/i })
-    fireEvent.click(closeBtn)
-    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Để sau' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }))
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 
   it('calls onClose when Escape key is pressed', () => {
@@ -89,23 +102,21 @@ describe('ConflictModal', () => {
     expect(container.querySelectorAll('.conflict-diff-line.added').length).toBe(0)
   })
 
-  it('three-way: shows disk and local changes against base with counts', () => {
+  it('three-way: counts carry an aria-label', () => {
     const { container } = render(
       <ConflictModal {...defaultProps} baseContent={'a\nb\nc'} diskContent={'a\nB\nc'} localContent={'a\nb\nc\nd'} />
     )
-    const headers = Array.from(container.querySelectorAll('.conflict-pane-header')).map((h) => h.textContent ?? '')
-    expect(headers[0]).toContain('Thay đổi trên đĩa')
-    expect(headers[0]).toContain('+1 −1')
-    expect(headers[1]).toContain('Thay đổi của bạn')
-    expect(headers[1]).toContain('+1 −0')
+    const counts = Array.from(container.querySelectorAll('.conflict-diff-counts'))
+    expect(counts.map((c) => c.textContent)).toEqual(['+1 \u22121', '+1 \u22120'])
+    expect(counts.map((c) => c.getAttribute('aria-label'))).toEqual(['1 dòng thêm, 1 dòng bỏ', '1 dòng thêm, 0 dòng bỏ'])
     const diskPane = container.querySelectorAll('.conflict-pane')[0]
     const added = Array.from(diskPane!.querySelectorAll('.conflict-diff-line.added')).map((l) => l.textContent)
     expect(added.some((t) => t?.includes('B'))).toBe(true)
   })
 
-  it('without baseContent keeps the old pane titles', () => {
-    render(<ConflictModal {...defaultProps} />)
-    expect(screen.getByText('Bản sửa cục bộ')).toBeDefined()
-    expect(screen.getByText('Bản trên đĩa')).toBeDefined()
+  it('conflict.css has no hex or rgb literals', () => {
+    const css = readFileSync(resolve(__dirname, '../theme/conflict.css'), 'utf8')
+    expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    expect(css).not.toMatch(/rgba?\(/)
   })
 })
