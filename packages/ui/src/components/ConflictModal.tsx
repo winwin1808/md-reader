@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo } from 'react'
+import React, { useEffect, useId, useMemo, useRef } from 'react'
 import { computeLineDiff } from '@md-reader/core'
 import { Icon } from './Icon'
 import '../theme/conflict.css'
@@ -58,18 +58,52 @@ export function ConflictModal({
   onClose,
 }: ConflictModalProps): React.JSX.Element | null {
   const titleId = useId()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.activeElement as HTMLElement | null
+    containerRef.current?.querySelector<HTMLElement>('.conflict-btn-later')?.focus()
+    return () => {
+      if (prev && prev.isConnected) prev.focus()
+    }
+  }, [isOpen])
+
   useEffect(() => {
     if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        onCloseRef.current()
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [isOpen])
+
+  const handleTrap = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return
+    const items = Array.from(
+      containerRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []
+    )
+    if (items.length === 0) return
+    const first = items[0]!
+    const last = items[items.length - 1]!
+    const active = document.activeElement
+    if (e.shiftKey && (active === first || !containerRef.current?.contains(active))) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && (active === last || !containerRef.current?.contains(active))) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
 
   const { localDiff, diskDiff } = useMemo(
     () => computeSideBySideDiff(diskContent, localContent),
@@ -100,6 +134,7 @@ export function ConflictModal({
         {counts && (
           <span
             className="conflict-diff-counts"
+            role="img"
             aria-label={`${counts.added} dòng thêm, ${counts.removed} dòng bỏ`}
           >{`+${counts.added} \u2212${counts.removed}`}</span>
         )}
@@ -108,6 +143,8 @@ export function ConflictModal({
         {lines.map((line, idx) => (
           <div key={idx} className={`conflict-diff-line ${line.type}`}>
             <span className="conflict-diff-marker" aria-hidden="true">{marker(line.type)}</span>
+            {line.type === 'added' && <span className="conflict-sr">thêm</span>}
+            {line.type === 'removed' && <span className="conflict-sr">bỏ</span>}
             {line.num !== undefined && (
               <span className="conflict-diff-line-number">{line.num !== null ? line.num : ''}</span>
             )}
@@ -126,7 +163,7 @@ export function ConflictModal({
 
   return (
     <div className="conflict-modal-overlay" role="dialog" aria-modal="true" aria-labelledby={`${titleId}-title`}>
-      <div className="conflict-modal-container">
+      <div className="conflict-modal-container" ref={containerRef} onKeyDown={handleTrap}>
         <div className="conflict-modal-header">
           <div className="conflict-modal-heading">
             <h2 id={`${titleId}-title`}>Tài liệu đã đổi ở hai nơi</h2>

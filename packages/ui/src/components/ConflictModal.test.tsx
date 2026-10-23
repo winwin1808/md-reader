@@ -114,6 +114,69 @@ describe('ConflictModal', () => {
     expect(added.some((t) => t?.includes('B'))).toBe(true)
   })
 
+  it('focuses the safe "Để sau" button on open', () => {
+    render(<ConflictModal {...defaultProps} />)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Để sau' }))
+  })
+
+  it('Tab from the last button wraps to the first focusable, Shift+Tab the reverse', () => {
+    render(<ConflictModal {...defaultProps} />)
+    const first = screen.getByRole('button', { name: 'Đóng' })
+    const last = screen.getByRole('button', { name: 'Giữ bản của tôi và ghi đè' })
+    last.focus()
+    fireEvent.keyDown(last, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(last)
+  })
+
+  it('restores focus to the previously focused button on close', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const { rerender } = render(<ConflictModal {...defaultProps} />)
+    expect(document.activeElement).not.toBe(opener)
+    rerender(<ConflictModal {...defaultProps} isOpen={false} />)
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+
+  it('removed and added lines carry visually-hidden text alternatives', () => {
+    const { container } = render(<ConflictModal {...defaultProps} localContent="" diskContent="disk only" />)
+    expect(container.querySelector('.conflict-diff-line.removed .conflict-sr')?.textContent).toBe('bỏ')
+    expect(container.querySelector('.conflict-diff-line.empty .conflict-sr')).toBeNull()
+    cleanup()
+    const r = render(<ConflictModal {...defaultProps} />)
+    expect(r.container.querySelector('.conflict-diff-line.added .conflict-sr')?.textContent).toBe('thêm')
+    expect(r.container.querySelector('.conflict-diff-line.same .conflict-sr')).toBeNull()
+  })
+
+  it('counts element has role img and a label', () => {
+    const { container } = render(
+      <ConflictModal {...defaultProps} baseContent={'a\nb\nc'} diskContent={'a\nB\nc'} localContent={'a\nb\nc\nd'} />
+    )
+    const c = container.querySelector('.conflict-diff-counts')!
+    expect(c.getAttribute('role')).toBe('img')
+    expect(c.getAttribute('aria-label')).toBe('1 dòng thêm, 1 dòng bỏ')
+  })
+
+  it('Esc is handled in capture and does not reach outer listeners', () => {
+    const outer = vi.fn()
+    const onClose = vi.fn()
+    window.addEventListener('keydown', outer)
+    render(<ConflictModal {...defaultProps} onClose={onClose} />)
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    window.removeEventListener('keydown', outer)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(outer).not.toHaveBeenCalled()
+  })
+
+  it('conflict.css: panes do not scroll individually when stacked', () => {
+    const css = readFileSync(resolve(__dirname, '../theme/conflict.css'), 'utf8')
+    expect(css).toMatch(/\.conflict-sr\s*\{[^}]*clip/)
+    expect(css).toMatch(/@media \(min-width: 960px\)[\s\S]*\.conflict-diff-content[\s\S]*max-height: 52vh/)
+  })
+
   it('conflict.css has no hex or rgb literals', () => {
     const css = readFileSync(resolve(__dirname, '../theme/conflict.css'), 'utf8')
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)

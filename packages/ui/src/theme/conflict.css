@@ -114,8 +114,8 @@
 }
 
 .conflict-diff-content {
-  max-height: 52vh;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   font-family: var(--font-code);
   font-size: 0.875rem;
   line-height: 1.5;
@@ -206,4 +206,23 @@
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--rule);
+}
+
+.conflict-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 960px) {
+  .conflict-diff-content {
+    max-height: 52vh;
+    overflow: auto;
+  }
 }
