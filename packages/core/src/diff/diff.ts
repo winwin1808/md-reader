@@ -11,18 +11,21 @@ export async function detectConflict(baseHash: string, currentDiskContent: strin
   return currentHash !== baseHash
 }
 
+const MAX_EDIT_DISTANCE = 2000
+
 type Edit = { type: 'same' | 'added' | 'removed'; ai: number; bi: number }
 
-/** Myers greedy diff; returns edits in document order (indices into a / b). */
-function myers(a: string[], b: string[]): Edit[] {
+/** Myers greedy diff; returns edits in document order (indices into a / b), or null if D exceeds MAX_EDIT_DISTANCE. */
+function myers(a: string[], b: string[]): Edit[] | null {
   const n = a.length
   const m = b.length
   const max = n + m
   const off = max + 1
+  const limit = Math.min(max, MAX_EDIT_DISTANCE)
   const v = new Int32Array(2 * max + 3)
   const trace: Int32Array[] = []
   let found = -1
-  for (let d = 0; d <= max && found < 0; d++) {
+  for (let d = 0; d <= limit && found < 0; d++) {
     for (let k = -d; k <= d; k += 2) {
       let x: number
       if (k === -d || (k !== d && v[off + k - 1]! < v[off + k + 1]!)) x = v[off + k + 1]!
@@ -40,6 +43,7 @@ function myers(a: string[], b: string[]): Edit[] {
     }
     trace.push(v.slice(off - d, off + d + 1))
   }
+  if (found < 0) return null
   const edits: Edit[] = []
   let x = n
   let y = m
@@ -86,7 +90,12 @@ export function computeLineDiff(original: string, modified: string): DiffLine[] 
 
   const midA = a.slice(pre, a.length - suf)
   const midB = b.slice(pre, b.length - suf)
-  const edits = myers(midA, midB)
+  const edits: Edit[] =
+    myers(midA, midB) ??
+    [
+      ...midA.map((_, ai): Edit => ({ type: 'removed', ai, bi: 0 })),
+      ...midB.map((_, bi): Edit => ({ type: 'added', ai: 0, bi })),
+    ]
   // Within a changed block, emit removed lines before added lines.
   let removed: DiffLine[] = []
   let added: DiffLine[] = []
