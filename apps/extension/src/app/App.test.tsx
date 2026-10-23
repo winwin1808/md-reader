@@ -457,19 +457,51 @@ describe('App', () => {
       const c = await load({ fontFamily: 'sans', settingsVersion: 2 })
       expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
     })
-    it('ignores stored colorTheme', async () => {
-      await load({ colorTheme: 'green', settingsVersion: 2 })
-      expect(document.documentElement.getAttribute('data-color-theme')).not.toBe('green')
+    it('never writes stored colorTheme back', async () => {
+      await load({ colorTheme: 'green' })
+      const sync = (window as any).chrome.storage.sync
+      const local = (window as any).chrome.storage.local
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Settings' })) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Monospace' })) })
+      const all = [...sync.set.mock.calls, ...local.set.mock.calls]
+      expect(all.length).toBeGreaterThan(0)
+      expect(all.some((c: any[]) => 'colorTheme' in c[0])).toBe(false)
     })
     it('defaults confetti off', async () => {
-      let props: any = null
-      vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { props = p; return <div /> })
+      const spy = vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { return <div data-active={String(p.active)} /> })
       await load({ settingsVersion: 2 })
       Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
       Object.defineProperty(window, 'scrollY', { value: 1000, writable: true, configurable: true })
       Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1800, writable: true, configurable: true })
       await act(async () => { fireEvent.scroll(window) })
-      expect(props?.active ?? false).toBe(false)
+      expect(spy.mock.calls.length).toBeGreaterThanOrEqual(1)
+      expect(spy.mock.calls.every((c: any[]) => c[0].active === false)).toBe(true)
+    })
+    it('persists migration once so a later sans choice survives remount', async () => {
+      const store: any = { fontFamily: 'sans' }
+      const chromeMock = (window as any).chrome.storage
+      chromeMock.sync.get = vi.fn(async () => ({ ...store }))
+      chromeMock.sync.set = vi.fn(async (o: any) => { Object.assign(store, o) })
+      let r: any
+      await act(async () => { r = render(<App />) })
+      expect(chromeMock.sync.set).toHaveBeenCalledWith(expect.objectContaining({ settingsVersion: 2, fontFamily: 'serif' }))
+      expect(store.settingsVersion).toBe(2)
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Settings' })) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Sans-serif' })) })
+      expect(store.fontFamily).toBe('sans')
+      r.unmount()
+      let r2: any
+      await act(async () => { r2 = render(<App />) })
+      expect(r2.container.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
+    })
+    it('writes nothing on load when stored v2', async () => {
+      await load({ fontFamily: 'sans', settingsVersion: 2 })
+      expect((window as any).chrome.storage.sync.set).not.toHaveBeenCalled()
+      expect((window as any).chrome.storage.local.set).not.toHaveBeenCalled()
+    })
+    it('falls back to standard for junk contrast', async () => {
+      await load({ contrast: 'neon', settingsVersion: 2 })
+      expect(document.documentElement.getAttribute('data-contrast')).toBe('standard')
     })
     it('applies stored contrast high to html', async () => {
       await load({ contrast: 'high', settingsVersion: 2 })
