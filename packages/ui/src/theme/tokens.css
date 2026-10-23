@@ -1,46 +1,185 @@
-/*
-CSS custom properties on [data-theme='light'] and [data-theme='dark']
---md-bg, --md-fg, --md-fg-muted, --md-border, --md-link, --md-code-bg, --md-code-fg, --md-selection
---md-hljs-* (keyword, string, comment, number, function, tag, attr).
-*/
+/* Lề sách token layer. Palettes: Giấy (light) · Than chì (dark) · high-contrast light/dark. */
 
 :root,
-[data-theme='light'] {
-  --md-bg: #ffffff;
-  --md-bg-secondary: #f6f8fa;
-  --md-fg: #24292f;
-  --md-fg-muted: #57606a;
-  --md-border: #d0d7de;
-  --md-link: #0969da;
-  --md-code-bg: #f6f8fa;
-  --md-code-fg: #24292f;
-  --md-selection: #b3d4fc;
-
-  --md-hljs-keyword: #cf222e;
-  --md-hljs-string: #0a3069;
-  --md-hljs-comment: #6e7781;
-  --md-hljs-number: #0550ae;
-  --md-hljs-function: #8250df;
-  --md-hljs-tag: #116329;
-  --md-hljs-attr: #0550ae;
+[data-theme="light"] {
+  --paper: #F1F3F2;
+  --surface: #E5EAE7;
+  --ink: #1B2422;
+  --pencil: #5E6A67;
+  --rule: #D3DAD7;
+  --hl: #F3DE4A;
+  --hl-ink: #1B2422;
+  --accent: #23568C;
+  --danger: #A2352B;
+  --ok: #2F6B45;
+  --code-keyword: #7A3E9D;
+  --code-string: #2F6B45;
+  --code-comment: #6E7A77;
+  --code-number: #9A5B13;
+  --code-function: #23568C;
+  --code-type: #8C4A2F;
+  --code-attr: #5A6B1F;
+  --code-meta: #5E6A67;
 }
 
-[data-theme='dark'] {
-  --md-bg: #0d1117;
-  --md-bg-secondary: #161b22;
-  --md-fg: #c9d1d9;
-  --md-fg-muted: #8b949e;
-  --md-border: #30363d;
-  --md-link: #58a6ff;
-  --md-code-bg: #161b22;
-  --md-code-fg: #c9d1d9;
-  --md-selection: #3392ff44;
+[data-theme="dark"] {
+  --paper: #161C1B;
+  --surface: #1F2726;
+  --ink: #E3E8E6;
+  --pencil: #A3AFAC;
+  --rule: #2E3836;
+  --hl: #D9C640;
+  --hl-ink: #161C1B;
+  --accent: #8DB6E8;
+  --danger: #F08A7E;
+  --ok: #8CCB9F;
+  --code-keyword: #D4A8F0;
+  --code-string: #8CCB9F;
+  --code-comment: #8E9A97;
+  --code-number: #E8B66B;
+  --code-function: #8DB6E8;
+  --code-type: #E7A487;
+  --code-attr: #C6D68A;
+  --code-meta: #A3AFAC;
+}
 
-  --md-hljs-keyword: #ff7b72;
-  --md-hljs-string: #a5d6ff;
-  --md-hljs-comment: #8b949e;
-  --md-hljs-number: #79c0ff;
-  --md-hljs-function: #d2a8ff;
-  --md-hljs-tag: #7ee787;
-  --md-hljs-attr: #79c0ff;
+[data-contrast="high"][data-theme="light"],
+:root[data-contrast="high"]:not([data-theme="dark"]) {
+  --paper: #FFFFFF;
+  --surface: #F2F2F2;
+  --ink: #000000;
+  --pencil: #333333;
+  --rule: #000000;
+  --hl: #FFE600;
+  --hl-ink: #000000;
+  --accent: #0B3D91;
+  --danger: #8B0000;
+  --ok: #005A1F;
+  --code-keyword: #7A3E9D;
+  --code-string: #2F6B45;
+  --code-comment: #6E7A77;
+  --code-number: #9A5B13;
+  --code-function: #23568C;
+  --code-type: #8C4A2F;
+  --code-attr: #5A6B1F;
+  --code-meta: #5E6A67;
+}
+
+[data-contrast="high"][data-theme="dark"] {
+  --paper: #000000;
+  --surface: #121212;
+  --ink: #FFFFFF;
+  --pencil: #D0D0D0;
+  --rule: #FFFFFF;
+  --hl: #FFE600;
+  --hl-ink: #000000;
+  --accent: #9CC7FF;
+  --danger: #FF9C9C;
+  --ok: #8CFFB0;
+  --code-keyword: #D4A8F0;
+  --code-string: #8CCB9F;
+  --code-comment: #8E9A97;
+  --code-number: #E8B66B;
+  --code-function: #8DB6E8;
+  --code-type: #E7A487;
+  --code-attr: #C6D68A;
+  --code-meta: #A3AFAC;
+}
+
+:root {
+  --font-body: 'Literata', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-code: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --r-s: 3px;
+  --r-m: 6px;
+  --r-l: 10px;
+  --elev-1: 0 1px 2px color-mix(in srgb, var(--ink) 14%, transparent);
+  --elev-2: 0 6px 24px color-mix(in srgb, var(--ink) 18%, transparent);
+  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --measure: 68ch;
+  --body-size: 1.125rem;
+  --body-lh: 1.62;
+  --hover: color-mix(in srgb, var(--ink) 6%, transparent);
+  --active: color-mix(in srgb, var(--ink) 10%, transparent);
+
+  /* legacy aliases — remove in 7s2 */
+  --md-bg: var(--paper);
+  --md-doc-bg: var(--paper);
+  --md-bg-editor: var(--paper);
+  --md-mindmap-bg: var(--paper);
+  --md-workspace-bg: var(--surface);
+  --md-bg-secondary: var(--surface);
+  --md-bg-subtle: var(--surface);
+  --md-surface-subtle: var(--surface);
+  --bg-secondary: var(--surface);
+  --bg-subtle: var(--surface);
+  --bg-surface: var(--surface);
+  --md-bg-card: var(--surface);
+  --md-controls-bg: var(--surface);
+  --md-code-bg: var(--surface);
+  --md-table-alt: color-mix(in srgb, var(--surface) 55%, var(--paper));
+  --md-fg: var(--ink);
+  --md-text: var(--ink);
+  --text-primary: var(--ink);
+  --md-code-fg: var(--ink);
+  --md-fg-muted: var(--pencil);
+  --md-muted: var(--pencil);
+  --text-muted: var(--pencil);
+  --md-blockquote-fg: var(--pencil);
+  --md-border: var(--rule);
+  --md-border-subtle: var(--rule);
+  --border-color: var(--rule);
+  --md-quote-border: var(--rule);
+  --md-link: var(--accent);
+  --md-accent: var(--accent);
+  --color-accent: var(--accent);
+  --md-hover: var(--hover);
+  --md-hover-bg: var(--hover);
+  --bg-hover: var(--hover);
+  --md-active-bg: var(--active);
+  --bg-active: var(--active);
+  --md-error: var(--danger);
+  --md-selection: color-mix(in srgb, var(--hl) 55%, transparent);
+  --md-doc-shadow: var(--elev-1);
+  --md-font-sans: var(--font-ui);
+  --md-font-serif: var(--font-body);
+  --md-font-mono: var(--font-code);
+  --md-hljs-keyword: var(--code-keyword);
+  --md-hljs-doctag: var(--code-keyword);
+  --md-hljs-string: var(--code-string);
+  --md-hljs-meta-string: var(--code-string);
+  --md-hljs-regexp: var(--code-string);
+  --md-hljs-comment: var(--code-comment);
+  --md-hljs-number: var(--code-number);
+  --md-hljs-function: var(--code-function);
+  --md-hljs-type: var(--code-type);
+  --md-hljs-tag: var(--code-type);
+  --md-hljs-attr: var(--code-attr);
+  --md-hljs-meta: var(--code-meta);
+  --md-hljs-link: var(--accent);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: var(--md-selection);
 }
