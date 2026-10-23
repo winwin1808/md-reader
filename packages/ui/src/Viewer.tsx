@@ -45,8 +45,6 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
   useEffect(() => {
     if (!onChangeRef.current) return
-    if (typeof IntersectionObserver === 'undefined') return
-
     const container = containerRef.current
     if (!container) return
 
@@ -58,36 +56,44 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       const oy = getComputedStyle(el).overflowY
       if (oy === 'auto' || oy === 'scroll') { root = el; break }
     }
+    const scroller: HTMLElement | Window = (root as HTMLElement | null) ?? window
 
-    const intersecting = new Set<string>()
     let activeId: string | null = null
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) intersecting.add(entry.target.id)
-        else intersecting.delete(entry.target.id)
-      })
-      let next: string | null = null
+    let first = true
+    const compute = () => {
+      const rect = root ? root.getBoundingClientRect() : null
+      const rootTop = rect ? rect.top : 0
+      const rootH = rect ? rect.height : window.innerHeight
+      const line = rootTop + rootH * 0.3
+      let next: string | null = headingsWithId[0]?.id ?? null
       for (const h of headingsWithId) {
-        if (intersecting.has(h.id)) next = h.id
+        if (h.getBoundingClientRect().top <= line) next = h.id
       }
-      if (next === null) {
-        const rootTop = root ? root.getBoundingClientRect().top : 0
-        const rootH = root ? root.getBoundingClientRect().height : window.innerHeight
-        const line = rootTop + rootH * 0.3
-        for (const h of headingsWithId) {
-          if (h.getBoundingClientRect().top <= line) next = h.id
+      if (first || next !== activeId) {
+        first = false
+        if (next !== activeId) {
+          activeId = next
+          onChangeRef.current?.(activeId)
         }
       }
-      if (next !== activeId) {
-        activeId = next
-        onChangeRef.current?.(activeId)
-      }
-    }, { root, rootMargin: '0px 0px -70% 0px', threshold: 0 })
+    }
 
-    headingsWithId.forEach(h => observer.observe(h))
+    let pending = false
+    let raf = 0
+    const schedule = () => {
+      if (pending) return
+      pending = true
+      raf = requestAnimationFrame(() => { pending = false; raf = 0; compute() })
+    }
+
+    scroller.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    compute()
 
     return () => {
-      observer.disconnect()
+      scroller.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      if (raf) cancelAnimationFrame(raf)
     }
   }, [html])
 

@@ -163,22 +163,6 @@ describe('Viewer scroll-spy', () => {
   const orig = (globalThis as any).IntersectionObserver
   afterEach(() => { cleanup(); ;(globalThis as any).IntersectionObserver = orig })
 
-  it('reports the intersecting heading once', () => {
-    let cb: any
-    ;(globalThis as any).IntersectionObserver = class {
-      constructor(c: any) { cb = c }
-      observe() {}
-      disconnect() {}
-    }
-    const onChange = vi.fn()
-    render(<Viewer html={'<h2 id="user-content-one">One</h2><h2 id="user-content-two">Two</h2>'} onActiveHeadingChange={onChange} />)
-    const target = document.getElementById('user-content-two')!
-    cb([{ target, isIntersecting: true }])
-    cb([])
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith('user-content-two')
-  })
-
   it('does not throw without IntersectionObserver', () => {
     ;(globalThis as any).IntersectionObserver = undefined
     expect(() => render(<Viewer html={'<h2 id="x">X</h2>'} onActiveHeadingChange={() => {}} />)).not.toThrow()
