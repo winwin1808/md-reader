@@ -23,6 +23,9 @@ importers:
       '@md-reader/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      katex:
+        specifier: 0.16.22
+        version: 0.16.22
       preact:
         specifier: ^10.29.8
         version: 10.29.8

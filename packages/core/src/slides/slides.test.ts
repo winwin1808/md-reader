@@ -154,3 +154,15 @@ describe('splitIntoSlides', () => {
     expect(core.splitIntoSlides).toBe(splitIntoSlides)
   })
 })
+
+describe('splitIntoSlides math option', () => {
+  it('math:false keeps $a^2$ literal', () => {
+    const s = splitIntoSlides('# T\n\n$a^2$', { math: false })
+    expect(s[0]!.html).toContain('$a^2$')
+    expect(s[0]!.html).not.toContain('katex')
+  })
+  it('renders katex by default', () => {
+    const s = splitIntoSlides('# T\n\n$a^2$')
+    expect(s[0]!.html).toContain('katex')
+  })
+})

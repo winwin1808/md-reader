@@ -165,5 +165,14 @@ img {
   max-width: 100%;
   box-sizing: content-box;
 }
+
+.katex-html {
+  display: none;
+}
+
+.katex-display {
+  text-align: center;
+  margin: 1em 0;
+}
 `.trim()
 }

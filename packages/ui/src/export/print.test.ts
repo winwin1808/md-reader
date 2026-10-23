@@ -153,3 +153,12 @@ describe('deck-print.css', () => {
     expect(viewerContent).toContain("@import './theme/deck-print.css';")
   })
 })
+
+describe('getDefaultExportCss math rules', () => {
+  it('hides katex-html so MathML shows once', async () => {
+    const { getDefaultExportCss } = await import('./css')
+    const css = getDefaultExportCss()
+    expect(css).toMatch(/\.katex-html\s*\{\s*display:\s*none/)
+    expect(css).toContain('.katex-display')
+  })
+})

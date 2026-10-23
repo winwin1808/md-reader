@@ -47,12 +47,8 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   alwaysOpenApp: false,
   stripFrontmatter: true,
   displayMetadata: false,
-  advancedTables: true,
-  taskLists: true,
   enableMath: true,
   enableMermaid: true,
-  enablePlantUml: false,
-  enableGraphviz: false,
   githubAlerts: true,
   localizeAlerts: false,
   typographer: false,
@@ -79,7 +75,7 @@ export function App(): React.JSX.Element {
   const session = useDocSession({ docId: urlParams.docId, fileUrl: urlParams.fileUrl })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
-  const fileSave = useFileSave(session, { formatOnSave: readerSettings.autoFormatMd !== false })
+  const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
@@ -254,8 +250,9 @@ export function App(): React.JSX.Element {
         parsedDoc: { tree: emptyTree },
       }
     }
-    const parsed = parseMarkdown(content)
+    const parsed = parseMarkdown(content, { math: readerSettings?.enableMath !== false })
     const rendered = renderToHtml(parsed, {
+      math: readerSettings?.enableMath !== false,
       stripFrontmatter: readerSettings?.stripFrontmatter,
       displayMetadata: readerSettings?.displayMetadata,
       typographer: readerSettings?.typographer,
@@ -293,8 +290,8 @@ export function App(): React.JSX.Element {
   })
 
   const slides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content) : []),
-    [content, isPresenting, isPrintingSlides, isSpeakerMode],
+    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }) : []),
+    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath],
   )
 
   useShortcuts({
@@ -515,7 +512,7 @@ export function App(): React.JSX.Element {
             <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={html} />
+                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocOpen && !isReadingMode && (
@@ -547,7 +544,7 @@ export function App(): React.JSX.Element {
                   editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
                   preview={
                     <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
-                      <Viewer html={html} />
+                      <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
                     </div>
                   }
                 />
