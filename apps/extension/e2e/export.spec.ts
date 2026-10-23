@@ -3,21 +3,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { App } from '../src/app/App'
+import { createRecord, writeDocText } from '../src/app/doc-registry'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
-import { IndexeddbPersistence } from 'y-indexeddb'
 
-vi.mock('y-indexeddb', () => ({
-  IndexeddbPersistence: vi.fn().mockImplementation(function () {
-    return {
-      destroy: vi.fn(),
-      once: vi.fn().mockImplementation((event: string, cb: () => void) => {
-        if (event === 'synced') cb()
-      }),
-      on: vi.fn(),
-    }
-  }),
-}))
+
+async function openDroppedDoc(title: string, text: string): Promise<void> {
+  const rec = await createRecord({ title, originKind: 'drop', originPath: null })
+  await writeDocText(rec, text, 'replace')
+  window.history.replaceState(null, '', '/?doc=' + rec.docId)
+}
 
 describe('E2E smoke test for themes and export formats', () => {
   beforeEach(() => {
@@ -39,6 +34,7 @@ describe('E2E smoke test for themes and export formats', () => {
   })
 
   afterEach(() => {
+    window.history.replaceState(null, '', '/')
     vi.useRealTimers()
   })
 
@@ -52,18 +48,13 @@ describe('E2E smoke test for themes and export formats', () => {
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
     const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
 
-    render(React.createElement(App))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).toBeNull()
-    })
 
     const fileContent = '# Title\n\n## Subtitle\n\nParagraph text.'
     const file = new File([fileContent], 'my-doc.md', { type: 'text/markdown' })
-    file.text = async () => fileContent
 
-    const placeholder = screen.getByTestId('app-placeholder')
-    fireEvent.drop(placeholder.parentElement!, { dataTransfer: { files: [file] } })
+    await openDroppedDoc(file.name, fileContent)
+    render(React.createElement(App))
 
     // Verify Table of Contents renders links and Viewer renders document
     await waitFor(() => {
