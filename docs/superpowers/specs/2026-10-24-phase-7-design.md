@@ -412,6 +412,8 @@ FILES `apps/extension/e2e-pw/smoke.spec.ts` (waitForTimeout → wait for a signa
 relative to the config file) · `apps/extension/src/app/doc-registry.ts` +
 `doc-registry.test.ts` (legacy migration de-duplicated across tabs: a `migratedAt` marker
 written in the same readwrite transaction that creates records; second tab sees it and skips).
+Also (review 7h2): App.test "falls back to system theme when storage throws" asserts nothing since colorTheme went —
+assert the "Theo hệ thống" radio is checked / data-theme resolves.
 Also: find and fix the unhandled IndexedDB `TransactionInactiveError` seen in ~1/10 full
 extension-suite runs (phase 6l.3 note) — loop the suite, name the file, fix the teardown.
 Also adds one Playwright case: the app page computed `body` background equals the Giấy
