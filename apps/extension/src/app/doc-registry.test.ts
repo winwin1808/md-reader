@@ -115,4 +115,75 @@ describe('doc-registry', () => {
     expect(getSource(doc2).toString()).toBe('hello edited')
     await p2.destroy()
   })
+  it('concurrent migrations share one run', async () => {
+    legacy = [
+      { id: 'file:///a.md', name: 'a', lastOpened: 100 },
+      { id: 'https://x.com/b.md', name: 'b', lastOpened: 200 },
+    ]
+    const [x, y] = await Promise.all([migrateLegacyRegistry(), migrateLegacyRegistry()])
+    expect(x + y).toBe(2)
+    const all = await listRecent(100)
+    expect(all.length).toBe(2)
+    expect(new Set(all.map((r) => r.originPath)).size).toBe(2)
+  })
+
+  it('retry after deleting only the flag creates no duplicate drop record', async () => {
+    await new Promise<void>((res, rej) => {
+      const q = indexedDB.open('md-reader', 1)
+      q.onsuccess = () => { q.result.close(); res() }
+      q.onerror = () => rej(q.error)
+    })
+    expect(await migrateLegacyRegistry()).toBe(1)
+    await new Promise<void>((res, rej) => {
+      const q = indexedDB.open('md_reader_registry', 1)
+      q.onsuccess = () => {
+        const db = q.result
+        const tx = db.transaction('meta', 'readwrite')
+        tx.objectStore('meta').delete('migratedV1')
+        tx.oncomplete = () => { db.close(); res() }
+        tx.onerror = () => rej(tx.error)
+      }
+      q.onerror = () => rej(q.error)
+    })
+    await migrateLegacyRegistry()
+    const drops = (await listRecent(100)).filter((r) => r.persistenceName === 'md-reader')
+    expect(drops.length).toBe(1)
+  })
+
+  async function readDoc(name: string) {
+    const doc = new Y.Doc({ gc: false })
+    const p = new IndexeddbPersistence(name, doc)
+    await p.whenSynced
+    const out = { text: getSource(doc).toString(), hash: getMeta(doc).get('originHash') }
+    await p.destroy()
+    return out
+  }
+
+  it('if-clean on an empty doc writes', async () => {
+    const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
+    expect(await writeDocText(r, 'abc', 'if-clean')).toBe('written')
+    expect((await readDoc(r.persistenceName)).text).toBe('abc')
+  })
+
+  it('if-clean on a clean doc replaces text', async () => {
+    const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
+    await writeDocText(r, 'one', 'replace')
+    expect(await writeDocText(r, 'two', 'if-clean')).toBe('written')
+    const d = await readDoc(r.persistenceName)
+    expect(d.text).toBe('two')
+    expect(d.hash).toBe(await hashText('two'))
+  })
+
+  it('if-clean with identical text but no originHash writes and sets hash', async () => {
+    const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
+    const doc = new Y.Doc({ gc: false })
+    const p = new IndexeddbPersistence(r.persistenceName, doc)
+    await p.whenSynced
+    doc.transact(() => getSource(doc).insert(0, 'same'))
+    await p.destroy()
+    expect(await writeDocText(r, 'same', 'if-clean')).toBe('written')
+    const d = await readDoc(r.persistenceName)
+    expect(d.text).toBe('same')
+    expect(d.hash).toBe(await hashText('same'))
+  })
 })
