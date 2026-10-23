@@ -166,3 +166,37 @@ describe('Render Options', () => {
     })
   })
 })
+
+describe('math', () => {
+  const rm = (md: string, o: Record<string, unknown> = {}, p: Record<string, unknown> = {}) =>
+    renderToHtml(parseMarkdown(md, p as any), o as any).html
+
+  it('renders inline math with katex', () => {
+    expect(rm('$a^2$')).toContain('class="katex"')
+  })
+  it('renders display math', () => {
+    expect(rm('$$\n\\int x\n$$')).toContain('katex-display')
+  })
+  it('math:false leaves literal text', () => {
+    const html = rm('$a^2$', { math: false }, { math: false })
+    expect(html).toContain('$a^2$')
+    expect(html).not.toContain('katex')
+  })
+  it('guards inline $ per Pandoc rules', () => {
+    const t = rm('costs $5 and $10 total')
+    expect(t).not.toContain('katex')
+    expect(t).toContain('costs $5 and $10 total')
+    expect(rm('$a^2$')).toContain('katex')
+    expect(rm('x $a$.')).toContain('katex')
+    expect(rm('$ a$')).not.toContain('katex')
+    expect(rm('$a$5')).not.toContain('katex')
+    expect(rm('$a$5')).toContain('$a$5')
+    expect(rm('$$x$$ inline')).toContain('katex')
+  })
+  it('does not emit script tags', () => {
+    expect(rm('$<script>alert(1)</script>$')).not.toContain('<script')
+  })
+  it('does not emit javascript: hrefs', () => {
+    expect(rm('$\\href{javascript:alert(1)}{x}$')).not.toMatch(/href="?javascript:/i)
+  })
+})
