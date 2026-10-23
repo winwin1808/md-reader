@@ -136,7 +136,7 @@ const greeting = "Hello World";
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
         expect.stringContaining('const greeting = "Hello World";')
       )
-      expect(copyBtn.textContent).toContain('Copied ✓')
+      expect(copyBtn.textContent).toContain('Đã chép')
     })
 
     // 7. ToC Collapse:
