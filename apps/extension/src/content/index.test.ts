@@ -7,10 +7,9 @@ vi.mock('react-dom/client', () => {
     }))
   }
 })
-vi.mock('./ContentApp', () => {
-  return {
-    ContentApp: () => null
-  }
+vi.mock('./ContentApp', async (orig) => {
+  const actual: any = await orig()
+  return { ...actual, ContentApp: () => null }
 })
 
 describe('Content script entry point', () => {
@@ -42,7 +41,7 @@ describe('Content script entry point', () => {
 
   it('detects markdown in pre and mounts shadow dom when alwaysOpenApp is false', async () => {
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     
     await import('./index')
 
@@ -57,7 +56,7 @@ describe('Content script entry point', () => {
 
   it('restores body on render error when alwaysOpenApp is false', async () => {
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: false })
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     
     const { createRoot } = await import('react-dom/client')
     vi.mocked(createRoot).mockImplementationOnce(() => {
@@ -81,7 +80,7 @@ describe('Content script entry point', () => {
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
   it('does nothing if autoFormatMd is false', async () => {
-    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', protocol: 'file:' }, writable: true });
+    document.body.innerHTML = '<pre># Hello</pre>'; Object.defineProperty(window, 'location', { value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' }, writable: true });
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ autoFormatMd: false })
     
     await import('./index')
@@ -89,7 +88,7 @@ describe('Content script entry point', () => {
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
 
-  it('redirects to app.html and caches markdown in storage when alwaysOpenApp is true', async () => {
+  it('alwaysOpenApp: caches { text, ts } then messages worker; no location.replace', async () => {
     const replaceMock = vi.fn()
     Object.defineProperty(window, 'location', {
       value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:', replace: replaceMock },
@@ -97,17 +96,22 @@ describe('Content script entry point', () => {
       configurable: true,
     })
     document.body.innerHTML = '<pre># My Markdown Content</pre>'
-    
+
     const localSetMock = vi.fn().mockResolvedValue(undefined)
     ;(chrome.storage as any).local = { set: localSetMock }
+    const sendMessage = vi.fn((_m: any, cb?: any) => cb?.({ success: true }))
+    ;(chrome.runtime as any).sendMessage = sendMessage
     vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
 
     await import('./index')
 
-    expect(localSetMock).toHaveBeenCalledWith({
-      'file_content_file:///test.md': '# My Markdown Content',
+    expect(localSetMock).toHaveBeenCalledTimes(1)
+    expect(localSetMock.mock.calls[0]![0]['file_content_file:///test.md']).toEqual({
+      text: '# My Markdown Content',
+      ts: expect.any(Number),
     })
-    expect(replaceMock).toHaveBeenCalledWith('mock-url/app.html?file=' + encodeURIComponent('file:///test.md'))
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ action: 'openApp', fileUrl: 'file:///test.md' }), expect.any(Function))
+    expect(replaceMock).not.toHaveBeenCalled()
     expect(document.getElementById('md-reader-root')).toBeNull()
   })
 
@@ -125,6 +129,31 @@ describe('Content script entry point', () => {
 
     await import('./index')
 
+    expect(document.getElementById('md-reader-root')).not.toBeNull()
+    expect(localSetMock).not.toHaveBeenCalled()
+  })
+
+  it('alwaysOpenApp + sendMessage rejects: key removed and failure text rendered', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { pathname: '/test.md', href: 'file:///test.md', protocol: 'file:' },
+      writable: true,
+      configurable: true,
+    })
+    document.body.innerHTML = '<pre># X</pre>'
+    const remove = vi.fn().mockResolvedValue(undefined)
+    ;(chrome.storage as any).local = { set: vi.fn().mockResolvedValue(undefined), remove }
+    ;(chrome.runtime as any).sendMessage = vi.fn(() => Promise.reject(new Error('x')))
+    vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ alwaysOpenApp: true })
+    const renders: any[] = []
+    const { createRoot } = await import('react-dom/client')
+    vi.mocked(createRoot).mockImplementationOnce((() => ({ render: (el: any) => renders.push(el) })) as any)
+
+    await import('./index')
+    await vi.waitFor(() => expect(renders.length).toBe(1))
+
+    expect(remove).toHaveBeenCalledWith('file_content_file:///test.md')
+    const { FAIL_TEXT } = await import('./ContentApp')
+    expect(renders[0].props.children.props.initialError).toBe(FAIL_TEXT)
     expect(document.getElementById('md-reader-root')).not.toBeNull()
   })
 })
