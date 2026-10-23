@@ -69,6 +69,34 @@ describe('FileDrop', () => {
     expect(meta.get('size')).toBe(file.size);
   });
 
+  it('keeps shared-prefix chars and sets originHash', async () => {
+    const text = doc.getText('source');
+    text.insert(0, '# Hello world');
+    const before = (text as any)._start.id.client;
+    const firstItem = (text as any)._start;
+    const { container } = render(
+      <FileDrop doc={doc}>
+        <div />
+      </FileDrop>
+    );
+    let onloadHandler: any = null;
+    class MockFileReader {
+      readAsText = vi.fn();
+      set onload(h: any) {
+        onloadHandler = h;
+      }
+    }
+    vi.stubGlobal('FileReader', MockFileReader);
+    fireEvent.drop(container.firstChild as Element, {
+      dataTransfer: { files: [new File(['x'], 'a.md')] },
+    });
+    await onloadHandler({ target: { result: '# Hello there' } });
+    expect(text.toString()).toBe('# Hello there');
+    expect((text as any)._start).toBe(firstItem);
+    expect((text as any)._start.id.client).toBe(before);
+    expect(typeof doc.getMap('meta').get('originHash')).toBe('string');
+  });
+
   it('rejects invalid file extension', async () => {
     const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
