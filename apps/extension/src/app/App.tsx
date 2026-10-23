@@ -41,7 +41,7 @@ import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { useDocSession } from './hooks/useDocSession'
-import { saveToHandle, saveFileAs, storeFileHandle } from './fs/file-system'
+import { useFileSave } from './hooks/useFileSave'
 import './app.css'
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -80,21 +80,13 @@ export function App(): React.JSX.Element {
   const session = useDocSession({ fileUrl: fileUrlParam })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
-  const setIsDirty = session.setDirty
+  const fileSave = useFileSave(session, { formatOnSave: readerSettings.autoFormatMd !== false })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
-  const [activeHandle, setActiveHandle] = useState<FileSystemFileHandle | null>(null)
-  const [isConflictModalOpen, setIsConflictModalOpen] = useState<boolean>(false)
-  const [conflictData, setConflictData] = useState<{ localContent: string; diskContent: string }>({
-    localContent: '',
-    diskContent: '',
-  })
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
   const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
-  const isSavingRef = useRef<boolean>(false)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editorViewRef = useRef<EditorView | null>(null)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
@@ -243,107 +235,6 @@ export function App(): React.JSX.Element {
     fetchSettings()
   }, [])
 
-  const executeSave = async (handle: FileSystemFileHandle, _textToSave?: string) => {
-    const textBeforeFormat = yText.toString()
-    const formattedText =
-      readerSettings?.autoFormatMd !== false ? formatMarkdown(textBeforeFormat) : textBeforeFormat
-    let savedContent = textBeforeFormat
-    if (formattedText !== textBeforeFormat) {
-      if (yText.toString() === textBeforeFormat) {
-        doc.transact(() => {
-          yText.delete(0, yText.length)
-          yText.insert(0, formattedText)
-        }, 'save-format')
-        savedContent = formattedText
-      }
-    }
-    await saveToHandle(handle, savedContent)
-    const newHash = await hashText(savedContent)
-    doc.getMap('meta').set('originHash', newHash)
-    appendHistory(doc, {
-      source: savedContent,
-      timestamp: Date.now(),
-      actor: 'user',
-      label: 'save',
-      clientIds: [],
-    } as any)
-    setIsDirty(yText.toString() !== savedContent)
-  }
-
-  const handleSave = async () => {
-    if (isSavingRef.current) return
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
-    isSavingRef.current = true
-    try {
-      const currentText = yText.toString()
-      if (!activeHandle) {
-        const suggestedName = docTitle ? (docTitle.endsWith('.md') ? docTitle : `${docTitle}.md`) : 'Untitled.md'
-        try {
-          const res = await saveFileAs(suggestedName, currentText)
-          if (res) {
-            const handle = res.handle
-            setActiveHandle(handle)
-            await storeFileHandle(handle).catch(() => {})
-            doc.getMap('meta').set('name', handle.name)
-            await executeSave(handle)
-          }
-        } catch (err) {
-          console.error('Error saving file as:', err)
-        }
-        return
-      }
-
-      let diskText = ''
-      try {
-        const file = await activeHandle.getFile()
-        diskText = await file.text()
-      } catch (err) {
-        console.warn('Could not read disk file for conflict check:', err)
-      }
-
-      const currentOriginHash = (doc.getMap('meta').get('originHash') as string) || ''
-      const hasConflict = await detectConflict(currentOriginHash, diskText)
-      if (hasConflict) {
-        setConflictData({
-          localContent: yText.toString(),
-          diskContent: diskText,
-        })
-        setIsConflictModalOpen(true)
-        return
-      }
-
-      await executeSave(activeHandle)
-    } catch (err) {
-      console.error('Error saving file:', err)
-    } finally {
-      isSavingRef.current = false
-    }
-  }
-
-  const handleSaveRef = useRef(handleSave)
-  handleSaveRef.current = handleSave
-
-  const handleKeepLocal = async () => {
-    setIsConflictModalOpen(false)
-    if (activeHandle) {
-      await executeSave(activeHandle)
-    }
-  }
-
-  const handleRevertToDisk = async () => {
-    setIsConflictModalOpen(false)
-    doc.transact(() => {
-      yText.delete(0, yText.length)
-      yText.insert(0, conflictData.diskContent)
-    }, 'load-file')
-    const diskHash = await hashText(conflictData.diskContent)
-    doc.getMap('meta').set('originHash', diskHash)
-    setIsDirty(false)
-  }
-
   const handleFormatAction = (action: FormatAction) => {
     const view = editorViewRef.current
     if (view) {
@@ -385,37 +276,6 @@ export function App(): React.JSX.Element {
       })
     }
   }
-
-  // Debounced auto-save (2000ms after last edit if activeHandle exists)
-  useEffect(() => {
-    if (!isDirty || !activeHandle) return
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
-    autoSaveTimerRef.current = setTimeout(() => {
-      autoSaveTimerRef.current = null
-      handleSaveRef.current()
-    }, 2000)
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-        autoSaveTimerRef.current = null
-      }
-    }
-  }, [isDirty, content, activeHandle])
-
-  // Global keyboard shortcut for Cmd+S / Ctrl+S
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault()
-        handleSaveRef.current()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   const handleSettingChange = (key: string, value: any) => {
     setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
@@ -587,13 +447,13 @@ export function App(): React.JSX.Element {
         title={docTitle}
       />
       <ConflictModal
-        isOpen={isConflictModalOpen}
-        fileName={activeHandle?.name || docTitle || 'document.md'}
-        localContent={conflictData.localContent}
-        diskContent={conflictData.diskContent}
-        onKeepLocal={handleKeepLocal}
-        onRevertToDisk={handleRevertToDisk}
-        onClose={() => setIsConflictModalOpen(false)}
+        isOpen={fileSave.conflict.open}
+        fileName={fileSave.activeHandle?.name || docTitle || 'document.md'}
+        localContent={fileSave.conflict.localContent}
+        diskContent={fileSave.conflict.diskContent}
+        onKeepLocal={fileSave.keepLocal}
+        onRevertToDisk={fileSave.revertToDisk}
+        onClose={fileSave.closeConflict}
       />
       <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
@@ -623,7 +483,7 @@ export function App(): React.JSX.Element {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           isDirty={isDirty}
-          onSave={handleSave}
+          onSave={() => fileSave.save()}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={handleExport} isExporting={isExporting} />
