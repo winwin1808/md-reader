@@ -68,22 +68,25 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     return () => { cancelled = true }
   }, [record, sessionDocId])
 
-  const grantPermission = async () => {
+  const requestGrant = async (): Promise<FileSystemFileHandle | null> => {
     const h = pendingHandleRef.current
-    if (!h) return
+    if (!h) return null
     let r: string
     try {
       r = await (h as any).requestPermission({ mode: 'readwrite' })
     } catch (err) {
       console.warn('requestPermission failed:', err)
-      return
+      return null
     }
     if (r === 'granted') {
       pendingHandleRef.current = null
       setActiveHandle(h)
       setSaveState({ kind: 'idle' })
+      return h
     }
+    return null
   }
+  const grantPermission = async () => { await requestGrant() }
 
   const rememberBase = (text: string) => {
     if (!session.docId) return
@@ -114,6 +117,11 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
   const runSave = async (opts: { explicit?: boolean } | undefined, forcePicker: boolean) => {
     const explicit = opts?.explicit === true
     if (isSavingRef.current) return
+    let handleNow = activeHandle
+    if (!handleNow && !forcePicker && pendingHandleRef.current) {
+      handleNow = await requestGrant()
+      if (!handleNow) return
+    }
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
       autoSaveTimerRef.current = null
@@ -123,7 +131,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     let next: SaveState = { kind: 'idle' }
     try {
       const currentText = yText.toString()
-      if (!activeHandle || forcePicker) {
+      if (!handleNow || forcePicker) {
         const suggestedName = docTitle ? (docTitle.endsWith('.md') ? docTitle : `${docTitle}.md`) : 'Untitled.md'
         const res = await saveFileAs(suggestedName, currentText)
         if (res) {
@@ -139,7 +147,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
       let diskText: string
       try {
-        const file = await activeHandle.getFile()
+        const file = await handleNow.getFile()
         diskText = await file.text()
       } catch (err) {
         console.warn('Could not read disk file:', err)
@@ -162,7 +170,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
         return
       }
 
-      await executeSave(activeHandle, explicit)
+      await executeSave(handleNow, explicit)
       next = { kind: 'saved', at: Date.now() }
     } catch (err) {
       console.error('Error saving file:', err)

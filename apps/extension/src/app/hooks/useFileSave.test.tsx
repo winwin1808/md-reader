@@ -78,7 +78,10 @@ describe('useFileSave', () => {
     doc.getText('source').insert(3, '\n')
     rerender({ s: makeSession(doc, { isDirty: true, content: '* a\n' }) })
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
-    expect(saveToHandle).toHaveBeenCalledTimes(1)
+    // The timer callback awaits crypto.subtle (real async, not flushed by fake timers):
+    // go back to real timers and wait for the write instead of assuming it already happened.
+    vi.useRealTimers()
+    await waitFor(() => expect(saveToHandle).toHaveBeenCalledTimes(1))
     expect(disk).toBe('* a\n')
     expect(doc.getText('source').toString()).toBe('* a\n')
   })
@@ -380,6 +383,35 @@ describe('useFileSave', () => {
     await act(async () => { await result.current.grantPermission() })
     expect(result.current.saveState.kind).toBe('needs-permission')
     expect(result.current.activeHandle).toBeNull()
+  })
+
+  it('Cmd+S while needs-permission re-grants and writes to the stored handle', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const h = storedHandle('prompt', 'granted')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec, isDirty: true }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    doc.getMap('meta').set('originHash', await (await import('@md-reader/core')).hashText(''))
+    disk = ''
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(h.requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' })
+    expect(disk).toBe('x')
+    expect(saveFileAs).not.toHaveBeenCalled()
+    expect(result.current.activeHandle).toBe(h)
+  })
+
+  it('Cmd+S while needs-permission and denied -> no write, no picker', async () => {
+    const doc = new Y.Doc()
+    doc.getText('source').insert(0, 'x')
+    const h = storedHandle('prompt', 'denied')
+    getHandle.mockResolvedValue(h)
+    const { result } = renderHook(() => useFileSave(makeSession(doc, { docId: 'doc-1', record: rec, isDirty: true }), { formatOnSave: false }))
+    await waitFor(() => expect(result.current.saveState.kind).toBe('needs-permission'))
+    await act(async () => { await result.current.save({ explicit: true }) })
+    expect(saveToHandle).not.toHaveBeenCalled()
+    expect(saveFileAs).not.toHaveBeenCalled()
+    expect(result.current.saveState.kind).toBe('needs-permission')
   })
 
   it('autosave does not run while needs-permission', async () => {
