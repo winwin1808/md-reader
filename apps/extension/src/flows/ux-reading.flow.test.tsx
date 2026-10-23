@@ -92,14 +92,14 @@ const greeting = "Hello World";
     expect(document.querySelector('[data-font-scale="sm"]')).not.toBeNull()
 
     // 4. Reading Mode:
-    // Click button with title "Chế độ tập trung". Verify container has class reading-mode and button "Thoát đọc tập trung ✕" appears.
+    // Click button with title "Chế độ tập trung". Verify container has class reading-mode and button "Thoát chế độ đọc" appears.
     const readingModeBtn = screen.getByRole('menuitem', { name: /chế độ đọc/i })
     fireEvent.click(readingModeBtn)
     expect(document.querySelector('.reading-mode')).not.toBeNull()
-    const exitReadingBtn = screen.getByRole('button', { name: /thoát đọc tập trung ✕/i })
+    const exitReadingBtn = screen.getByRole('button', { name: /thoát chế độ đọc/i })
     expect(exitReadingBtn).toBeDefined()
 
-    // Click "Thoát đọc tập trung ✕". Verify reading-mode class is removed.
+    // Click "Thoát chế độ đọc". Verify reading-mode class is removed.
     fireEvent.click(exitReadingBtn)
     expect(document.querySelector('.reading-mode')).toBeNull()
 
