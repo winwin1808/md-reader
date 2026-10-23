@@ -29,24 +29,26 @@ describe('ThemeProvider', () => {
     cleanup()
   })
 
-  it('renders with default black color theme', () => {
+  it('never sets data-color-theme', () => {
     const { container } = render(
       <ThemeProvider mode="light">
         <TestComponent />
       </ThemeProvider>
     )
     
-    expect(container.firstChild).toHaveAttribute('data-color-theme', 'black')
+    expect(container.firstChild).not.toHaveAttribute('data-color-theme')
+    expect(document.documentElement).not.toHaveAttribute('data-color-theme')
   })
 
-  it('renders with provided color theme', () => {
+  it('ignores deprecated colorTheme for styling', () => {
     const { container } = render(
       <ThemeProvider mode="light" colorTheme="green">
         <TestComponent />
       </ThemeProvider>
     )
     
-    expect(container.firstChild).toHaveAttribute('data-color-theme', 'green')
+    expect(container.firstChild).not.toHaveAttribute('data-color-theme')
+    expect(document.documentElement).not.toHaveAttribute('data-color-theme')
     expect(screen.getByTestId('color-theme')).toHaveTextContent('green')
   })
 
@@ -151,6 +153,99 @@ describe('ThemeProvider', () => {
 
     expect(container.firstChild).toHaveAttribute('data-theme', 'light')
     expect(screen.getByTestId('resolved')).toHaveTextContent('light')
+  })
+
+  it('system mode resolves dark on first render (initializer, not effect)', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    const seen: string[] = []
+    const Probe = () => {
+      seen.push(useTheme().resolved)
+      return null
+    }
+    render(
+      <ThemeProvider mode="system">
+        <Probe />
+      </ThemeProvider>
+    )
+    expect(seen[0]).toBe('dark')
+  })
+
+  it('nested provider stays scoped and does not touch html', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    const { container, rerender } = render(
+      <ThemeProvider mode="dark" contrast="high">
+        <div data-testid="slot" />
+      </ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    rerender(
+      <ThemeProvider mode="dark" contrast="high">
+        <ThemeProvider mode="system">
+          <span data-testid="inner" />
+        </ThemeProvider>
+      </ThemeProvider>
+    )
+    const inner = screen.getByTestId('inner').parentElement!
+    expect(inner).toHaveAttribute('data-theme', 'light')
+    expect(inner).toHaveAttribute('data-contrast', 'high')
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'high')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+    rerender(
+      <ThemeProvider mode="dark" contrast="high">
+        <div data-testid="slot" />
+      </ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'high')
+    expect(container.firstChild).toHaveAttribute('data-theme', 'dark')
+  })
+
+  it('outermost provider removes html attributes on unmount', () => {
+    const { unmount } = render(
+      <ThemeProvider mode="dark"><TestComponent /></ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    unmount()
+    expect(document.documentElement).not.toHaveAttribute('data-theme')
+    expect(document.documentElement).not.toHaveAttribute('data-contrast')
+  })
+
+  it('system mode follows matchMedia live and updates html', () => {
+    let listener: ((e: any) => void) | null = null
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches: true,
+      addEventListener: vi.fn((ev, cb) => { if (ev === 'change') listener = cb }),
+      removeEventListener: vi.fn(),
+    }))
+    const { container } = render(
+      <ThemeProvider mode="system">
+        <TestComponent />
+      </ThemeProvider>
+    )
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    act(() => { listener?.({ matches: false }) })
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
+    expect(container.firstChild).toHaveAttribute('data-theme', 'light')
+  })
+
+  it('contrast defaults to standard and high is applied to html and wrapper', () => {
+    const { container, rerender } = render(
+      <ThemeProvider mode="light"><TestComponent /></ThemeProvider>
+    )
+    expect(container.firstChild).toHaveAttribute('data-contrast', 'standard')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'standard')
+    rerender(<ThemeProvider mode="light" contrast="high"><TestComponent /></ThemeProvider>)
+    expect(container.firstChild).toHaveAttribute('data-contrast', 'high')
+    expect(document.documentElement).toHaveAttribute('data-contrast', 'high')
   })
 
   it('calls onModeChange when setMode is called', () => {

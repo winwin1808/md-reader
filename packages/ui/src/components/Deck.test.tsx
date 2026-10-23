@@ -204,7 +204,7 @@ describe('Deck component', () => {
 
   it('passes colorTheme and mode to ThemeProvider', () => {
     const { container } = render(<Deck slides={mockSlides} colorTheme="navy" mode="dark" />)
-    const themeWrapper = container.querySelector('[data-theme="dark"][data-color-theme="navy"]')
+    const themeWrapper = container.querySelector('[data-theme="dark"]')
     expect(themeWrapper).not.toBeNull()
   })
 
