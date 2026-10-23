@@ -3,25 +3,18 @@ import './tokens.css'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type Contrast = 'standard' | 'high'
-export type ColorTheme = 'navy' | 'green' | 'orange' | 'pink' | 'black'
 
 export interface ThemeContextValue {
   mode: ThemeMode
   resolved: 'light' | 'dark'
   contrast: Contrast
   setMode: (mode: ThemeMode) => void
-  colorTheme: ColorTheme
-  setColorTheme: (theme: ColorTheme) => void
 }
 
 export interface ThemeProviderProps {
   mode: ThemeMode
   contrast?: Contrast
-  /** @deprecated ignored; removed in 7h2 */
-  colorTheme?: ColorTheme
   onModeChange?: (mode: ThemeMode) => void
-  /** @deprecated */
-  onColorThemeChange?: (theme: ColorTheme) => void
   children: React.ReactNode
 }
 
@@ -35,7 +28,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
   const parent = useContext(ThemeContext)
   const isRoot = parent === undefined
-  const { mode, contrast = parent?.contrast ?? 'standard', colorTheme = 'black', onModeChange, onColorThemeChange, children } = props
+  const { mode, contrast = parent?.contrast ?? 'standard', onModeChange, children } = props
   const [systemMode, setSystemMode] = useState<'light' | 'dark'>(readSystemMode)
 
   useEffect(() => {
@@ -71,7 +64,6 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     const root = document.documentElement
     root.setAttribute('data-theme', resolved)
     root.setAttribute('data-contrast', contrast)
-    root.removeAttribute('data-color-theme')
     if (root.style) {
       root.style.colorScheme = resolved
     }
@@ -93,19 +85,11 @@ export function ThemeProvider(props: ThemeProviderProps): React.JSX.Element {
     }
   }
 
-  const setColorTheme = (newTheme: ColorTheme) => {
-    if (onColorThemeChange) {
-      onColorThemeChange(newTheme)
-    }
-  }
-
   const value = {
     mode,
     resolved,
     contrast,
-    setMode,
-    colorTheme,
-    setColorTheme
+    setMode
   }
 
   return (

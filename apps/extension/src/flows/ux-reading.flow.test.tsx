@@ -22,7 +22,7 @@ describe('E2E integration test for A4 layout, toolbar, search, code copy, ToC, a
           set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: vi.fn().mockResolvedValue({ theme: 'light', colorTheme: 'black', autoFormatMd: true }),
+          get: vi.fn().mockResolvedValue({ theme: 'light', autoFormatMd: true }),
           set: vi.fn().mockResolvedValue(undefined),
         },
       },

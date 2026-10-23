@@ -202,8 +202,8 @@ describe('Deck component', () => {
     expect(progressBar.style.width).toBe('0%')
   })
 
-  it('passes colorTheme and mode to ThemeProvider', () => {
-    const { container } = render(<Deck slides={mockSlides} colorTheme="navy" mode="dark" />)
+  it('passes mode to ThemeProvider', () => {
+    const { container } = render(<Deck slides={mockSlides} mode="dark" />)
     const themeWrapper = container.querySelector('[data-theme="dark"]')
     expect(themeWrapper).not.toBeNull()
   })
