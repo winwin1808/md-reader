@@ -465,6 +465,7 @@ moves (6b*) count moved lines once.
 - 6e1: pending
 - 6e2: pending
 - 6e3: pending
+- 6e4: pending   (split from 6e3 at plan time: drop, recent files, delete registry.ts)
 - 6f1: pending
 - 6f2: pending
 - 6g1: pending
