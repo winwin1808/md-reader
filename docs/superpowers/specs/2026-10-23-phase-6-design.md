@@ -483,6 +483,7 @@ moves (6b*) count moved lines once.
 - 6k1: done
 - 6k2: done
 - 6k3: done
+- 6l: planned   (added after the end-of-phase review: URL vs disk baselines, Cmd+S re-grant, pagehide flush)
 
 ## Deferred
 
@@ -494,5 +495,7 @@ moves (6b*) count moved lines once.
 - To 7 (review 6j2): the mermaid setting gates only Viewer, not Deck/slides.
 - To 7 (review 6k1): a small dedicated content.css for the widget instead of the full app.css (~100 KB) in the shadow root.
 - To 7n (review 6k1): Playwright — replace waitForTimeout(500) with a persistence signal; resolve dist relative to the config file.
+- To 8 (review phase 6): two tabs opening the same new URL at once can both import the text (narrow race) —
+  solved naturally once a sync provider dedupes first load; until then documented.
 - To 8x: PlantUML/Graphviz only if a self-hosted renderer exists; raw-HTML
   "tin tài liệu này" per-doc toggle UI.
