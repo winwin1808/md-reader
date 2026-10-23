@@ -93,6 +93,7 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
   // Handle URL file param
   useEffect(() => {
     isFileContentSetRef.current = false
+    setExternalChange(null)
     const fileUrl = fileUrlParam
     if (fileUrl) {
       let cancelled = false
@@ -114,7 +115,8 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
           setIsDirty(false)
         }
         isFileContentSetRef.current = true
-        if (local === '') {
+        const origin0 = meta.get('originHash') as string | undefined
+        if (origin0 == null && local === '') {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
             meta.set('name', name)
@@ -126,18 +128,24 @@ export function useDocSession(opts: { fileUrl: string | null }): DocSession {
           const h0 = await hashText(remote)
           if (!cancelled) meta.set('originHash', h0)
         } else {
-          const [h, localHash] = await Promise.all([hashText(remote), hashText(local)])
+          const [h, lh] = await Promise.all([hashText(remote), hashText(local)])
           if (cancelled) return
           const origin = meta.get('originHash') as string | undefined
-          if (origin === h) {
+          if (lh === h) {
+            if (origin !== h) meta.set('originHash', h)
             setContent(local)
             setHasContent(local.length > 0)
-            setIsDirty(localHash !== origin)
-          } else if (localHash === origin) {
+            setIsDirty(false)
+          } else if (origin === h) {
+            setContent(local)
+            setHasContent(local.length > 0)
+            setIsDirty(lh !== origin)
+          } else if (lh === origin) {
             applyRemote(h)
           } else {
             setContent(local)
             setHasContent(local.length > 0)
+            setIsDirty(true)
             setExternalChange({ remoteText: remote, remoteHash: h })
           }
         }
