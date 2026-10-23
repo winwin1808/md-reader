@@ -198,16 +198,18 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         const rememberBase = () => {
           void Promise.resolve(storeBase(rec0Id, remote)).catch((err) => console.warn('storeBase failed:', err))
         }
+        const hasHandle = !!record!.hasHandle
         const applyRemote = (h: string) => {
           doc.transact(() => {
             applyTextChange(ytext, remote, ORIGIN_LOAD)
             meta.set('title', name)
             meta.set('remoteHash', h)
-            meta.set('originHash', h)
+            if (!hasHandle) meta.set('originHash', h)
           }, ORIGIN_LOAD)
           setContent(remote)
           setHasContent(remote.length > 0)
-          setIsDirty(false)
+          const diskBase = meta.get('originHash') as string | undefined
+          setIsDirty(hasHandle && diskBase != null ? h !== diskBase : false)
           rememberBase()
           checkpointsRef.current?.flush('import', 'Bạn')
         }
@@ -243,8 +245,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           const base = remoteBase ?? origin
           if (lh === h) {
             meta.set('remoteHash', h)
-            if (origin == null || origin !== h) meta.set('originHash', h)
-            keepLocal(false)
+            if (!hasHandle && origin !== h) meta.set('originHash', h)
+            keepLocal(hasHandle && origin != null ? lh !== origin : false)
           } else if (base === h) {
             if (remoteBase == null) meta.set('remoteHash', h)
             keepLocal(lh !== origin)
@@ -328,11 +330,12 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     doc.transact(() => {
       applyTextChange(doc.getText('source'), ext.remoteText, ORIGIN_LOAD)
       doc.getMap('meta').set('remoteHash', ext.remoteHash)
-      doc.getMap('meta').set('originHash', ext.remoteHash)
+      if (!record?.hasHandle) doc.getMap('meta').set('originHash', ext.remoteHash)
     }, ORIGIN_LOAD)
     setContent(ext.remoteText)
     setHasContent(ext.remoteText.length > 0)
-    setIsDirty(false)
+    const diskBase = doc.getMap('meta').get('originHash') as string | undefined
+    setIsDirty(!!record?.hasHandle && diskBase != null ? ext.remoteHash !== diskBase : false)
     setExternalChange(null)
     checkpointsRef.current?.flush('import', 'Bạn')
     if (record) void Promise.resolve(storeBase(record.docId, ext.remoteText)).catch((err) => console.warn('storeBase failed:', err))
