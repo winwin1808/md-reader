@@ -59,7 +59,7 @@ describe('parseMarkdown', () => {
 
 describe('sanitizeSchema', () => {
   it('extends default schema with required configuration', () => {
-    expect(sanitizeSchema.clobberPrefix).toBe('')
+    expect(sanitizeSchema.clobberPrefix).toBe('user-content-')
     
     const tags = sanitizeSchema.tagNames ?? []
     expect(tags).toContain('svg')

@@ -836,8 +836,8 @@ describe('App', () => {
     expect(modal.querySelector('.mindmap-svg')).not.toBeNull()
 
     // 2. Click node to navigate
-    const introHeading = document.getElementById('introduction') || document.createElement('h1')
-    introHeading.id = 'introduction'
+    const introHeading = document.getElementById('user-content-introduction') || document.createElement('h1')
+    introHeading.id = 'user-content-introduction'
     introHeading.scrollIntoView = vi.fn()
     document.body.appendChild(introHeading)
 

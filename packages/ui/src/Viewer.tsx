@@ -12,10 +12,29 @@ export interface ViewerProps {
   /** Gọi khi heading đang đọc đổi, để Toc highlight. */
   onActiveHeadingChange?: (id: string | null) => void
   isAppPage?: boolean
+  /** Dựng sơ đồ mermaid cho code.language-mermaid (mặc định true). */
+  mermaid?: boolean
+}
+
+const esc = (v: string) =>
+  typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+    ? CSS.escape(v)
+    : v.replace(/([^a-zA-Z0-9_-])/g, '\\$1')
+
+function decode(v: string): string {
+  try { return decodeURIComponent(v) } catch { return v }
+}
+
+function findAnchor(container: HTMLElement, raw: string): Element | null {
+  const hash = decode(raw)
+  return (
+    container.querySelector(`#${esc(hash)}`) ??
+    container.querySelector(`#${esc('user-content-' + hash)}`)
+  )
 }
 
 export function Viewer(props: ViewerProps): React.JSX.Element {
-  const { html, className = '', onActiveHeadingChange, isAppPage = true } = props
+  const { html, className = '', onActiveHeadingChange, isAppPage = true, mermaid = true } = props
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Use a ref to store onActiveHeadingChange to avoid re-triggering observer on every render
@@ -77,6 +96,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
   // Mermaid
   useEffect(() => {
+    if (!mermaid) return
     const container = containerRef.current
     if (!container) return
 
@@ -106,6 +126,36 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
         pre.style.display = ''
       })
     }
+  }, [html, mermaid])
+
+  // In-page anchor clicks: resolve against prefixed ids
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const onClick = (e: MouseEvent) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+      const a = (e.target as Element | null)?.closest?.('a[href^="#"]')
+      if (!a || !container.contains(a)) return
+      const raw = (a.getAttribute('href') ?? '').slice(1)
+      if (!raw) return
+      const target = findAnchor(container, raw)
+      if (!target) return
+      e.preventDefault()
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      history.replaceState(null, '', '#' + raw)
+    }
+    container.addEventListener('click', onClick)
+    return () => container.removeEventListener('click', onClick)
+  }, [html])
+
+  // Initial location.hash: scroll to prefixed target when the raw one is absent
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || typeof location === 'undefined' || !location.hash || location.hash.length < 2) return
+    const hash = decode(location.hash.slice(1))
+    if (container.querySelector(`#${esc(hash)}`)) return
+    const target = container.querySelector(`#${esc('user-content-' + hash)}`)
+    target?.scrollIntoView?.({ block: 'start' })
   }, [html])
 
   // Excalidraw

@@ -55,8 +55,8 @@ describe('extractMindmap', () => {
 
     const h1 = result.children[0]
     expect(h1).toEqual({
-      id: 'getting-started',
-      headingId: 'getting-started',
+      id: 'user-content-getting-started',
+      headingId: 'user-content-getting-started',
       depth: 1,
       text: 'Getting Started',
       children: [],
@@ -81,7 +81,7 @@ describe('extractMindmap', () => {
     const [overview, faq] = result.children as [MindNode, MindNode]
     expect(overview.text).toBe('Overview')
     expect(overview.depth).toBe(1)
-    expect(overview.headingId).toBe('overview')
+    expect(overview.headingId).toBe('user-content-overview')
     expect(overview.children).toHaveLength(2)
 
     const [arch, deploy] = overview.children as [MindNode, MindNode]
@@ -101,7 +101,7 @@ describe('extractMindmap', () => {
 
     expect(faq.text).toBe('FAQ')
     expect(faq.depth).toBe(1)
-    expect(faq.headingId).toBe('faq')
+    expect(faq.headingId).toBe('user-content-faq')
     expect(faq.children).toHaveLength(0)
   })
 
@@ -188,9 +188,9 @@ describe('extractMindmap', () => {
     expect(mindmap.children[1]!.headingId).toBe(toc[1]!.id)
     expect(mindmap.children[2]!.headingId).toBe(toc[2]!.id)
 
-    expect(mindmap.children[0]!.headingId).toBe('same-title')
-    expect(mindmap.children[1]!.headingId).toBe('same-title-1')
-    expect(mindmap.children[2]!.headingId).toBe('same-title-2')
+    expect(mindmap.children[0]!.headingId).toBe('user-content-same-title')
+    expect(mindmap.children[1]!.headingId).toBe('user-content-same-title-1')
+    expect(mindmap.children[2]!.headingId).toBe('user-content-same-title-2')
   })
 
   it('produces deterministic output across multiple calls', () => {

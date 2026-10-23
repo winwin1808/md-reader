@@ -470,7 +470,7 @@ moves (6b*) count moved lines once.
 - 6f2: done   (data half: base storage)
 - 6f3: done   (split from 6f2 at plan time: three-way ConflictModal UI)
 - 6g1: done
-- 6g2: pending
+- 6g2: planned
 - 6h1: pending
 - 6h2: pending
 - 6i1: pending

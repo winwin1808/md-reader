@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderToHtml > renders complex markdown fixture with heading, table, task list, code block, link, image 1`] = `
-"<h1 id="title">Title</h1>
+"<h1 id="user-content-title">Title</h1>
 <table>
 <thead>
 <tr>
