@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ColorTheme, Contrast } from '../theme/ThemeProvider';
 import { ThemePicker } from './ThemePicker';
+import { Icon } from './Icon';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
@@ -65,20 +66,15 @@ export interface SettingsModalProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-type TabId = 'display' | 'core' | 'media' | 'reading' | 'presentation';
+const SECTIONS = [
+  { id: 'look', label: 'Chữ và màu' },
+  { id: 'content', label: 'Nội dung trong tài liệu' },
+  { id: 'open', label: 'Khi mở file .md' },
+  { id: 'aids', label: 'Hỗ trợ đọc' },
+  { id: 'slides', label: 'Trình chiếu' },
+] as const;
 
-interface TabItem {
-  id: TabId;
-  label: string;
-}
-
-const TABS: TabItem[] = [
-  { id: 'display', label: 'Giao diện' },
-  { id: 'core', label: 'Core Rendering' },
-  { id: 'media', label: 'Nội dung & Sơ đồ' },
-  { id: 'reading', label: 'Hỗ trợ đọc' },
-  { id: 'presentation', label: 'Trình chiếu' },
-];
+type SectionId = (typeof SECTIONS)[number]['id'];
 
 function ToggleRow({
   id,
@@ -261,7 +257,7 @@ function ColorPickerRow({
               padding: '4px 6px',
             }}
           >
-            ✕
+            <Icon name="close" size={16} />
           </button>
         )}
       </div>
@@ -436,7 +432,7 @@ function ImageInputRow({
                 lineHeight: 1,
               }}
             >
-              ✕
+              <Icon name="close" size={16} />
             </button>
           )}
         </div>
@@ -498,7 +494,59 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
-  const [activeTab, setActiveTab] = useState<TabId>('display');
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const [current, setCurrent] = useState<SectionId>('look');
+  const [wide, setWide] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(min-width: 900px)');
+    if (!mq) return;
+    setWide(Boolean(mq.matches));
+    const on = () => setWide(Boolean(mq.matches));
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) dialogRef.current?.querySelector<HTMLElement>('button, input')?.focus();
+  }, [isOpen]);
+
+  const goTo = (id: SectionId) => {
+    setCurrent(id);
+    sectionRefs.current[id]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  };
+
+  const handleScroll = () => {
+    const body = bodyRef.current;
+    if (!body) return;
+    let found: SectionId = SECTIONS[0].id;
+    for (const s of SECTIONS) {
+      const el = sectionRefs.current[s.id];
+      if (el && el.offsetTop - body.offsetTop <= body.scrollTop + 8) found = s.id;
+    }
+    setCurrent(found);
+  };
+
+  const handleTrap = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab') return;
+    const items = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>('button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])') ?? [],
+    ).filter((el) => !(el as HTMLInputElement).disabled);
+    if (items.length === 0) return;
+    const first = items[0]!;
+    const last = items[items.length - 1]!;
+    const active = document.activeElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const currentMode = settings?.mode ?? mode;
   const currentColorTheme = settings?.colorTheme ?? colorTheme;
@@ -552,98 +600,46 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 
   const modalContent = isOpen ? (
     <div
-      role="dialog"
-      aria-modal="true"
       className="settings-overlay"
       data-theme={resolvedMode}
       data-color-theme={currentColorTheme || 'black'}
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          setIsOpen(false);
-        }
-      }}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.45)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        padding: '20px 16px',
-        boxSizing: 'border-box',
+        if (e.target === e.currentTarget) setIsOpen(false);
       }}
     >
       <div
         className="settings-dialog"
-        style={{
-          background: 'var(--md-bg)',
-          color: 'var(--md-fg)',
-          padding: '24px 28px',
-          borderRadius: '16px',
-          border: '1px solid var(--md-border)',
-          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.25)',
-          minWidth: '340px',
-          maxWidth: '640px',
-          width: '90vw',
-          maxHeight: 'calc(100vh - 48px)',
-          display: 'flex',
-          flexDirection: 'column',
-          boxSizing: 'border-box',
-          margin: 'auto',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        ref={dialogRef}
+        onKeyDown={handleTrap}
       >
-            <div
-              className="settings-header"
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}
-            >
-              <h2 title="Settings" className="settings-title" style={{ margin: 0, fontSize: '18px' }}>
-                Cài đặt
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                aria-label="Close"
-                className="settings-close-btn"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  color: 'var(--md-fg)',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div role="tablist" className="settings-tabs">
-              {TABS.map((tab) => (
+        <div className="settings-header">
+          <h2 id="settings-title" className="settings-title">Cài đặt</h2>
+          <button type="button" onClick={() => setIsOpen(false)} aria-label="Đóng" className="settings-close-btn">
+            <Icon name="close" />
+          </button>
+        </div>
+        <div className="settings-layout">
+          {wide && (
+            <nav className="settings-index" aria-label="Mục cài đặt">
+              {SECTIONS.map((s) => (
                 <button
-                  key={tab.id}
+                  key={s.id}
                   type="button"
-                  role="tab"
-                  id={`tab-${tab.id}`}
-                  aria-selected={activeTab === tab.id}
-                  aria-controls={`panel-${tab.id}`}
-                  className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  className="settings-index-item"
+                  aria-current={current === s.id ? 'true' : undefined}
+                  onClick={() => goTo(s.id)}
                 >
-                  {tab.label}
+                  {s.label}
                 </button>
               ))}
-            </div>
-
-            <div className="settings-content" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-              {activeTab === 'display' && (
-                <div className="settings-section">
+            </nav>
+          )}
+          <div className="settings-body" ref={bodyRef} onScroll={handleScroll}>
+<section aria-labelledby="settings-h-look" id="settings-sec-look" data-section={"look"} className="settings-group" ref={(el) => { sectionRefs.current['look'] = el }}>
+<h3 id="settings-h-look" className="settings-group-title">Chữ và màu</h3>
                   {currentMode && (
                     <div style={{ marginBottom: '16px' }}>
                       <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Chế độ hiển thị</div>
@@ -685,7 +681,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       </div>
                     </div>
                   )}
-
                   <div style={{ marginBottom: '16px' }}>
                     {themePicker ??
                       (currentColorTheme ? (
@@ -697,7 +692,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                         />
                       ) : null)}
                   </div>
-
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 500 }}>Kiểu phông chữ</div>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -737,35 +731,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       })}
                     </div>
                   </div>
-
-                  <ToggleRow
-                    id="settings-autoFormatMd"
-                    title="Kích hoạt tiện ích (Auto-format .md)"
-                    description="Tự động nhận diện file Markdown và hiển thị widget nổi 📖 ở góc màn hình"
-                    checked={currentAutoFormat}
-                    onChange={(val) => handleSettingChange('autoFormatMd', val)}
-                  />
-
-                  <ToggleRow
-                    id="settings-formatOnSave"
-                    title="Định dạng Markdown khi lưu (Cmd+S)"
-                    description="Tự động định dạng lại Markdown mỗi khi lưu file"
-                    checked={settings?.formatOnSave ?? currentAutoFormat}
-                    onChange={(val) => handleSettingChange('formatOnSave', val)}
-                  />
-
-                  <ToggleRow
-                    id="settings-alwaysOpenApp"
-                    title="Tự động chuyển hướng vào app (Always open app)"
-                    description="Bật: Mở thẳng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
-                    checked={currentAlwaysOpenApp}
-                    onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'core' && (
-                <div className="settings-section">
+</section>
+<section aria-labelledby="settings-h-content" id="settings-sec-content" data-section={"content"} className="settings-group" ref={(el) => { sectionRefs.current['content'] = el }}>
+<h3 id="settings-h-content" className="settings-group-title">Nội dung trong tài liệu</h3>
                   <ToggleRow
                     id="settings-stripFrontmatter"
                     title="Front Matter"
@@ -779,13 +747,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     description="Show YAML front matter as a formatted metadata card at the top of the document"
                     checked={settings?.displayMetadata}
                     onChange={(val) => handleSettingChange('displayMetadata', val)}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'media' && (
-                <div className="settings-section">
-                  <ToggleRow
+                  />                  <ToggleRow
                     id="settings-enableMath"
                     title="Math Equations"
                     description="Render LaTeX math equations ($...$ inline, $$...$$ display)"
@@ -812,13 +774,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     description="Display alert block titles in the selected language"
                     checked={settings?.localizeAlerts}
                     onChange={(val) => handleSettingChange('localizeAlerts', val)}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'reading' && (
-                <div className="settings-section">
-                  <ToggleRow
+                  />                  <ToggleRow
                     id="settings-typographer"
                     title="Typographer"
                     description="Auto-convert typography: (c) → ©, (tm) → ™, -- → –, --- → —, and smart quotes"
@@ -832,6 +788,35 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     checked={settings?.externalLinks}
                     onChange={(val) => handleSettingChange('externalLinks', val)}
                   />
+</section>
+<section aria-labelledby="settings-h-open" id="settings-sec-open" data-section={"open"} className="settings-group" ref={(el) => { sectionRefs.current['open'] = el }}>
+<h3 id="settings-h-open" className="settings-group-title">Khi mở file .md</h3>
+                  <ToggleRow
+                    id="settings-autoFormatMd"
+                    title="Kích hoạt tiện ích (Auto-format .md)"
+                    description="Tự động nhận diện file Markdown và hiển thị widget nổi 📖 ở góc màn hình"
+                    checked={currentAutoFormat}
+                    onChange={(val) => handleSettingChange('autoFormatMd', val)}
+                  />
+
+                  <ToggleRow
+                    id="settings-formatOnSave"
+                    title="Định dạng Markdown khi lưu (Cmd+S)"
+                    description="Tự động định dạng lại Markdown mỗi khi lưu file"
+                    checked={settings?.formatOnSave ?? currentAutoFormat}
+                    onChange={(val) => handleSettingChange('formatOnSave', val)}
+                  />
+
+                  <ToggleRow
+                    id="settings-alwaysOpenApp"
+                    title="Tự động chuyển hướng vào app (Always open app)"
+                    description="Bật: Mở thẳng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
+                    checked={currentAlwaysOpenApp}
+                    onChange={(val) => handleSettingChange('alwaysOpenApp', val)}
+                  />
+</section>
+<section aria-labelledby="settings-h-aids" id="settings-sec-aids" data-section={"aids"} className="settings-group" ref={(el) => { sectionRefs.current['aids'] = el }}>
+<h3 id="settings-h-aids" className="settings-group-title">Hỗ trợ đọc</h3>
                   <ToggleRow
                     id="settings-showWordCount"
                     title="Show word count"
@@ -860,11 +845,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     checked={settings?.celebrationConfetti}
                     onChange={(val) => handleSettingChange('celebrationConfetti', val)}
                   />
-                </div>
-              )}
-
-              {activeTab === 'presentation' && (
-                <div className="settings-section">
+</section>
+<section aria-labelledby="settings-h-slides" id="settings-sec-slides" data-section={"slides"} className="settings-group" ref={(el) => { sectionRefs.current['slides'] = el }}>
+<h3 id="settings-h-slides" className="settings-group-title">Trình chiếu</h3>
                   <ColorPickerRow
                     id="settings-slideBgColor"
                     title="Background Color"
@@ -914,12 +897,13 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     value={settings?.slideImageOpacity}
                     onChange={(val) => handleSettingChange('slideImageOpacity', val)}
                   />
-                </div>
-              )}
-            </div>
+</section>
           </div>
         </div>
+      </div>
+    </div>
   ) : null;
+
 
   return (
     <>
