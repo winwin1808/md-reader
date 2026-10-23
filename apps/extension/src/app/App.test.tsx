@@ -14,6 +14,25 @@ import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@m
 import * as fsSystem from './fs/file-system'
 
 
+const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
+const docOverride = vi.hoisted(() => ({ external: false, accept: null as any, dismiss: null as any }))
+vi.mock('./hooks/useFileSave', async (orig) => {
+  const actual: any = await orig()
+  return { ...actual, useFileSave: (...a: any[]) => {
+    const r = actual.useFileSave(...a)
+    return saveOverride.state ? { ...r, saveState: saveOverride.state } : r
+  } }
+})
+vi.mock('./hooks/useDocSession', async (orig) => {
+  const actual: any = await orig()
+  return { ...actual, useDocSession: (...a: any[]) => {
+    const r = actual.useDocSession(...a)
+    return docOverride.external
+      ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
+      : r
+  } }
+})
+
 vi.mock('y-indexeddb', () => {
   return {
     IndexeddbPersistence: vi.fn().mockImplementation(function() {
@@ -135,9 +154,53 @@ describe('App', () => {
     await act(async () => { render(<App />) })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
     await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
-    expect(await screen.findByText('Không xuất được tệp: boom')).toBeDefined()
+    expect(await screen.findByText('Không xuất được file. boom')).toBeDefined()
     await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
-    expect(screen.queryByText('Không xuất được tệp: boom')).toBeNull()
+    expect(screen.queryByText('Không xuất được file. boom')).toBeNull()
+  })
+
+  describe('notices', () => {
+    afterEach(() => { saveOverride.state = null; docOverride.external = false })
+
+    it('needs-permission: no banner, toolbar carries the prompt', async () => {
+      saveOverride.state = { kind: 'needs-permission', fileName: 'a.md' }
+      await act(async () => { render(<App />) })
+      expect(document.querySelector('.error-banner')).toBeNull()
+      expect(screen.getByText('Cần cấp quyền ghi')).toBeDefined()
+      expect(screen.getAllByText('Cấp quyền').length).toBe(1)
+    })
+
+    it('externalChange: new copy, both buttons call handlers, no inline styles', async () => {
+      docOverride.external = true
+      docOverride.accept = vi.fn(); docOverride.dismiss = vi.fn()
+      await act(async () => { render(<App />) })
+      expect(screen.getByText(/Tài liệu gốc đã thay đổi từ lần mở trước/)).toBeDefined()
+      const banner = document.querySelector('.error-banner.notice') as HTMLElement
+      expect(banner).not.toBeNull()
+      expect(banner.getAttribute('role')).toBe('status')
+      expect(banner.querySelectorAll('[style]').length).toBe(0)
+      expect(banner.hasAttribute('style')).toBe(false)
+      fireEvent.click(screen.getByText('Tải bản mới'))
+      fireEvent.click(screen.getByText('Giữ bản của tôi'))
+      expect(docOverride.accept).toHaveBeenCalled()
+      expect(docOverride.dismiss).toHaveBeenCalled()
+    })
+
+    it('save error: message, Thử lại and Lưu thành file khác…', async () => {
+      saveOverride.state = { kind: 'error', message: 'disk full', canSaveAs: true }
+      await act(async () => { render(<App />) })
+      const banner = document.querySelector('.error-banner.notice') as HTMLElement
+      expect(banner.getAttribute('role')).toBe('alert')
+      expect(banner.textContent).toContain('Không lưu được: disk full')
+      expect(banner.querySelectorAll('[style]').length).toBe(0)
+      expect(Array.from(banner.querySelectorAll('button')).map(b => b.textContent)).toEqual(['Thử lại', 'Lưu thành file khác…'])
+    })
+
+    it('save error without canSaveAs hides Lưu thành file khác…', async () => {
+      saveOverride.state = { kind: 'error', message: 'x', canSaveAs: false }
+      await act(async () => { render(<App />) })
+      expect(screen.queryByText('Lưu thành file khác…')).toBeNull()
+    })
   })
 
   it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
@@ -353,7 +416,7 @@ describe('App', () => {
     expect(container.querySelector('.reading-mode')).not.toBeNull()
 
     // Floating exit reading mode button should appear
-    const exitBtn = screen.getByText('Thoát đọc tập trung ✕')
+    const exitBtn = screen.getByText('Thoát chế độ đọc')
     expect(exitBtn).toBeDefined()
     expect(exitBtn.className).toContain('exit-reading-mode-btn')
     expect(exitBtn.className).toContain('md-no-print')
@@ -368,7 +431,7 @@ describe('App', () => {
 
     // reading-mode class removed and sidebar-toc restored
     expect(container.querySelector('.reading-mode')).toBeNull()
-    expect(screen.queryByText('Thoát đọc tập trung ✕')).toBeNull()
+    expect(screen.queryByText('Thoát chế độ đọc')).toBeNull()
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
   })
 

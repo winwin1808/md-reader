@@ -60,5 +60,5 @@ test('remote change with local edits shows the banner', async ({ context, server
   await app.waitForTimeout(500)
   server.write('doc.md', '# Remote\n\nv2 changed\n')
   await app.reload()
-  await expect(app.getByText('File gốc đã thay đổi')).toBeVisible()
+  await expect(app.getByText('Tài liệu gốc đã thay đổi')).toBeVisible()
 })
