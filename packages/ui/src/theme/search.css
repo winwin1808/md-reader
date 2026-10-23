@@ -1,13 +1,13 @@
 mark.md-search-highlight {
-  background-color: rgba(250, 204, 21, 0.45);
-  color: inherit;
+  background-color: var(--hl);
+  color: var(--hl-ink);
   padding: 1px 2px;
   border-radius: 2px;
 }
 
 mark.md-search-active {
-  background-color: #f59e0b;
-  color: #000000;
-  font-weight: 600;
-  outline: 2px solid #d97706;
+  background-color: var(--hl);
+  color: var(--hl-ink);
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
