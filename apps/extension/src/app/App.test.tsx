@@ -365,6 +365,68 @@ describe('App', () => {
     }
   })
 
+  describe('ToC rail/drawer state separation', () => {
+    function mockMq(initial: boolean) {
+      let matches = initial
+      const ls = new Set<() => void>()
+      const orig = window.matchMedia
+      window.matchMedia = ((q: string) => ({
+        get matches() { return matches }, media: q,
+        addEventListener: (_: string, l: () => void) => { ls.add(l) },
+        removeEventListener: (_: string, l: () => void) => { ls.delete(l) },
+        addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+      })) as any
+      return {
+        set: (m: boolean) => { matches = m; ls.forEach(l => l()) },
+        restore: () => { window.matchMedia = orig },
+      }
+    }
+    async function load() {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=test.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# One\n\n## Two\n\ntext'),
+      } as any)
+      await act(async () => { render(<App />) })
+    }
+
+    it('narrow -> open drawer -> widen: rail visible, drawer gone', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mục lục' })) })
+        expect(screen.getByRole('dialog', { name: 'Mục lục' })).toBeDefined()
+        await act(async () => { mq.set(false) })
+        expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+        expect(document.querySelector('.sidebar-toc')).not.toBeNull()
+      } finally { mq.restore() }
+    })
+
+    it('narrow load does not hide the rail after widening', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        expect(document.querySelector('.sidebar-toc')).toBeNull()
+        await act(async () => { mq.set(false) })
+        expect(document.querySelector('.sidebar-toc')).not.toBeNull()
+      } finally { mq.restore() }
+    })
+
+    it('Tab from the last drawer link wraps to the first', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mục lục' })) })
+        const links = Array.from(screen.getByRole('dialog', { name: 'Mục lục' }).querySelectorAll<HTMLElement>('a[href], button'))
+        expect(links.length).toBeGreaterThan(1)
+        links[links.length - 1]!.focus()
+        await act(async () => { fireEvent.keyDown(document, { key: 'Tab' }) })
+        expect(document.activeElement).toBe(links[0])
+      } finally { mq.restore() }
+    })
+  })
+
   it('renders ReadingProgress and .a4-document-container when content is loaded', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?file=test.md') as any

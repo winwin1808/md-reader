@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import { Viewer, Toc } from './index'
 import type { TocEntry } from '@md-reader/core'
@@ -17,6 +17,48 @@ describe('Viewer', () => {
   it('does not throw when IntersectionObserver is undefined', () => {
     const html = '<h1 id="test">Test</h1>'
     expect(() => render(<Viewer html={html} onActiveHeadingChange={() => {}} />)).not.toThrow()
+  })
+
+  describe('scroll-spy', () => {
+    const html = '<h1 id="one">One</h1><h2 id="two">Two</h2><h2 id="three">Three</h2>'
+    function setup(tops: Record<string, number>) {
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+      vi.stubGlobal('cancelAnimationFrame', () => {})
+      Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true })
+      const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const top = tops[this.id] ?? 0
+        return { top, bottom: top + 10, left: 0, right: 0, width: 0, height: 10, x: 0, y: top, toJSON() {} } as DOMRect
+      })
+      const cb = vi.fn()
+      const r = render(<Viewer html={html} onActiveHeadingChange={cb} />)
+      return { cb, r, spy }
+    }
+    afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+    it('at top reports the first heading', () => {
+      const { cb } = setup({ one: 500, two: 800, three: 1200 })
+      expect(cb).toHaveBeenLastCalledWith('one')
+    })
+
+    it('follows scroll to the heading above the 30% line, once', () => {
+      const tops: Record<string, number> = { one: -500, two: 800, three: 1200 }
+      const { cb } = setup(tops)
+      cb.mockClear()
+      tops.two = 200
+      fireEvent.scroll(window)
+      fireEvent.scroll(window)
+      expect(cb).toHaveBeenCalledTimes(1)
+      expect(cb).toHaveBeenCalledWith('two')
+    })
+
+    it('fast jump picks the last heading above the line', () => {
+      const tops: Record<string, number> = { one: -500, two: 800, three: 1200 }
+      const { cb } = setup(tops)
+      cb.mockClear()
+      tops.two = -300; tops.three = 100
+      fireEvent.scroll(window)
+      expect(cb).toHaveBeenCalledWith('three')
+    })
   })
 
   it('mounts MermaidBlock for code.language-mermaid elements', async () => {

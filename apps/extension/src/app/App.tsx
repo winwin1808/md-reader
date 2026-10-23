@@ -73,7 +73,8 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
 export function App(): React.JSX.Element {
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
-  const [tocOpen, setTocOpen] = useState<boolean>(true)
+  const [tocRailOpen, setTocRailOpen] = useState<boolean>(true)
+  const [tocDrawerOpen, setTocDrawerOpen] = useState<boolean>(false)
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null)
   const [narrow, setNarrow] = useState<boolean>(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1080px)').matches)
@@ -82,13 +83,13 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
     const mq = window.matchMedia('(max-width: 1080px)')
-    const onChange = () => { setNarrow(mq.matches); if (mq.matches) setTocOpen(false) }
-    if (mq.matches) setTocOpen(false)
+    const onChange = () => { setNarrow(mq.matches); if (!mq.matches) setTocDrawerOpen(false) }
     mq.addEventListener?.('change', onChange)
     return () => mq.removeEventListener?.('change', onChange)
   }, [])
 
-  const drawerOpen = narrow && tocOpen
+  const drawerOpen = narrow && tocDrawerOpen
+  const tocOpen = narrow ? tocDrawerOpen : tocRailOpen
   useEffect(() => {
     if (drawerOpen) {
       tocWasOpenRef.current = true
@@ -102,7 +103,17 @@ export function App(): React.JSX.Element {
   }, [drawerOpen])
   useEffect(() => {
     if (!drawerOpen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTocOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTocDrawerOpen(false)
+      if (e.key === 'Tab') {
+        const f = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button') ?? [])
+        if (f.length === 0) return
+        const first = f[0]!, last = f[f.length - 1]!
+        const act = document.activeElement
+        if (!drawerRef.current?.contains(act)) { e.preventDefault(); first.focus() }
+        else if (e.shiftKey && act === first) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && act === last) { e.preventDefault(); first.focus() }
+      }
+    }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [drawerOpen])
@@ -455,7 +466,7 @@ export function App(): React.JSX.Element {
         <TopToolbar
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
-          onToggleToc={() => setTocOpen(!tocOpen)}
+          onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
           fontScale={fontScale}
           onFontScaleChange={(scale) => {
             setFontScale(scale)
@@ -545,22 +556,22 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'reading' && hasContent && (
-            <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
+            <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 <div ref={docContainerRef} className="a4-document-container">
                   <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
-              {toc && toc.length > 0 && tocOpen && !isReadingMode && !narrow && (
+              {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
                 <div className="sidebar-toc">
                   <Toc entries={toc} activeId={activeHeadingId} />
                 </div>
               )}
               {toc && toc.length > 0 && drawerOpen && !isReadingMode && (
                 <>
-                  <div className="toc-backdrop" data-testid="toc-backdrop" onClick={() => setTocOpen(false)} />
+                  <div className="toc-backdrop" data-testid="toc-backdrop" onClick={() => setTocDrawerOpen(false)} />
                   <div className="toc-drawer" role="dialog" aria-modal="true" aria-label="Mục lục" ref={drawerRef}>
-                    <Toc entries={toc} activeId={activeHeadingId} onNavigate={() => setTocOpen(false)} />
+                    <Toc entries={toc} activeId={activeHeadingId} onNavigate={() => setTocDrawerOpen(false)} />
                   </div>
                 </>
               )}
