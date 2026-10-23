@@ -477,7 +477,7 @@ moves (6b*) count moved lines once.
 - 6i2: done
 - 6i3: done
 - 6j1: done
-- 6j2: pending
+- 6j2: planned
 - 6j3: pending   (core tracker)
 - 6j4: pending   (split from 6j3 at plan time: wiring into session + saves)
 - 6k1: pending
@@ -491,5 +491,6 @@ moves (6b*) count moved lines once.
   aria-labelledby, a visible +/− marker per changed line.
 - To 7n (review 6e2/6e3): cross-tab dedupe for registry migration (in-tab is done).
 - To 7l: content script renders Markdown in place (read-only).
+- To 7 (review 6j2): the mermaid setting gates only Viewer, not Deck/slides.
 - To 8x: PlantUML/Graphviz only if a self-hosted renderer exists; raw-HTML
   "tin tài liệu này" per-doc toggle UI.
