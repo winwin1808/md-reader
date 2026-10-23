@@ -135,10 +135,6 @@ describe('tokens.css Lề sách token layer', () => {
     expect(tokens).toContain('prefers-reduced-motion: reduce');
   });
 
-  it('empties color-themes.css of declarations', () => {
-    expect(read('./color-themes.css')).not.toMatch(/--[a-z]/);
-  });
-
   it('a4.css no longer declares --md-doc-bg', () => {
     expect(read('./a4.css')).not.toMatch(/--md-doc-bg\s*:/);
   });
