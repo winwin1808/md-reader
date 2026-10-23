@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { App } from '../src/app/App'
-import { createRecord, writeDocText } from '../src/app/doc-registry'
+import { App } from '../app/App'
+import { createRecord, writeDocText } from '../app/doc-registry'
 
 
 async function openDroppedDoc(title: string, text: string): Promise<void> {
