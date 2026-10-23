@@ -393,7 +393,7 @@ export function App(): React.JSX.Element {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           isDirty={isDirty}
-          onSave={() => fileSave.save()}
+          onSave={() => fileSave.save({ explicit: true })}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
               <ExportModal onExport={exportAs} isExporting={isExporting} />
