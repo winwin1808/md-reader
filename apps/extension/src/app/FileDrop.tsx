@@ -25,12 +25,16 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
 
   const processDrop = useCallback(
     (e: globalThis.DragEvent) => {
+      if (e.defaultPrevented) return;
+      const t = e.target;
+      if (t instanceof Element && t.closest('.cm-editor, input, textarea, [contenteditable]')) return;
+      if (!Array.from(e.dataTransfer?.types ?? []).includes('Files')) return;
       e.preventDefault();
       if (busyRef.current) return;
       const file = e.dataTransfer?.files?.[0];
       if (!file) return;
 
-      const validExtensions = ['.md', '.markdown', '.mdx', '.txt'];
+      const validExtensions = ['.md', '.markdown', '.mdown', '.mkd', '.mdx', '.txt'];
       const isValid = validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
 
       if (!isValid) {
@@ -78,8 +82,6 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
     [navigate, finish]
   );
 
-  const handleDrop = processDrop;
-
   useEffect(() => {
     const hasFiles = (e: globalThis.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
     const enter = (e: globalThis.DragEvent) => {
@@ -100,7 +102,7 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
     const drop = (e: globalThis.DragEvent) => {
       depth.current = 0;
       setDragging(false);
-      handleDrop(e);
+      processDrop(e);
     };
     window.addEventListener('dragenter', enter);
     window.addEventListener('dragover', over);
@@ -112,7 +114,7 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
       window.removeEventListener('dragleave', leave);
       window.removeEventListener('drop', drop);
     };
-  }, [handleDrop]);
+  }, [processDrop]);
 
   return (
     <div style={{ width: '100%' }}>
@@ -120,7 +122,7 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
       {busy && <div role="status">Đang mở tệp…</div>}
       {notice && (
         <div className="notice notice--danger" role="alert">
-          <span>Chỉ mở được file .md, .markdown, .mdx hoặc .txt.</span>
+          <span>Chỉ mở được file Markdown (.md, .markdown, .mdown, .mkd, .mdx) hoặc .txt.</span>
           <span className="notice__actions">
             <button type="button" onClick={() => setNotice(false)}>Đóng</button>
           </span>
