@@ -282,6 +282,7 @@ export async function writeDocText(
       if (local !== text) applyTextChange(getSource(doc), text)
       getMeta(doc).set('originHash', newHash)
     }, ORIGIN_LOAD)
+    await storeBase(record.docId, text).catch((err) => console.warn('storeBase failed:', err))
     return 'written'
   } finally {
     try {

@@ -202,4 +202,17 @@ describe('doc-registry', () => {
     expect(d.text).toBe('same')
     expect(d.hash).toBe(await hashText('same'))
   })
+
+  it('writeDocText stores the base when written, leaves it when kept', async () => {
+    const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
+    expect(await writeDocText(r, 'hello', 'replace')).toBe('written')
+    expect(await getBase(r.docId)).toBe('hello')
+    const doc = new Y.Doc({ gc: false })
+    const p = new IndexeddbPersistence(r.persistenceName, doc)
+    await p.whenSynced
+    doc.transact(() => getSource(doc).insert(5, ' edited'))
+    await p.destroy()
+    expect(await writeDocText(r, 'other', 'if-clean')).toBe('kept')
+    expect(await getBase(r.docId)).toBe('hello')
+  })
 })
