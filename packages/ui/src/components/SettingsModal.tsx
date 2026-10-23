@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ColorTheme, Contrast } from '../theme/ThemeProvider';
 import { ThemePicker } from './ThemePicker';
@@ -61,6 +61,8 @@ export interface SettingsModalProps {
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
   onAlwaysOpenAppChange?: (alwaysOpenApp: boolean) => void;
   themePicker?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 type TabId = 'display' | 'core' | 'media' | 'reading' | 'presentation';
@@ -456,6 +458,27 @@ function ImageInputRow({
   );
 }
 
+function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
+  const [inner, setInner] = useState(false)
+  const controlled = open !== undefined
+  const isOpen = controlled ? Boolean(open) : inner
+  const returnRef = useRef<Element | null>(null)
+  useEffect(() => {
+    if (isOpen) {
+      returnRef.current = document.activeElement
+      return
+    }
+    const el = returnRef.current as HTMLElement | null
+    returnRef.current = null
+    if (el && el.isConnected && typeof el.focus === 'function') el.focus()
+  }, [isOpen])
+  const setIsOpen = (v: boolean) => {
+    if (!controlled) setInner(v)
+    onOpenChange?.(v)
+  }
+  return [isOpen, setIsOpen]
+}
+
 export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   const {
     settings,
@@ -474,7 +497,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     onAlwaysOpenAppChange,
   } = props;
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
   const [activeTab, setActiveTab] = useState<TabId>('display');
 
   const currentMode = settings?.mode ?? mode;
@@ -900,7 +923,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 
   return (
     <>
-      <button
+      {props.open === undefined && <button
         type="button"
         onClick={() => setIsOpen(true)}
         title="Settings"
@@ -936,7 +959,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
-      </button>
+      </button>}
       {isOpen && (typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent)}
     </>
   );

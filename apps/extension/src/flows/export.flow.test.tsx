@@ -70,7 +70,7 @@ describe('E2E smoke test for themes and export formats', () => {
     expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#user-content-subtitle')
 
     // Click Settings button, select a new theme ('navy'), verify chrome.storage.sync.set called
-    const settingsBtn = screen.getByRole('button', { name: 'Settings' })
+    const settingsBtn = screen.getByRole('button', { name: 'Cài đặt' })
     fireEvent.click(settingsBtn)
 
     // Close settings modal
@@ -78,7 +78,7 @@ describe('E2E smoke test for themes and export formats', () => {
     fireEvent.click(closeSettingsBtn)
 
     // Open ExportModal, click PDF -> verify printSpy called
-    const exportBtn = screen.getByRole('button', { name: 'Xuất tài liệu' })
+    const exportBtn = screen.getByRole('button', { name: 'Xuất file' })
     fireEvent.click(exportBtn)
 
     const pdfOptionBtn = screen.getByText('Tài liệu PDF (.pdf)').closest('button')!
