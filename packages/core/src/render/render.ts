@@ -1,7 +1,9 @@
 import type { Root } from 'mdast'
 import { Slugger } from './slug.js'
 import type { TocEntry, RenderOptions, RenderResult } from './types.js'
-import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets } from './plugins.js'
+import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets, rehypePrefixFragmentLinks } from './plugins.js'
+
+export const HEADING_ID_PREFIX = 'user-content-'
 
 function getHeadingText(node: any): string {
   if (node.type === 'text' || node.type === 'inlineCode') {
@@ -22,7 +24,7 @@ export function extractToc(tree: Root): TocEntry[] {
     if (node.type === 'heading') {
       const depth = node.depth as 1 | 2 | 3 | 4 | 5 | 6
       const text = getHeadingText(node)
-      const id = slugger.slug(text)
+      const id = HEADING_ID_PREFIX + slugger.slug(text)
 
       const entry: TocEntry = { id, depth, text, children: [] }
 
@@ -67,7 +69,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
 
   const processor = unified()
   
-  processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml })
+  processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml, clobberPrefix: '' })
   processor.use(rehypeSlug)
   
   if (allowRawHtml) {
@@ -147,6 +149,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     processor.use(rehypeMetadataCard, parsed.frontmatter as Record<string, unknown>)
   }
 
+  processor.use(rehypePrefixFragmentLinks, HEADING_ID_PREFIX)
   processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
