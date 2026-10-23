@@ -190,6 +190,7 @@ export function App(): React.JSX.Element {
         })),
         selection: { anchor: r.newSelectionStart, head: r.newSelectionEnd },
         userEvent: 'input.format',
+        scrollIntoView: true,
       })
       view.focus()
       return
@@ -408,6 +409,25 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop doc={doc}>
+          {session.externalChange && (
+            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>File gốc đã thay đổi kể từ lần mở trước.</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
+                <button type="button" onClick={session.dismissExternal}>Giữ bản đang sửa</button>
+              </div>
+            </div>
+          )}
+          {fileSave.saveState.kind === 'error' && (
+            <div className="error-banner" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontWeight: 600 }}>{fileSave.saveState.message}</div>
+              {fileSave.saveState.canSaveAs && (
+                <div>
+                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành…</button>
+                </div>
+              )}
+            </div>
+          )}
           {error && (
             <div style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontWeight: 600 }}>{error}</div>
