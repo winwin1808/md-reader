@@ -432,7 +432,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7d: done
 - 7e1: done   (toolbar + save status; split from 7e at plan time)
 - 7e2: done   (banners and notices in tokens)
-- 7f: pending
+- 7f: planned
 - 7g: pending
 - 7h1: pending
 - 7h2: pending

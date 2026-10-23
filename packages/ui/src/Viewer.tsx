@@ -45,52 +45,55 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
 
   useEffect(() => {
     if (!onChangeRef.current) return
-    if (typeof IntersectionObserver === 'undefined') return
-
     const container = containerRef.current
     if (!container) return
 
-    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
-    const headingsWithId = Array.from(headings).filter(h => h.id)
-
+    const headingsWithId = Array.from(container.querySelectorAll('h1, h2, h3')).filter(h => h.id)
     if (headingsWithId.length === 0) return
 
+    let root: Element | null = null
+    for (let el = container.parentElement; el; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY
+      if (oy === 'auto' || oy === 'scroll') { root = el; break }
+    }
+    const scroller: HTMLElement | Window = (root as HTMLElement | null) ?? window
+
     let activeId: string | null = null
-    const observer = new IntersectionObserver((entries) => {
-      let newActiveId = activeId
-      let changed = false
-
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          newActiveId = entry.target.id
-          changed = true
-        } else if (entry.target.id === activeId && entry.boundingClientRect.top > 0) {
-          // Scrolled up, heading exited downwards
-          const idx = headingsWithId.findIndex(h => h.id === activeId)
-          if (idx > 0) {
-            const prev = headingsWithId[idx - 1]; if (prev) newActiveId = prev.id
-            changed = true
-          } else {
-            newActiveId = null
-            changed = true
-          }
-        }
-      })
-
-      if (changed) {
-        activeId = newActiveId
-        if (onChangeRef.current) {
-          onChangeRef.current(activeId)
+    let first = true
+    const compute = () => {
+      const rect = root ? root.getBoundingClientRect() : null
+      const rootTop = rect ? rect.top : 0
+      const rootH = rect ? rect.height : window.innerHeight
+      const line = rootTop + rootH * 0.3
+      let next: string | null = headingsWithId[0]?.id ?? null
+      for (const h of headingsWithId) {
+        if (h.getBoundingClientRect().top <= line) next = h.id
+      }
+      if (first || next !== activeId) {
+        first = false
+        if (next !== activeId) {
+          activeId = next
+          onChangeRef.current?.(activeId)
         }
       }
-    }, {
-      rootMargin: '0px 0px -80% 0px'
-    })
+    }
 
-    headingsWithId.forEach(h => observer.observe(h))
+    let pending = false
+    let raf = 0
+    const schedule = () => {
+      if (pending) return
+      pending = true
+      raf = requestAnimationFrame(() => { pending = false; raf = 0; compute() })
+    }
+
+    scroller.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    compute()
 
     return () => {
-      observer.disconnect()
+      scroller.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      if (raf) cancelAnimationFrame(raf)
     }
   }, [html])
 

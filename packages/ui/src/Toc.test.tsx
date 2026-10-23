@@ -2,9 +2,18 @@ import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { Toc } from './Toc'
+import { Viewer } from './Viewer'
 import type { TocEntry } from '@md-reader/core'
 
 describe('Toc', () => {
+  it('marks exactly one link current and calls onNavigate on click', () => {
+    const onNavigate = vi.fn()
+    render(<Toc entries={[{ id: 'a', text: 'A', depth: 1, children: [] }, { id: 'b', text: 'B', depth: 1, children: [] }]} activeId="a" onNavigate={onNavigate} />)
+    expect(document.querySelectorAll('[aria-current="location"]')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('link', { name: 'B' }))
+    expect(onNavigate).toHaveBeenCalledWith('b')
+  })
+
   afterEach(() => {
     cleanup()
   })
@@ -38,9 +47,9 @@ describe('Toc', () => {
 
   it('renders table of contents with title "Mục lục"', () => {
     render(<Toc entries={sampleEntries} />)
-    const title = screen.getByText('Mục lục')
-    expect(title).toBeDefined()
-    expect(title.className).toBe('md-toc-title')
+    const title = screen.getByRole('heading', { name: 'Mục lục', level: 2 })
+    expect(title.className).toBe('sr-only')
+    expect(screen.queryByText('MỤC LỤC')).toBeNull()
   })
 
   it('renders items with proper flex layout and depth indentation on li', () => {
@@ -62,10 +71,10 @@ describe('Toc', () => {
     expect(h11Li.className).toContain('md-toc-item depth-2')
   })
 
-  it('marks activeId with active class and aria-current="true"', () => {
+  it('marks activeId with active class and aria-current="location"', () => {
     render(<Toc entries={sampleEntries} activeId="heading-1-1" />)
     const activeLink = screen.getByRole('link', { name: 'Heading 1.1' })
-    expect(activeLink.getAttribute('aria-current')).toBe('true')
+    expect(activeLink.getAttribute('aria-current')).toBe('location')
     const activeLi = activeLink.closest('li')!
     expect(activeLi.className).toContain('active')
 
@@ -149,3 +158,13 @@ describe('Toc', () => {
   })
 })
 
+
+describe('Viewer scroll-spy', () => {
+  const orig = (globalThis as any).IntersectionObserver
+  afterEach(() => { cleanup(); ;(globalThis as any).IntersectionObserver = orig })
+
+  it('does not throw without IntersectionObserver', () => {
+    ;(globalThis as any).IntersectionObserver = undefined
+    expect(() => render(<Viewer html={'<h2 id="x">X</h2>'} onActiveHeadingChange={() => {}} />)).not.toThrow()
+  })
+})
