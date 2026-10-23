@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
+import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT, createCheckpointTracker, registerActor } from '@md-reader/core'
+import type { CheckpointTracker } from '@md-reader/core'
 import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
 import { readCacheEntry } from '../../shared/md-url'
@@ -20,6 +21,7 @@ export interface DocSession {
   error: string | null
   setError(message: string | null): void
   synced: boolean
+  checkpoints: CheckpointTracker | null
   externalChange: { remoteText: string; remoteHash: string } | null
   acceptExternal(): void
   dismissExternal(): void
@@ -34,6 +36,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
   const [record, setRecord] = useState<DocRecord | null>(null)
+  const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
+  const checkpointsRef = useRef<CheckpointTracker | null>(null)
   const isFileContentSetRef = useRef<boolean>(false)
   const syncedPromiseRef = useRef<Promise<unknown>>(Promise.resolve())
   const [externalChange, setExternalChange] = useState<{ remoteText: string; remoteHash: string } | null>(null)
@@ -92,12 +96,19 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         console.warn('Failed to initialize IndexeddbPersistence:', err)
       }
     }
+    let tracker: CheckpointTracker | null = null
+    setCheckpoints(null)
+    checkpointsRef.current = null
     const rec = record
     const whenSynced = persistence ? persistence.whenSynced : Promise.resolve()
     syncedPromiseRef.current = (async () => {
       await whenSynced
       if (rec && !cancelled) {
         ensureDoc(doc, { title: rec.title })
+        registerActor(doc, 'Bạn')
+        tracker = createCheckpointTracker(doc, { actor: 'Bạn' })
+        checkpointsRef.current = tracker
+        setCheckpoints(tracker)
         touchRecord(rec.docId).catch(console.error)
       }
     })()
@@ -149,6 +160,9 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
     return () => {
       cancelled = true
+      tracker?.flush('auto', 'Bạn')
+      tracker?.dispose()
+      if (checkpointsRef.current === tracker) checkpointsRef.current = null
       clearContentTimer()
       text.unobserve(observer)
       meta.unobserve(updateTitle)
@@ -186,6 +200,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           setHasContent(remote.length > 0)
           setIsDirty(false)
           rememberBase()
+          checkpointsRef.current?.flush('import', 'Bạn')
         }
         isFileContentSetRef.current = true
         const origin0 = meta.get('originHash') as string | undefined
@@ -198,6 +213,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           setHasContent(remote.length > 0)
           setIsDirty(false)
           rememberBase()
+          checkpointsRef.current?.flush('import', 'Bạn')
           const h0 = await hashText(remote)
           if (!cancelled) meta.set('originHash', h0)
         } else {
@@ -300,6 +316,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     setHasContent(ext.remoteText.length > 0)
     setIsDirty(false)
     setExternalChange(null)
+    checkpointsRef.current?.flush('import', 'Bạn')
     if (record) void Promise.resolve(storeBase(record.docId, ext.remoteText)).catch((err) => console.warn('storeBase failed:', err))
   }
   const dismissExternal = () => setExternalChange(null)
@@ -316,6 +333,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     error,
     setError,
     synced,
+    checkpoints,
     externalChange,
     acceptExternal,
     dismissExternal,
