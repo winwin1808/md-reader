@@ -468,7 +468,7 @@ moves (6b*) count moved lines once.
 - 6e4: done      (split from 6e3 at plan time: drop, recent files, delete registry.ts)
 - 6f1: done
 - 6f2: done   (data half: base storage)
-- 6f3: pending   (split from 6f2 at plan time: three-way ConflictModal UI)
+- 6f3: planned   (split from 6f2 at plan time: three-way ConflictModal UI)
 - 6g1: pending
 - 6g2: pending
 - 6h1: pending
@@ -487,6 +487,9 @@ moves (6b*) count moved lines once.
 ## Deferred
 
 - To 7n: replace redundant `expect(getBy…).toBeDefined()` asserts.
+- To 7n (review 6f3): ConflictModal a11y — aria-label on the "+a −r" counts, pane headings /
+  aria-labelledby, a visible +/− marker per changed line.
+- To 7n (review 6e2/6e3): cross-tab dedupe for registry migration (in-tab is done).
 - To 7l: content script renders Markdown in place (read-only).
 - To 8x: PlantUML/Graphviz only if a self-hosted renderer exists; raw-HTML
   "tin tài liệu này" per-doc toggle UI.
