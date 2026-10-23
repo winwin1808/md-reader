@@ -536,7 +536,7 @@ describe('App', () => {
     })
 
     // Search input should not be visible initially
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
 
     // Click search button on TopToolbar
     const searchBtn = screen.getByTitle(/tìm kiếm/i)
@@ -545,26 +545,26 @@ describe('App', () => {
     })
 
     // DocumentSearch input should be rendered
-    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu')).toBeDefined()
 
     // Press Escape to close
     await act(async () => {
       fireEvent.keyDown(window, { key: 'Escape' })
     })
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
 
     // Re-open via Cmd+F shortcut
     await act(async () => {
       fireEvent.keyDown(window, { key: 'f', metaKey: true })
     })
-    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu')).toBeDefined()
 
     // Click close button to close
     const closeBtn = screen.getByTitle(/đóng/i)
     await act(async () => {
       fireEvent.click(closeBtn)
     })
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
   })
 
   it('loads fontFamily, shows options in SettingsModal, and selecting font family updates storage and data-font-family', async () => {
