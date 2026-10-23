@@ -1,15 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
-import { flushSync } from 'react-dom'
-import * as Y from 'yjs'
 import {
   ThemeProvider,
   SettingsModal,
   Viewer,
   Toc,
   ExportModal,
-  printDocument,
-  printSlides,
-  getDefaultExportCss,
   ReadingProgress,
   TopToolbar,
   DocumentSearch,
@@ -24,24 +19,20 @@ import {
   FormattingToolbar,
   applyFormat,
 } from "@md-reader/ui"
-import type { ThemeMode, ColorTheme, ExportFormat, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
+import type { ThemeMode, ColorTheme, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
 import {
   parseMarkdown,
   renderToHtml,
-  exportToHtml,
-  mdastToDocx,
   splitIntoSlides,
   extractMindmap,
-  formatMarkdown,
-  detectConflict,
-  appendHistory,
-  hashText,
 } from '@md-reader/core'
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
+import { useExport } from './hooks/useExport'
+import { useShortcuts } from './hooks/useShortcuts'
 import './app.css'
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -74,7 +65,6 @@ export function App(): React.JSX.Element {
   const [tocOpen, setTocOpen] = useState<boolean>(true)
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
-  const [isExporting, setIsExporting] = useState<boolean>(false)
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
   const fileUrlParam = new URLSearchParams(window.location.search).get('file')
   const session = useDocSession({ fileUrl: fileUrlParam })
@@ -84,7 +74,6 @@ export function App(): React.JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
-  const [isPrintingSlides, setIsPrintingSlides] = useState<boolean>(false)
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
   const editorViewRef = useRef<EditorView | null>(null)
@@ -118,56 +107,6 @@ export function App(): React.JSX.Element {
       channel.close()
       channelRef.current = null
     }
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return
-      const target = e.target as HTMLElement | null
-      const isInput =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      if (
-        (e.key === 'p' || e.key === 'P') &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !isInput &&
-        !isPresenting &&
-        !isSpeakerMode
-      ) {
-        e.preventDefault()
-        setIsPresenting(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isPresenting, isSpeakerMode])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        setIsSearchOpen(true)
-      } else if (e.key === 'Escape' && isSearchOpen) {
-        setIsSearchOpen(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isSearchOpen])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault()
-        setIsMindmapOpen((prev) => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   useEffect(() => {
@@ -336,49 +275,20 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
-  const handleExport = async (format: ExportFormat) => {
-    setIsExporting(true)
-    try {
-      const title = docTitle || 'document'
-      if (format === 'pdf') {
-        printDocument()
-      } else if (format === 'slide-pdf') {
-        flushSync(() => {
-          setIsPrintingSlides(true)
-        })
-        printSlides()
-        const cleanup = () => {
-          setIsPrintingSlides(false)
-          window.removeEventListener('afterprint', cleanup)
-        }
-        window.addEventListener('afterprint', cleanup)
-        setTimeout(cleanup, 1000)
-      } else if (format === 'html') {
-        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
-        const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${title}.html`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
-      } else if (format === 'docx') {
-        const blob = await mdastToDocx({ mdast: parseResult.ast, title })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${title}.docx`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
-    } finally {
-      setIsExporting(false)
-    }
-  }
+  const { exportAs, isExporting, isPrintingSlides } = useExport({
+    html,
+    title: docTitle,
+    parseResult: parseResult as any,
+  })
+
+  useShortcuts({
+    onSearch: () => setIsSearchOpen(true),
+    onCloseSearch: () => setIsSearchOpen(false),
+    isSearchOpen,
+    onToggleMindmap: () => setIsMindmapOpen((prev) => !prev),
+    onPresent: () => setIsPresenting(true),
+    presentEnabled: !isPresenting && !isSpeakerMode,
+  })
 
   if (isSpeakerMode) {
     return (
@@ -486,7 +396,7 @@ export function App(): React.JSX.Element {
           onSave={() => fileSave.save()}
           rightActions={
             <div style={{ display: 'flex', gap: '8px' }}>
-              <ExportModal onExport={handleExport} isExporting={isExporting} />
+              <ExportModal onExport={exportAs} isExporting={isExporting} />
               <SettingsModal
                 settings={readerSettings}
                 onSettingChange={handleSettingChange}
