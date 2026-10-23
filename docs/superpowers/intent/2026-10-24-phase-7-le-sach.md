@@ -1,6 +1,6 @@
 # Intent: Phase 7 — Giao diện Lề sách (+ logo app)
-Author: haonq. Status: captured. Phase: 7
-Design: docs/superpowers/specs/2026-10-24-phase-7-design.md (to be written)
+Author: haonq. Status: designed. Phase: 7
+Design: docs/superpowers/specs/2026-10-24-phase-7-design.md
 
 Nguồn: lựa chọn của người dùng ngày 2026-10-23 — "Chọn style A, sửa lại, design thêm cái logo
 App" — trên mockup `docs/design/ui-redesign-options.html` (phương án A · Lề sách) và bản audit
