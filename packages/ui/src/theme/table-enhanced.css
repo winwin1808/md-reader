@@ -29,6 +29,9 @@
 }
 
 .code-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   background: transparent;
   border: 1px solid var(--md-border);
   border-radius: 4px;
@@ -63,39 +66,34 @@
 }
 
 .table-wrapper table {
-  margin: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
+  margin: 0;
+  border: none;
 }
 
 .md-viewer table {
-  display: table !important;
-  width: 100% !important;
-  min-width: 100% !important;
-  table-layout: auto;
+  width: 100%;
   border-collapse: collapse;
   margin: 24px 0;
-  border-radius: 8px;
-  border: 1px solid var(--md-border);
-  box-sizing: border-box;
-  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: 0.9em;
 }
 
 .md-viewer th {
-  background-color: var(--md-accent, #0969da);
-  color: #ffffff !important;
+  background: var(--surface);
   font-weight: 600;
   text-align: left;
-  padding: 11px 16px;
-  border: 1px solid var(--md-border);
-  vertical-align: middle;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ink);
 }
 
 .md-viewer td {
-  padding: 11px 16px;
-  border: 1px solid var(--md-border);
-  vertical-align: middle;
-  word-break: break-word;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.md-viewer tbody tr:nth-child(even) {
+  background: var(--md-table-alt);
 }
 
 .md-viewer th[align="center"],
@@ -112,23 +110,6 @@
 .md-viewer td[align="justify"] {
   text-align: justify;
 }
-
-.md-viewer tbody tr:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-[data-theme="dark"] .md-viewer tbody tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-.md-viewer tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-[data-theme="dark"] .md-viewer tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
 /* Tasklist styling */
 .md-viewer input[type="checkbox"] {
   margin-right: 8px;

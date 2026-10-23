@@ -120,34 +120,70 @@
   border: 0;
 }
 
-.md-viewer table {
-  margin: 2rem 0;
-  border-spacing: 0;
-  border-collapse: collapse;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--md-border);
-  width: 100%;
-  min-width: 100%;
-  display: table;
-  table-layout: auto;
-  box-sizing: border-box;
+.md-viewer div.markdown-alert {
+  --tone: var(--accent);
+  margin: 1.2em 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 2px solid var(--tone);
+  border-radius: 0;
+  background: none;
+  font-size: 0.95em;
+  color: var(--ink);
+}
+.md-viewer div.markdown-alert-tip { --tone: var(--ok); }
+.md-viewer div.markdown-alert-caution { --tone: var(--danger); }
+.md-viewer div.markdown-alert-warning { --tone: var(--hl); border-left-width: 3px; }
+
+.md-viewer div.markdown-alert > .markdown-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0 0 0.25em;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.8em;
+  color: var(--tone);
+}
+.md-viewer div.markdown-alert-warning > .markdown-alert-title { color: var(--ink); }
+
+@container sheet (min-width: 49rem) {
+  .md-viewer {
+    padding-right: 17rem;
+    max-width: calc(var(--measure) + 17rem);
+  }
+  .md-viewer div.markdown-alert {
+    float: right;
+    clear: right;
+    width: 14.5rem;
+    margin: 0.3em -17rem 1em 1.5rem;
+    padding: 10px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--ink);
+    font-size: 0.85em;
+    line-height: 1.45;
+  }
+  .md-viewer div.markdown-alert-caution { border-top-color: var(--danger); }
+  .md-viewer div.markdown-alert-warning { border-top: 3px solid var(--hl); }
+  .md-viewer h1, .md-viewer h2, .md-viewer h3, .md-viewer h4, .md-viewer h5, .md-viewer h6 { clear: none; }
 }
 
-.md-viewer table th,
-.md-viewer table td {
-  padding: 11px 16px;
-  border: 1px solid var(--md-border);
-  vertical-align: middle;
-  word-break: break-word;
+.md-viewer div.markdown-metadata-card {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0 0 1.5em;
+  padding: 10px 14px;
+  font-family: var(--font-ui);
+  font-size: calc(14px * var(--md-font-scale-ratio, 1));
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-s);
+  color: var(--pencil);
 }
-
-.md-viewer table tr {
-  background-color: var(--md-bg);
-  border-top: 1px solid var(--md-border);
-}
-.md-viewer table tr:nth-child(2n) {
-  background-color: var(--md-code-bg);
+.md-viewer div.markdown-metadata-card strong,
+.md-viewer div.markdown-metadata-card dt {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .md-viewer hr {

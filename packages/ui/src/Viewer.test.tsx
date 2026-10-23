@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import fs from 'node:fs'
+import path from 'node:path'
 import React from 'react'
 import { Viewer, Toc } from './index'
+import { Icon, iconSvg } from './components/Icon'
 import type { TocEntry } from '@md-reader/core'
 
 describe('Viewer', () => {
@@ -175,5 +178,50 @@ describe('Viewer anchors and mermaid toggle', () => {
     const pre = container.querySelector('pre') as HTMLElement
     expect(pre.style.display).not.toBe('none')
     expect(pre.nextElementSibling).toBeNull()
+  })
+})
+
+describe('Viewer code header (vi)', () => {
+  it('copy button is Vietnamese and toggles after click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const html = '<pre><code class="language-ts">const a = 1</code></pre>'
+    const { container } = render(<Viewer html={html} />)
+    const btn = container.querySelector('.code-copy-btn') as HTMLButtonElement
+    expect(btn.textContent).toContain('Sao chép')
+    expect(btn.getAttribute('aria-label')).toBe('Sao chép mã')
+    expect(btn.querySelector('svg')).not.toBeNull()
+    await act(async () => { fireEvent.click(btn) })
+    expect(writeText).toHaveBeenCalledWith('const a = 1')
+    expect(btn.textContent).toContain('Đã chép')
+  })
+})
+
+describe('reading-surface CSS text', () => {
+  const read = (f: string) => fs.readFileSync(path.resolve(__dirname, 'theme', f), 'utf-8')
+  it('alerts become margin notes on wide sheets', () => {
+    const css = read('typography.css')
+    expect(css).toContain('@container sheet')
+    expect(css).toMatch(/\.markdown-alert\s*\{[^}]*float:\s*right/)
+  })
+  it('one table style, no !important', () => {
+    expect(read('table-enhanced.css')).not.toContain('!important')
+    const n = (read('typography.css') + read('table-enhanced.css')).match(/nth-child\(even\)/g) ?? []
+    expect(n.length).toBe(1)
+  })
+})
+
+describe('iconSvg / no react-dom/server', () => {
+  it('iconSvg matches <Icon> markup', () => {
+    const { container } = render(<Icon name="copy" size={16} />)
+    const tpl = document.createElement('div')
+    tpl.innerHTML = iconSvg('copy', 16)
+    expect(tpl.innerHTML).toBe(container.innerHTML)
+  })
+  it('Viewer.tsx does not import react-dom/server', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'Viewer.tsx'), 'utf-8')).not.toContain('react-dom/server')
+  })
+  it('sidenote query threshold is 49rem', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 49rem)')
   })
 })

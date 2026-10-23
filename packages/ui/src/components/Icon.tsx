@@ -66,3 +66,8 @@ export function Icon(props: { name: IconName; size?: 16 | 20 | 24; label?: strin
     </svg>
   )
 }
+
+export function iconSvg(name: IconName, size: 16 | 20 | 24 = 20): string {
+  const paths = PATHS[name].map((d) => `<path d="${d}"></path>`).join('')
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${paths}</svg>`
+}
