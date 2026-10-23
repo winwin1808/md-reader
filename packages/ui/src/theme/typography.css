@@ -125,6 +125,7 @@
   margin: 1.2em 0;
   padding: 0.1em 0 0.1em 1em;
   border-left: 2px solid var(--tone);
+  border-radius: 0;
   background: none;
   font-size: 0.95em;
   color: var(--ink);
@@ -145,7 +146,7 @@
 }
 .md-viewer div.markdown-alert-warning > .markdown-alert-title { color: var(--ink); }
 
-@container sheet (min-width: 60rem) {
+@container sheet (min-width: 54rem) {
   .md-viewer {
     padding-right: 17rem;
     max-width: calc(var(--measure) + 17rem);
