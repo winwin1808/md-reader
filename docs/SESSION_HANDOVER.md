@@ -1,80 +1,58 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-09-22 (phiên 12). Branch: `main` / `master` (Phase 1-5 đã merge hoàn toàn vào main và master).
+Cập nhật: 2026-10-24. Branch: `phase-7` (xếp chồng trên `phase-6`).
 
 ## Đang ở đâu
 
-**Phase 1 đến Phase 5 đã hoàn tất và đã merge 100% vào `main` và `master`!**
-Đồng thời đã hoàn thiện sửa lỗi đồng bộ cài đặt đa file, cô lập IndexedDB theo URL, ưu tiên lưu trữ local, đảm bảo hiển thị widget nổi 📖 ở mọi link/file .md, phân định rõ ràng `autoFormatMd` vs `alwaysOpenApp` (mặc định `alwaysOpenApp: false`).
-Vừa hoàn tất tinh chỉnh: Căn đều 2 mép lề 100% cho mọi bảng biểu (Table 100% Margin Justified & Responsive Wrapper), loại bỏ triệt để hiện tượng chiều dài bảng lồi lõm không đều nhau trên trang A4.
+- **Phase 6 (Gia cố) đã ship**: MR https://github.com/winwin1808/md-reader/pull/1
+  (`phase-6` → `main`), **mở, chưa merge** — chờ người duyệt. 30 phase con 6a..6l.
+- **Phase 7 (Giao diện Lề sách + logo)** đang chạy: spec
+  `docs/superpowers/specs/2026-10-24-phase-7-design.md`, intent
+  `docs/superpowers/intent/2026-10-24-phase-7-le-sach.md`. Hàng đợi 7a1..7s2 trong spec.
+- **Phase 8 (Chia sẻ & cộng tác)** chưa bắt đầu; xếp chồng trên `phase-7`.
 
-| # | Phase con | Trạng thái |
-|---|---|---|
-| 5a | `Editor` component CodeMirror 6 (`y-codemirror.next`, `Y.Text "source"`, `Y.UndoManager`) | ✅ done |
-| 5b | File System Access API (`file-system.ts`, IndexedDB handle persistence, Open/Save/Save As) | ✅ done |
-| 5c | Phát hiện xung đột & Hộp thoại 3-Way Diff (`computeLineDiff`, `detectConflict`, `ConflictModal`) | ✅ done |
-| 5d | Thanh công cụ `FormattingToolbar` & phím tắt Markdown thông minh, tự tiếp tục danh sách khi Enter | ✅ done |
-| 5e | Container 3 chế độ xem `SplitViewContainer` (Reading/Editor/Split) & 2-way synchronized scrolling | ✅ done |
-| 5f | Pipeline lưu đĩa `App.tsx`: `Cmd+S`, dot `•`, `formatMarkdown`, debounced auto-save, history checkpoint | ✅ done |
-| 5g | Bộ kiểm thử tích hợp E2E Smoke Tests toàn diện cho toàn bộ Phase 5 (`apps/extension/e2e/editor.spec.ts`) | ✅ done |
+Cách chạy tiếp: mở spec phase 7, lấy phase con đầu tiên còn `pending`/`planned`, gọi
+`plan-from-design` (hoặc `build-from-plan` nếu plan đã có). Model: subagent chỉ
+sonnet (builder, reviewer, spiker) / haiku (guard); opus chỉ ở main loop cho spec/plan/quyết định.
 
-Specs & Intent tương ứng:
-- `docs/superpowers/intent/2026-09-14-phase-5-editing.md`
-- `docs/superpowers/specs/2026-09-14-phase-5-editing-design.md`
-- Các plans: `docs/superpowers/plans/2026-09-14-phase-5-5{a,b,c,d,e,f,g}-plan.md`
-
-## Trạng thái xanh lúc dừng (đo thật, không phải nhớ)
+## Trạng thái xanh lúc ship phase 6 (đo thật)
 
 ```
-packages/core test        12 test files, 133 passed
-packages/ui test          25 test files, 207 passed
-apps/extension test       12 test files, 65 passed
-Tổng cộng                 49 test files, 405 passed (0 failed)
+packages/core test        182 passed
+packages/ui test          215 passed
+apps/extension test       169 passed
 pnpm -r typecheck         exit 0
 pnpm -r build             exit 0
-dist/content.js           30.58 kB, gz 11.66 kB (giới hạn 61.44 kB / 60KB)
+pnpm --filter extension e2e   3 passed (Playwright, Chromium load-unpacked)
+dist/content.js           gz 11 763 B (giới hạn 61 440 B)
+dist/app.js               gz ~408 kB (KaTeX trong chunk chính — hoãn tối ưu)
 ```
 
-## Tính năng đã hoàn tất ở Phase 5
+## Phase 6 đã làm gì (tóm tắt)
 
-1. **CodeMirror 6 Core & Yjs 2-way Binding (`Editor`):**
-   - Tích hợp `@codemirror/view`, `@codemirror/state`, `@codemirror/lang-markdown`, `@codemirror/language`.
-   - Kết nối 2 chiều với `Y.Text "source"` và `Y.UndoManager` thông qua `y-codemirror.next`.
-   - Hỗ trợ `onEditorReady`, `editorViewRef` để thao tác và kiểm tra vùng chọn chính xác.
+Delta nhỏ nhất khi ghi Y.Text · tách App.tsx thành hook · mở file an toàn (whenSynced +
+originHash, banner khi file ngoài đổi) · `formatVersion: 2` + migration · registry `docId`
+(`?doc=<id>`) mỗi doc một IDB · handle theo doc, xin lại quyền, "Mở file…" · diff 3 chiều thật ·
+rehype plugin trước sanitize + `clobberPrefix` · manifest `storage`+`activeTab` · debounce
+120ms, cache mermaid, Myers diff, chunk lazy · math KaTeX · checkpoint `clientIds` +
+snapshot · Playwright smoke · 6l: `meta.remoteHash` tách mốc URL khỏi mốc đĩa, Cmd+S xin quyền,
+flush khi `pagehide`.
 
-2. **File System Access API & IndexedDB Handle Persistence:**
-   - Hỗ trợ lưu trực tiếp về file gốc trên đĩa thông qua `FileSystemFileHandle` (`saveToHandle`, `openLocalFile`, `saveFileAs`).
-   - Lưu handle an toàn vào IndexedDB (`idb-handle.ts`), tự động khôi phục và xác thực quyền khi mở lại.
+## Món nợ đang mở
 
-3. **Phát hiện Xung đột & Hộp thoại 3-Way Diff (`ConflictModal`):**
-   - Thuật toán `computeLineDiff` (LCS DP) và `detectConflict` theo SHA-256 `originHash` trong `@md-reader/core`.
-   - Giao diện `ConflictModal` toàn màn hình với nền mờ, hiển thị song song hai bản (Cục bộ vs Ngoài đĩa) tô màu trực quan (xanh lá cho thêm mới, đỏ cho xóa).
-   - Hai lựa chọn an toàn: "Giữ bản sửa của tôi (Ghi đè)" hoặc "Tải lại từ đĩa (Bỏ thay đổi)".
+- Flake IDB `TransactionInactiveError` ~1/10 lượt `pnpm --filter extension test` (file test
+  khác `useFileSave`) → phase con 7s1.
+- Tên file hoa-thường lẫn lộn (`Readme.Md`) không khớp pattern của Chrome; trang localhost
+  không đuôi `.md` không có widget. Word xuất công thức dạng TeX thô.
+- Hai tab cùng mở một URL mới lần đầu có thể cùng import (race hẹp) → phase 8.
 
-4. **Thanh công cụ Định dạng & Phím tắt Markdown (`FormattingToolbar`):**
-   - 14 thao tác định dạng: Bold, Italic, Strike, Heading 1-3, Bullet list, Numbered list, Task list, Blockquote, Inline code, Code block, Math, Link, Table.
-   - Giữ nguyên vùng chọn text sau khi áp dụng định dạng.
-   - Tự động tiếp tục bullet/number/task list khi nhấn Enter; tự động thoát danh sách khi nhấn Enter ở dòng trống.
+## Công cụ cục bộ (không commit)
 
-5. **3 Chế độ Xem & Cuộn Đồng bộ 2 Chiều (`SplitViewContainer`):**
-   - 3 chế độ xem: Chế độ Đọc (Reading), Soạn thảo (Editor), Chia đôi 50:50 (Split View).
-   - Cuộn đồng bộ 2 chiều (Synchronized Scrolling) giữa Editor và Live Preview theo tỉ lệ tiến độ cuộn.
-   - Cơ chế bảo vệ `syncingTargetRef` kết hợp hủy `cancelAnimationFrame` ngăn ngừa vòng lặp phản hồi cuộn vô tận và không bị drop scroll khi người dùng thao tác nhanh.
+- `.git/mdr-gate.sh <pkg...>` — test các package + typecheck + build, in tóm tắt.
+- `.git/mdr-merge.sh <sub> <branch> "<tóm tắt>"` — đánh dấu plan reviewed, merge --no-ff
+  vào `phase-$PHASE` (mặc định 6 → đặt `PHASE=7` cho phase 7), đánh dấu spec done.
 
-6. **Tích hợp Lưu đĩa Toàn diện trong `App.tsx`:**
-   - Phím tắt toàn cục `Cmd+S` / `Ctrl+S`.
-   - Chỉ báo tài liệu chưa lưu `•` (`.dirty-indicator`) cạnh tiêu đề file.
-   - Tự động định dạng Markdown trước khi lưu (`formatMarkdown`).
-   - Ghi lại checkpoint lịch sử `appendHistory` vào `Y.Array "history"`.
-   - Debounced auto-save sau 2000ms khi đã có file handle.
-   - Concurrency guard `isSavingRef` chống xung đột gọi lưu song song và bảo vệ dữ liệu gõ trong lúc đang ghi đĩa.
+## Đã cũ
 
-7. **Bộ Kiểm thử E2E Smoke Tests Toàn diện (`editor.spec.ts`):**
-   - Kịch bản end-to-end kiểm tra toàn bộ hành trình người dùng: chuyển đổi chế độ xem, bôi đen định dạng bold, gõ nội dung mới cập nhật live preview, lưu Cmd+S, giả lập file ngoài đĩa bị sửa, mở hộp thoại ConflictModal và giải quyết xung đột bằng ghi đè.
-
-## Phase tiếp theo
-
-- **Phase 6 (Chia sẻ & Cộng tác)**:
-  - Chia sẻ link xem tài liệu.
-  - Cộng tác thời gian thực qua WebRTC / WebSocket provider của Yjs.
-  - Awareness / hiển thị con trỏ của người khác và lịch sử sửa đổi (trace ai sửa chỗ nào).
+- Bản handover cũ (2026-09-22) nói "Phase 6 = Chia sẻ" — sai; đánh số mới: 6 Gia cố,
+  7 Lề sách, 8 Chia sẻ & cộng tác.
