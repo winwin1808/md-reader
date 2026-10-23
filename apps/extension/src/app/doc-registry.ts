@@ -58,6 +58,7 @@ function done(tx: IDBTransaction): Promise<void> {
 
 export async function __resetForTests(): Promise<void> {
   migrationPromise = null
+  inFlightByOrigin.clear()
   if (dbPromise) {
     try { (await dbPromise).close() } catch { /* ignore */ }
     dbPromise = null
@@ -107,6 +108,45 @@ export async function createRecord(init: {
   }
   await putRecord(record)
   return record
+}
+
+const inFlightByOrigin = new Map<string, Promise<DocRecord>>()
+
+export function findOrCreateByOrigin(init: {
+  title: string
+  originKind: OriginKind
+  originPath: string
+  persistenceName?: string
+  lastOpenedAt?: number
+}): Promise<DocRecord> {
+  const existing = inFlightByOrigin.get(init.originPath)
+  if (existing) return existing
+  const p = (async () => {
+    const db = await openDb()
+    const tx = db.transaction('docs', 'readwrite')
+    const store = tx.objectStore('docs')
+    const found = (await req(store.index('originPath').get(init.originPath))) as DocRecord | undefined
+    let record: DocRecord
+    if (found) {
+      record = found
+    } else {
+      const docId = crypto.randomUUID()
+      record = {
+        docId,
+        title: init.title,
+        originKind: init.originKind,
+        originPath: init.originPath,
+        persistenceName: init.persistenceName ?? `md-reader-doc-${docId}`,
+        lastOpenedAt: init.lastOpenedAt ?? Date.now(),
+        hasHandle: false,
+      }
+      store.put(record)
+    }
+    await done(tx)
+    return record
+  })().finally(() => { inFlightByOrigin.delete(init.originPath) })
+  inFlightByOrigin.set(init.originPath, p)
+  return p
 }
 
 export async function touchRecord(docId: string, patch?: Partial<Omit<DocRecord, 'docId'>>): Promise<void> {
@@ -181,13 +221,13 @@ async function runMigration(): Promise<number> {
       continue
     }
     if (await findByOrigin(e.id)) continue
-    const rec = await createRecord({
+    await findOrCreateByOrigin({
       title: e.name,
       originKind: 'url',
       originPath: e.id,
       persistenceName: `md-reader-${encodeURIComponent(e.id)}`,
+      ...(typeof e.lastOpened === 'number' ? { lastOpenedAt: e.lastOpened } : {}),
     })
-    if (typeof e.lastOpened === 'number') await putRecord({ ...rec, lastOpenedAt: e.lastOpened })
     created++
   }
 

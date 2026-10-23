@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT } from '@md-reader/core'
-import { findByOrigin, getRecord, createRecord, touchRecord, migrateLegacyRegistry } from '../doc-registry'
+import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
 
 let migrationOnce: Promise<unknown> | null = null
@@ -54,13 +54,11 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
             return
           }
         } else if (fileUrlParam) {
-          rec =
-            (await findByOrigin(fileUrlParam)) ??
-            (await createRecord({
-              title: decodeURIComponent(fileUrlParam.split('/').pop() || 'Untitled.md'),
-              originKind: 'url',
-              originPath: fileUrlParam,
-            }))
+          rec = await findOrCreateByOrigin({
+            title: decodeURIComponent(fileUrlParam.split('/').pop() || 'Untitled.md'),
+            originKind: 'url',
+            originPath: fileUrlParam,
+          })
           try {
             window.history.replaceState(null, '', '?doc=' + rec.docId)
           } catch {
