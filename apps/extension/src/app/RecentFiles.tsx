@@ -1,31 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { getRecentFiles } from './registry';
+import { listRecent } from './doc-registry';
+import type { DocRecord } from './doc-registry';
 
 export function RecentFiles(): React.JSX.Element {
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<DocRecord[]>([]);
 
   useEffect(() => {
-    const fetchFiles = () => {
-      getRecentFiles().then(setFiles).catch(console.error);
-    };
-    fetchFiles();
-
-    const listener = (changes: any, areaName: string) => {
-      if (areaName === 'local' && changes.recentFiles) {
-        fetchFiles();
-      }
-    };
-    
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-      chrome.storage.onChanged.addListener(listener);
-      return () => chrome.storage.onChanged.removeListener(listener);
-    }
+    listRecent().then(setFiles).catch(console.error);
   }, []);
 
-  const handleClick = (file: any) => {
-    if (file?.id) {
-      window.location.href = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(file.id))
-    }
+  const handleClick = (file: DocRecord) => {
+    window.location.href = chrome.runtime.getURL('app.html') + '?doc=' + encodeURIComponent(file.docId);
   };
 
   if (files.length === 0) return <></>;
@@ -35,8 +20,8 @@ export function RecentFiles(): React.JSX.Element {
       <h3>Recent Files</h3>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {files.map((file) => (
-          <li key={file.id} onClick={() => handleClick(file)} style={{ cursor: 'pointer', marginBottom: '5px' }}>
-            {file.name}
+          <li key={file.docId} onClick={() => handleClick(file)} style={{ cursor: 'pointer', marginBottom: '5px' }}>
+            {file.title}
           </li>
         ))}
       </ul>

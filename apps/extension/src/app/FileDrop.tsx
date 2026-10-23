@@ -1,15 +1,17 @@
 import React, { useCallback } from 'react';
 import type { DragEvent } from 'react';
-import * as Y from 'yjs';
-import { applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core';
-import { addRecentFile } from './registry';
+import { createRecord, writeDocText } from './doc-registry';
 
 interface FileDropProps {
-  doc: Y.Doc;
   children: React.ReactNode;
+  navigate?: (url: string) => void;
 }
 
-export function FileDrop({ doc, children }: FileDropProps): React.JSX.Element {
+const defaultNavigate = (url: string): void => {
+  location.assign(url);
+};
+
+export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps): React.JSX.Element {
   const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   }, []);
@@ -31,26 +33,18 @@ export function FileDrop({ doc, children }: FileDropProps): React.JSX.Element {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const content = event.target?.result as string;
-        if (typeof content === 'string') {
-          const source = doc.getText('source');
-          const meta = doc.getMap('meta');
-          doc.transact(() => {
-            applyTextChange(source, content);
-            meta.set('name', file.name);
-            meta.set('size', file.size);
-          }, ORIGIN_LOAD);
-          meta.set('originHash', await hashText(content));
-
-          addRecentFile({
-            id: file.name,
-            name: file.name,
-            lastOpened: Date.now(),
-          }).catch(console.error);
+        if (typeof content !== 'string') return;
+        try {
+          const record = await createRecord({ title: file.name, originKind: 'drop', originPath: null });
+          await writeDocText(record, content, 'replace');
+          navigate('?doc=' + record.docId);
+        } catch (err) {
+          console.error('Failed to import dropped file', err);
         }
       };
       reader.readAsText(file);
     },
-    [doc]
+    [navigate]
   );
 
   return (
