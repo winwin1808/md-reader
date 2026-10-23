@@ -7,6 +7,8 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
+import * as deckMod from '@md-reader/ui/deck'
+import * as docxMod from '@md-reader/core/docx'
 import type { ReaderSettings } from '@md-reader/ui'
 import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
 import * as fsSystem from './fs/file-system'
@@ -128,12 +130,22 @@ describe('App', () => {
     window.URL.revokeObjectURL = vi.fn()
   })
 
+  it('shows a visible, dismissible error when export fails', async () => {
+    vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
+    await act(async () => { render(<App />) })
+    await act(async () => { fireEvent.click(screen.getByTitle('Xuất tài liệu')) })
+    await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
+    expect(await screen.findByText('Không xuất được tệp: boom')).toBeDefined()
+    await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
+    expect(screen.queryByText('Không xuất được tệp: boom')).toBeNull()
+  })
+
   it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
-    const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
+    const docxSpy = vi.spyOn(docxMod, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
     let lastDownloaded = ''
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       lastDownloaded = this.download
@@ -479,7 +491,7 @@ describe('App', () => {
       text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
     } as any)
 
-    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
+    const deckSpy = vi.spyOn(deckMod, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
 
     await act(async () => {
       render(<App />)
@@ -511,7 +523,7 @@ describe('App', () => {
       text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
     } as any)
 
-    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
+    const deckSpy = vi.spyOn(deckMod, 'Deck').mockImplementation(() => <div data-testid="mock-deck">Deck</div>)
 
     await act(async () => {
       render(<App />)
@@ -543,7 +555,7 @@ describe('App', () => {
     } as any)
 
     let capturedDeckProps: any = null
-    const deckSpy = vi.spyOn(ui, 'Deck').mockImplementation((props: any) => {
+    const deckSpy = vi.spyOn(deckMod, 'Deck').mockImplementation((props: any) => {
       capturedDeckProps = props
       return <div data-testid="mock-deck">Mock Deck</div>
     })
@@ -708,7 +720,7 @@ describe('App', () => {
     })
 
     let capturedDeckProps: any = null
-    vi.spyOn(ui, 'Deck').mockImplementation((props: any) => {
+    vi.spyOn(deckMod, 'Deck').mockImplementation((props: any) => {
       capturedDeckProps = props
       return <div data-testid="mock-deck" />
     })

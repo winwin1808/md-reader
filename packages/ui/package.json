@@ -5,8 +5,12 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./editor": "./src/components/Editor.tsx",
+    "./split-view": "./src/components/SplitViewContainer.tsx",
+    "./deck": "./src/components/Deck.tsx"
   },
+  "sideEffects": ["**/*.css"],
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
