@@ -494,16 +494,29 @@ export function MindmapModal({
                       stroke={n.color}
                       strokeWidth={1.5}
                     />
-                    <text
-                      className={isCollapsed ? 'mindmap-collapsed-badge' : undefined}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fill={isCollapsed ? '#ffffff' : n.color}
-                      fontSize={isCollapsed ? 9 : 11}
-                      fontWeight="bold"
-                    >
-                      {isCollapsed ? `+${n.node.children.length}` : '-'}
-                    </text>
+                    {isCollapsed ? (
+                      <text
+                        className="mindmap-collapsed-badge"
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#ffffff"
+                        fontSize={9}
+                        fontWeight="bold"
+                      >
+                        {`+${n.node.children.length}`}
+                      </text>
+                    ) : (
+                      <line
+                        x1={-4}
+                        x2={4}
+                        y1={0}
+                        y2={0}
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        style={{ color: n.color }}
+                      />
+                    )}
                   </g>
                 )}
               </g>

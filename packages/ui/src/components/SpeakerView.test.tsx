@@ -55,9 +55,9 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText(/Slide 1 \/ 3/)).not.toBeNull()
-    const prevBtn = screen.getByRole('button', { name: /← Trước/i }) as HTMLButtonElement
-    const nextBtn = screen.getByRole('button', { name: /Tiếp →/i }) as HTMLButtonElement
+    expect(screen.getByText(/Trang 1 \/ 3/)).not.toBeNull()
+    const prevBtn = screen.getByRole('button', { name: /Trước/i }) as HTMLButtonElement
+    const nextBtn = screen.getByRole('button', { name: /Tiếp/i }) as HTMLButtonElement
 
     expect(prevBtn.disabled).toBe(true)
     expect(nextBtn.disabled).toBe(false)
@@ -70,9 +70,9 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={2} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText(/Slide 3 \/ 3/)).not.toBeNull()
-    const prevBtn = screen.getByRole('button', { name: /← Trước/i }) as HTMLButtonElement
-    const nextBtn = screen.getByRole('button', { name: /Tiếp →/i }) as HTMLButtonElement
+    expect(screen.getByText(/Trang 3 \/ 3/)).not.toBeNull()
+    const prevBtn = screen.getByRole('button', { name: /Trước/i }) as HTMLButtonElement
+    const nextBtn = screen.getByRole('button', { name: /Tiếp/i }) as HTMLButtonElement
 
     expect(prevBtn.disabled).toBe(false)
     expect(nextBtn.disabled).toBe(true)
@@ -85,11 +85,11 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText('SLIDE HIỆN TẠI')).not.toBeNull()
+    expect(screen.getByText('TRANG HIỆN TẠI')).not.toBeNull()
     expect(screen.getByText('Slide 1 Title')).not.toBeNull()
     expect(screen.getByText('First slide body')).not.toBeNull()
 
-    expect(screen.getByText('SLIDE KẾ TIẾP')).not.toBeNull()
+    expect(screen.getByText('TRANG TIẾP THEO')).not.toBeNull()
     expect(screen.getByText('Slide 2 Title')).not.toBeNull()
   })
 
@@ -164,7 +164,7 @@ describe('SpeakerView', () => {
     fireEvent.keyDown(input, { key: 'ArrowRight' })
     expect(onSlideChange).not.toHaveBeenCalled()
 
-    const btn = screen.getByRole('button', { name: /← Trước/i })
+    const btn = screen.getByRole('button', { name: /Trước/i })
     btn.focus()
     fireEvent.keyDown(btn, { key: 'ArrowRight' })
     expect(onSlideChange).not.toHaveBeenCalled()

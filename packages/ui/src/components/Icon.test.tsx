@@ -27,9 +27,28 @@ describe('Icon', () => {
   })
 
   it('toolbar, deck and mindmap sources contain no emoji or glyph icons', () => {
-    for (const f of ['TopToolbar.tsx', 'Deck.tsx', 'MindmapModal.tsx']) {
+    for (const f of ['TopToolbar.tsx', 'Deck.tsx', 'MindmapModal.tsx', 'SpeakerView.tsx']) {
       const src = readFileSync(join(__dirname, f), 'utf8')
       expect(src, f).not.toMatch(/\p{Extended_Pictographic}|[←→⛶◫☑⊞⊟✕✍−]/u)
+    }
+  })
+
+  it('save differs from export, speaker differs from present, coordinates within 0..24', () => {
+    const dOf = (name: Parameters<typeof Icon>[0]['name']) => {
+      const { container, unmount } = render(<Icon name={name} />)
+      const ds = [...container.querySelectorAll('path')].map((p) => p.getAttribute('d')!)
+      unmount()
+      return ds
+    }
+    expect(dOf('save').join('|')).not.toBe(dOf('export').join('|'))
+    expect(dOf('speaker').join('|')).not.toBe(dOf('present').join('|'))
+    for (const name of ICON_NAMES) {
+      for (const d of dOf(name)) {
+        for (const n of d.match(/-?\d*\.?\d+/g) ?? []) {
+          const v = Math.abs(parseFloat(n))
+          expect(v, `${name}: ${d}`).toBeLessThanOrEqual(24)
+        }
+      }
     }
   })
 })
