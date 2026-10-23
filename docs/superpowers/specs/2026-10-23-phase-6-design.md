@@ -1,5 +1,5 @@
 # Design: Phase 6 — Gia cố (Hardening)
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 6
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 6
 Intent: docs/superpowers/intent/2026-10-23-phase-6-gia-co.md
 Facts: docs/research/2026-10-23-phase-6-codemap.md (line numbers below refer to it, branch `phase-6` @ 128894a)
 
