@@ -217,11 +217,17 @@ describe('prefixed ids', () => {
   })
   test('footnote target id exists exactly once', () => {
     const { html } = renderToHtml(parseMarkdown('a[^1]\n\n[^1]: n'))
-    const m = html.match(/<a href="#([^"]+)"[^>]*data-footnote-ref/) ?? html.match(/href="#([^"]*fn-1)"/)
+    const m = html.match(/<a[^>]*href="#([^"]+)"[^>]*data-footnote-ref/) ?? html.match(/<a[^>]*data-footnote-ref[^>]*href="#([^"]+)"/)
     expect(m).not.toBeNull()
-    let id = m![1]!
-    if (!id.startsWith('user-content-')) id = 'user-content-' + id
+    const id = m![1]!
     expect(html.split(`id="${id}"`).length - 1).toBe(1)
+  })
+  test('fragment hrefs are prefixed, others untouched', () => {
+    const { html } = renderToHtml(parseMarkdown('[go](#sec) [x](#user-content-x) [e](https://e.com/#a)'))
+    expect(html).toContain('href="#user-content-sec"')
+    expect(html).toContain('href="#user-content-x"')
+    expect(html).not.toContain('user-content-user-content')
+    expect(html).toContain('href="https://e.com/#a"')
   })
   test('foreignObject is stripped', () => {
     const { html } = renderToHtml(parseMarkdown('<svg><foreignObject><div>x</div></foreignObject></svg>'), { allowRawHtml: true })

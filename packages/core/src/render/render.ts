@@ -1,7 +1,7 @@
 import type { Root } from 'mdast'
 import { Slugger } from './slug.js'
 import type { TocEntry, RenderOptions, RenderResult } from './types.js'
-import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets } from './plugins.js'
+import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets, rehypePrefixFragmentLinks } from './plugins.js'
 
 export const HEADING_ID_PREFIX = 'user-content-'
 
@@ -149,6 +149,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     processor.use(rehypeMetadataCard, parsed.frontmatter as Record<string, unknown>)
   }
 
+  processor.use(rehypePrefixFragmentLinks, HEADING_ID_PREFIX)
   processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
