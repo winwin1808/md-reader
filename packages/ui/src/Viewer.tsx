@@ -50,42 +50,39 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     const container = containerRef.current
     if (!container) return
 
-    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
-    const headingsWithId = Array.from(headings).filter(h => h.id)
-
+    const headingsWithId = Array.from(container.querySelectorAll('h1, h2, h3')).filter(h => h.id)
     if (headingsWithId.length === 0) return
 
+    let root: Element | null = null
+    for (let el = container.parentElement; el; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY
+      if (oy === 'auto' || oy === 'scroll') { root = el; break }
+    }
+
+    const intersecting = new Set<string>()
     let activeId: string | null = null
     const observer = new IntersectionObserver((entries) => {
-      let newActiveId = activeId
-      let changed = false
-
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          newActiveId = entry.target.id
-          changed = true
-        } else if (entry.target.id === activeId && entry.boundingClientRect.top > 0) {
-          // Scrolled up, heading exited downwards
-          const idx = headingsWithId.findIndex(h => h.id === activeId)
-          if (idx > 0) {
-            const prev = headingsWithId[idx - 1]; if (prev) newActiveId = prev.id
-            changed = true
-          } else {
-            newActiveId = null
-            changed = true
-          }
-        }
+        if (entry.isIntersecting) intersecting.add(entry.target.id)
+        else intersecting.delete(entry.target.id)
       })
-
-      if (changed) {
-        activeId = newActiveId
-        if (onChangeRef.current) {
-          onChangeRef.current(activeId)
+      let next: string | null = null
+      for (const h of headingsWithId) {
+        if (intersecting.has(h.id)) next = h.id
+      }
+      if (next === null) {
+        const rootTop = root ? root.getBoundingClientRect().top : 0
+        const rootH = root ? root.getBoundingClientRect().height : window.innerHeight
+        const line = rootTop + rootH * 0.3
+        for (const h of headingsWithId) {
+          if (h.getBoundingClientRect().top <= line) next = h.id
         }
       }
-    }, {
-      rootMargin: '0px 0px -80% 0px'
-    })
+      if (next !== activeId) {
+        activeId = next
+        onChangeRef.current?.(activeId)
+      }
+    }, { root, rootMargin: '0px 0px -70% 0px', threshold: 0 })
 
     headingsWithId.forEach(h => observer.observe(h))
 
