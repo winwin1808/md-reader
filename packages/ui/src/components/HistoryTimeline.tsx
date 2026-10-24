@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, JSX } from 'react'
 import type { HistoryEntry } from '@md-reader/core'
 
@@ -17,6 +17,7 @@ export function historyLabel(label: string): string {
   if (label === 'save') return 'Đã lưu'
   if (label === 'auto') return 'Tự động lưu mốc'
   if (label === 'import') return 'Nhập'
+  if (label.startsWith('Khôi phục: ')) return 'Khôi phục: ' + historyLabel(label.slice('Khôi phục: '.length))
   return label
 }
 
@@ -26,16 +27,19 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
   const { entries, actors, previewId, onPreview, onRestore, onClose } = props
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const sorted = useMemo(() => [...entries].sort((a, b) => b.ts - a.ts), [entries])
 
-  const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     const items = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])
-    const idx = items.indexOf(document.activeElement as HTMLElement)
+    const row = (document.activeElement as HTMLElement | null)?.closest('[role="option"]') as HTMLElement | null
+    const idx = row ? items.indexOf(row) : -1
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       const next = Math.max(0, Math.min(items.length - 1, idx + (e.key === 'ArrowDown' ? 1 : -1)))
       items[next]?.focus()
     } else if (e.key === 'Enter') {
+      if ((e.target as HTMLElement).tagName === 'BUTTON') return
       const entry = sorted[idx]
       if (entry && entry.snapshot) {
         e.preventDefault()
@@ -48,16 +52,22 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
     }
   }
 
+  useEffect(() => {
+    const items = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]')
+    const target = listRef.current?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]') ?? items?.[0] ?? closeRef.current
+    target?.focus()
+  }, [])
+
   return (
-    <aside className="history-panel" aria-label="Lịch sử">
+    <aside className="history-panel" aria-label="Lịch sử" onKeyDown={onKeyDown}>
       <header className="history-panel__head">
         <h2>Lịch sử</h2>
-        <button type="button" aria-label="Đóng lịch sử" onClick={onClose}>×</button>
+        <button type="button" ref={closeRef} aria-label="Đóng lịch sử" onClick={onClose}>×</button>
       </header>
       {sorted.length === 0 ? (
         <p>Chưa có mốc nào.</p>
       ) : (
-        <ul role="listbox" aria-label="Các mốc" ref={listRef} onKeyDown={onKeyDown}>
+        <ul role="listbox" aria-label="Các mốc" ref={listRef}>
           {sorted.map((en) => {
             const others = Array.from(
               new Set(

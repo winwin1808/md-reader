@@ -90,4 +90,19 @@ describe('HistoryTimeline', () => {
     expect(historyLabel('import')).toBe('Nhập')
     expect(historyLabel('x')).toBe('x')
   })
+  it('(d) Escape trên nút đóng gọi onClose', () => {
+    const { container, props } = setup()
+    fireEvent.keyDown(container.querySelector('[aria-label="Đóng lịch sử"]')!, { key: 'Escape' })
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+  it('(e) ArrowDown từ nút Xem của hàng đầu focus hàng thứ hai', () => {
+    const { container } = setup()
+    const b = btn(opts(container)[0]!, 'Xem')
+    b.focus()
+    fireEvent.keyDown(b, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(opts(container)[1])
+  })
+  it('(f) historyLabel Khôi phục', () => {
+    expect(historyLabel('Khôi phục: save')).toBe('Khôi phục: Đã lưu')
+  })
 })

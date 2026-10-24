@@ -1706,6 +1706,43 @@ describe('App', () => {
       expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
       expect(document.body.textContent).toContain('Bản sau')
     })
+    it('(a) Xem/Thoát xem không đổi doc, history, dirty', async () => {
+      await loadDoc(); await seed(); await openPanel()
+      const d = lastSession.s.doc
+      const src = d.getText('source').toString()
+      const len = core.listHistory(d).length
+      const dirtyBefore = document.querySelector('.dirty-indicator') !== null
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
+      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      expect(d.getText('source').toString()).toBe(src)
+      expect(core.listHistory(d).length).toBe(len)
+      expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
+    })
+    it('(b) chế độ editor: Xem hiện banner + bản cũ, Thoát xem trả editor', async () => {
+      await loadDoc(); await seed()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+      await openPanel()
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      expect(screen.getByText(/Đây là bản chỉ đọc/)).toBeTruthy()
+      expect(document.body.textContent).toContain('Bản đầu')
+      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+    })
+    it('(c) tên actor độc hại chỉ là text', async () => {
+      await loadDoc(); await seed()
+      const d = lastSession.s.doc
+      const hostile = '<img src=x onerror=alert(1)>'
+      await act(async () => { d.getMap('meta').set('actors', { [String(d.clientID)]: hostile }) })
+      await openPanel()
+      const panel = document.querySelector('.history-panel')!
+      expect(panel.querySelector('img')).toBeNull()
+      expect(panel.textContent).toContain(hostile)
+    })
     it('Khôi phục có xác nhận đổi text, lịch sử tăng đúng 1, không trùng auto', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       await loadDoc(); await seed(); await openPanel()
