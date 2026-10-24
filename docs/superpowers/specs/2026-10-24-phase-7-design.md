@@ -358,6 +358,13 @@ code. Report: bytes gz, top 5 contributors, and whether `renderToHtml` can be ca
 without pulling `rehype-highlight`/`katex` (import graph). Decision rule recorded in this
 spec: ≤ 50 KB gz → 7o builds; otherwise 7o = Deferred to 8x.
 
+
+**7n result (2026-10-24, spiker):** content + parse/render with highlight/math off at runtime = 282.5 KB gz; with
+rehype-highlight and rehype-katex mocked = 152.9 KB gz. Static imports in core/render/render.ts (rehype-raw → parse5,
+rehype-highlight → highlight.js, rehype-katex → katex) and core/parse (yaml) are kept regardless of runtime flags.
+Verdict: FAIL vs 50 KB. **7o → Deferred to phase 8x**, preceded by a core change: plugins injected by the caller
+(`renderToHtml(parsed, { plugins })`) and yaml loaded only when frontmatter exists; re-measure before building.
+
 ### 7o — (conditional on 7n) in-place reading in the content script
 FILES `apps/extension/src/content/index.ts` · `ContentApp.tsx` · `content.css` ·
 `apps/extension/src/content/render.ts` (new; wraps core render without highlight/math) ·
@@ -449,8 +456,8 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7l1: done
 - 7l2: done
 - 7m: done
-- 7n: pending
-- 7o: pending
+- 7n: done
+- 7o: deferred (7n: 152.9 KB gz > 50)
 - 7p1: pending
 - 7p2: pending
 - 7q1: pending
