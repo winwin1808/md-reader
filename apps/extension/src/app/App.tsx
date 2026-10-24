@@ -1,3 +1,4 @@
+import { docQuery } from './doc-registry'
 import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import {
   ThemeProvider,
@@ -128,11 +129,11 @@ export function App(): React.JSX.Element {
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
   const [urlParams] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
-    return { docId: sp.get('doc'), fileUrl: sp.get('file'), kept: sp.get('kept') === '1' }
+    return { docId: sp.get('doc'), shortParam: sp.get('d'), fileUrl: sp.get('file'), kept: sp.get('kept') === '1' }
   })
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
-  const session = useDocSession({ docId: urlParams.docId, fileUrl: urlParams.fileUrl })
+  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
@@ -243,7 +244,7 @@ export function App(): React.JSX.Element {
   const handleOpenFile = async () => {
     try {
       const res = await openLocalFileAsDoc()
-      if (res) window.location.assign('?doc=' + res.docId + (res.kept ? '&kept=1' : ''))
+      if (res) window.location.assign((await docQuery(res.docId)) + (res.kept ? '&kept=1' : ''))
     } catch (err) {
       setError((err as Error)?.message || 'Không mở được file.')
     }
@@ -473,15 +474,12 @@ export function App(): React.JSX.Element {
             setCurrentSlideIndex(idx)
             channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
           }}
-          onOpenSpeakerView={() =>
-            window.open(
-              window.location.pathname +
-                (session.docId
-                  ? '?doc=' + encodeURIComponent(session.docId) + '&speaker=true'
-                  : '?speaker=true' + (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : '')),
-              'md-speaker',
-              'width=1080,height=680'
-            )
+          onOpenSpeakerView={async () => {
+            const q = session.docId
+              ? (await docQuery(session.docId)) + '&speaker=true'
+              : '?speaker=true' + (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : '')
+            window.open(window.location.pathname + q, 'md-speaker', 'width=1080,height=680')
+          }
           }
           mode={themeMode}
           presentationSettings={{
