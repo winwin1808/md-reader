@@ -64,29 +64,79 @@ describe('MindmapModal', () => {
     expect(paths.length).toBe(3) // 3 connections: root->sec1, root->sec2, sec1->subsec1.1
   })
 
-  it('assigns branch colors to branches and descendants inherit ancestor branch color', () => {
-    render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
-
-    const paths = document.querySelectorAll('path.mindmap-branch')
-    // root -> sec1
-    expect(paths[0]?.getAttribute('stroke')).toBe('#2563eb')
-    // sec1 -> subsec1.1 (inherits #2563eb)
-    expect(paths[1]?.getAttribute('stroke')).toBe('#2563eb')
-    // root -> sec2 (2nd top-level branch gets #10b981)
-    expect(paths[2]?.getAttribute('stroke')).toBe('#10b981')
+  it('assigns Lề sách tones: depth-1 branches cycle accent, ok, danger, pencil; descendants inherit', () => {
+    const tree: MindNode = {
+      id: 'r',
+      text: 'R',
+      depth: 0,
+      children: [0, 1, 2, 3, 4].map((i) => ({
+        id: `b${i}`,
+        text: `B${i}`,
+        depth: 1,
+        children: i === 0 ? [{ id: 'c', text: 'C', depth: 2, children: [] }] : [],
+      })),
+    }
+    render(<MindmapModal root={tree} isOpen={true} onClose={vi.fn()} />)
+    const strokes = Array.from(document.querySelectorAll('path.mindmap-branch')).map((p) =>
+      p.getAttribute('stroke')
+    )
+    // layout order: r->b0, b0->c, r->b1 ... r->b4
+    expect(strokes).toEqual([
+      'var(--accent)',
+      'var(--accent)',
+      'var(--ok)',
+      'var(--danger)',
+      'var(--pencil)',
+      'var(--accent)',
+    ])
   })
 
-  it('calls onClose when header close button or floating close button is clicked', () => {
+  it('has exactly one button named Đóng and it calls onClose', () => {
     const onClose = vi.fn()
     render(<MindmapModal root={sampleTree} isOpen={true} onClose={onClose} />)
-
-    const headerCloseBtn = screen.getByRole('button', { name: /^close mindmap$/i })
-    fireEvent.click(headerCloseBtn)
+    const btns = screen.getAllByRole('button', { name: 'Đóng' })
+    expect(btns.length).toBe(1)
+    fireEvent.click(btns[0] as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
 
-    const floatingCloseBtn = screen.getByRole('button', { name: /^close$/i })
-    fireEvent.click(floatingCloseBtn)
-    expect(onClose).toHaveBeenCalledTimes(2)
+  it('drag past 4px never jumps; a click without movement jumps', () => {
+    const onNodeClick = vi.fn()
+    render(
+      <MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />
+    )
+    const node = screen.getByText('Section 1')
+    fireEvent.pointerDown(node, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(node, { clientX: 110, clientY: 100 })
+    fireEvent.pointerUp(node, { clientX: 110, clientY: 100 })
+    fireEvent.click(node)
+    expect(onNodeClick).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(node, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerUp(node, { clientX: 101, clientY: 100 })
+    fireEvent.click(node)
+    expect(onNodeClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('wraps a long Vietnamese label to two lines with an ellipsis', () => {
+    const long: MindNode = {
+      id: 'r',
+      text: 'Gốc',
+      depth: 0,
+      children: [
+        {
+          id: 'l',
+          text: 'Phương pháp tiếp cận hệ thống để thiết kế giao diện đọc tài liệu Markdown thân thiện với người dùng Việt Nam trên mọi thiết bị',
+          depth: 1,
+          children: [],
+        },
+      ],
+    }
+    render(<MindmapModal root={long} isOpen={true} onClose={vi.fn()} />)
+    const texts = Array.from(document.querySelectorAll('.mindmap-node-text'))
+    const tspans = texts[1]!.querySelectorAll('tspan')
+    expect(tspans.length).toBe(2)
+    expect(tspans[1]!.textContent!.endsWith('\u2026')).toBe(true)
   })
 
   it('calls onClose when Escape key is pressed', () => {
@@ -120,15 +170,15 @@ describe('MindmapModal', () => {
     expect(zoomGroup).toBeDefined()
     const initialTransform = zoomGroup?.getAttribute('transform')
 
-    const zoomInBtn = screen.getByRole('button', { name: /zoom in|\+/i })
+    const zoomInBtn = screen.getByRole('button', { name: /phóng to/i })
     fireEvent.click(zoomInBtn)
     const afterZoomInTransform = zoomGroup?.getAttribute('transform')
     expect(afterZoomInTransform).not.toEqual(initialTransform)
 
-    const zoomOutBtn = screen.getByRole('button', { name: /zoom out|-/i })
+    const zoomOutBtn = screen.getByRole('button', { name: /thu nhỏ/i })
     fireEvent.click(zoomOutBtn)
 
-    const fitBtn = screen.getByRole('button', { name: /fit/i })
+    const fitBtn = screen.getByRole('button', { name: /toàn màn hình/i })
     fireEvent.click(fitBtn)
     const afterFitTransform = zoomGroup?.getAttribute('transform')
     expect(afterFitTransform).toBeDefined()
@@ -141,9 +191,9 @@ describe('MindmapModal', () => {
     const zoomGroup = document.querySelector('g.mindmap-viewport')!
     const initialTransform = zoomGroup.getAttribute('transform')
 
-    fireEvent.mouseDown(svg, { button: 0, clientX: 100, clientY: 100 })
-    fireEvent.mouseMove(svg, { clientX: 180, clientY: 150 })
-    fireEvent.mouseUp(svg)
+    fireEvent.pointerDown(svg, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { clientX: 180, clientY: 150 })
+    fireEvent.pointerUp(svg)
 
     const pannedTransform = zoomGroup.getAttribute('transform')
     expect(pannedTransform).not.toEqual(initialTransform)
@@ -175,6 +225,7 @@ describe('MindmapModal', () => {
 
     // Section 1 is the second node with children (root is first, section 1 is second)
     const sec1Handle = screen.getByRole('button', { name: /collapse section 1/i })
+    expect(sec1Handle.querySelector('line')).not.toBeNull()
     fireEvent.click(sec1Handle)
 
     // Subsection 1.1 should now be hidden
@@ -196,14 +247,14 @@ describe('MindmapModal', () => {
     expect(screen.getByText('Subsection 1.1')).toBeDefined()
 
     // Click Collapse All button
-    const collapseAllBtn = screen.getByRole('button', { name: /collapse all/i })
+    const collapseAllBtn = screen.getByRole('button', { name: /gập tất cả/i })
     fireEvent.click(collapseAllBtn)
 
     // Child nodes should be collapsed
     expect(screen.queryByText('Subsection 1.1')).toBeNull()
 
     // Click Expand All button
-    const expandAllBtn = screen.getByRole('button', { name: /expand all/i })
+    const expandAllBtn = screen.getByRole('button', { name: /mở tất cả/i })
     fireEvent.click(expandAllBtn)
 
     // Child nodes should be visible again
@@ -280,5 +331,146 @@ describe('MindmapModal', () => {
       HTMLCanvasElement.prototype.toBlob = origToBlob
       ;(globalThis as any).Image = origImage
     }
+  })
+
+  it('one tone per section branch; a drag ending on a handle does not toggle', () => {
+    const mk = (id: string): MindNode => ({ id, text: id, depth: 2, children: [] })
+    const tree: MindNode = {
+      id: 'r',
+      text: 'Root',
+      depth: 0,
+      children: [
+        { id: 'a', text: 'A', depth: 1, children: [mk('B'), mk('C'), mk('D')] },
+      ],
+    }
+    const { container } = render(<MindmapModal root={tree} isOpen={true} onClose={vi.fn()} />)
+    const strokeOf = (label: string) =>
+      screen.getByText(label).closest('g.mindmap-node')?.querySelector('rect')?.getAttribute('stroke')
+    const tones = new Set([strokeOf('B'), strokeOf('C'), strokeOf('D')])
+    expect(tones.size).toBe(3)
+
+    const handle = container.querySelector('.mindmap-collapse-handle') as Element
+    const label = handle.getAttribute('aria-label')
+    const svg = handle
+    fireEvent.pointerDown(svg, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { clientX: 120, clientY: 100 })
+    fireEvent.pointerUp(svg, { clientX: 120, clientY: 100 })
+    fireEvent.click(handle)
+    expect(container.querySelector('.mindmap-collapse-handle')?.getAttribute('aria-label')).toBe(label)
+  })
+
+  describe('keyboard and touch', () => {
+    const sel = () =>
+      Array.from(document.querySelectorAll('[role="treeitem"]')).find(
+        (n) => n.getAttribute('aria-selected') === 'true'
+      )!
+    const tree = () => document.querySelector('[role="tree"]') as Element
+
+    it('exposes tree semantics', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      expect(tree().getAttribute('aria-label')).toBe('Sơ đồ tư duy')
+      const items = document.querySelectorAll('[role="treeitem"]')
+      expect(items.length).toBe(4)
+      expect(sel().getAttribute('aria-label')).toBe('Root Document')
+      expect(sel().getAttribute('aria-level')).toBe('1')
+      expect(sel().getAttribute('aria-expanded')).toBe('true')
+      expect(sel().getAttribute('tabindex')).toBe('0')
+      expect(items[3]!.getAttribute('aria-expanded')).toBeNull()
+      expect(items[3]!.getAttribute('tabindex')).toBe('-1')
+    })
+
+    it('navigates with arrows, Enter and Space', () => {
+      const onNodeClick = vi.fn()
+      render(
+        <MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />
+      )
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(sel().getAttribute('aria-label')).toBe('Section 1')
+      fireEvent.keyDown(tree(), { key: 'ArrowDown' })
+      expect(sel().getAttribute('aria-label')).toBe('Section 2')
+      fireEvent.keyDown(tree(), { key: 'ArrowLeft' })
+      expect(sel().getAttribute('aria-label')).toBe('Root Document')
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      fireEvent.keyDown(tree(), { key: 'Enter' })
+      expect(onNodeClick).toHaveBeenCalledWith(sampleTree.children[0])
+      fireEvent.keyDown(tree(), { key: ' ' })
+      expect(screen.queryByText('Subsection 1.1')).toBeNull()
+      expect(sel().getAttribute('aria-expanded')).toBe('false')
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(screen.getByText('Subsection 1.1')).toBeDefined()
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(sel().getAttribute('aria-label')).toBe('Subsection 1.1')
+    })
+
+    it('0 fits to view', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      const g = document.querySelector('g.mindmap-viewport')!
+      const initial = g.getAttribute('transform')
+      fireEvent.keyDown(tree(), { key: '+' })
+      expect(g.getAttribute('transform')).not.toEqual(initial)
+      fireEvent.keyDown(tree(), { key: '0' })
+      expect(g.getAttribute('transform')).toEqual(initial)
+    })
+
+    it('two-pointer pinch changes the scale', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      const svg = document.querySelector('svg.mindmap-svg')!
+      const g = document.querySelector('g.mindmap-viewport')!
+      const initial = g.getAttribute('transform')
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 2, clientX: 200, clientY: 100 })
+      fireEvent.pointerMove(svg, { pointerId: 2, clientX: 400, clientY: 100 })
+      expect(g.getAttribute('transform')).not.toEqual(initial)
+      fireEvent.pointerUp(svg, { pointerId: 2 })
+      fireEvent.pointerUp(svg, { pointerId: 1 })
+    })
+
+    const deep: MindNode = {
+      id: 'r', text: 'R', depth: 0,
+      children: [
+        { id: 'a', text: 'A', depth: 1, children: [
+          { id: 'b', text: 'B', depth: 2, children: [{ id: 'c', text: 'C', depth: 3, children: [] }] },
+        ] },
+      ],
+    }
+    const item = (label: string) =>
+      document.querySelector(`[role="treeitem"][aria-label="${label}"]`) as Element
+
+    it('selection moves to the collapsing ancestor', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      expect(sel().getAttribute('aria-label')).toBe('C')
+      fireEvent.click(item('A').querySelector('.mindmap-collapse-handle')!)
+      expect(item('A').getAttribute('aria-selected')).toBe('true')
+      expect(item('A').getAttribute('tabindex')).toBe('0')
+    })
+
+    it('Collapse All selects the root', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      fireEvent.click(screen.getByRole('button', { name: 'Gập tất cả nhánh' }))
+      expect(sel().getAttribute('aria-label')).toBe('R')
+    })
+
+    it('ArrowDown moves focus and posinset is exposed', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      fireEvent.keyDown(tree(), { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(item('Section 2'))
+      expect(item('Section 2').getAttribute('aria-posinset')).toBe('2')
+      expect(item('Section 2').getAttribute('aria-setsize')).toBe('2')
+    })
+
+    it('pinch then pointerup on a node does not click it', () => {
+      const onNodeClick = vi.fn()
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />)
+      const svg = document.querySelector('svg.mindmap-svg')!
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 2, clientX: 200, clientY: 100 })
+      fireEvent.pointerUp(svg, { pointerId: 2 })
+      fireEvent.pointerUp(svg, { pointerId: 1 })
+      fireEvent.click(item('Section 1'))
+      expect(onNodeClick).not.toHaveBeenCalled()
+    })
   })
 })

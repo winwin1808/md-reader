@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import fs from 'node:fs'
+import path from 'node:path'
 import React from 'react'
 import { Viewer, Toc } from './index'
+import { Icon, iconSvg } from './components/Icon'
 import type { TocEntry } from '@md-reader/core'
+
+vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
 
 describe('Viewer', () => {
   it('renders provided html securely (assumed sanitized by core)', () => {
@@ -17,6 +22,48 @@ describe('Viewer', () => {
   it('does not throw when IntersectionObserver is undefined', () => {
     const html = '<h1 id="test">Test</h1>'
     expect(() => render(<Viewer html={html} onActiveHeadingChange={() => {}} />)).not.toThrow()
+  })
+
+  describe('scroll-spy', () => {
+    const html = '<h1 id="one">One</h1><h2 id="two">Two</h2><h2 id="three">Three</h2>'
+    function setup(tops: Record<string, number>) {
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+      vi.stubGlobal('cancelAnimationFrame', () => {})
+      Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true })
+      const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const top = tops[this.id] ?? 0
+        return { top, bottom: top + 10, left: 0, right: 0, width: 0, height: 10, x: 0, y: top, toJSON() {} } as DOMRect
+      })
+      const cb = vi.fn()
+      const r = render(<Viewer html={html} onActiveHeadingChange={cb} />)
+      return { cb, r, spy }
+    }
+    afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+    it('at top reports the first heading', () => {
+      const { cb } = setup({ one: 500, two: 800, three: 1200 })
+      expect(cb).toHaveBeenLastCalledWith('one')
+    })
+
+    it('follows scroll to the heading above the 30% line, once', () => {
+      const tops: Record<string, number> = { one: -500, two: 800, three: 1200 }
+      const { cb } = setup(tops)
+      cb.mockClear()
+      tops.two = 200
+      fireEvent.scroll(window)
+      fireEvent.scroll(window)
+      expect(cb).toHaveBeenCalledTimes(1)
+      expect(cb).toHaveBeenCalledWith('two')
+    })
+
+    it('fast jump picks the last heading above the line', () => {
+      const tops: Record<string, number> = { one: -500, two: 800, three: 1200 }
+      const { cb } = setup(tops)
+      cb.mockClear()
+      tops.two = -300; tops.three = 100
+      fireEvent.scroll(window)
+      expect(cb).toHaveBeenCalledWith('three')
+    })
   })
 
   it('mounts MermaidBlock for code.language-mermaid elements', async () => {
@@ -88,7 +135,7 @@ describe('Toc', () => {
     
     expect(h1Link).toBeDefined()
     expect(h2Link).toBeDefined()
-    expect(h2Link.getAttribute('aria-current')).toBe('true')
+    expect(h2Link.getAttribute('aria-current')).toBe('location')
     expect(h1Link.getAttribute('aria-current')).toBeNull()
   })
 })
@@ -133,5 +180,50 @@ describe('Viewer anchors and mermaid toggle', () => {
     const pre = container.querySelector('pre') as HTMLElement
     expect(pre.style.display).not.toBe('none')
     expect(pre.nextElementSibling).toBeNull()
+  })
+})
+
+describe('Viewer code header (vi)', () => {
+  it('copy button is Vietnamese and toggles after click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const html = '<pre><code class="language-ts">const a = 1</code></pre>'
+    const { container } = render(<Viewer html={html} />)
+    const btn = container.querySelector('.code-copy-btn') as HTMLButtonElement
+    expect(btn.textContent).toContain('Sao chép')
+    expect(btn.getAttribute('aria-label')).toBe('Sao chép mã')
+    expect(btn.querySelector('svg')).not.toBeNull()
+    await act(async () => { fireEvent.click(btn) })
+    expect(writeText).toHaveBeenCalledWith('const a = 1')
+    expect(btn.textContent).toContain('Đã chép')
+  })
+})
+
+describe('reading-surface CSS text', () => {
+  const read = (f: string) => fs.readFileSync(path.resolve(__dirname, 'theme', f), 'utf-8')
+  it('alerts become margin notes on wide sheets', () => {
+    const css = read('typography.css')
+    expect(css).toContain('@container sheet')
+    expect(css).toMatch(/\.markdown-alert\s*\{[^}]*float:\s*right/)
+  })
+  it('one table style, no !important', () => {
+    expect(read('table-enhanced.css')).not.toContain('!important')
+    const n = (read('typography.css') + read('table-enhanced.css')).match(/nth-child\(even\)/g) ?? []
+    expect(n.length).toBe(1)
+  })
+})
+
+describe('iconSvg / no react-dom/server', () => {
+  it('iconSvg matches <Icon> markup', () => {
+    const { container } = render(<Icon name="copy" size={16} />)
+    const tpl = document.createElement('div')
+    tpl.innerHTML = iconSvg('copy', 16)
+    expect(tpl.innerHTML).toBe(container.innerHTML)
+  })
+  it('Viewer.tsx does not import react-dom/server', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'Viewer.tsx'), 'utf-8')).not.toContain('react-dom/server')
+  })
+  it('sidenote query threshold is 49rem', () => {
+    expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 49rem)')
   })
 })

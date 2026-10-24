@@ -21,6 +21,31 @@ describe('exportMindmapToSvg', () => {
     expect(result.length).toBeGreaterThan(0)
   })
 
+  it('puts a background rect first and leaves no var(-- in the output', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    g.setAttribute('class', 'mindmap-node')
+    g.setAttribute('transform', 'translate(10, 10)')
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    rect.setAttribute('width', '100')
+    rect.setAttribute('height', '32')
+    rect.setAttribute('fill', 'color-mix(in srgb, var(--accent) 12%, var(--paper))')
+    rect.setAttribute('stroke', 'var(--accent)')
+    g.appendChild(rect)
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('style', 'color: var(--ink)')
+    g.appendChild(line)
+    svg.appendChild(g)
+
+    const result = exportMindmapToSvg(svg, 'T')
+    expect(result).not.toContain('var(--')
+    const doc = new DOMParser().parseFromString(result, 'image/svg+xml')
+    const first = doc.documentElement.firstElementChild!
+    expect(first.tagName).toBe('rect')
+    expect(first.getAttribute('width')).toBe('100%')
+    expect(first.getAttribute('height')).toBe('100%')
+  })
+
   it('resets inner zoom transform and computes fitted viewBox with padding even when pan/zoom is applied', () => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('width', '800')

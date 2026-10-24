@@ -4,8 +4,8 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
-  color: var(--md-fg, #24292f);
+  background-color: var(--surface);
+  color: var(--ink);
 }
 
 #root {
@@ -18,17 +18,17 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--md-workspace-bg, var(--md-bg, #ffffff));
-  color: var(--md-fg, #24292f);
+  background-color: var(--surface);
+  color: var(--ink);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .app-layout {
   display: grid;
-  grid-template-columns: minmax(0, 820px) 260px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   justify-content: center;
   column-gap: 40px;
-  max-width: 1200px;
+  max-width: calc(var(--measure) + 112px + 17rem + 348px);
   margin: 0 auto;
   padding: 24px 24px 80px;
   align-items: start;
@@ -36,7 +36,7 @@ body {
 }
 
 .app-layout.single-column {
-  grid-template-columns: minmax(0, 820px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .main-content {
@@ -52,22 +52,24 @@ body {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
   padding-left: 12px;
-  border-left: 1px solid var(--md-border-subtle, var(--md-border));
+  border-left: 1px solid var(--rule);
 }
 
 .md-toc {
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  font: 14px/1.45 var(--font-ui);
+  color: var(--pencil);
 }
 
-.md-toc-title {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--md-fg-muted);
-  margin-bottom: 12px;
-  padding-left: 8px;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .md-toc ul {
@@ -78,31 +80,60 @@ body {
 
 .md-toc li {
   margin: 2px 0;
+  border-left: 1px solid var(--rule);
 }
 
 .md-toc li a {
-  display: block;
-  padding: 6px 10px;
-  color: var(--md-fg-muted);
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  vertical-align: top;
+  padding: 3px 8px;
+  color: inherit;
   text-decoration: none;
-  border-radius: 6px;
-  border-left: 2px solid transparent;
-  transition: all 0.15s ease;
+  border-radius: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .md-toc li a:hover {
-  color: var(--md-fg);
-  background-color: var(--md-hover-bg, rgba(125, 125, 125, 0.08));
+  color: var(--ink);
 }
 
-.md-toc li a[aria-current="true"] {
-  color: var(--md-link);
-  font-weight: 600;
-  background-color: var(--md-active-bg, rgba(125, 125, 125, 0.08));
-  border-left-color: var(--md-link);
+.md-toc li a[aria-current="location"] {
+  color: var(--hl-ink);
+  background: linear-gradient(transparent 18%, var(--hl) 18%, var(--hl) 86%, transparent 86%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.toc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+.toc-drawer {
+  position: fixed;
+  left: 0;
+  top: 48px;
+  bottom: 0;
+  z-index: 10002;
+  width: min(320px, 86vw);
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--paper);
+  border-right: 1px solid var(--rule);
+  box-shadow: var(--elev-2);
+  animation: toc-drawer-in var(--dur-2) var(--ease);
+}
+
+@keyframes toc-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 @media (max-width: 1080px) {
@@ -121,3 +152,146 @@ body {
 [data-font-scale="md"] { --md-font-scale-ratio: 1; }
 [data-font-scale="lg"] { --md-font-scale-ratio: 1.15; }
 [data-font-scale="xl"] { --md-font-scale-ratio: 1.3; }
+
+/* Notices */
+.notice {
+  margin: 12px auto 0;
+  width: 100%;
+  max-width: calc(var(--measure) + 112px);
+  box-sizing: border-box;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-s) var(--r-s) 0;
+  font: 14px/1.45 var(--font-ui);
+  color: var(--ink);
+}
+
+.notice--danger {
+  border-left-color: var(--danger);
+}
+
+.notice__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.notice button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: var(--r-s);
+  cursor: pointer;
+}
+
+.notice button:hover {
+  background: var(--hover);
+}
+
+/* First screen */
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.first-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 34rem;
+  margin: 12vh auto;
+  padding: 0 16px;
+  font-family: var(--font-ui);
+}
+.first-screen > svg:first-child, .first-screen > img:first-child {
+  box-shadow: 0 0 0 1px var(--rule);
+  border-radius: 22%;
+}
+.first-screen h1 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: var(--ink);
+  margin: 16px 0 8px;
+}
+.first-screen p { color: var(--pencil); margin: 0 0 20px; }
+.first-screen__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--r-m);
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.recent { width: 100%; margin-top: 40px; text-align: left; }
+.recent__heading { font-family: var(--font-ui); font-weight: 600; font-size: 15px; color: var(--ink); margin: 0 0 8px; }
+.recent__list { list-style: none; margin: 0; padding: 0; }
+.recent__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.recent__item:hover { background: var(--hover); }
+.recent__title { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent__meta { color: var(--pencil); font-size: 13px; }
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  border: 3px dashed var(--accent);
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+/* Editor / split modes: a definite height chain so .cm-editor fills the pane.
+   The SplitViewContainer panes are the only scrollers. */
+.editor-mode-container,
+.split-mode-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+  min-height: 0;
+  flex: none;
+  overflow: hidden;
+}
+
+.editor-mode-body,
+.split-mode-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-mode-body > *,
+.split-mode-body > * {
+  flex: 1;
+  min-height: 0;
+}

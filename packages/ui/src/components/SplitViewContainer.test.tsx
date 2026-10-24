@@ -239,6 +239,45 @@ describe('SplitViewContainer', () => {
     fireEvent.scroll(previewPane)
     expect(onSyncScroll).toHaveBeenCalledTimes(1)
   })
+
+  it('maps the preview pane scrolled to 80% onto 80% of the editor pane, and ignores the echo', () => {
+    const onSyncScroll = vi.fn()
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    let nextRafId = 1
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      const id = nextRafId++
+      rafCallbacks.set(id, cb)
+      return id
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      rafCallbacks.delete(id)
+    })
+
+    render(
+      <SplitViewContainer
+        mode="split"
+        editor={<div>Editor Content</div>}
+        preview={<div>Preview Content</div>}
+        onSyncScroll={onSyncScroll}
+      />
+    )
+    const editorPane = screen.getByTestId('split-view-editor-pane')
+    const previewPane = screen.getByTestId('split-view-preview-pane')
+    Object.defineProperty(editorPane, 'scrollHeight', { configurable: true, value: 1500 })
+    Object.defineProperty(editorPane, 'clientHeight', { configurable: true, value: 500 })
+    Object.defineProperty(previewPane, 'scrollHeight', { configurable: true, value: 5500 })
+    Object.defineProperty(previewPane, 'clientHeight', { configurable: true, value: 500 })
+
+    fireEvent.mouseEnter(previewPane)
+    previewPane.scrollTop = 4000
+    fireEvent.scroll(previewPane)
+    Array.from(rafCallbacks.values()).forEach((cb) => cb(performance.now()))
+    expect(editorPane.scrollTop).toBeCloseTo(800, 0)
+
+    fireEvent.mouseEnter(editorPane)
+    fireEvent.scroll(editorPane)
+    expect(onSyncScroll).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('TopToolbar ViewMode buttons', () => {
@@ -262,9 +301,9 @@ describe('TopToolbar ViewMode buttons', () => {
       />
     )
 
-    const readingBtn = screen.getByRole('button', { name: /Chế độ Đọc/i })
-    const editorBtn = screen.getByRole('button', { name: /Chế độ Soạn thảo/i })
-    const splitBtn = screen.getByRole('button', { name: /Chế độ Chia đôi/i })
+    const readingBtn = screen.getByRole('radio', { name: 'Đọc' })
+    const editorBtn = screen.getByRole('radio', { name: 'Soạn' })
+    const splitBtn = screen.getByRole('radio', { name: 'Chia đôi' })
 
     expect(readingBtn.classList.contains('active')).toBe(true)
     expect(editorBtn.classList.contains('active')).toBe(false)

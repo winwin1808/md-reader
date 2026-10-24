@@ -1,24 +1,15 @@
-:root {
-  --md-workspace-bg: #f3f4f6;
-  --md-doc-bg: #ffffff;
-  --md-doc-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-}
-
-[data-theme="dark"] {
-  --md-workspace-bg: #0d1117;
-  --md-doc-bg: #161b22;
-  --md-doc-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-}
 
 .a4-document-container {
-  max-width: 820px;
+  background-color: var(--paper);
+  box-shadow: var(--elev-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-s);
+  padding: 40px 56px 160px;
+  margin: 24px auto;
+  font-family: var(--font-body);
+  font-size: calc(var(--body-size) * var(--md-font-scale-ratio, 1));
+  max-width: calc(var(--measure) + 112px);
   width: 100%;
-  margin: 0 auto;
-  background-color: var(--md-doc-bg);
-  border-radius: 8px;
-  box-shadow: var(--md-doc-shadow);
-  border: 1px solid var(--md-border);
-  padding: 36px 48px;
   box-sizing: border-box;
   min-height: calc(100vh - 120px);
 }
@@ -27,8 +18,25 @@
   background-color: transparent !important;
 }
 
+.a4-document-container:has(.markdown-alert) {
+  max-width: calc(var(--measure) + 112px + 17rem);
+  container-type: inline-size;
+  container-name: sheet;
+}
+
+@media (max-width: 720px) {
+  .a4-document-container {
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 24px 18px 120px;
+    margin: 0;
+  }
+}
+
 .md-empty-doc {
   text-align: center;
   padding: 64px 24px;
-  color: var(--md-fg-muted);
+  font-family: var(--font-ui);
+  color: var(--pencil);
 }

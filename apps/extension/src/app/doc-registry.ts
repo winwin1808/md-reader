@@ -11,6 +11,7 @@ export interface DocRecord {
   persistenceName: string
   lastOpenedAt: number
   hasHandle: boolean
+  shortKey?: string
 }
 
 const DB_NAME = 'md_reader_registry'
@@ -107,7 +108,7 @@ export async function createRecord(init: {
     hasHandle: false,
   }
   await putRecord(record)
-  return record
+  return ensureShortKey(docId)
 }
 
 const inFlightByOrigin = new Map<string, Promise<DocRecord>>()
@@ -215,7 +216,6 @@ async function runMigration(): Promise<number> {
   const flag = await req(db.transaction('meta').objectStore('meta').get('migratedV1'))
   if (flag) return 0
 
-  let created = 0
   let entries: Array<{ id: string; name: string; lastOpened: number }> = []
   try {
     const res = await (globalThis as any).chrome.storage.local.get('recentFiles')
@@ -223,42 +223,66 @@ async function runMigration(): Promise<number> {
   } catch {
     entries = []
   }
-  for (const e of entries) {
-    try {
-      new URL(e.id)
-    } catch {
-      continue
-    }
-    if (await findByOrigin(e.id)) continue
-    await findOrCreateByOrigin({
-      title: e.name,
-      originKind: 'url',
-      originPath: e.id,
-      persistenceName: `md-reader-${encodeURIComponent(e.id)}`,
-      ...(typeof e.lastOpened === 'number' ? { lastOpenedAt: e.lastOpened } : {}),
-    })
-    created++
-  }
-
+  entries = entries.filter((e) => {
+    try { new URL(e.id); return true } catch { return false }
+  })
+  let hasLegacyDb = false
   try {
     const dbs = await indexedDB.databases?.()
-    const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]
-    if (dbs?.some((d) => d.name === 'md-reader') && !all.some((r) => r.persistenceName === 'md-reader')) {
-      await createRecord({
-        title: 'Tài liệu đã kéo thả',
-        originKind: 'drop',
-        originPath: null,
-        persistenceName: 'md-reader',
-      })
-      created++
-    }
+    hasLegacyDb = !!dbs?.some((d) => d.name === 'md-reader')
   } catch {
     /* ignore */
   }
 
-  const tx = db.transaction('meta', 'readwrite')
-  tx.objectStore('meta').put(true, 'migratedV1')
-  await done(tx)
+  // One readwrite transaction: marker check, record creation and marker write are atomic,
+  // so a second tab running concurrently sees the marker (or waits) and no-ops.
+  const tx = db.transaction(['docs', 'meta'], 'readwrite')
+  const docs = tx.objectStore('docs')
+  const meta = tx.objectStore('meta')
+  const finished = done(tx)
+  let created = 0
+  try {
+    const marker = (await req(meta.get('migratedAt'))) ?? (await req(meta.get('migratedV1')))
+    if (marker) {
+      await finished
+      return 0
+    }
+    for (const e of entries) {
+      if (await req(docs.index('originPath').get(e.id))) continue
+      const docId = crypto.randomUUID()
+      docs.put({
+        docId,
+        title: e.name,
+        originKind: 'url',
+        originPath: e.id,
+        persistenceName: `md-reader-${encodeURIComponent(e.id)}`,
+        lastOpenedAt: typeof e.lastOpened === 'number' ? e.lastOpened : Date.now(),
+        hasHandle: false,
+      } satisfies DocRecord)
+      created++
+    }
+    const all = (await req(docs.getAll())) as DocRecord[]
+    if (hasLegacyDb && !all.some((r) => r.persistenceName === 'md-reader')) {
+      const docId = crypto.randomUUID()
+      docs.put({
+        docId,
+        title: 'Tài liệu đã kéo thả',
+        originKind: 'drop',
+        originPath: null,
+        persistenceName: 'md-reader',
+        lastOpenedAt: Date.now(),
+        hasHandle: false,
+      } satisfies DocRecord)
+      created++
+    }
+    meta.put(true, 'migratedV1')
+    meta.put(Date.now(), 'migratedAt')
+  } catch (err) {
+    try { tx.abort() } catch { /* ignore */ }
+    finished.catch(() => {})
+    throw err
+  }
+  await finished
   return created
 }
 
@@ -291,4 +315,72 @@ export async function writeDocText(
       await p.destroy()
     }
   }
+}
+
+const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+function randomKey(): string {
+  const b = crypto.getRandomValues(new Uint8Array(4))
+  return Array.from(b, (x) => B62[x % 62]).join('')
+}
+
+export function docSlug(name: string): string {
+  const base = name.replace(/\.[^./\\]*$/, '')
+  const s = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24)
+    .replace(/-+$/g, '')
+  return s || 'doc'
+}
+
+export function docParam(rec: DocRecord): string {
+  return `${docSlug(rec.title)}-${rec.shortKey ?? ''}`
+}
+
+/** Additive: assigns a unique 4-char key to a record that has none (new or old docs). */
+export async function ensureShortKey(docId: string): Promise<DocRecord> {
+  const db = await openDb()
+  const tx = db.transaction('docs', 'readwrite')
+  const store = tx.objectStore('docs')
+  const finished = done(tx)
+  const cur = (await req(store.get(docId))) as DocRecord | undefined
+  if (!cur) {
+    await finished
+    throw new Error('Record not found: ' + docId)
+  }
+  if (cur.shortKey) {
+    await finished
+    return cur
+  }
+  const all = (await req(store.getAll())) as DocRecord[]
+  const used = new Set(all.map((r) => r.shortKey))
+  let key = randomKey()
+  while (used.has(key)) key = randomKey()
+  const next = { ...cur, shortKey: key }
+  store.put(next)
+  await finished
+  return next
+}
+
+/** `?d=<slug>-<key>` query for a doc (assigns the key lazily). */
+export async function docQuery(docId: string): Promise<string> {
+  return '?d=' + docParam(await ensureShortKey(docId))
+}
+
+export async function resolveDocParam(params: URLSearchParams): Promise<string | null> {
+  const d = params.get('d')
+  if (d) {
+    const key = d.slice(d.lastIndexOf('-') + 1)
+    const db = await openDb()
+    const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]
+    return all.find((r) => r.shortKey === key)?.docId ?? null
+  }
+  const legacy = params.get('doc')
+  if (!legacy) return null
+  return (await getRecord(legacy))?.docId ?? null
 }

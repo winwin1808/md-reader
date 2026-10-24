@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Slide } from '@md-reader/core'
+import { Icon } from './Icon'
+import { fitScale, SLIDE_W, SLIDE_H, SlideContent } from './Deck'
 
 export interface SpeakerViewProps {
   slides: Slide[]
@@ -7,6 +9,7 @@ export interface SpeakerViewProps {
   onSlideChange: (index: number) => void
   elapsedSeconds?: number
   onResetTimer?: () => void
+  mermaid?: boolean
 }
 
 function formatClock(date: Date): string {
@@ -33,12 +36,40 @@ function formatElapsed(totalSeconds: number): string {
   return `${mm}:${ss}`
 }
 
+function ScaledSlide({ html, className = '', mermaid }: { html: string; className?: string; mermaid: boolean }): React.JSX.Element {
+  const paneRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const el = paneRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      setScale(fitScale(rect?.width ?? el.clientWidth, rect?.height ?? el.clientHeight))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return (
+    <div className={`speaker-slide-frame ${className}`.trim()} ref={paneRef}>
+      <div className="speaker-slide-box" style={{ width: SLIDE_W * scale, height: SLIDE_H * scale }}>
+        <div
+          className="speaker-slide-canvas"
+          style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}
+        >
+          <SlideContent html={html} mermaid={mermaid} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SpeakerView({
   slides,
   currentSlideIndex,
   onSlideChange,
   elapsedSeconds,
   onResetTimer,
+  mermaid,
 }: SpeakerViewProps): React.JSX.Element {
   const totalSlides = slides.length
   const currentSlide = slides[currentSlideIndex]
@@ -132,7 +163,7 @@ export function SpeakerView({
       <header className="speaker-view-header">
         <div className="speaker-view-header-left">
           <div className="speaker-slide-counter">
-            Slide {totalSlides > 0 ? currentSlideIndex + 1 : 0} / {totalSlides}
+            Trang {totalSlides > 0 ? currentSlideIndex + 1 : 0} / {totalSlides}
           </div>
           <button
             type="button"
@@ -140,7 +171,7 @@ export function SpeakerView({
             onClick={goToPrev}
             disabled={!hasPrev}
           >
-            ← Trước
+            <Icon name="chevron-left" size={16} /> Trước
           </button>
           <button
             type="button"
@@ -148,12 +179,13 @@ export function SpeakerView({
             onClick={goToNext}
             disabled={!hasNext}
           >
-            Tiếp →
+            Tiếp <Icon name="chevron-right" size={16} />
           </button>
         </div>
 
         <div className="speaker-view-header-center">
           <div className="speaker-timer-group">
+            <span className="speaker-timer-label">Đã trình bày</span>
             <span className="speaker-timer-display">{formatElapsed(currentElapsed)}</span>
             <button
               type="button"
@@ -181,25 +213,15 @@ export function SpeakerView({
 
       <main className="speaker-view-body">
         <section className="speaker-current-slide-wrapper">
-          <div className="speaker-section-label">SLIDE HIỆN TẠI</div>
-          <div className="speaker-slide-frame">
-            <div
-              className="md-viewer"
-              dangerouslySetInnerHTML={{ __html: currentSlide?.html || '' }}
-            />
-          </div>
+          <div className="speaker-section-label">Trang hiện tại</div>
+          <ScaledSlide html={currentSlide?.html || ''} mermaid={mermaid !== false} />
         </section>
 
         <section className="speaker-sidebar-wrapper">
           <div className="speaker-next-slide-wrapper">
-            <div className="speaker-section-label">SLIDE KẾ TIẾP</div>
+            <div className="speaker-section-label">Trang tiếp theo</div>
             {nextSlide ? (
-              <div className="speaker-slide-frame">
-                <div
-                  className="md-viewer"
-                  dangerouslySetInnerHTML={{ __html: nextSlide.html || '' }}
-                />
-              </div>
+              <ScaledSlide html={nextSlide.html || ''} mermaid={mermaid !== false} />
             ) : (
               <div className="speaker-slide-frame speaker-slide-empty">
                 <span>(Đã đến slide cuối cùng)</span>
@@ -208,7 +230,7 @@ export function SpeakerView({
           </div>
 
           <div className="speaker-notes-wrapper">
-            <div className="speaker-section-label">GHI CHÚ DIỄN GIẢ (SPEAKER NOTES)</div>
+            <div className="speaker-section-label">Ghi chú</div>
             <div className="speaker-notes-box">
               {currentSlide?.notes && currentSlide.notes.length > 0 ? (
                 currentSlide.notes.map((note, idx) => <p key={idx}>{note}</p>)

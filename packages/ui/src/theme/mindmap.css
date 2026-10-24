@@ -1,4 +1,4 @@
-/* Mindmap Modal Styles */
+/* Mindmap Modal — Lề sách tokens only */
 
 .mindmap-modal-overlay {
   position: fixed;
@@ -6,56 +6,52 @@
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: var(--md-mindmap-bg, rgba(15, 23, 42, 0.85));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
   overflow: hidden;
   user-select: none;
-}
-
-[data-theme='light'] .mindmap-modal-overlay,
-:root:not([data-theme='dark']) .mindmap-modal-overlay {
-  background: var(--md-mindmap-bg, rgba(255, 255, 255, 0.92));
-}
-
-[data-theme='dark'] .mindmap-modal-overlay {
-  background: var(--md-mindmap-bg, rgba(15, 23, 42, 0.88));
 }
 
 .mindmap-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--md-border, rgba(148, 163, 184, 0.2));
-  background: transparent;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
   z-index: 10;
 }
 
 .mindmap-modal-title {
   margin: 0;
-  font-size: 18px;
+  font-family: var(--font-ui);
+  font-size: 16px;
   font-weight: 600;
-  color: var(--md-fg, #0f172a);
+  color: var(--ink);
 }
 
-.mindmap-close-btn {
+.mindmap-close-btn,
+.mindmap-btn {
   background: transparent;
-  border: 1px solid var(--md-border, rgba(148, 163, 184, 0.3));
-  color: var(--md-fg, #0f172a);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--ink);
+  border-radius: var(--r-m);
   width: 32px;
   height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.15s ease;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color var(--dur-fast, 120ms) ease;
 }
 
-.mindmap-close-btn:hover {
-  background: var(--md-hover, rgba(148, 163, 184, 0.15));
+.mindmap-close-btn:hover,
+.mindmap-btn:hover {
+  background: var(--hover);
 }
 
 .mindmap-svg {
@@ -63,6 +59,7 @@
   width: 100%;
   height: 100%;
   cursor: grab;
+  touch-action: none;
 }
 
 .mindmap-svg:active {
@@ -73,44 +70,27 @@
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: stroke 0.2s ease, stroke-width 0.2s ease;
 }
 
 .mindmap-node {
   cursor: pointer;
   user-select: none;
-  font-size: 13px;
-  font-weight: 500;
-  transition: transform 0.15s ease;
-}
-
-.mindmap-node-rect {
-  transition: filter 0.15s ease, stroke-width 0.15s ease;
 }
 
 .mindmap-node:hover .mindmap-node-rect {
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
   stroke-width: 2.5px;
 }
 
 .mindmap-node-text {
   cursor: pointer;
   user-select: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  font-family: inherit;
+  font-family: var(--font-ui);
 }
 
 .mindmap-collapse-handle {
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease;
-}
-
-.mindmap-collapse-handle:hover {
-  transform: scale(1.2);
 }
 
 .mindmap-collapsed-badge {
@@ -125,32 +105,15 @@
   bottom: 24px;
   right: 24px;
   display: flex;
-  gap: 8px;
-  padding: 6px;
-  background: var(--md-bg-card, rgba(30, 41, 59, 0.8));
-  border: 1px solid var(--md-border, rgba(148, 163, 184, 0.25));
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(8px);
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-l);
+  box-shadow: var(--elev-2);
   z-index: 10;
 }
 
-.mindmap-btn {
-  background: transparent;
-  border: none;
-  color: var(--md-fg, #0f172a);
-  border-radius: 4px;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.mindmap-btn:hover {
-  background: var(--md-hover, rgba(148, 163, 184, 0.2));
+.mindmap-node:focus {
+  outline: none;
 }

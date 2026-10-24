@@ -1,7 +1,16 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Icon, type IconName } from './Icon'
+import { Logo } from './Logo'
 import type { ViewMode } from './SplitViewContainer'
+import '../theme/toolbar.css'
 
 export type FontScale = 'sm' | 'md' | 'lg' | 'xl'
+
+export type SaveStatus =
+  | { kind: 'none' } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'saved'; at: number }
+  | { kind: 'error'; message?: string; onRetry(): void } | { kind: 'needs-permission'; onGrant(): void }
+
+export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
 
 export interface TopToolbarProps {
   title: string
@@ -14,10 +23,10 @@ export interface TopToolbarProps {
   onOpenSearch?: () => void
   onPresent?: () => void
   onOpenMindmap?: () => void
-  rightActions?: React.ReactNode
+  actions?: ToolbarAction[]
   viewMode?: ViewMode
   onViewModeChange?: (mode: ViewMode) => void
-  isDirty?: boolean
+  saveStatus?: SaveStatus
   onSave?: () => void
 }
 
@@ -30,313 +39,284 @@ const FONT_SCALE_LABELS: Record<FontScale, string> = {
   xl: '130%',
 }
 
-const buttonStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--md-fg)',
-  cursor: 'pointer',
-  padding: '6px 8px',
-  borderRadius: '6px',
+const VIEW_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
+  { mode: 'reading', label: 'Đọc', title: 'Chế độ Đọc' },
+  { mode: 'editor', label: 'Soạn', title: 'Chế độ Soạn thảo' },
+  { mode: 'split', label: 'Chia đôi', title: 'Chế độ Chia đôi' },
+]
+
+const NARROW_QUERY = '(max-width: 720px)'
+
+function useNarrow(): boolean {
+  const get = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(NARROW_QUERY).matches : false)
+  const [narrow, setNarrow] = useState<boolean>(get)
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mql = window.matchMedia(NARROW_QUERY)
+    const onChange = () => setNarrow(mql.matches)
+    onChange()
+    mql.addEventListener?.('change', onChange)
+    return () => mql.removeEventListener?.('change', onChange)
+  }, [])
+  return narrow
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+function StatusView({ status }: { status: SaveStatus }): React.JSX.Element {
+  let content: React.ReactNode = null
+  let title: string | undefined
+  switch (status.kind) {
+    case 'dirty':
+      content = 'Chưa lưu'
+      break
+    case 'saving':
+      content = 'Đang lưu…'
+      break
+    case 'saved': {
+      const d = new Date(status.at)
+      content = `Đã lưu ${pad(d.getHours())}:${pad(d.getMinutes())}`
+      break
+    }
+    case 'error':
+      title = status.message
+      content = (
+        <>
+          <span>Không lưu được</span>
+          <button type="button" className="tb-text-btn" onClick={status.onRetry}>Thử lại</button>
+        </>
+      )
+      break
+    case 'needs-permission':
+      content = (
+        <>
+          <span>Cần cấp quyền ghi</span>
+          <button type="button" className="tb-text-btn" onClick={status.onGrant}>Cấp quyền</button>
+        </>
+      )
+      break
+    default:
+      break
+  }
+  return (
+    <span
+      className={`tb-status${status.kind === 'dirty' ? ' dirty-indicator' : ''}`}
+      data-kind={status.kind}
+      aria-live="polite"
+      title={title}
+    >
+      {content}
+    </span>
+  )
+}
+
+function IconBtn(props: { icon: IconName; label: string; title?: string; onClick?: () => void }): React.JSX.Element {
+  return (
+    <button type="button" className="tb-btn" aria-label={props.label} title={props.title ?? props.label} onClick={props.onClick}>
+      <Icon name={props.icon} size={20} />
+    </button>
+  )
 }
 
 export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
+  const narrow = useNarrow()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const moreRef = useRef<HTMLButtonElement | null>(null)
+  const rightRef = useRef<HTMLDivElement | null>(null)
+  const segRefs = useRef<(HTMLButtonElement | null)[]>([])
   const currentIndex = FONT_SCALES.indexOf(props.fontScale)
+  const status = props.saveStatus ?? { kind: 'none' as const }
 
-  const handleDecreaseFont = () => {
-    if (currentIndex > 0) {
-      const prevScale = FONT_SCALES[currentIndex - 1]
-      if (prevScale) {
-        props.onFontScaleChange(prevScale)
-      }
-    }
+  const changeFont = (delta: number) => {
+    const next = FONT_SCALES[currentIndex + delta]
+    if (currentIndex >= 0 && next) props.onFontScaleChange(next)
   }
 
-  const handleIncreaseFont = () => {
-    if (currentIndex >= 0 && currentIndex < FONT_SCALES.length - 1) {
-      const nextScale = FONT_SCALES[currentIndex + 1]
-      if (nextScale) {
-        props.onFontScaleChange(nextScale)
+  useEffect(() => {
+    if (!menuOpen) return
+    const first = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')
+    first?.focus()
+    const onDown = (e: MouseEvent) => {
+      if (rightRef.current && !rightRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        moreRef.current?.focus()
       }
     }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [menuOpen])
+
+  const onFocusOut = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null
+    if (next && (menuRef.current?.contains(next) || moreRef.current === next)) return
+    setMenuOpen(false)
   }
+
+  const closeMenu = (restoreFocus: boolean) => {
+    setMenuOpen(false)
+    if (restoreFocus) moreRef.current?.focus()
+  }
+
+  const onMenuKeyDown = (e: React.KeyboardEvent) => {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? [])
+    const idx = items.indexOf(document.activeElement as HTMLElement)
+    let target: HTMLElement | undefined
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeMenu(true)
+      return
+    }
+    if (e.key === 'ArrowDown') target = items[(idx + 1) % items.length]
+    else if (e.key === 'ArrowUp') target = items[(idx - 1 + items.length) % items.length]
+    else if (e.key === 'Home') target = items[0]
+    else if (e.key === 'End') target = items[items.length - 1]
+    else return
+    e.preventDefault()
+    target?.focus()
+  }
+
+  const select = (fn?: () => void) => () => {
+    setMenuOpen(false)
+    fn?.()
+    moreRef.current?.focus()
+  }
+
+  const onSegKeyDown = (e: React.KeyboardEvent, i: number) => {
+    let next = -1
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % VIEW_OPTIONS.length
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + VIEW_OPTIONS.length) % VIEW_OPTIONS.length
+    if (next < 0) return
+    e.preventDefault()
+    const opt = VIEW_OPTIONS[next]
+    if (!opt) return
+    props.onViewModeChange?.(opt.mode)
+    segRefs.current[next]?.focus()
+  }
+
+  const actions = props.actions ?? []
+  const overflowItems: { id: string; label: string; icon: IconName; onSelect: () => void }[] = []
+  if (narrow) {
+    if (props.onOpenSearch) overflowItems.push({ id: 'search', label: 'Tìm', icon: 'search', onSelect: props.onOpenSearch })
+    if (props.onPresent) overflowItems.push({ id: 'present', label: 'Trình chiếu', icon: 'present', onSelect: props.onPresent })
+    if (props.onOpenMindmap) overflowItems.push({ id: 'mindmap', label: 'Sơ đồ', icon: 'mindmap', onSelect: props.onOpenMindmap })
+    for (const a of actions) overflowItems.push(a)
+    if (props.onSave) overflowItems.push({ id: 'save', label: 'Lưu', icon: 'save', onSelect: props.onSave })
+  }
+
+  const hasView = props.viewMode !== undefined || props.onViewModeChange !== undefined
 
   return (
-    <header
-      className="top-toolbar md-no-print"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 90,
-        height: '48px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 16px',
-        background: 'var(--md-bg)',
-        borderBottom: '1px solid var(--md-border)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}
-    >
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <button
-          type="button"
-          title="Mục lục"
-          aria-label="Mục lục"
-          style={buttonStyle}
-          onClick={props.onToggleToc}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+    <header className="top-toolbar md-no-print">
+      <div className="tb-left">
+        <button type="button" className="tb-btn" title="Mục lục" aria-label="Mục lục" aria-pressed={props.tocOpen} onClick={props.onToggleToc}>
+          <Icon name="toc" size={20} />
         </button>
-        <span
-          style={{
-            maxWidth: '300px',
-            textOverflow: 'ellipsis',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            fontWeight: 600,
-            color: 'var(--md-fg)',
-          }}
-        >
-          {props.title || 'Untitled'}
-        </span>
-        {props.isDirty && (
-          <span className="dirty-indicator" title="Có thay đổi chưa lưu" style={{ color: 'var(--md-fg-muted, #888)', fontWeight: 'bold' }}>
-            {' '}•
-          </span>
-        )}
+        <Logo size={20} />
+        <span className="tb-title">{props.title || 'Untitled'}</span>
+        <StatusView status={status} />
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            border: '1px solid var(--md-border)',
-            borderRadius: '8px',
-            overflow: 'hidden',
-          }}
-        >
-          <button
-            type="button"
-            title="Giảm cỡ chữ"
-            aria-label="Giảm cỡ chữ"
-            disabled={props.fontScale === 'sm'}
-            onClick={handleDecreaseFont}
-            style={{
-              ...buttonStyle,
-              borderRadius: 0,
-              padding: '4px 8px',
-              fontSize: '12px',
-              cursor: props.fontScale === 'sm' ? 'not-allowed' : 'pointer',
-              opacity: props.fontScale === 'sm' ? 0.5 : 1,
-            }}
-          >
-            A-
-          </button>
-          <span
-            style={{
-              padding: '0 8px',
-              fontSize: '12px',
-              color: 'var(--md-fg)',
-              userSelect: 'none',
-            }}
-          >
-            {FONT_SCALE_LABELS[props.fontScale] || '100%'}
-          </span>
-          <button
-            type="button"
-            title="Tăng cỡ chữ"
-            aria-label="Tăng cỡ chữ"
-            disabled={props.fontScale === 'xl'}
-            onClick={handleIncreaseFont}
-            style={{
-              ...buttonStyle,
-              borderRadius: 0,
-              padding: '4px 8px',
-              fontSize: '12px',
-              cursor: props.fontScale === 'xl' ? 'not-allowed' : 'pointer',
-              opacity: props.fontScale === 'xl' ? 0.5 : 1,
-            }}
-          >
-            A+
-          </button>
+      {hasView && (
+        <div className="tb-mid">
+          <div className="tb-seg view-mode-group" role="radiogroup" aria-label="Chế độ xem">
+            {VIEW_OPTIONS.map((opt, i) => {
+              const checked = props.viewMode === opt.mode
+              return (
+                <button
+                  key={opt.mode}
+                  ref={(el) => { segRefs.current[i] = el }}
+                  type="button"
+                  role="radio"
+                  aria-checked={checked}
+                  tabIndex={checked || (props.viewMode === undefined && i === 0) ? 0 : -1}
+                  className={`tb-seg-btn${checked ? ' active' : ''}`}
+                  title={opt.title}
+                  onClick={() => props.onViewModeChange?.(opt.mode)}
+                  onKeyDown={(e) => onSegKeyDown(e, i)}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
+      )}
 
-        <button
-          type="button"
-          title="Tìm kiếm (Cmd+F)"
-          aria-label="Tìm kiếm"
-          style={buttonStyle}
-          onClick={props.onOpenSearch}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          title="Chế độ tập trung"
-          aria-label="Chế độ tập trung"
-          style={buttonStyle}
-          onClick={props.onToggleReadingMode}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </svg>
-        </button>
-
-        {props.onPresent && (
-          <button
-            type="button"
-            title="Trình chiếu (P)"
-            aria-label="Trình chiếu"
-            style={buttonStyle}
-            onClick={props.onPresent}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-          </button>
+      <div className="tb-right" ref={rightRef}>
+        {!narrow && (
+          <>
+            {props.onOpenSearch && <IconBtn icon="search" label="Tìm" title="Tìm kiếm (Cmd+F)" onClick={props.onOpenSearch} />}
+            {props.onPresent && <IconBtn icon="present" label="Trình chiếu" title="Trình chiếu (P)" onClick={props.onPresent} />}
+            {props.onOpenMindmap && <IconBtn icon="mindmap" label="Sơ đồ" title="Sơ đồ (Cmd+M)" onClick={props.onOpenMindmap} />}
+            {actions.map((a) => (
+              <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} />
+            ))}
+            {props.onSave && <IconBtn icon="save" label="Lưu" title="Lưu (Cmd+S)" onClick={props.onSave} />}
+          </>
         )}
-
-        {props.onOpenMindmap && (
-          <button
-            type="button"
-            title="Mindmap (Cmd+M)"
-            aria-label="Mindmap"
-            style={buttonStyle}
-            onClick={props.onOpenMindmap}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </svg>
-          </button>
-        )}
-
-        {(props.viewMode !== undefined || props.onViewModeChange !== undefined) && (
-          <div
-            className="view-mode-group"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              border: '1px solid var(--md-border)',
-              borderRadius: '8px',
-              overflow: 'hidden',
-            }}
-          >
-            <button
-              type="button"
-              className={props.viewMode === 'reading' ? 'active' : ''}
-              title="Chế độ Đọc"
-              aria-label="Chế độ Đọc"
-              onClick={() => props.onViewModeChange?.('reading')}
-              style={{
-                ...buttonStyle,
-                borderRadius: 0,
-                padding: '4px 8px',
-                fontSize: '12px',
-                background: props.viewMode === 'reading' ? 'var(--md-border)' : 'transparent',
-                fontWeight: props.viewMode === 'reading' ? 600 : 400,
-              }}
-            >
-              📖 Đọc
-            </button>
-            <button
-              type="button"
-              className={props.viewMode === 'editor' ? 'active' : ''}
-              title="Chế độ Soạn thảo"
-              aria-label="Chế độ Soạn thảo"
-              onClick={() => props.onViewModeChange?.('editor')}
-              style={{
-                ...buttonStyle,
-                borderRadius: 0,
-                padding: '4px 8px',
-                fontSize: '12px',
-                background: props.viewMode === 'editor' ? 'var(--md-border)' : 'transparent',
-                fontWeight: props.viewMode === 'editor' ? 600 : 400,
-              }}
-            >
-              ✍️ Sửa
-            </button>
-            <button
-              type="button"
-              className={props.viewMode === 'split' ? 'active' : ''}
-              title="Chế độ Chia đôi"
-              aria-label="Chế độ Chia đôi"
-              onClick={() => props.onViewModeChange?.('split')}
-              style={{
-                ...buttonStyle,
-                borderRadius: 0,
-                padding: '4px 8px',
-                fontSize: '12px',
-                background: props.viewMode === 'split' ? 'var(--md-border)' : 'transparent',
-                fontWeight: props.viewMode === 'split' ? 600 : 400,
-              }}
-            >
-              ◫ Chia đôi
+        <button
+          ref={moreRef}
+          type="button"
+          className="tb-btn"
+          aria-label="Thêm"
+          title="Thêm"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((o) => !o)}
+          onBlur={menuOpen ? onFocusOut : undefined}
+        >
+          <Icon name="more" size={20} />
+        </button>
+        {menuOpen && (
+          <div ref={menuRef} className="tb-menu" role="menu" aria-label="Thêm" onKeyDown={onMenuKeyDown} onBlur={onFocusOut}>
+            {overflowItems.map((it) => (
+              <button key={it.id} type="button" role="menuitem" className="tb-menu-item" onClick={select(it.onSelect)}>
+                <Icon name={it.icon} size={20} />
+                <span>{it.label}</span>
+              </button>
+            ))}
+            <div className="tb-menu-row">
+              <span className="tb-menu-label">Cỡ chữ</span>
+              <button
+                type="button"
+                role="menuitem"
+                className="tb-btn"
+                title="Giảm cỡ chữ"
+                aria-label="Giảm cỡ chữ"
+                disabled={props.fontScale === 'sm'}
+                onClick={() => changeFont(-1)}
+              >
+                <Icon name="font-smaller" size={20} />
+              </button>
+              <span className="tb-scale">{FONT_SCALE_LABELS[props.fontScale] || '100%'}</span>
+              <button
+                type="button"
+                role="menuitem"
+                className="tb-btn"
+                title="Tăng cỡ chữ"
+                aria-label="Tăng cỡ chữ"
+                disabled={props.fontScale === 'xl'}
+                onClick={() => changeFont(1)}
+              >
+                <Icon name="font-larger" size={20} />
+              </button>
+            </div>
+            <button type="button" role="menuitem" className="tb-menu-item" onClick={select(props.onToggleReadingMode)}>
+              <Icon name="book" size={20} />
+              <span>Chế độ đọc</span>
             </button>
           </div>
         )}
-
-        {props.onSave && (
-          <button
-            type="button"
-            title="Lưu (Cmd+S)"
-            aria-label="Lưu"
-            style={buttonStyle}
-            onClick={props.onSave}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-          </button>
-        )}
-
-        {props.rightActions}
       </div>
     </header>
   )

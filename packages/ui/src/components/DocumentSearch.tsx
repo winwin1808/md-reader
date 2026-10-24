@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { Icon } from './Icon'
 
 export interface DocumentSearchProps {
   isOpen: boolean
@@ -194,35 +195,47 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
   const countDisplay = query.trim()
     ? matchCount > 0
       ? `${activeIndex + 1} / ${matchCount}`
-      : '0 / 0'
+      : 'Không thấy'
     : ''
+
+  const btnStyle: React.CSSProperties = {
+    background: 'transparent',
+    border: 'none',
+    color: 'inherit',
+    cursor: 'pointer',
+    padding: '4px',
+    borderRadius: 'var(--r-s)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 
   return (
     <div
       className="md-no-print"
       style={{
         position: 'fixed',
-        top: '12px',
-        right: '120px',
+        top: 'calc(var(--appbar-h, 48px) + 8px)',
+        right: '16px',
         zIndex: 95,
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        background: 'var(--md-bg)',
-        color: 'var(--md-fg)',
-        border: '1px solid var(--md-border)',
-        borderRadius: '10px',
-        padding: '6px 12px',
+        background: 'var(--paper)',
+        color: 'var(--ink)',
+        border: '1px solid var(--rule)',
+        borderRadius: 'var(--r-m)',
+        boxShadow: 'var(--elev-2)',
+        fontFamily: 'var(--font-ui)',
+        fontSize: '14px',
+        padding: '6px 10px',
         display: 'flex',
         gap: '8px',
         alignItems: 'center',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
       }}
     >
       <input
         ref={inputRef}
         autoFocus
         type="text"
-        placeholder="Tìm trong tài liệu..."
+        placeholder="Tìm trong tài liệu"
         aria-label="Tìm trong tài liệu"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -232,90 +245,34 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
           border: 'none',
           outline: 'none',
           color: 'inherit',
-          fontSize: '13px',
+          font: 'inherit',
           width: '180px',
         }}
       />
 
       <span
+        aria-live="polite"
         style={{
-          fontSize: '12px',
-          opacity: 0.7,
+          fontSize: '13px',
+          color: 'var(--pencil)',
           whiteSpace: 'nowrap',
-          minWidth: countDisplay ? '40px' : '0px',
+          minWidth: countDisplay ? '48px' : '0px',
           textAlign: 'center',
         }}
       >
         {countDisplay}
       </span>
 
-      <button
-        type="button"
-        aria-label="Trước"
-        title="Trước (Shift+Enter)"
-        onClick={handlePrev}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          padding: '2px 4px',
-          borderRadius: '4px',
-          fontSize: '14px',
-          lineHeight: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: 0.8,
-        }}
-      >
-        ↑
+      <button type="button" aria-label="Trước" title="Trước (Shift+Enter)" onClick={handlePrev} style={btnStyle}>
+        <Icon name="chevron-left" size={16} />
       </button>
 
-      <button
-        type="button"
-        aria-label="Kế tiếp"
-        title="Kế tiếp (Enter)"
-        onClick={handleNext}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          padding: '2px 4px',
-          borderRadius: '4px',
-          fontSize: '14px',
-          lineHeight: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: 0.8,
-        }}
-      >
-        ↓
+      <button type="button" aria-label="Sau" title="Sau (Enter)" onClick={handleNext} style={btnStyle}>
+        <Icon name="chevron-right" size={16} />
       </button>
 
-      <button
-        type="button"
-        aria-label="Đóng"
-        title="Đóng (Esc)"
-        onClick={onClose}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'inherit',
-          cursor: 'pointer',
-          padding: '2px 4px',
-          borderRadius: '4px',
-          fontSize: '14px',
-          lineHeight: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: 0.8,
-        }}
-      >
-        ✕
+      <button type="button" aria-label="Đóng" title="Đóng (Esc)" onClick={onClose} style={btnStyle}>
+        <Icon name="close" size={16} />
       </button>
     </div>
   )

@@ -1,34 +1,38 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import fs from 'node:fs'
+import path from 'node:path'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { FormattingToolbar } from './FormattingToolbar'
 import { applyFormat, handleListContinuation } from './markdown-commands'
+
+afterEach(cleanup)
 
 describe('FormattingToolbar component', () => {
   it('renders formatting buttons and triggers onAction when clicked', () => {
     const onAction = vi.fn()
     render(<FormattingToolbar onAction={onAction} />)
 
-    const boldBtn = screen.getByRole('button', { name: /bold/i })
+    const boldBtn = screen.getByRole('button', { name: /^Đậm/ })
     fireEvent.click(boldBtn)
     expect(onAction).toHaveBeenCalledWith('bold')
 
-    const italicBtn = screen.getByRole('button', { name: /italic/i })
+    const italicBtn = screen.getByRole('button', { name: /^Nghiêng/ })
     fireEvent.click(italicBtn)
     expect(onAction).toHaveBeenCalledWith('italic')
 
-    const h1Btn = screen.getByRole('button', { name: /heading 1/i })
+    const h1Btn = screen.getByRole('button', { name: /^Tiêu đề 1/ })
     fireEvent.click(h1Btn)
     expect(onAction).toHaveBeenCalledWith('h1')
 
-    const bulletBtn = screen.getByRole('button', { name: /bullet/i })
+    const bulletBtn = screen.getByRole('button', { name: 'Danh sách' })
     fireEvent.click(bulletBtn)
     expect(onAction).toHaveBeenCalledWith('bullet')
 
-    const linkBtn = screen.getByRole('button', { name: /link/i })
+    const linkBtn = screen.getByRole('button', { name: /^Liên kết/ })
     fireEvent.click(linkBtn)
     expect(onAction).toHaveBeenCalledWith('link')
 
-    const tableBtn = screen.getByRole('button', { name: /table/i })
+    const tableBtn = screen.getByRole('button', { name: 'Bảng' })
     fireEvent.click(tableBtn)
     expect(onAction).toHaveBeenCalledWith('table')
   })
@@ -47,8 +51,8 @@ describe('FormattingToolbar component', () => {
       />
     )
 
-    const undoBtn = screen.getByRole('button', { name: /undo/i })
-    const redoBtn = screen.getByRole('button', { name: /redo/i })
+    const undoBtn = screen.getByRole('button', { name: /^Hoàn tác/ })
+    const redoBtn = screen.getByRole('button', { name: /^Làm lại/ })
 
     expect((undoBtn as HTMLButtonElement).disabled).toBe(true)
     expect((redoBtn as HTMLButtonElement).disabled).toBe(false)
@@ -74,6 +78,54 @@ describe('FormattingToolbar component', () => {
 
     fireEvent.click(undoBtn)
     expect(onUndo).toHaveBeenCalledTimes(1)
+  })
+})
+
+const LABELS = [
+  'Đậm (⌘B)', 'Nghiêng (⌘I)', 'Gạch ngang', 'Tiêu đề 1', 'Tiêu đề 2', 'Tiêu đề 3', 'Danh sách', 'Danh sách số',
+  'Danh sách việc', 'Trích dẫn', 'Mã trong dòng', 'Khối mã', 'Công thức', 'Liên kết (⌘K)', 'Bảng',
+  'Hoàn tác (⌘Z)', 'Làm lại (⇧⌘Z)',
+]
+
+describe('FormattingToolbar a11y (Vietnamese, roving)', () => {
+  it('every button has a Vietnamese aria-label and title', () => {
+    render(<FormattingToolbar onAction={vi.fn()} onUndo={vi.fn()} onRedo={vi.fn()} canUndo canRedo />)
+    const btns = screen.getAllByRole('button')
+    expect(btns.map((b) => b.getAttribute('aria-label')).sort()).toEqual([...LABELS].sort())
+    btns.forEach((b) => expect(b.getAttribute('title')).toBe(b.getAttribute('aria-label')))
+  })
+
+  it('is a toolbar named Định dạng with roving tabindex and arrow keys', () => {
+    render(<FormattingToolbar onAction={vi.fn()} />)
+    const tb = screen.getByRole('toolbar', { name: 'Định dạng' })
+    const btns = screen.getAllByRole('button') as HTMLElement[]
+    const [b0, b1] = btns as [HTMLElement, HTMLElement]
+    expect(btns.filter((b) => b.tabIndex === 0)).toHaveLength(1)
+    expect(b0.tabIndex).toBe(0)
+    b0.focus()
+    fireEvent.keyDown(b0, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(b1)
+    expect(b1.tabIndex).toBe(0)
+    expect(b0.tabIndex).toBe(-1)
+    fireEvent.keyDown(b1, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(b0)
+    fireEvent.keyDown(b0, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(btns[btns.length - 1]!)
+    expect(tb).toBeDefined()
+  })
+})
+
+describe('editor surface CSS', () => {
+  const read = (f: string) => fs.readFileSync(path.resolve(__dirname, '../theme', f), 'utf8')
+  const literal = /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+  it('editor.css has focus inset box-shadow and no literals', () => {
+    const css = read('editor.css')
+    expect(css).toMatch(/\.cm-focused[^{]*\{[^}]*box-shadow:\s*inset 2px 0 0 var\(--accent\)/)
+    expect(css).not.toMatch(literal)
+  })
+  it('toolbar and split-view css have no literals', () => {
+    expect(read('formatting-toolbar.css')).not.toMatch(literal)
+    expect(read('split-view.css')).not.toMatch(literal)
   })
 })
 

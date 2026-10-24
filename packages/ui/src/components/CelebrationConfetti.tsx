@@ -18,15 +18,26 @@ interface Particle {
   rotationSpeed: number
 }
 
-const COLORS = [
-  '#f43f5e',
-  '#ec4899',
-  '#8b5cf6',
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#06b6d4',
+const TOKEN_COLORS: Array<[string, string]> = [
+  ['--accent', '#b5502f'],
+  ['--hl', '#e8c96a'],
+  ['--ok', '#5a7d4f'],
+  ['--danger', '#a8402f'],
+  ['--pencil', '#8a8272'],
 ]
+
+function readColors(): string[] {
+  const cs = getComputedStyle(document.documentElement)
+  return TOKEN_COLORS.map(([name, fb]) => cs.getPropertyValue(name).trim() || fb)
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
 
 export function CelebrationConfetti({
   active = false,
@@ -39,7 +50,12 @@ export function CelebrationConfetti({
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
+  const reduced = prefersReducedMotion()
+
   useEffect(() => {
+    if (reduced) {
+      return
+    }
     if (!active) {
       setIsRunning(false)
       return
@@ -62,6 +78,7 @@ export function CelebrationConfetti({
     canvas.height = height
 
     // Initialize ~60 confetti particles
+    const colors = readColors()
     const particleCount = 60
     const particles: Particle[] = []
     for (let i = 0; i < particleCount; i++) {
@@ -71,7 +88,7 @@ export function CelebrationConfetti({
         vx: (Math.random() - 0.5) * 6,
         vy: Math.random() * 3 + 2,
         size: Math.random() * 6 + 4,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)] || '#ff0000',
+        color: colors[Math.floor(Math.random() * colors.length)] || '#b5502f',
         rotation: Math.random() * 360,
         rotationSpeed: (Math.random() - 0.5) * 10,
       })
@@ -92,7 +109,7 @@ export function CelebrationConfetti({
         ctx.save()
         ctx.translate(p.x, p.y)
         ctx.rotate((p.rotation * Math.PI) / 180)
-        ctx.fillStyle = p.color || '#ff0000'
+        ctx.fillStyle = p.color
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6)
         ctx.restore()
       }
@@ -118,9 +135,9 @@ export function CelebrationConfetti({
         ctx.clearRect(0, 0, canvas.width, canvas.height)
       }
     }
-  }, [active, duration])
+  }, [active, duration, reduced])
 
-  if (!active && !isRunning) {
+  if (reduced || (!active && !isRunning)) {
     return null
   }
 

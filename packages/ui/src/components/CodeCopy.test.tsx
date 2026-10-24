@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
 import { Viewer } from '../Viewer'
 
+vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
+
 describe('Viewer code copy and header enhancement', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -30,9 +32,9 @@ describe('Viewer code copy and header enhancement', () => {
 
     const copyBtn = container.querySelector('.code-copy-btn') as HTMLButtonElement | null
     expect(copyBtn).not.toBeNull()
-    expect(copyBtn?.textContent).toBe('Copy')
-    expect(copyBtn?.getAttribute('title')).toBe('Sao chép mã nguồn')
-    expect(copyBtn?.getAttribute('aria-label')).toBe('Sao chép mã nguồn')
+    expect(copyBtn?.textContent).toBe('Sao chép')
+    expect(copyBtn?.getAttribute('title')).toBeNull()
+    expect(copyBtn?.getAttribute('aria-label')).toBe('Sao chép mã')
 
     // Click "Copy"
     await act(async () => {
@@ -40,14 +42,14 @@ describe('Viewer code copy and header enhancement', () => {
     })
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('console.log("hello")')
-    expect(copyBtn?.textContent).toBe('Copied ✓')
+    expect(copyBtn?.textContent).toBe('Đã chép')
     expect(copyBtn?.classList.contains('copied')).toBe(true)
 
     // After 1500ms, restore text to "Copy" and remove class .copied
     act(() => {
       vi.advanceTimersByTime(1500)
     })
-    expect(copyBtn?.textContent).toBe('Copy')
+    expect(copyBtn?.textContent).toBe('Sao chép')
     expect(copyBtn?.classList.contains('copied')).toBe(false)
   })
 
@@ -81,7 +83,7 @@ describe('Viewer code copy and header enhancement', () => {
       fireEvent.click(copyBtn)
     })
 
-    expect(copyBtn.textContent).toBe('Copy')
+    expect(copyBtn.textContent).toBe('Sao chép')
     expect(copyBtn.classList.contains('copied')).toBe(false)
     consoleError.mockRestore()
   })

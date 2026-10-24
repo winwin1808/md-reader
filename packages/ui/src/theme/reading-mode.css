@@ -13,13 +13,25 @@
   right: 16px;
   z-index: 1000;
   padding: 8px 14px;
-  border-radius: 20px;
+  border-radius: var(--r-m);
   border: 1px solid var(--md-border);
-  background: var(--md-bg);
+  background: var(--surface);
   color: var(--md-fg);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  box-shadow: none;
+  backdrop-filter: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.reading-mode {
+  background: var(--paper);
+}
+
+.reading-mode .a4-document-container {
+  border: 0;
+  box-shadow: none;
 }
