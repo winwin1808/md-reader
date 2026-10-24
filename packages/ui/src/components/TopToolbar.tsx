@@ -10,6 +10,8 @@ export type SaveStatus =
   | { kind: 'none' } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'saved'; at: number }
   | { kind: 'error'; message?: string; onRetry(): void } | { kind: 'needs-permission'; onGrant(): void }
 
+export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
+
 export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
 
 export interface TopToolbarProps {
@@ -29,6 +31,7 @@ export interface TopToolbarProps {
   onViewModeChange?: (mode: ViewMode) => void
   saveStatus?: SaveStatus
   onSave?: () => void
+  syncStatus?: SyncStatus
 }
 
 const FONT_SCALES: FontScale[] = ['sm', 'md', 'lg', 'xl']
@@ -109,6 +112,42 @@ function StatusView({ status }: { status: SaveStatus }): React.JSX.Element {
       title={title}
     >
       {content}
+    </span>
+  )
+}
+
+const SYNC_LABELS: Record<Exclude<SyncStatus, 'off'>, string> = {
+  connecting: 'Đang kết nối',
+  online: 'Đã đồng bộ',
+  offline: 'Ngoại tuyến',
+}
+
+const CONNECTING_DELAY_MS = 1500
+
+function useSmoothedSync(status: SyncStatus): SyncStatus {
+  const [shown, setShown] = useState<SyncStatus>(status)
+  const shownRef = useRef<SyncStatus>(status)
+  useEffect(() => {
+    const apply = (s: SyncStatus) => {
+      shownRef.current = s
+      setShown(s)
+    }
+    if (status === 'connecting' && shownRef.current === 'offline') {
+      const t = setTimeout(() => apply('connecting'), CONNECTING_DELAY_MS)
+      return () => clearTimeout(t)
+    }
+    apply(status)
+    return undefined
+  }, [status])
+  return shown
+}
+
+function SyncStatusView({ status }: { status: SyncStatus }): React.JSX.Element | null {
+  const shown = useSmoothedSync(status)
+  if (shown === 'off') return null
+  return (
+    <span className="tb-status" data-kind={`sync-${shown}`} role="status" aria-live="polite">
+      {SYNC_LABELS[shown]}
     </span>
   )
 }
@@ -226,6 +265,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
         <Logo size={20} />
         <span className="tb-title">{props.title || 'Untitled'}</span>
         <StatusView status={status} />
+        <SyncStatusView status={props.syncStatus ?? 'off'} />
       </div>
 
       {hasView && (
