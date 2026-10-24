@@ -9,6 +9,12 @@ afterEach(() => {
 import type { Slide } from '@md-reader/core'
 import { Deck, fitScale } from './Deck'
 
+vi.mock('./MermaidBlock', () => ({
+  MermaidBlock: ({ code, theme }: { code: string; theme?: string }) => (
+    <div data-testid="mb" data-theme={theme}>{code}</div>
+  ),
+}))
+
 const mockSlides: Slide[] = [
   { id: 'slide-0', index: 0, html: '<h1>Slide 1 Title</h1>', rawMarkdown: '# Slide 1 Title', notes: ['Speaker note 1'] },
   { id: 'slide-1', index: 1, html: '<h2>Slide 2 Title</h2>', rawMarkdown: '## Slide 2 Title', notes: ['Speaker note 2'] },
@@ -429,5 +435,30 @@ describe('Deck scaling and controls', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('Deck mermaid prop', () => {
+  const mm: Slide[] = [
+    { id: 's', index: 0, html: '<pre><code class="language-mermaid">graph TD; A--&gt;B</code></pre>', rawMarkdown: '', notes: [] },
+  ]
+  it('mermaid={false} keeps the code block visible and mounts no MermaidBlock', async () => {
+    const { container } = render(<Deck slides={mm} mermaid={false} />)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    const pre = container.querySelector('pre') as HTMLElement
+    expect(pre).not.toBeNull()
+    expect(pre.style.display).not.toBe('none')
+    expect(container.querySelectorAll('.deck-slide-content > div').length).toBe(0)
+  })
+})
+
+describe('Deck mermaid theme', () => {
+  it('mermaid block becomes MermaidBlock with theme dark under dark mode', async () => {
+    const slides: Slide[] = [
+      { id: 's', index: 0, html: '<pre><code class="language-mermaid">graph TD; A--&gt;B</code></pre>', rawMarkdown: '', notes: [] },
+    ]
+    const { container } = render(<Deck slides={slides} mermaid mode="dark" />)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    expect(container.querySelector('[data-testid="mb"]')?.getAttribute('data-theme')).toBe('dark')
   })
 })

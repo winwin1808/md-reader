@@ -414,6 +414,7 @@ format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/read
 Test: reduced-motion matchMedia true → confetti renders nothing; word count text format.
 
 ### 7s1 — deferred from phase 6: e2e and registry
+(+ from 7q1 review: speaker-view preview renders mermaid via Deck's SlideContent; slide-PDF print uses pre-rendered SVG from the MermaidBlock cache. If this pushes 7s1 over sizing, split into 7s1a/7s1b.)
 FILES `apps/extension/e2e-pw/smoke.spec.ts` (waitForTimeout → wait for a signal/selector)
 · `apps/extension/e2e-pw/fixtures.ts` + `apps/extension/playwright.config.ts` (dist path
 relative to the config file) · `apps/extension/src/app/doc-registry.ts` +
@@ -460,7 +461,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7o: deferred (7n: 152.9 KB gz > 50)
 - 7p1: done
 - 7p2: done
-- 7q1: pending
+- 7q1: planned
 - 7q2: pending
 - 7r: pending
 - 7s1: pending
