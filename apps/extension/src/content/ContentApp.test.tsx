@@ -108,6 +108,43 @@ describe('ContentApp', () => {
       expect(screen.getByRole('button', { name: 'Xem bản thô' })).toBeTruthy()
     })
 
+    describe('anchor clicks', () => {
+      const A = { html: '<a id="l1" href="#sec">go</a><a id="l2" href="#">top</a><a id="l3" href="#missing">m</a><h2 id="sec">S</h2>', title: 'T' }
+      const setup = () => {
+        setupChrome(vi.fn())
+        const { container } = render(<ContentApp markdown="# T" render={A} />)
+        const target = container.querySelector('#sec') as HTMLElement
+        target.scrollIntoView = vi.fn()
+        return { container, target }
+      }
+      const click = (el: Element, init: MouseEventInit = {}) => {
+        const ev = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init })
+        el.dispatchEvent(ev)
+        return ev
+      }
+
+      it('plain click scrolls and prevents default', async () => {
+        const { container, target } = setup()
+        const ev = click(container.querySelector('#l1')!)
+        expect(target.scrollIntoView).toHaveBeenCalled()
+        expect(ev.defaultPrevented).toBe(true)
+      })
+      it('ctrl-click is not prevented', async () => {
+        const { container, target } = setup()
+        const ev = click(container.querySelector('#l1')!, { ctrlKey: true })
+        expect(ev.defaultPrevented).toBe(false)
+        expect(target.scrollIntoView).not.toHaveBeenCalled()
+      })
+      it("'#' is not prevented", async () => {
+        const { container } = setup()
+        expect(click(container.querySelector('#l2')!).defaultPrevented).toBe(false)
+      })
+      it("'#missing' is not prevented", async () => {
+        const { container } = setup()
+        expect(click(container.querySelector('#l3')!).defaultPrevented).toBe(false)
+      })
+    })
+
     it('open button sends openApp', async () => {
       const send = vi.fn((_m: any, cb: any) => cb?.({ success: true }))
       setupChrome(send)

@@ -86,3 +86,67 @@ describe('Editor blame prop', () => {
     expect(ready).toBe(1)
   })
 })
+
+describe('lineAuthors sweep', () => {
+  function reference(ranges: Array<{ from: number; to: number; clientId: number; actor: string | null }>, text: string) {
+    const out: Array<{ clientId: number; actor: string | null } | null> = []
+    const parts = text.split('\n')
+    let start = 0
+    for (let i = 0; i < parts.length; i++) {
+      const end = start + parts[i]!.length + (i < parts.length - 1 ? 1 : 0)
+      let best: (typeof ranges)[number] | null = null
+      let bestOverlap = 0
+      const totals = new Map<number, number>()
+      const first = new Map<number, (typeof ranges)[number]>()
+      const order: number[] = []
+      for (const r of ranges) {
+        const o = Math.min(end, r.to) - Math.max(start, r.from)
+        if (o <= 0) continue
+        if (!totals.has(r.clientId)) {
+          totals.set(r.clientId, 0)
+          first.set(r.clientId, r)
+          order.push(r.clientId)
+        }
+        totals.set(r.clientId, totals.get(r.clientId)! + o)
+      }
+      for (const id of order) {
+        const o = totals.get(id)!
+        if (o > bestOverlap) {
+          bestOverlap = o
+          best = first.get(id)!
+        }
+      }
+      if (!best && end === start) best = ranges.find((x) => x.from <= start && start < x.to) ?? null
+      out.push(best ? { clientId: best.clientId, actor: best.actor } : null)
+      start = end
+    }
+    return out
+  }
+  function rng(seed: number) {
+    let s = seed
+    return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+  }
+  it('matches reference on 200 random cases (overlaps included)', () => {
+    const rand = rng(42)
+    for (let c = 0; c < 200; c++) {
+      const len = Math.floor(rand() * 80)
+      let text = ''
+      for (let i = 0; i < len; i++) text += rand() < 0.2 ? '\n' : 'x'
+      const n = Math.floor(rand() * 12)
+      const rs = []
+      for (let i = 0; i < n; i++) {
+        const from = Math.floor(rand() * (len + 3))
+        const to = from + Math.floor(rand() * 30)
+        rs.push(r(from, to, 1 + Math.floor(rand() * 4), rand() < 0.5 ? 'a' : null))
+      }
+      expect(lineAuthors(rs, text)).toEqual(reference(rs, text))
+    }
+  })
+  it('5000 lines x 5000 ranges under 250ms', () => {
+    const text = Array.from({ length: 5000 }, () => 'abcdefghi').join('\n')
+    const rs = Array.from({ length: 5000 }, (_, i) => r(i * 10, i * 10 + 10, i % 7))
+    const t0 = performance.now()
+    lineAuthors(rs, text)
+    expect(performance.now() - t0).toBeLessThan(250)
+  })
+})

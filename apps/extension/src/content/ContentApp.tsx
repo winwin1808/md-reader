@@ -103,8 +103,8 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
   const onArticleClick = (e: React.MouseEvent<HTMLElement>) => {
     const a = (e.target as Element | null)?.closest?.('a')
     const href = a?.getAttribute('href')
-    if (!a || !href || !href.startsWith('#')) return
-    e.preventDefault()
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    if (!a || !href || !href.startsWith('#') || href === '#') return
     let id = href.slice(1)
     try {
       id = decodeURIComponent(id)
@@ -114,6 +114,7 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
     const scope = e.currentTarget.getRootNode() as ShadowRoot | Document
     const target = scope.getElementById(id) ?? scope.getElementById(id.replace(/^user-content-/, ''))
     if (!target) return
+    e.preventDefault()
     target.scrollIntoView({ block: 'start' })
     try {
       history.replaceState(null, '', href)
