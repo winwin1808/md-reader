@@ -17,6 +17,16 @@ class FakeProvider {
     getLocalState: () => this.state,
   }
   destroy = vi.fn()
+  disconnect = vi.fn()
+  resolveConnect!: () => void
+  rejectConnect!: (e: unknown) => void
+  connect = vi.fn(
+    () =>
+      new Promise<void>((res, rej) => {
+        this.resolveConnect = res
+        this.rejectConnect = rej
+      }),
+  )
   constructor(...args: any[]) {
     this.args = args
     FakeProvider.last = this
@@ -54,7 +64,8 @@ describe('bindRoom', () => {
     expect(p.args[0]).toBe('x.workers.dev')
     expect(p.args[1]).toBe('r1')
     expect(p.args[2]).toBe(doc)
-    expect(p.args[3]).toMatchObject({ party: 'doc-room', params: { token: 'tok' }, connect: true })
+    expect(p.args[3]).toMatchObject({ party: 'doc-room', params: { token: 'tok' }, connect: false })
+    expect(p.connect).toHaveBeenCalledTimes(1)
     expect(p.args[3].protocol).toBeUndefined()
     expect(p.state.user).toEqual({ name: 'Hao' })
   })
@@ -94,5 +105,43 @@ describe('bindRoom', () => {
     expect(seen).toEqual(['connecting', 'off'])
     expect(p.count()).toBe(0)
     expect(doc.isDestroyed).toBe(false)
+  })
+  it('connection-close while connecting -> offline, then recovers', () => {
+    const { conn, p } = mk()
+    const seen: SyncStatus[] = []
+    conn.status$((s) => seen.push(s))
+    p.emit('connection-close', [{}])
+    p.emit('status', [{ status: 'connected' }])
+    p.emit('synced', [true])
+    expect(seen).toEqual(['connecting', 'offline', 'connecting', 'online'])
+  })
+  it('connection-error while connecting -> offline, then online', () => {
+    const { conn, p } = mk()
+    const seen: SyncStatus[] = []
+    conn.status$((s) => seen.push(s))
+    p.emit('connection-error', [{}])
+    p.emit('synced', [true])
+    expect(seen).toEqual(['connecting', 'offline', 'online'])
+  })
+  it('destroy before connect resolves disconnects afterwards', async () => {
+    const { conn, p } = mk()
+    const seen: SyncStatus[] = []
+    conn.status$((s) => seen.push(s))
+    conn.destroy()
+    expect(p.disconnect).not.toHaveBeenCalled()
+    p.resolveConnect()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(p.disconnect).toHaveBeenCalledTimes(1)
+    expect(seen).toEqual(['connecting', 'off'])
+    expect(p.count()).toBe(0)
+  })
+  it('destroy before connect rejects is swallowed', async () => {
+    const { conn, p } = mk()
+    conn.destroy()
+    p.rejectConnect(new Error('x'))
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(p.disconnect).toHaveBeenCalledTimes(1)
   })
 })
