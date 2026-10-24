@@ -155,6 +155,11 @@ export function App(): React.JSX.Element {
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: DEFAULT_SERVER_URL })
+  const shareRoomId = share.binding?.roomId
+  const shareRefresh = share.refresh
+  useEffect(() => {
+    if (shareOpen && shareRoomId) void shareRefresh().catch(() => {})
+  }, [shareOpen, shareRoomId, shareRefresh])
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
@@ -551,7 +556,7 @@ export function App(): React.JSX.Element {
           saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
           actions={toolbarActions}
-          onShare={session.docId ? () => { setShareOpen(true); if (share.binding) void share.refresh().catch(() => {}) } : undefined}
+          onShare={session.docId ? () => setShareOpen(true) : undefined}
         />
         <>
           <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
