@@ -176,3 +176,6 @@
   font-size: 11px; font-weight: 600; line-height: 1; user-select: none;
 }
 .presence-more { --peer: var(--pencil); }
+
+.cm-blame-gutter { width: 6px; }
+.cm-blame-mark { display: block; width: 3px; height: 100%; min-height: 1em; border-radius: 1px; background: var(--peer, var(--pencil)); }
