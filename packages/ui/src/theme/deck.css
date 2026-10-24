@@ -2,34 +2,60 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: var(--md-bg);
-  color: var(--md-fg);
+  background: var(--ink);
+  color: var(--paper);
+  outline: none;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
   overflow: hidden;
 }
 
+.deck-slide-box {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
 .deck-slide {
-  aspect-ratio: 16/9;
-  width: 90vw;
-  max-width: 1400px;
-  height: auto;
-  max-height: 85vh;
-  padding: 48px;
+  position: relative;
+  transform-origin: top left;
+  background: var(--slide-bg, var(--paper));
+  color: var(--slide-fg, var(--ink));
+  font-family: var(--slide-font, var(--font-body));
+  font-size: 32px;
+  line-height: 1.45;
+  padding: 64px 80px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .deck-slide .md-viewer {
+  position: relative;
+  z-index: 1;
   width: 100%;
   background-color: transparent !important;
   color: inherit;
   font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.deck-slide .md-viewer h1,
+.deck-slide .md-viewer h2,
+.deck-slide .md-viewer h3,
+.deck-slide .md-viewer h4 {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.deck-slide .md-viewer code,
+.deck-slide .md-viewer pre {
+  font-family: var(--font-code);
 }
 
 .deck-slide .md-viewer p,
@@ -46,13 +72,22 @@
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: var(--md-controls-bg, rgba(0, 0, 0, 0.08));
-  backdrop-filter: blur(8px);
-  border-radius: 20px;
-  border: 1px solid var(--md-border, rgba(128, 128, 128, 0.2));
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-l);
+  border: 1px solid var(--rule);
+  box-shadow: var(--elev-2);
+  font-family: var(--font-ui);
   font-size: 14px;
   user-select: none;
   z-index: 10;
+  opacity: 1;
+  transition: opacity var(--dur-2, 200ms) ease;
+}
+
+.deck-controls-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .deck-controls button {
@@ -60,14 +95,17 @@
   border: none;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 16px;
+  border-radius: var(--r-s);
   color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background-color 0.15s ease;
+}
+
+.deck-controls button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .deck-controls button:disabled {
@@ -76,10 +114,12 @@
 }
 
 .deck-controls button:not(:disabled):hover {
-  background: var(--md-hover, rgba(128, 128, 128, 0.15));
+  background: var(--hl);
+  color: var(--hl-ink);
 }
 
 .deck-counter {
+  font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   padding: 0 6px;
@@ -94,13 +134,6 @@
   z-index: 0;
 }
 
-.deck-slide-content {
-  position: relative;
-  z-index: 1;
-  color: inherit;
-  font-family: inherit;
-}
-
 .deck-slide-content h1,
 .deck-slide-content h2,
 .deck-slide-content h3,
@@ -109,19 +142,22 @@
 }
 
 .deck-slide-content a {
-  color: var(--slide-custom-accent, var(--color-accent, #0070f3));
+  color: var(--slide-custom-accent, var(--accent));
 }
 
 .deck-progress-bar {
   position: absolute;
   bottom: 0;
   left: 0;
-  height: 4px;
-  background: var(--slide-custom-accent, var(--color-accent, var(--md-accent, #0969da)));
-  transition: width 0.2s ease;
+  height: 3px;
+  background: var(--slide-custom-accent, var(--accent));
+  transition: width var(--dur-2, 200ms) ease;
+  z-index: 11;
 }
 
-.deck-progress-fill {
-  background: var(--slide-custom-accent, var(--color-accent, #0070f3));
+@media (prefers-reduced-motion: reduce) {
+  .deck-controls,
+  .deck-progress-bar {
+    transition: none;
+  }
 }
-

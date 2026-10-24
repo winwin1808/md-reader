@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
 import type { Slide } from '@md-reader/core'
 import { ThemeProvider } from '../theme/ThemeProvider'
@@ -26,6 +26,14 @@ export interface DeckProps {
   presentationSettings?: PresentationSettings
 }
 
+export const SLIDE_W = 1280
+export const SLIDE_H = 720
+
+export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slideH = SLIDE_H): number {
+  if (!(stageW > 0) || !(stageH > 0)) return 1
+  return Math.min(stageW / slideW, stageH / slideH)
+}
+
 export function Deck(props: DeckProps): React.JSX.Element {
   const {
     slides,
@@ -46,6 +54,43 @@ export function Deck(props: DeckProps): React.JSX.Element {
     if (slides.length === 0) return 0
     return Math.max(0, Math.min(slides.length - 1, startingIndex))
   })
+
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      const w = rect?.width ?? el.clientWidth
+      const h = rect?.height ?? el.clientHeight
+      setScale(fitScale(w, h))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const revealControls = useCallback(() => {
+    setControlsVisible(true)
+    if (hideTimer.current) clearTimeout(hideTimer.current)
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 2000)
+  }, [])
+  useEffect(() => {
+    revealControls()
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current)
+    }
+  }, [revealControls])
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    stageRef.current?.focus()
+    return () => {
+      if (previous && typeof previous.focus === 'function' && previous.isConnected) previous.focus()
+    }
+  }, [])
 
   useEffect(() => {
     const start = props.initialIndex ?? props.initialSlide
@@ -70,30 +115,50 @@ export function Deck(props: DeckProps): React.JSX.Element {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      revealControls()
       const target = e.target as HTMLElement | null
+      let onButton = false
       if (target && typeof target.closest === 'function') {
         const tagName = target.tagName?.toLowerCase()
         if (
           tagName === 'input' ||
           tagName === 'textarea' ||
-          tagName === 'button' ||
           target.isContentEditable ||
-          target.closest('button') ||
           target.closest('input') ||
           target.closest('textarea')
         ) {
           return
         }
+        onButton = tagName === 'button' || Boolean(target.closest('button'))
       }
+
+      if (e.key === 'Tab') {
+        const root = stageRef.current
+        if (!root) return
+        const btns = Array.from(
+          root.querySelectorAll<HTMLButtonElement>('.deck-controls button:not(:disabled)')
+        )
+        e.preventDefault()
+        if (btns.length === 0) {
+          root.focus()
+          return
+        }
+        const i = btns.indexOf(document.activeElement as HTMLButtonElement)
+        let next: number
+        if (i === -1) next = e.shiftKey ? btns.length - 1 : 0
+        else next = (i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length
+        btns[next]?.focus()
+        return
+      }
+
+      const isSpace = e.key === ' ' || e.key === 'Space' || e.key === 'Spacebar' || e.code === 'Space'
+      if (onButton && (isSpace || e.key === 'Enter')) return
 
       if (
         e.key === 'ArrowRight' ||
         e.key === 'ArrowDown' ||
         e.key === 'PageDown' ||
-        e.key === ' ' ||
-        e.key === 'Space' ||
-        e.key === 'Spacebar' ||
-        e.code === 'Space'
+        isSpace
       ) {
         e.preventDefault()
         goToSlide(currentIndex + 1)
@@ -121,7 +186,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [currentIndex, slides.length, goToSlide, onClose])
+  }, [currentIndex, slides.length, goToSlide, onClose, revealControls])
 
   const handleOpenSpeaker = () => {
     onOpenSpeaker?.()
@@ -133,34 +198,54 @@ export function Deck(props: DeckProps): React.JSX.Element {
   const counterText = totalSlides > 0 ? `Trang ${currentIndex + 1} / ${totalSlides}` : 'Trang 0 / 0'
 
   const overlayStyle: React.CSSProperties & Record<string, string | undefined> = {
-    backgroundColor: presentationSettings?.slideBgColor || undefined,
-    color: presentationSettings?.slideTextColor || undefined,
-    fontFamily: presentationSettings?.slideFont || undefined,
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,
     '--slide-custom-accent': presentationSettings?.slideAccentColor,
+  }
+  const frameVars: Record<string, string | undefined> = {
+    '--slide-bg': presentationSettings?.slideBgColor || undefined,
+    '--slide-fg': presentationSettings?.slideTextColor || undefined,
+    '--slide-font': presentationSettings?.slideFont || undefined,
   }
 
   return (
     <ThemeProvider mode={props.mode ?? 'system'}>
-      <div className="deck-overlay" style={overlayStyle}>
-        {Boolean(presentationSettings?.slideBgImage) && (
+      <div
+        className="deck-overlay"
+        style={overlayStyle}
+        ref={stageRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trình chiếu"
+        onMouseMove={revealControls}
+        onFocus={revealControls}
+      >
+        <div
+          className="deck-slide-box"
+          style={{ width: SLIDE_W * scale, height: SLIDE_H * scale }}
+        >
           <div
-            className="deck-custom-bg-image"
-            style={{
-              backgroundImage: `url(${presentationSettings!.slideBgImage})`,
-              opacity: (presentationSettings?.slideImageOpacity ?? 100) / 100,
-            }}
-            aria-hidden="true"
-          />
-        )}
-        <div className="deck-slide deck-slide-container deck-slide-content">
-          <div
-            className="md-viewer deck-slide-content"
-            dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
-          />
+            className="deck-slide deck-slide-frame deck-slide-container"
+            style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})`, ...frameVars }}
+          >
+            {Boolean(presentationSettings?.slideBgImage) && (
+              <div
+                className="deck-custom-bg-image"
+                style={{
+                  backgroundImage: `url(${presentationSettings!.slideBgImage})`,
+                  opacity: (presentationSettings?.slideImageOpacity ?? 100) / 100,
+                }}
+                aria-hidden="true"
+              />
+            )}
+            <div
+              className="md-viewer deck-slide-content"
+              dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
+            />
+          </div>
         </div>
 
-        <div className="deck-controls">
+        <div className={`deck-controls${controlsVisible ? '' : ' deck-controls-hidden'}`}>
           <span className="deck-counter">{counterText}</span>
           <button
             type="button"

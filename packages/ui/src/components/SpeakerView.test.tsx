@@ -85,11 +85,11 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText('TRANG HIỆN TẠI')).not.toBeNull()
+    expect(screen.getByText('Trang hiện tại')).not.toBeNull()
     expect(screen.getByText('Slide 1 Title')).not.toBeNull()
     expect(screen.getByText('First slide body')).not.toBeNull()
 
-    expect(screen.getByText('TRANG TIẾP THEO')).not.toBeNull()
+    expect(screen.getByText('Trang tiếp theo')).not.toBeNull()
     expect(screen.getByText('Slide 2 Title')).not.toBeNull()
   })
 
@@ -104,7 +104,7 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText('GHI CHÚ DIỄN GIẢ (SPEAKER NOTES)')).not.toBeNull()
+    expect(screen.getByText('Ghi chú')).not.toBeNull()
     expect(screen.getByText('Note 1A: intro')).not.toBeNull()
     expect(screen.getByText('Note 1B: details')).not.toBeNull()
   })
@@ -230,5 +230,16 @@ describe('SpeakerView', () => {
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
     expect(screen.getByTestId('speaker-clock')).not.toBeNull()
+  })
+
+  it('labels are sentence case, not uppercase', () => {
+    const { container } = render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={vi.fn()} />)
+    const labels = Array.from(container.querySelectorAll('.speaker-section-label, .speaker-timer-label'))
+    expect(labels.length).toBeGreaterThanOrEqual(4)
+    for (const l of labels) {
+      const t = l.textContent ?? ''
+      expect(t).not.toBe(t.toUpperCase())
+    }
+    expect(screen.getByText('Đã trình bày')).not.toBeNull()
   })
 })
