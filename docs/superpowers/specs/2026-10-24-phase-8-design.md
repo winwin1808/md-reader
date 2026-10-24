@@ -390,7 +390,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8a1: done
 - 8a2: done
 - 8a3: done
-- 8b2: pending
+- 8b2: planned
 - 8b3: pending
 - 8b4: pending
 - 8c1: pending
