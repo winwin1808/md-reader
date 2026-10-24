@@ -46,3 +46,5 @@ export { createCheckpointTracker, registerActor, trackLocalActor } from './doc/c
 export type { CheckpointTracker } from './doc/checkpoint.js'
 
 export * from './share/index.js'
+export { computeBlame } from './doc/blame.js'
+export type { BlameRange } from './doc/blame.js'
