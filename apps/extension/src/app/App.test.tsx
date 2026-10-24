@@ -15,7 +15,7 @@ import * as fsSystem from './fs/file-system'
 
 
 const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
-const docOverride = vi.hoisted(() => ({ external: false, accept: null as any, dismiss: null as any }))
+const docOverride = vi.hoisted(() => ({ shareDoc: false, external: false, accept: null as any, dismiss: null as any }))
 vi.mock('./hooks/useFileSave', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useFileSave: (...a: any[]) => {
@@ -26,7 +26,8 @@ vi.mock('./hooks/useFileSave', async (orig) => {
 vi.mock('./hooks/useDocSession', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useDocSession: (...a: any[]) => {
-    const r = actual.useDocSession(...a)
+    const r0 = actual.useDocSession(...a)
+    const r = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
     return docOverride.external
       ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
       : r
@@ -1563,5 +1564,21 @@ describe('App', () => {
     // Selection should encompass 'World' inside **...** (indices 8 to 13)
     expect(view!.state.selection.main.from).toBe(8)
     expect(view!.state.selection.main.to).toBe(13)
+  })
+
+  it('Chia sẻ mở ShareModal, bật chia sẻ rồi hiện Tạo link xem', async () => {
+    docOverride.shareDoc = true
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
+      expect(screen.getByRole('dialog', { name: 'Chia sẻ' })).toBeDefined()
+      await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
+      expect(await screen.findByText('Tạo link xem')).toBeDefined()
+    } finally {
+      docOverride.shareDoc = false
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -6,6 +6,7 @@ import {
   Viewer,
   Toc,
   ExportModal,
+  ShareModal,
   ReadingProgress,
   TopToolbar,
   DocumentSearch,
@@ -34,6 +35,7 @@ import {
   extractMindmap,
   applyTextChange,
   computeTextChanges,
+  buildShareUrl,
 } from '@md-reader/core'
 import type { MindNode } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -42,6 +44,8 @@ import { openLocalFileAsDoc } from './fs/file-system'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useExport } from './hooks/useExport'
+import { useShare } from './collab/useShare'
+import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
 import './app.css'
@@ -149,6 +153,13 @@ export function App(): React.JSX.Element {
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
   const [exportOpen, setExportOpen] = useState<boolean>(false)
+  const [shareOpen, setShareOpen] = useState<boolean>(false)
+  const share = useShare({ docId: session.docId, serverUrl: DEFAULT_SERVER_URL })
+  const shareRoomId = share.binding?.roomId
+  const shareRefresh = share.refresh
+  useEffect(() => {
+    if (shareOpen && shareRoomId) void shareRefresh().catch(() => {})
+  }, [shareOpen, shareRoomId, shareRefresh])
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
@@ -545,9 +556,22 @@ export function App(): React.JSX.Element {
           saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
           actions={toolbarActions}
+          onShare={session.docId ? () => setShareOpen(true) : undefined}
         />
         <>
           <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
+          <ShareModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            binding={share.binding}
+            links={share.links}
+            onEnable={async () => { await share.enable() }}
+            onCreateLink={share.createLink}
+            onRevoke={share.revoke}
+            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? DEFAULT_SERVER_URL, t)}
+            busy={share.busy}
+            error={share.error}
+          />
           <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
         </>
         {isReadingMode && (
