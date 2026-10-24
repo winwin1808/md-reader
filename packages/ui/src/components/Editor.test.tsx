@@ -205,4 +205,31 @@ describe('Editor', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/theme/editor.css'), 'utf8')
     expect(css).not.toContain('.tok-')
   })
+
+  it('mounts with awareness and typing still updates yText', () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('codemirror')
+    yText.insert(0, 'abc')
+    const listeners = new Map<string, Set<(...a: unknown[]) => void>>()
+    const states = new Map<number, Record<string, unknown>>()
+    states.set(1, { user: { name: 'An', color: '#f00', colorLight: '#f003' }, cursor: { anchor: Y.createRelativePositionFromTypeIndex(yText, 1), head: Y.createRelativePositionFromTypeIndex(yText, 2) } })
+    const awareness = {
+      doc: ydoc,
+      clientID: 2,
+      states,
+      getLocalState: () => states.get(2) ?? null,
+      setLocalState: (st: Record<string, unknown> | null) => { if (st) states.set(2, st); else states.delete(2) },
+      setLocalStateField: (k: string, v: unknown) => { states.set(2, { ...(states.get(2) ?? {}), [k]: v }) },
+      getStates: () => states,
+      on: (n: string, f: (...a: unknown[]) => void) => { (listeners.get(n) ?? listeners.set(n, new Set()).get(n)!).add(f) },
+      off: (n: string, f: (...a: unknown[]) => void) => { listeners.get(n)?.delete(f) },
+    }
+    let view: EditorView | undefined
+    const { container } = render(
+      <Editor yText={yText} awareness={awareness as never} onEditorReady={(v) => { view = v }} />
+    )
+    expect(container.querySelector('.cm-editor')).not.toBeNull()
+    view!.dispatch({ changes: { from: 3, insert: 'd' } })
+    expect(yText.toString()).toBe('abcd')
+  })
 })

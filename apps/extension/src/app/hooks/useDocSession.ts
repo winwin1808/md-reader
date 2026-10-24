@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT, createCheckpointTracker, registerActor } from '@md-reader/core'
+import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT, createCheckpointTracker, registerActor, trackLocalActor } from '@md-reader/core'
 import type { CheckpointTracker } from '@md-reader/core'
 import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase, resolveDocParam, docQuery } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
 import { readCacheEntry } from '../../shared/md-url'
+import type { SyncStatus } from '../../shared/collab'
+import { bindRoom } from '../collab/bindRoom'
+import type { RoomConnection } from '../collab/bindRoom'
+import type { RoomBinding } from '@md-reader/core'
+import { peerUser } from '@md-reader/ui'
 
 let migrationOnce: Promise<unknown> | null = null
 
@@ -30,10 +35,12 @@ export interface DocSession {
   externalChange: { remoteText: string; remoteHash: string } | null
   acceptExternal(): void
   dismissExternal(): void
+  syncStatus: SyncStatus
+  awareness: RoomConnection['awareness'] | null
 }
 
-export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null }): DocSession {
-  const { docId: legacyDocId, fileUrl: fileUrlParam, shortParam } = opts
+export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null; room?: RoomBinding | null; displayName?: string }): DocSession {
+  const { docId: legacyDocId, fileUrl: fileUrlParam, shortParam, room, displayName = 'Bạn' } = opts
   const docIdParam = legacyDocId || shortParam || null
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
@@ -186,6 +193,45 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       }
     }
   }, [doc, persistenceName, record])
+
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('off')
+  const [awareness, setAwareness] = useState<RoomConnection['awareness'] | null>(null)
+  const nameRef = useRef(displayName)
+  const awarenessRef = useRef<RoomConnection['awareness'] | null>(null)
+  useEffect(() => {
+    nameRef.current = displayName
+    const a = awarenessRef.current
+    if (a) a.setLocalStateField('user', peerUser(a.clientID, displayName))
+  }, [displayName])
+
+  const roomServerUrl = room?.serverUrl
+  const roomId = room?.roomId
+  const roomToken = room?.ownerToken
+  useEffect(() => {
+    if (!record || !roomServerUrl || !roomId || !roomToken) return
+    let cancelled = false
+    let conn: RoomConnection | null = null
+    let unsub: (() => void) | null = null
+    let untrack: (() => void) | null = null
+    ;(async () => {
+      await syncedPromiseRef.current
+      if (cancelled) return
+      conn = bindRoom(doc, { serverUrl: roomServerUrl, roomId, token: roomToken, name: nameRef.current })
+      awarenessRef.current = conn.awareness
+      setAwareness(conn.awareness)
+      unsub = conn.status$(setSyncStatus)
+      untrack = trackLocalActor(doc, () => nameRef.current)
+    })()
+    return () => {
+      cancelled = true
+      unsub?.()
+      untrack?.()
+      conn?.destroy()
+      awarenessRef.current = null
+      setSyncStatus('off')
+      setAwareness(null)
+    }
+  }, [doc, record, roomServerUrl, roomId, roomToken])
 
   // Handle URL file param
   useEffect(() => {
@@ -365,5 +411,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     externalChange,
     acceptExternal,
     dismissExternal,
+    syncStatus,
+    awareness,
   }
 }

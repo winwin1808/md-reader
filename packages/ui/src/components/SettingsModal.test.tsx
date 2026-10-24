@@ -113,7 +113,7 @@ describe('SettingsModal', () => {
   it('renders the five section headings in order', () => {
     render(<SettingsModal {...defaultProps} open />);
     const hs = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    expect(hs).toEqual(['Chữ và màu', 'Nội dung trong tài liệu', 'Khi mở file .md', 'Hỗ trợ đọc', 'Trình chiếu']);
+    expect(hs).toEqual(['Chữ và màu', 'Nội dung trong tài liệu', 'Khi mở file .md', 'Hỗ trợ đọc', 'Trình chiếu', 'Cộng tác']);
     expect(screen.queryByRole('tab')).toBeNull();
   });
 
@@ -188,7 +188,7 @@ describe('SettingsModal', () => {
     render(<SettingsModal {...defaultProps} open />);
     const nav = screen.getByRole('navigation', { name: 'Mục cài đặt' });
     const buttons = within(nav).getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     expect(buttons[0]).toHaveAttribute('aria-current', 'true');
     fireEvent.click(buttons[3]!);
     expect(spy).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }));
@@ -424,7 +424,7 @@ describe('SettingsModal', () => {
       Object.defineProperty(body, 'scrollTop', { configurable: true, writable: true, value: 599 });
       fireEvent.scroll(body);
       const buttons = within(screen.getByRole('navigation', { name: 'Mục cài đặt' })).getAllByRole('button');
-      expect(buttons[4]).toHaveAttribute('aria-current', 'true');
+      expect(buttons[5]).toHaveAttribute('aria-current', 'true');
     });
 
     it('wires the Bảng màu and Phông chữ thân labels to their groups', () => {
@@ -440,6 +440,56 @@ describe('SettingsModal', () => {
       expect(tsx).not.toContain('#0969da');
       expect(tsx).not.toContain('rgba(');
       expect(tsx).not.toContain('--md-');
+    });
+  });
+
+  describe('Cộng tác', () => {
+    const HINT = 'Địa chỉ phải bắt đầu bằng https:// (http:// chỉ cho localhost)';
+    const renderCollab = (settings: Record<string, unknown> = {}, onSettingChange = vi.fn()) => {
+      render(
+        <SettingsModal
+          {...defaultProps}
+          open
+          defaultServerUrl="https://default.example"
+          settings={{ contrast: 'standard', settingsVersion: 1, ...settings } as never}
+          onSettingChange={onSettingChange}
+        />,
+      );
+      return onSettingChange;
+    };
+
+    it('has a Cộng tác section', () => {
+      renderCollab();
+      expect(section('Cộng tác')).toBeInTheDocument();
+    });
+
+    it('typing a name calls onSettingChange with displayName', () => {
+      const cb = renderCollab();
+      const input = screen.getByLabelText('Tên hiển thị');
+      expect(input).toHaveAttribute('maxlength', '40');
+      expect(input).toHaveAttribute('placeholder', 'Bạn');
+      fireEvent.change(input, { target: { value: 'Lan' } });
+      expect(cb).toHaveBeenCalledWith('displayName', 'Lan');
+    });
+
+    it('serverUrl placeholder equals defaultServerUrl and changes are forwarded', () => {
+      const cb = renderCollab();
+      const input = screen.getByLabelText('Máy chủ đồng bộ');
+      expect(input).toHaveAttribute('placeholder', 'https://default.example');
+      fireEvent.change(input, { target: { value: 'http://example.com' } });
+      expect(cb).toHaveBeenCalledWith('serverUrl', 'http://example.com');
+    });
+
+    it('invalid url shows hint and aria-invalid', () => {
+      renderCollab({ serverUrl: 'http://example.com' });
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+      expect(screen.getByLabelText('Máy chủ đồng bộ')).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it.each(['https://a.example', '', 'http://localhost:8787'])('%j shows no hint', (v) => {
+      renderCollab({ serverUrl: v });
+      expect(screen.queryByText(HINT)).toBeNull();
+      expect(screen.getByLabelText('Máy chủ đồng bộ')).not.toHaveAttribute('aria-invalid', 'true');
     });
   });
 });

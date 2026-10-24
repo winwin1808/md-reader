@@ -1,58 +1,78 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-24. Branch: `phase-7` (xếp chồng trên `phase-6`) — phase 7 đã ship.
+Cập nhật: 2026-10-24. Branch: `phase-8` — phase 8 đã ship, MR `phase-8` → `main` mở, **chưa merge**.
 
 ## Đang ở đâu
 
-- **Phase 6 (Gia cố) đã ship**: MR https://github.com/winwin1808/md-reader/pull/1
-  (`phase-6` → `main`), **mở, chưa merge** — chờ người duyệt. 30 phase con 6a..6l.
-- **Phase 7 (Giao diện Lề sách + logo) đã ship**: MR `phase-7` → `phase-6` (xếp chồng), **mở, chưa merge**. Spec spec
-  `docs/superpowers/specs/2026-10-24-phase-7-design.md`, intent
-  `docs/superpowers/intent/2026-10-24-phase-7-le-sach.md`. Hàng đợi 7a1..7t trong spec, tất cả done trừ 7o (hoãn → phase 8, cần core inject plugin + yaml lazy rồi đo lại).
-- **Phase 8 (Chia sẻ & cộng tác)** chưa bắt đầu; xếp chồng trên `phase-7`.
+- Phase 6 và 7 đã merge vào `main` (PR #1, #2, #3).
+- **Phase 8 (Chia sẻ & cộng tác) đã ship**: MR https://github.com/winwin1808/md-reader/pull/4 (`phase-8` → `main`),
+  **chưa merge** — chờ người duyệt. Spec `docs/superpowers/specs/2026-10-24-phase-8-design.md`,
+  intent `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md`. Hàng đợi 8a0..8k (thêm 8j2 gia cố) tất cả done.
+- **Worker đã deploy** lên tài khoản Cloudflare của người dùng: `https://md-reader-api.qhao-work.workers.dev`
+  (Workers Free: Durable Objects SQLite + D1, không R2/KV). D1 remote: "No migrations to apply".
+  Đây là máy chủ mặc định (`DEFAULT_SERVER_URL` trong `apps/extension/src/shared/collab.ts`).
+- Không còn phase nào trong bảng; phase tiếp theo cần intent mới (`brainstorm-intent`/`capture-intent`).
 
-Cách chạy tiếp: mở spec phase 7, lấy phase con đầu tiên còn `pending`/`planned`, gọi
-`plan-from-design` (hoặc `build-from-plan` nếu plan đã có). Model: subagent chỉ
-sonnet (builder, reviewer, spiker) / haiku (guard); opus chỉ ở main loop cho spec/plan/quyết định.
+Model: subagent sonnet (builder, reviewer, spiker) / haiku (guard, git); opus chỉ ở main loop cho spec/plan. Luôn pin `model`.
 
-## Trạng thái xanh lúc ship phase 6 (đo thật)
+## Trạng thái xanh lúc ship phase 8 (đo thật)
 
 ```
-packages/core test        182 passed
-packages/ui test          215 passed
-apps/extension test       169 passed
-pnpm -r typecheck         exit 0
-pnpm -r build             exit 0
-pnpm --filter extension e2e   3 passed (Playwright, Chromium load-unpacked)
-dist/content.js           gz 11 763 B (giới hạn 61 440 B)
-dist/app.js               gz ~408 kB (KaTeX trong chunk chính — hoãn tối ưu)
+packages/core test             226 passed
+packages/ui test               401 passed
+apps/extension test            283 passed (2 lượt liên tiếp)
+apps/web test                   45 passed (2 lượt)
+apps/api test                   77 passed
+pnpm -r typecheck / build       exit 0
+pnpm --filter extension e2e     5 passed
+pnpm --filter extension e2e:collab   1 passed (wrangler dev cục bộ, cổng 8787)
+dist/content.js                 gz ~13.35 KB (giới hạn 61 440 B)
+dist/worker.js                  gz ~72 KB (service worker, không có ngân sách)
+manifest                        1.1.0
 ```
 
-## Phase 6 đã làm gì (tóm tắt)
+## Phase 8 đã làm gì (tóm tắt)
 
-Delta nhỏ nhất khi ghi Y.Text · tách App.tsx thành hook · mở file an toàn (whenSynced +
-originHash, banner khi file ngoài đổi) · `formatVersion: 2` + migration · registry `docId`
-(`?doc=<id>`) mỗi doc một IDB · handle theo doc, xin lại quyền, "Mở file…" · diff 3 chiều thật ·
-rehype plugin trước sanitize + `clobberPrefix` · manifest `storage`+`activeTab` · debounce
-120ms, cache mermaid, Myers diff, chunk lazy · math KaTeX · checkpoint `clientIds` +
-snapshot · Playwright smoke · 6l: `meta.remoteHash` tách mốc URL khỏi mốc đĩa, Cmd+S xin quyền,
-flush khi `pagehide`.
+`apps/api` Worker (y-partyserver trên DO SQLite, token D1 chỉ lưu SHA-256 + prefix, 410 khi hết
+hạn/thu hồi, view link không ghi được) · `apps/web` trang xem/sửa qua link · `ShareModal` +
+quản lý link · provider WebSocket trong extension, Settings "Cộng tác" (URL máy chủ cấu hình
+được) · presence (tên tự khai, màu, con trỏ) · blame theo dòng · lịch sử checkpoint + khôi phục ·
+core inject plugin (`@md-reader/core/plugins`) · đọc tại chỗ trong content script (render ở
+service worker — 7o xong) · khoá Web Lock khi import cùng URL · e2e cộng tác · 8j2 gia cố
+(race map actors, giới hạn cursor awareness, lineAuthors tuyến tính, anchor content, timeout test) ·
+8k store kit: privacy policy + listing nói đúng về máy chủ mặc định, phiên bản 1.1.0.
+
+## Trước khi nộp Chrome Web Store
+
+- `docs/store/privacy-policy.md` còn dòng liên hệ placeholder — điền email hỗ trợ công khai.
+- Form "Data usage" trên dashboard phải khớp `docs/store/listing.md` (nội dung + tên hiển thị
+  gửi lên máy chủ khi bật chia sẻ).
+- Máy chủ mặc định là Worker của tác giả → tác giả là bên vận hành dữ liệu người dùng store.
+
+## Bảo mật / tài khoản
+
+- Credential Cloudflare chỉ ở `~/.config/md-reader/cloudflare.env` (chmod 600, ngoài repo); chỉ `source`, không in.
+- **Nên làm**: thu hồi token cũ `rough-lab-2b98` và xoay (rotate) token hiện tại sau phase 8.
 
 ## Món nợ đang mở
 
-- Flake IDB `TransactionInactiveError`: không tái hiện trong 30 lượt (spike 7s1b); nếu gặp lại, chạy suite dưới tải CPU với `--pool=forks` để lấy stack.
-- Trạng thái xanh lúc ship phase 7: core 185 · ui 318 · extension 199 · e2e 4/4; content.js gz 11 863 B; app.js gz ~417 kB.
-- Tên file hoa-thường lẫn lộn (`Readme.Md`) không khớp pattern của Chrome; trang localhost
-  không đuôi `.md` không có widget. Word xuất công thức dạng TeX thô.
-- Hai tab cùng mở một URL mới lần đầu có thể cùng import (race hẹp) → phase 8.
+- **Không có endpoint xoá dữ liệu phòng**: tắt chia sẻ/thu hồi chỉ đặt `revoked_at`; nội dung DO và
+  dòng D1 vẫn còn. Cần `DELETE /api/rooms/:id` (owner) xoá DO storage + D1 trước khi nhiều người dùng.
+- Không có rate limit cho `POST /api/rooms`; không có revoke-all phía server.
+- `registerActor` ở doc chưa khởi tạo chờ map `actors` vô hạn (phòng luôn seed từ doc chủ nên không xảy ra thực tế).
+- Giới hạn cursor awareness đếm ký tự, không phải byte (đã chặn tổng 16 KB/message); 413 đếm theo UTF-16.
+- History drawer: đè nội dung, không trả focus khi đóng, chưa phân trang.
+- Test yếu: revokeAll đổi doc, test khoá 8i (a)/(b), tên presence trong e2e collab, `__pwned`.
+- Cổng 8787 cứng trong e2e:collab; `initials()` với ZWJ/NFD.
+- Trạng thái nháy khi rebind; KaTeX/mermaid chưa lazy ở app page; bundle web lớn.
+- Flake IDB `TransactionInactiveError` (cũ, không tái hiện); flake "window is not defined" đã sửa ở 8i.
+- Tên file hoa-thường lẫn lộn (`Readme.Md`) không khớp pattern Chrome; Word xuất công thức dạng TeX thô.
 
 ## Công cụ cục bộ (không commit)
 
 - `.git/mdr-gate.sh <pkg...>` — test các package + typecheck + build, in tóm tắt.
-- `.git/mdr-merge.sh <sub> <branch> "<tóm tắt>"` — đánh dấu plan reviewed, merge --no-ff
-  vào `phase-$PHASE` (mặc định 6 → đặt `PHASE=7` cho phase 7), đánh dấu spec done.
+- `.git/mdr-merge.sh <sub> <branch> "<tóm tắt>"` — đặt `PHASE=8` cho phase 8.
 
 ## Đã cũ
 
-- Bản handover cũ (2026-09-22) nói "Phase 6 = Chia sẻ" — sai; đánh số mới: 6 Gia cố,
-  7 Lề sách, 8 Chia sẻ & cộng tác.
+- Mọi chỗ nói "không máy chủ / chạy hoàn toàn trên máy" không còn đúng từ phase 8 (store kit đã sửa).

@@ -1,3 +1,7 @@
+import type { Plugin } from 'unified'
+
+export interface RenderPlugins { raw?: Plugin<any[], any>; highlight?: Plugin<any[], any>; math?: Plugin<any[], any> }
+
 export interface TocEntry {
   id: string
   depth: 1 | 2 | 3 | 4 | 5 | 6
@@ -11,6 +15,7 @@ export interface RenderResult {
 }
 
 export interface RenderOptions {
+  plugins?: RenderPlugins
   highlight?: boolean
   /** Render math with KaTeX. Default: true */
   math?: boolean

@@ -6,9 +6,10 @@ async function openViaContentScript(context: any, url: string): Promise<Page> {
   await page.goto(url)
   const open = page.getByRole('button', { name: 'Đọc trong MD Reader' })
   await expect(open).toBeVisible({ timeout: 5000 })
+  await expect(page.locator('#md-reader-root[data-mode="read"] header.bar')).toBeVisible()
   const bg = await page.evaluate(() => {
-    const tab = document.querySelector('#md-reader-root')?.shadowRoot?.querySelector('.tab')
-    return tab ? getComputedStyle(tab).backgroundColor : ''
+    const bar = document.querySelector('#md-reader-root')?.shadowRoot?.querySelector('header.bar')
+    return bar ? getComputedStyle(bar).backgroundColor : ''
   })
   expect(bg).not.toBe('')
   expect(bg).not.toBe('rgba(0, 0, 0, 0)')

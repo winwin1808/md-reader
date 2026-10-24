@@ -11,11 +11,13 @@ import * as deckMod from '@md-reader/ui/deck'
 import * as docxMod from '@md-reader/core/docx'
 import type { ReaderSettings } from '@md-reader/ui'
 import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
+import { DEFAULT_SERVER_URL } from '../shared/collab'
 import * as fsSystem from './fs/file-system'
 
 
 const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
-const docOverride = vi.hoisted(() => ({ external: false, accept: null as any, dismiss: null as any }))
+const lastSession = vi.hoisted(() => ({ s: null as any }))
+const docOverride = vi.hoisted(() => ({ syncStatus: null as any, shareDoc: false, external: false, accept: null as any, dismiss: null as any, awareness: null as any }))
 vi.mock('./hooks/useFileSave', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useFileSave: (...a: any[]) => {
@@ -23,10 +25,16 @@ vi.mock('./hooks/useFileSave', async (orig) => {
     return saveOverride.state ? { ...r, saveState: saveOverride.state } : r
   } }
 })
+const useSessionCalls: any[] = []
 vi.mock('./hooks/useDocSession', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useDocSession: (...a: any[]) => {
-    const r = actual.useDocSession(...a)
+    useSessionCalls.push(a[0])
+    const r0 = actual.useDocSession(...a)
+    lastSession.s = r0
+    const r1 = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
+    const r2 = docOverride.syncStatus ? { ...r1, syncStatus: docOverride.syncStatus } : r1
+    const r = docOverride.awareness ? { ...r2, awareness: docOverride.awareness } : r2
     return docOverride.external
       ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
       : r
@@ -1563,5 +1571,205 @@ describe('App', () => {
     // Selection should encompass 'World' inside **...** (indices 8 to 13)
     expect(view!.state.selection.main.from).toBe(8)
     expect(view!.state.selection.main.to).toBe(13)
+  })
+
+  it('Chia sẻ mở ShareModal, bật chia sẻ rồi hiện form Tạo link', async () => {
+    docOverride.shareDoc = true
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
+      expect(screen.getByRole('dialog', { name: 'Chia sẻ' })).toBeDefined()
+      await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
+      expect(await screen.findByRole('button', { name: 'Tạo link' })).toBeDefined()
+      const last = useSessionCalls[useSessionCalls.length - 1]
+      expect(last.room.roomId).toBe('r1')
+      expect(last.room.ownerToken).toBe('tok')
+    } finally {
+      docOverride.shareDoc = false
+      vi.unstubAllGlobals()
+    }
+  })
+
+  describe('collab settings', () => {
+    const enableShare = async (stored: any) => {
+      docOverride.shareDoc = true
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+      vi.stubGlobal('fetch', fetchMock)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, ...stored })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
+      await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
+      return fetchMock
+    }
+    afterEach(() => { docOverride.shareDoc = false; docOverride.syncStatus = null; docOverride.awareness = null; vi.unstubAllGlobals() })
+    it('dùng serverUrl từ Cài đặt', async () => {
+      const f = await enableShare({ serverUrl: 'https://own.example' })
+      expect(f.mock.calls[0]![0]).toBe('https://own.example/api/rooms')
+    })
+    it('serverUrl không hợp lệ rơi về mặc định', async () => {
+      const f = await enableShare({ serverUrl: 'http://bad.example' })
+      expect(f.mock.calls[0]![0]).toBe(DEFAULT_SERVER_URL + '/api/rooms')
+    })
+    it('displayName được cắt khoảng trắng', async () => {
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, displayName: '  Lan ' })
+      await act(async () => { render(<App />) })
+      expect(useSessionCalls[useSessionCalls.length - 1].displayName).toBe('Lan')
+    })
+    it('toolbar hiện trạng thái đồng bộ', async () => {
+      docOverride.syncStatus = 'online'
+      await act(async () => { render(<App />) })
+      expect(screen.getByRole('status').textContent).toContain('Đã đồng bộ')
+    })
+    it('hiện presence khi đã bind và awareness đổi; không bind thì không có', async () => {
+      const handlers = new Set<() => void>()
+      const states = new Map<number, any>([[1, { user: { name: 'Hao', color: 'var(--peer-1)', colorLight: 'x' } }]])
+      docOverride.awareness = {
+        clientID: 1, getStates: () => states,
+        on: (_e: string, h: () => void) => { handlers.add(h) }, off: (_e: string, h: () => void) => { handlers.delete(h) },
+      }
+      docOverride.syncStatus = 'online'
+      await act(async () => { render(<App />) })
+      await act(async () => {
+        states.set(2, { user: { name: 'Lan', color: 'var(--peer-2)', colorLight: 'y' } })
+        handlers.forEach((h) => h())
+      })
+      expect(document.querySelectorAll('.presence-avatar').length).toBe(2)
+    })
+    it('không bind thì không có presence-bar', async () => {
+      await act(async () => { render(<App />) })
+      expect(document.querySelector('.presence-bar')).toBeNull()
+    })
+  })
+  describe('Người viết (8f2.2)', () => {
+    const loadDoc = async () => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# Title\n\nContent') } as any)
+      await act(async () => { render(<App />) })
+    }
+    const findAction = (name: string) => screen.queryByTitle(name) ?? screen.queryByLabelText(name) ?? screen.queryByText(name)
+    it('reading mode không có nút Người viết', async () => {
+      await loadDoc()
+      expect(findAction('Hiện người viết')).toBeNull()
+    })
+    it('editor mode có nút, bật hiện .cm-blame-mark, tắt thì mất', async () => {
+      await loadDoc()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      let btn = findAction('Hiện người viết')
+      if (!btn) { const more = screen.queryByLabelText('Thêm') ?? screen.queryByTitle('Thêm'); if (more) { await act(async () => { fireEvent.click(more) }); btn = findAction('Hiện người viết') } }
+      expect(btn).not.toBeNull()
+      await act(async () => { fireEvent.click(btn!) })
+      expect(document.querySelectorAll('.cm-blame-mark').length).toBeGreaterThan(0)
+      let off = findAction('Ẩn người viết')
+      if (!off) { const more = screen.queryByLabelText('Thêm') ?? screen.queryByTitle('Thêm'); if (more) { await act(async () => { fireEvent.click(more) }); off = findAction('Ẩn người viết') } }
+      expect(off).not.toBeNull()
+      await act(async () => { fireEvent.click(off!) })
+      expect(document.querySelectorAll('.cm-blame-mark').length).toBe(0)
+    })
+  })
+  describe('Lịch sử (8g2.2)', () => {
+    const loadDoc = async () => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# Cũ\n\nBản đầu') } as any)
+      await act(async () => { render(<App />) })
+      await waitFor(() => expect(lastSession.s.checkpoints).toBeTruthy())
+    }
+    const seed = async () => {
+      const s = lastSession.s
+      await act(async () => {
+        s.checkpoints.flush('save', 'Bạn', { force: true })
+        core.applyTextChange(s.doc.getText('source'), '# Mới\n\nBản sau')
+        s.checkpoints.flush('save', 'Bạn', { force: true })
+      })
+      await waitFor(() => expect(document.body.textContent).toContain('Bản sau'))
+    }
+    const openPanel = async () => {
+      await act(async () => { fireEvent.click(screen.getByTitle('Lịch sử')) })
+    }
+    it('bấm Lịch sử mở panel với các mốc', async () => {
+      await loadDoc(); await seed(); await openPanel()
+      expect(screen.getByRole('complementary', { name: 'Lịch sử' })).toBeTruthy()
+      expect(screen.getAllByRole('option').length).toBeGreaterThanOrEqual(2)
+    })
+    it('Xem mốc cũ hiện banner và Viewer render bản cũ; Thoát xem trở lại', async () => {
+      await loadDoc(); await seed(); await openPanel()
+      const rows = screen.getAllByRole('option')
+      const row = rows[rows.length - 1]!
+      await act(async () => { fireEvent.click(within(row).getByText('Xem')) })
+      expect(screen.getByText(/Đây là bản chỉ đọc/)).toBeTruthy()
+      expect(document.body.textContent).toContain('Bản đầu')
+      expect(document.body.textContent).not.toContain('Bản sau')
+      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
+      expect(document.body.textContent).toContain('Bản sau')
+    })
+    it('(a) Xem/Thoát xem không đổi doc, history, dirty', async () => {
+      await loadDoc(); await seed(); await openPanel()
+      const d = lastSession.s.doc
+      const src = d.getText('source').toString()
+      const len = core.listHistory(d).length
+      const dirtyBefore = document.querySelector('.dirty-indicator') !== null
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
+      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      expect(d.getText('source').toString()).toBe(src)
+      expect(core.listHistory(d).length).toBe(len)
+      expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
+    })
+    it('(b) chế độ editor: Xem hiện banner + bản cũ, Thoát xem trả editor', async () => {
+      await loadDoc(); await seed()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+      await openPanel()
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      expect(screen.getByText(/Đây là bản chỉ đọc/)).toBeTruthy()
+      expect(document.body.textContent).toContain('Bản đầu')
+      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+    })
+    it('(d) editor: bản cũ nằm trong history-preview-scroll cùng banner; toolbar ẩn khi xem', async () => {
+      await loadDoc(); await seed()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+      expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).not.toBeNull()
+      await openPanel()
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      const wrap = document.querySelector('.history-preview-scroll') as HTMLElement
+      expect(wrap).not.toBeNull()
+      expect(wrap.textContent).toContain('Bản đầu')
+      expect(wrap.querySelector('.history-preview-banner')).not.toBeNull()
+      expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).toBeNull()
+      await act(async () => { fireEvent.click(within(wrap as HTMLElement).getByRole('button', { name: 'Thoát xem' })) })
+      await waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).not.toBeNull())
+    })
+    it('(c) tên actor độc hại chỉ là text', async () => {
+      await loadDoc(); await seed()
+      const d = lastSession.s.doc
+      const hostile = '<img src=x onerror=alert(1)>'
+      await act(async () => { d.getMap('meta').set('actors', { [String(d.clientID)]: hostile }) })
+      await openPanel()
+      const panel = document.querySelector('.history-panel')!
+      expect(panel.querySelector('img')).toBeNull()
+      expect(panel.textContent).toContain(hostile)
+    })
+    it('Khôi phục có xác nhận đổi text, lịch sử tăng đúng 1, không trùng auto', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      await loadDoc(); await seed(); await openPanel()
+      const before = core.listHistory(lastSession.s.doc).length
+      const rows = screen.getAllByRole('option')
+      const row = rows[rows.length - 1]!
+      await act(async () => { fireEvent.click(within(row).getByText('Khôi phục')) })
+      await act(async () => { fireEvent.click(within(row).getAllByText('Khôi phục')[0]!) })
+      expect(lastSession.s.doc.getText('source').toString()).toContain('Bản đầu')
+      await act(async () => { await vi.advanceTimersByTimeAsync(60000) })
+      expect(core.listHistory(lastSession.s.doc).length).toBe(before + 1)
+    })
   })
 })

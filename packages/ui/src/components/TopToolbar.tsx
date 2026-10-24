@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './Icon'
 import { Logo } from './Logo'
+import { PresenceBar, type Peer } from './PresenceBar'
 import type { ViewMode } from './SplitViewContainer'
 import '../theme/toolbar.css'
 
@@ -10,9 +11,12 @@ export type SaveStatus =
   | { kind: 'none' } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'saved'; at: number }
   | { kind: 'error'; message?: string; onRetry(): void } | { kind: 'needs-permission'; onGrant(): void }
 
+export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
+
 export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
 
 export interface TopToolbarProps {
+  presence?: Peer[]
   title: string
   tocOpen: boolean
   onToggleToc: () => void
@@ -23,11 +27,13 @@ export interface TopToolbarProps {
   onOpenSearch?: () => void
   onPresent?: () => void
   onOpenMindmap?: () => void
+  onShare?: () => void
   actions?: ToolbarAction[]
   viewMode?: ViewMode
   onViewModeChange?: (mode: ViewMode) => void
   saveStatus?: SaveStatus
   onSave?: () => void
+  syncStatus?: SyncStatus
 }
 
 const FONT_SCALES: FontScale[] = ['sm', 'md', 'lg', 'xl']
@@ -108,6 +114,42 @@ function StatusView({ status }: { status: SaveStatus }): React.JSX.Element {
       title={title}
     >
       {content}
+    </span>
+  )
+}
+
+const SYNC_LABELS: Record<Exclude<SyncStatus, 'off'>, string> = {
+  connecting: 'Đang kết nối',
+  online: 'Đã đồng bộ',
+  offline: 'Ngoại tuyến',
+}
+
+const CONNECTING_DELAY_MS = 1500
+
+function useSmoothedSync(status: SyncStatus): SyncStatus {
+  const [shown, setShown] = useState<SyncStatus>(status)
+  const shownRef = useRef<SyncStatus>(status)
+  useEffect(() => {
+    const apply = (s: SyncStatus) => {
+      shownRef.current = s
+      setShown(s)
+    }
+    if (status === 'connecting' && shownRef.current === 'offline') {
+      const t = setTimeout(() => apply('connecting'), CONNECTING_DELAY_MS)
+      return () => clearTimeout(t)
+    }
+    apply(status)
+    return undefined
+  }, [status])
+  return shown
+}
+
+function SyncStatusView({ status }: { status: SyncStatus }): React.JSX.Element | null {
+  const shown = useSmoothedSync(status)
+  if (shown === 'off') return null
+  return (
+    <span className="tb-status" data-kind={`sync-${shown}`} role="status" aria-live="polite">
+      {SYNC_LABELS[shown]}
     </span>
   )
 }
@@ -209,6 +251,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
     if (props.onOpenSearch) overflowItems.push({ id: 'search', label: 'Tìm', icon: 'search', onSelect: props.onOpenSearch })
     if (props.onPresent) overflowItems.push({ id: 'present', label: 'Trình chiếu', icon: 'present', onSelect: props.onPresent })
     if (props.onOpenMindmap) overflowItems.push({ id: 'mindmap', label: 'Sơ đồ', icon: 'mindmap', onSelect: props.onOpenMindmap })
+    if (props.onShare) overflowItems.push({ id: 'share', label: 'Chia sẻ', icon: 'share', onSelect: props.onShare })
     for (const a of actions) overflowItems.push(a)
     if (props.onSave) overflowItems.push({ id: 'save', label: 'Lưu', icon: 'save', onSelect: props.onSave })
   }
@@ -224,6 +267,8 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
         <Logo size={20} />
         <span className="tb-title">{props.title || 'Untitled'}</span>
         <StatusView status={status} />
+        {props.presence !== undefined && props.presence.length > 0 && <PresenceBar peers={props.presence} />}
+        <SyncStatusView status={props.syncStatus ?? 'off'} />
       </div>
 
       {hasView && (
@@ -258,6 +303,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
             {props.onOpenSearch && <IconBtn icon="search" label="Tìm" title="Tìm kiếm (Cmd+F)" onClick={props.onOpenSearch} />}
             {props.onPresent && <IconBtn icon="present" label="Trình chiếu" title="Trình chiếu (P)" onClick={props.onPresent} />}
             {props.onOpenMindmap && <IconBtn icon="mindmap" label="Sơ đồ" title="Sơ đồ (Cmd+M)" onClick={props.onOpenMindmap} />}
+            {props.onShare && <IconBtn icon="share" label="Chia sẻ" onClick={props.onShare} />}
             {actions.map((a) => (
               <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} />
             ))}

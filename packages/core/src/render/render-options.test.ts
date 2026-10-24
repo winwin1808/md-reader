@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { processFrontmatter } from './options.js'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from './render.js'
+import { defaultRenderPlugins, parseYaml } from '../plugins/index.js'
 
 describe('Render Options', () => {
-  const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), o as any).html
+  const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), ...o } as any).html
 
   describe('typographer', () => {
     it('replaces symbols and smart quotes', () => {
@@ -117,7 +118,7 @@ describe('Render Options', () => {
       expect(result.html).toContain('“test”')
     })
     it('renders metadata card when displayMetadata is true with escaped content', () => {
-      const parsed = parseMarkdown('---\ntitle: <script>xss</script>\nauthor: Alice & Bob\n---\n# Content')
+      const parsed = parseMarkdown('---\ntitle: <script>xss</script>\nauthor: Alice & Bob\n---\n# Content', { parseYaml })
       const result = renderToHtml(parsed, { displayMetadata: true })
       expect(result.html).toContain('markdown-metadata-card')
       expect(result.html).toContain('&#x3C;script>xss&#x3C;/script>')
@@ -169,7 +170,7 @@ describe('Render Options', () => {
 
 describe('math', () => {
   const rm = (md: string, o: Record<string, unknown> = {}, p: Record<string, unknown> = {}) =>
-    renderToHtml(parseMarkdown(md, p as any), o as any).html
+    renderToHtml(parseMarkdown(md, p as any), { plugins: defaultRenderPlugins(), ...o } as any).html
 
   it('renders inline math with katex', () => {
     expect(rm('$a^2$')).toContain('class="katex"')
@@ -198,5 +199,28 @@ describe('math', () => {
   })
   it('does not emit javascript: hrefs', () => {
     expect(rm('$\\href{javascript:alert(1)}{x}$')).not.toMatch(/href="?javascript:/i)
+  })
+})
+
+describe('injected plugins (8h1)', () => {
+  it('uses injected highlight plugin', () => {
+    const fake = () => (tree: any) => {
+      const walk = (n: any) => {
+        if (n.tagName === 'code') n.properties = { ...(n.properties ?? {}), className: ['language-data-fake'] }
+        for (const c of n.children ?? []) walk(c)
+      }
+      walk(tree)
+    }
+    const html = renderToHtml(parseMarkdown('```js\nvar a = 1\n```'), { plugins: { highlight: fake as any } }).html
+    expect(html).toContain('data-fake')
+    expect(html).not.toContain('hljs')
+  })
+  it('uses injected math plugin', () => {
+    const fake = () => () => {}
+    const html = renderToHtml(parseMarkdown('$x^2$'), { plugins: { math: fake as any } }).html
+    expect(html).not.toContain('katex')
+  })
+  it('uses injected parseYaml', () => {
+    expect(parseMarkdown('---\na: 1\n---\nx', { parseYaml: () => ({ injected: true }) }).frontmatter).toEqual({ injected: true })
   })
 })

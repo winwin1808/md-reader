@@ -251,4 +251,97 @@ describe('TopToolbar', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Giảm cỡ chữ' }))
     expect(onFontScaleChange).toHaveBeenLastCalledWith('sm')
   })
+
+  it('omits the share button without onShare', () => {
+    render(<TopToolbar {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Chia sẻ' })).toBeNull()
+  })
+
+  it('renders a share button that calls onShare', () => {
+    const onShare = vi.fn()
+    render(<TopToolbar {...defaultProps} onShare={onShare} />)
+    const btn = screen.getByRole('button', { name: 'Chia sẻ' })
+    expect(btn.getAttribute('title')).toBe('Chia sẻ')
+    fireEvent.click(btn)
+    expect(onShare).toHaveBeenCalledTimes(1)
+  })
+})
+
+import { act } from '@testing-library/react'
+import type { SyncStatus } from './TopToolbar'
+
+describe('TopToolbar sync status', () => {
+  const base = {
+    title: 'T', tocOpen: false, onToggleToc: vi.fn(), fontScale: 'md' as FontScale,
+    onFontScaleChange: vi.fn(), isReadingMode: false, onToggleReadingMode: vi.fn(),
+  }
+  const mk = (s?: SyncStatus) => <TopToolbar {...base} syncStatus={s} />
+  const labels = ['Đang kết nối', 'Đã đồng bộ', 'Ngoại tuyến']
+
+  afterEach(() => { cleanup(); vi.useRealTimers() })
+
+  it('renders nothing without syncStatus or when off', () => {
+    const { rerender } = render(mk())
+    for (const l of labels) expect(screen.queryByText(l)).toBeNull()
+    rerender(mk('off'))
+    for (const l of labels) expect(screen.queryByText(l)).toBeNull()
+  })
+
+  it.each([['connecting', 'Đang kết nối'], ['online', 'Đã đồng bộ'], ['offline', 'Ngoại tuyến']] as const)(
+    'renders %s label with role=status', (s, label) => {
+      render(mk(s))
+      const el = screen.getByText(label)
+      expect(el.getAttribute('role')).toBe('status')
+      expect(el.getAttribute('aria-live')).toBe('polite')
+    })
+
+  it('keeps Ngoại tuyến until connecting lasts 1500ms', () => {
+    vi.useFakeTimers()
+    const { rerender } = render(mk('offline'))
+    rerender(mk('connecting'))
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(screen.queryByText('Ngoại tuyến')).not.toBeNull()
+    act(() => { vi.advanceTimersByTime(600) })
+    expect(screen.queryByText('Đang kết nối')).not.toBeNull()
+    expect(screen.queryByText('Ngoại tuyến')).toBeNull()
+  })
+
+  it('never shows connecting on quick offline -> connecting -> offline', () => {
+    vi.useFakeTimers()
+    const { rerender } = render(mk('offline'))
+    rerender(mk('connecting'))
+    act(() => { vi.advanceTimersByTime(800) })
+    rerender(mk('offline'))
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.queryByText('Đang kết nối')).toBeNull()
+    expect(screen.queryByText('Ngoại tuyến')).not.toBeNull()
+  })
+
+  it('offline -> online shows immediately', () => {
+    vi.useFakeTimers()
+    const { rerender } = render(mk('offline'))
+    rerender(mk('online'))
+    expect(screen.queryByText('Đã đồng bộ')).not.toBeNull()
+  })
+
+  it('renders presence bar before sync status when peers present', () => {
+    const peers = [
+      { clientId: 1, name: 'An', color: 'var(--peer-1)', isSelf: true },
+      { clientId: 2, name: 'Binh', color: 'var(--peer-2)', isSelf: false },
+    ]
+    const { container } = render(<TopToolbar {...base} presence={peers} syncStatus="online" />)
+    const bar = container.querySelector('.presence-bar')
+    expect(bar).not.toBeNull()
+    expect(bar!.querySelectorAll('.presence-avatar').length).toBe(2)
+    const next = bar!.nextElementSibling
+    expect(next).not.toBeNull()
+    expect(next!.classList.contains('presence-bar')).toBe(false)
+  })
+
+  it('renders no presence bar without peers', () => {
+    const a = render(<TopToolbar {...base} />)
+    expect(a.container.querySelector('.presence-bar')).toBeNull()
+    const b = render(<TopToolbar {...base} presence={[]} />)
+    expect(b.container.querySelector('.presence-bar')).toBeNull()
+  })
 })

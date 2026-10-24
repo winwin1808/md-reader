@@ -89,7 +89,7 @@ nhưng mất granularity actor, đúng thứ cần cho "trace ai sửa chỗ nà
 | Phase | Provider | Ghi ở đâu |
 |---|---|---|
 | 1-7 | `y-indexeddb` | IndexedDB trong extension origin, một DB mỗi `docId` (từ 6e) |
-| 8 | `y-indexeddb` + WebSocket provider tới `apps/api` | thêm Postgres phía server |
+| 8 | `y-indexeddb` + WebSocket provider (`y-partyserver`) tới `apps/api` | Cloudflare Durable Object (SQLite) mỗi `docId` giữ trạng thái + snapshot (chia khúc 1 MB); token/quyền trong D1. **Không R2** (2026-10-24: không dùng sản phẩm nào có thể tính phí) |
 
 `packages/core` **không được biết provider nào đang chạy** — nó nhận vào một
 `Y.Doc` đã bind sẵn. Việc chọn và gắn provider là của `apps/extension`
@@ -127,8 +127,10 @@ apps/extension      MV3. Lớp DUY NHẤT được dùng chrome.*
 (phase 8) apps/api · apps/web
 ```
 
-Ranh giới này tồn tại để phase 8 chạy được `packages/core` trên Node (render
-preview cho share link) và `packages/ui` trong web app mà không viết lại.
+Ranh giới này tồn tại để phase 8 chạy được `packages/core` trên runtime
+Workers (`apps/api`) và `packages/ui` trong `apps/web` mà không viết lại.
+`apps/api` và `apps/web` cũng chỉ import core qua `@md-reader/core`; `apps/api`
+KHÔNG `document`/`window`, cả hai KHÔNG `chrome.*`.
 Vi phạm là blocker cứng ở `review-before-ship`, không phải góp ý.
 
 Import chéo package luôn bằng tên workspace (`@md-reader/core`), không bao giờ
@@ -381,18 +383,44 @@ mọi bề mặt + logo app.* Interface từng phase con: `docs/superpowers/spec
 
 Ship: *gửi link cho người khác xem → cho họ sửa → xem ai sửa chỗ nào.*
 
+Backend là **Cloudflare Workers, chạy trong gói Workers Free** (quyết định
+2026-10-24, thay cho NestJS + Postgres ở bản trước): Durable Object SQLite
+mỗi `docId` làm hub WebSocket + lưu trạng thái/snapshot qua `y-partyserver`; D1 giữ
+share token, quyền, hạn dùng. Không R2 — DO storage đã bền và nằm trong 5 GB Free.
+`apps/web` là trang tĩnh render phía client bằng `@md-reader/ui`; Worker chỉ
+trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md`.
+
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 8a | `apps/api` scaffold | NestJS + Postgres, lưu Y update binary, migration |
-| 8b | Share link read-only | Token + hạn dùng; `apps/web` render bằng `core/render` chạy trên Node |
-| 8c | WebSocket provider | Đồng bộ hai chiều thật giữa hai client |
-| 8d | Awareness | Con trỏ + presence |
-| 8e | Phân quyền | view / comment / edit theo từng link |
-| 8f | `BlameGutter` | Blame theo ký tự từ `clientID` |
-| 8g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc |
+| 8a0 | Spike `y-partyserver` trên Durable Object | Hai client đồng bộ thật qua DO; đo bundle Worker + số message/phiên; xác nhận Free nhận SQLite DO; ghi vào §5.6 |
+| 8b1 | `core/share` | Kiểu `ShareRole`/`ShareLink`/`RoomBinding`, `API_PATHS`, build/parse URL chia sẻ |
+| 8a1 | `apps/api` scaffold | Worker + wrangler, `DocRoom extends YServer`, route `/parties/doc/:roomId`, deploy workers.dev |
+| 8a2 | Token | D1 schema, `TokenStore` (D1 + Memory), route `/api/rooms`, `/api/s/:token`; chỉ lưu SHA-256 token |
+| 8a3 | Persistence | DO storage snapshot (chia khúc 1 MB) + log, gộp ≥200 update hoặc ≥256 KB và khi phòng trống, endpoint snapshot |
+| 8b2 | `apps/web` xem | Trang tĩnh `/s/:token` render snapshot bằng `@md-reader/ui`; 410 khi link hết hiệu lực |
+| 8b3 | `ShareModal` | Bật chia sẻ, tạo link xem, copy, thu hồi |
+| 8b4 | Nối share vào extension | `useShare`, registry `room`, nút Chia sẻ, wrangler `assets`, script deploy |
+| 8c1a | Provider trong extension | `bindRoom` cạnh `y-indexeddb`, bật chia sẻ là đẩy nội dung lên phòng |
+| 8c1b | Cài đặt cộng tác | Settings `serverUrl`/`displayName`, trạng thái đồng bộ trên toolbar |
+| 8c2 | Sửa trên web | Link edit → hỏi tên → `Editor` + preview qua provider |
+| 8d1 | Presence UI | `PresenceBar`, con trỏ màu theo `peerColor`, `Editor` nhận `awareness` |
+| 8d2 | Nối awareness | `user {name,color}`, `registerActor`, `awarenessToPeers` |
+| 8e1 | Chặn ghi từ link xem | `classifyMessage`, drop step2/update từ role view trong DO |
+| 8e2 | Quản lý link | Chọn Xem/Sửa, hạn 7/30 ngày/không, nhãn, thu hồi tất cả |
+| 8f1 | `computeBlame` | Khoảng ký tự theo `clientID`, test hội tụ hai doc |
+| 8f2 | `BlameGutter` | Thanh tông màu theo tác giả cạnh Editor, bật/tắt |
+| 8g1 | `textAtCheckpoint` / `restoreCheckpoint` | Dựng text từ snapshot, khôi phục bằng delta nhỏ nhất |
+| 8g2 | `HistoryTimeline` | Panel lịch sử, xem mốc, khôi phục, đi bằng bàn phím |
+| 8h1 | Core nhận plugin từ caller (7n) | `renderToHtml({plugins})`, `parseYaml` tiêm vào, subpath `@md-reader/core/plugins`; plan có thể tách 8h1a/8h1b |
+| 8h2 | Đọc tại chỗ trong content script (7o) | Render trong shadow root, placeholder math/mermaid, mục tiêu ≤ 50 KB gz |
+| 8i | Khoá import | `navigator.locks` quanh `findOrCreateByOrigin` |
+| 8j | E2E | Playwright: extension ↔ web qua `wrangler dev` |
+| 8k | Store kit | Listing + privacy nói đúng về chia sẻ; version 1.1.0 |
 
-Danh tính: 8b dùng tên tự khai lưu trong link token. Auth thật chỉ đặt ra khi
-có nhu cầu thực — không dựng account system trước.
+Danh tính: tên tự khai lưu local, gửi qua awareness; `clientID` Yjs + tên
+dùng cho blame. Không OAuth, không bảng user. Nút Chia sẻ chỉ ở app page;
+content script không gọi server. Không có gì rời máy cho tới khi người dùng
+bấm Chia sẻ.
 
 ## 5. Rủi ro
 
@@ -614,3 +642,25 @@ vừa là thư mục. Bản nháp đầu ghi `phase-N/<id>` và không tạo đ�
 | Excalidraw | chỉ app page, viewMode, lazy | render trong content script |
 | Editor | CodeMirror 6 + y-codemirror.next | Monaco · ProseMirror |
 | Yjs trong content script | Không | Có |
+
+### 5.6 Gói Workers Free và chi phí WebSocket — đã đo 2026-10-24
+
+Hạn mức Free: ≤ 100k request/ngày, ≤ 5 GB DO storage/tài khoản, D1 trả lỗi
+khi vượt hạn mức đọc/ghi ngày (từ 2026-09-01). Message WebSocket gửi lên
+tính là request, nên client phải gộp update trước khi gửi và server phải
+cache token theo kết nối thay vì đọc D1 mỗi message. Spike 8a0 phải ghi vào
+đây: `y-partyserver` chạy trên DO được không, hai client đồng bộ được không,
+bundle Worker bao nhiêu KB, và ước lượng request/ngày cho một phiên sửa 30
+phút hai người. Không stage nào được ship 8c trước khi bảng này có số liệu.
+
+**Kết quả spike 8a0 (2026-10-24)**
+
+| Câu hỏi | Kết quả quan sát | Nguồn (task) |
+|---|---|---|
+| (1) Hai client hội tụ? | Có: local 3/3 lượt (13 · 8 · 7 ms); remote wss 3/3 lượt (128 · 54 · 59 ms). y-partyserver 2.2.0 chạy trên DO. | 8a0.1, 8a0.3 |
+| (2) Bundle Worker gz | 74 116 B (wrangler báo 72.26 KiB gzip) | 8a0.2 |
+| (3) Message/phiên và % ngân sách ngày | 358 message inbound/60s (2 client × 3 edit/s) ≈ 10 740 message/phiên 30 phút ≈ 537 request; 10 phiên/ngày ≈ 5 370 request = 5,37 % của 100 000 | 8a0.2 |
+| (4) Free nhận SQLite DO + host workers.dev | Có: deploy gói Free chấp nhận `new_sqlite_classes`; host `mdr-spike-do-yjs.qhao-work.workers.dev` (subdomain tài khoản `qhao-work.workers.dev`) | 8a0.3 |
+| (5) `onConnect` đọc header upgrade | Có: đọc được `x-mdr-role=view` từ `ctx.request.headers`; phải gọi `super.onConnect(conn, ctx)` | 8a0.1 |
+
+Kết luận theo luật quyết định của spec 8a0: hội tụ = yes; Free nhận SQLite DO = yes; mức dùng 5,37 % ≥ 5 % nên batching update phía client được đưa vào Deferred 8c. R2 chưa bật trên tài khoản (lỗi 10042) nên 8a3 phải chờ bật R2.

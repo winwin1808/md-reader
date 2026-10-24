@@ -3,7 +3,6 @@ import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import remarkFrontmatter from 'remark-frontmatter'
-import yaml from 'yaml'
 import type { Root } from 'mdast'
 
 export interface ParseOptions {
@@ -11,6 +10,8 @@ export interface ParseOptions {
   gfm?: boolean
   /** Math ($..$, $$..$$) via remark-math. Default: true */
   math?: boolean
+  /** YAML parser; without it frontmatter is {} (node still stripped) */
+  parseYaml?: (src: string) => unknown
 }
 
 export interface ParseResult {
@@ -70,9 +71,9 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
   if (tree.children[0]?.type === 'yaml') {
     const yamlNode = tree.children[0] as any // actually yaml node type isn't in default mdast
     try {
-      const parsed = yaml.parse(yamlNode.value)
+      const parsed = options?.parseYaml ? options.parseYaml(yamlNode.value) : undefined
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        frontmatter = parsed
+        frontmatter = parsed as Record<string, unknown>
       }
     } catch (err: unknown) {
       frontmatter = { 
