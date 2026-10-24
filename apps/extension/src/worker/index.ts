@@ -1,3 +1,4 @@
+import { MAX_RENDER_CHARS, renderMarkdownForPage } from './render-md'
 import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry } from '../shared/md-url'
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -11,6 +12,22 @@ chrome.action.onClicked.addListener(async (tab) => {
 })
 
 chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
+  if (message?.action === 'renderMd') {
+    const md = message.markdown
+    if (typeof md !== 'string') {
+      sendResponse({ ok: false, error: 'bad-request' })
+    } else if (md.length > MAX_RENDER_CHARS) {
+      sendResponse({ ok: false, error: 'too-large' })
+    } else {
+      try {
+        const { html, title } = renderMarkdownForPage(md)
+        sendResponse({ ok: true, html, title })
+      } catch {
+        sendResponse({ ok: false, error: 'render-failed' })
+      }
+    }
+    return
+  }
   if (message && message.action === 'openApp') {
     const tabId = sender.tab?.id
     const fileUrl = message.fileUrl || ''

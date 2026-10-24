@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "pnpm clean && vite build && vite build --config vite.content.config.ts && node scripts/check-size.js",
+    "build": "pnpm clean && vite build && vite build --config vite.worker.config.ts && vite build --config vite.content.config.ts && node scripts/check-size.js",
     "dev": "vite build --watch",
     "dev:content": "vite build --config vite.content.config.ts --watch",
     "test": "vitest run",

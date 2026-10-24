@@ -366,11 +366,22 @@ Tests: render with no plugins has no `<code class="hljs">` and no katex markup; 
 `defaultRenderPlugins()` both appear; frontmatter without `parseYaml` is stripped.
 
 ### 8h2 — in-place reading in the content script (7o)
-FILES `apps/extension/src/content/render.ts` · `ContentApp.tsx` · `content.css` ·
-`index.ts` · `ContentApp.test.tsx`. Raw `.md` page → render into the shadow root over the
-`<pre>`; bar "Đọc trong MD Reader" · "Xem bản thô"; math/mermaid placeholders. Still no
-Yjs, no `@md-reader/ui`. `check-size.js` stays at 61 440; the plan records the measured gz
-and the review blocks above 50 KB unless the spec is amended with the reason.
+**Amended 2026-10-24 (spike after 8h1).** Importing core's parse+render into content.js measured
+70 659 B gz (+58.8 KB). yjs is absent, but the unified/micromark/sanitize stack alone breaks the
+61 440 limit. Decision: **the service worker renders, the content script only displays.**
+content.js sends the page markdown to the worker (`{ action: 'renderMd', markdown }`). The worker
+runs `parseMarkdown` + `renderToHtml` (sanitize on, raw HTML off, no katex, no highlight) and
+answers `{ ok, html, title }`. The content script injects that sanitized html into its shadow root
+over the page's `<pre>`, with the bar "Đọc trong MD Reader" · "Xem bản thô". Math and mermaid stay
+as code placeholders. The content script still has no Yjs, no `@md-reader/ui` and no
+`@md-reader/core`. Its size budget is unchanged (check 61 440; review blocks above 50 KB).
+The worker gets its own Vite build, with non-browser resolve conditions, because micromark's
+entity decoder has a DOM variant and a service worker has no `document`.
+Sub-tasks:
+- 8h2.1 split the worker build
+- 8h2.2 worker render handler
+- 8h2.3 content display
+- 8h2.4 Playwright e2e
 
 ### 8i — import lock
 FILES `apps/extension/src/app/doc-registry.ts` · `doc-registry.test.ts`.
@@ -412,7 +423,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8g1: done
 - 8g2: done
 - 8h1: done      (plan may split 8h1a core / 8h1b callers)
-- 8h2: pending
+- 8h2: planned
 - 8i: pending
 - 8j: pending
 - 8k: pending
