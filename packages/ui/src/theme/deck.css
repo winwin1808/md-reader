@@ -2,7 +2,8 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: var(--ink);
+  /* Letterbox is fixed near-black in every palette so slides never sit on a light/tinted backdrop. */
+  background: #0E1211;
   color: var(--paper);
   outline: none;
   display: flex;
