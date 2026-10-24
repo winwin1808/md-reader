@@ -22,12 +22,30 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+function withCors(res: Response): Response {
+  const headers = new Headers(res.headers)
+  headers.set('access-control-allow-origin', '*')
+  headers.set('access-control-expose-headers', 'content-type')
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
+}
+
 export async function handleRequest(req: Request, env: Env, deps: Deps = defaultDeps): Promise<Response> {
   const url = new URL(req.url)
   const store = deps.store ?? new D1TokenStore(env.DB)
 
   if (url.pathname.startsWith('/api/')) {
-    return (await handleApi(req, store, {
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+          'access-control-allow-headers': 'authorization, content-type',
+          'access-control-max-age': '86400',
+        },
+      })
+    }
+    return withCors((await handleApi(req, store, {
       snapshot: (roomId) =>
         deps.routeParty(
           new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
@@ -35,7 +53,7 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
           }),
           env,
         ).then((r) => r ?? json({ error: 'not found' }, 404)),
-    })) ?? json({ error: 'not found' }, 404)
+    })) ?? json({ error: 'not found' }, 404))
   }
 
   if (url.pathname.startsWith('/parties/')) {
