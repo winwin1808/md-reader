@@ -471,7 +471,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7s2a: done
 - 7s2b: done
 - 7t: done
-- 7u: planned
+- 7u: done
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
 - packages/core: pure TS — no react, chrome.*, document/window. packages/ui: no chrome.*.
