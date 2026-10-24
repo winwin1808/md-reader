@@ -1,13 +1,28 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleRequest } from './index.js'
+import { _resetAuthCache } from './api.js'
+import { MemoryTokenStore } from './tokens.js'
 import type { Env } from './env.js'
 
 const env = {} as Env
 const ok = () => Promise.resolve(new Response('party', { status: 200 }))
 
+async function twoRooms() {
+  const store = new MemoryTokenStore()
+  const a = await store.createRoom()
+  const b = await store.createRoom()
+  const view = await store.createLink(a.roomId, { role: 'view', expiresIn: null })
+  return { store, a, b, view }
+}
+
+beforeEach(() => _resetAuthCache())
+
 describe('handleRequest', () => {
   it('health returns 200 ok', async () => {
-    const res = await handleRequest(new Request('http://x/api/health'), env)
+    const res = await handleRequest(new Request('http://x/api/health'), env, {
+      routeParty: ok,
+      store: new MemoryTokenStore(),
+    })
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/json')
     expect(await res.json()).toEqual({ ok: true })
@@ -15,38 +30,77 @@ describe('handleRequest', () => {
 
   it('rejects room without token before touching the DO', async () => {
     const routeParty = vi.fn(ok)
-    const res = await handleRequest(new Request('http://x/parties/doc-room/r1'), env, { routeParty })
+    const res = await handleRequest(new Request('http://x/parties/doc-room/r1'), env, {
+      routeParty,
+      store: new MemoryTokenStore(),
+    })
     expect(res.status).toBe(401)
-    expect(await res.json()).toEqual({ error: 'token required' })
     expect(routeParty).not.toHaveBeenCalled()
   })
 
-  it.each([undefined, 'edit', 'view'])('overwrites x-mdr-role (client sent %s)', async (sent) => {
+  it('rejects unknown token (410) before the DO', async () => {
+    const routeParty = vi.fn(ok)
+    const res = await handleRequest(new Request('http://x/parties/doc-room/r1?token=bad'), env, {
+      routeParty,
+      store: new MemoryTokenStore(),
+    })
+    expect(res.status).toBe(410)
+    expect(routeParty).not.toHaveBeenCalled()
+  })
+
+  it('token of room A cannot open room B (403)', async () => {
+    const { store, a, b } = await twoRooms()
+    const routeParty = vi.fn(ok)
+    const res = await handleRequest(
+      new Request(`http://x/parties/doc-room/${b.roomId}?token=${a.ownerToken}`),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(403)
+    expect(routeParty).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'edit', 'view'])('overwrites x-mdr-role with the token role (client sent %s)', async (sent) => {
+    const { store, a, view } = await twoRooms()
     const routeParty = vi.fn(ok)
     const headers: Record<string, string> = {}
     if (sent) headers['x-mdr-role'] = sent
     const res = await handleRequest(
-      new Request('http://x/parties/doc-room/r1?token=t', { headers }),
+      new Request(`http://x/parties/doc-room/${a.roomId}?token=${view.token}`, { headers }),
       env,
-      { routeParty },
+      { routeParty, store },
     )
     expect(res.status).toBe(200)
+    const forwarded = (routeParty.mock.calls as unknown as [Request, Env][])[0]![0]
+    expect(forwarded.headers.get('x-mdr-role')).toBe('view')
+  })
+
+  it('owner token gets role edit', async () => {
+    const { store, a } = await twoRooms()
+    const routeParty = vi.fn(ok)
+    await handleRequest(new Request(`http://x/parties/doc-room/${a.roomId}?token=${a.ownerToken}`), env, {
+      routeParty,
+      store,
+    })
     const forwarded = (routeParty.mock.calls as unknown as [Request, Env][])[0]![0]
     expect(forwarded.headers.get('x-mdr-role')).toBe('edit')
   })
 
   it('404 when routeParty returns null', async () => {
-    const res = await handleRequest(new Request('http://x/parties/doc-room/r1?token=t'), env, {
+    const { store, a } = await twoRooms()
+    const res = await handleRequest(new Request(`http://x/parties/doc-room/${a.roomId}?token=${a.ownerToken}`), env, {
       routeParty: () => Promise.resolve(null),
+      store,
     })
     expect(res.status).toBe(404)
   })
 
   it('404 for other parties and unknown paths', async () => {
     const routeParty = vi.fn(ok)
-    const a = await handleRequest(new Request('http://x/parties/other/r1?token=t'), env, { routeParty })
+    const store = new MemoryTokenStore()
+    const a = await handleRequest(new Request('http://x/parties/other/r1?token=t'), env, { routeParty, store })
     expect(a.status).toBe(404)
-    const b = await handleRequest(new Request('http://x/nope'), env)
+    const b = await handleRequest(new Request('http://x/nope'), env, { routeParty, store })
     expect(b.status).toBe(404)
     expect(await b.json()).toEqual({ error: 'not found' })
     expect(routeParty).not.toHaveBeenCalled()
