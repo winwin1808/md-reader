@@ -200,3 +200,26 @@ describe('math', () => {
     expect(rm('$\\href{javascript:alert(1)}{x}$')).not.toMatch(/href="?javascript:/i)
   })
 })
+
+describe('injected plugins (8h1)', () => {
+  it('uses injected highlight plugin', () => {
+    const fake = () => (tree: any) => {
+      const walk = (n: any) => {
+        if (n.tagName === 'code') n.properties = { ...(n.properties ?? {}), 'data-fake': '1' }
+        for (const c of n.children ?? []) walk(c)
+      }
+      walk(tree)
+    }
+    const html = renderToHtml(parseMarkdown('```js\nvar a = 1\n```'), { plugins: { highlight: fake as any } }).html
+    expect(html).toContain('data-fake')
+    expect(html).not.toContain('hljs')
+  })
+  it('uses injected math plugin', () => {
+    const fake = () => () => {}
+    const html = renderToHtml(parseMarkdown('$x^2$'), { plugins: { math: fake as any } }).html
+    expect(html).not.toContain('katex')
+  })
+  it('uses injected parseYaml', () => {
+    expect(parseMarkdown('---\na: 1\n---\nx', { parseYaml: () => ({ injected: true }) }).frontmatter).toEqual({ injected: true })
+  })
+})

@@ -74,11 +74,11 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   processor.use(rehypeSlug)
   
   if (allowRawHtml) {
-    processor.use(rehypeRaw)
+    processor.use(options?.plugins?.raw ?? rehypeRaw)
   }
 
   if (highlight !== false) {
-    processor.use(rehypeHighlight)
+    processor.use(options?.plugins?.highlight ?? rehypeHighlight)
   }
 
   const codeAttributes = (sanitizeSchema.attributes?.code || []).filter(
@@ -154,7 +154,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
   if (options?.math !== false) {
-    processor.use(rehypeKatex, { throwOnError: false, strict: 'ignore' } as any)
+    processor.use(options?.plugins?.math ?? rehypeKatex, { throwOnError: false, strict: 'ignore' } as any)
   }
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
