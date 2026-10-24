@@ -1,5 +1,5 @@
 # Design: Phase 8 — Chia sẻ & cộng tác
-Author: Hao Nguyen (coordinator: Claude Fable). Status: designed. Phase: 8
+Author: Hao Nguyen (coordinator: Claude Fable). Status: shipped. Phase: 8
 Intent: docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md
 Branch: `phase-8` from `main` (phases 6 and 7 are merged).
 
