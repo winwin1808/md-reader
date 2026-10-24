@@ -146,3 +146,20 @@ describe('SharePage viewer props and retry', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('SharePage roles', () => {
+  const load = (role: string) => async () => ({
+    kind: 'ready' as const, text: '# A', info: { roomId: 'r', role: role as 'view' | 'edit', title: 'T' },
+  })
+  it('edit role renders name form', async () => {
+    localStorage.clear()
+    render(<SharePage token={TOKEN} load={load('edit') as never} />)
+    await waitFor(() => expect(screen.getByText('Bắt đầu sửa')).toBeTruthy())
+  })
+  it('view role has no editor or name form', async () => {
+    render(<SharePage token={TOKEN} load={load('view') as never} />)
+    await waitFor(() => expect(screen.getByTestId('viewer')).toBeTruthy())
+    expect(screen.queryByText('Bắt đầu sửa')).toBeNull()
+    expect(document.querySelector('.cm-editor')).toBeNull()
+  })
+})
