@@ -49,16 +49,15 @@ describe('Content script entry point', () => {
     expect(root).not.toBeNull()
     expect(root!.shadowRoot).not.toBeNull()
     
-    const link = root!.shadowRoot!.querySelector('link[rel="stylesheet"]')
-    expect(link).not.toBeNull()
-    expect(link!.getAttribute('href')).toBe('mock-url/app.css')
+    expect(root!.shadowRoot!.querySelector('link')).toBeNull()
+    expect(root!.shadowRoot!.querySelectorAll('style').length).toBe(1)
 
     const { createRoot } = await import('react-dom/client')
     const target = vi.mocked(createRoot).mock.calls[0]![0] as HTMLElement
     expect(target).not.toBe(root!.shadowRoot)
     expect(target.tagName).toBe('DIV')
     expect(target.parentNode).toBe(root!.shadowRoot)
-    expect(link!.parentNode).toBe(root!.shadowRoot)
+    expect(root!.shadowRoot!.querySelector('style')!.parentNode).toBe(root!.shadowRoot)
   })
 
   it('restores body on render error when alwaysOpenApp is false', async () => {
