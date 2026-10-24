@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { listRecent, migrateLegacyRegistry } from './doc-registry';
+import { listRecent, migrateLegacyRegistry, docQuery } from './doc-registry';
 import type { DocRecord } from './doc-registry';
 
 export function RecentFiles(): React.JSX.Element {
@@ -16,8 +16,8 @@ export function RecentFiles(): React.JSX.Element {
     })().catch(console.error);
   }, []);
 
-  const handleClick = (file: DocRecord) => {
-    window.location.href = chrome.runtime.getURL('app.html') + '?doc=' + encodeURIComponent(file.docId);
+  const handleClick = async (file: DocRecord) => {
+    window.location.href = chrome.runtime.getURL('app.html') + (await docQuery(file.docId));
   };
 
   if (files.length === 0) return <></>;

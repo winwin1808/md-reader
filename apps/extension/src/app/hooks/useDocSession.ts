@@ -3,7 +3,7 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT, createCheckpointTracker, registerActor } from '@md-reader/core'
 import type { CheckpointTracker } from '@md-reader/core'
-import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase } from '../doc-registry'
+import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase, resolveDocParam, docQuery } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
 import { readCacheEntry } from '../../shared/md-url'
 
@@ -32,8 +32,9 @@ export interface DocSession {
   dismissExternal(): void
 }
 
-export function useDocSession(opts: { docId: string | null; fileUrl: string | null }): DocSession {
-  const { docId: docIdParam, fileUrl: fileUrlParam } = opts
+export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null }): DocSession {
+  const { docId: legacyDocId, fileUrl: fileUrlParam, shortParam } = opts
+  const docIdParam = legacyDocId || shortParam || null
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
   const [docTitle, setDocTitle] = useState<string>('')
@@ -58,7 +59,13 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         await migrationOnce
         let rec: DocRecord | null = null
         if (docIdParam) {
-          rec = await getRecord(docIdParam)
+          const id = shortParam
+            ? await resolveDocParam(new URLSearchParams({ d: shortParam }))
+            : await resolveDocParam(new URLSearchParams({ doc: docIdParam }))
+          rec = id ? await getRecord(id) : null
+          if (rec && !shortParam) {
+            try { window.history.replaceState(null, '', await docQuery(rec.docId)) } catch { /* ignore */ }
+          }
           if (!rec) {
             if (!cancelled) setError('Không tìm thấy tài liệu này.')
             return
@@ -70,7 +77,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
             originPath: fileUrlParam,
           })
           try {
-            window.history.replaceState(null, '', '?doc=' + rec.docId)
+            window.history.replaceState(null, '', await docQuery(rec.docId))
           } catch {
             /* ignore */
           }

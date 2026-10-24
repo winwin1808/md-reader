@@ -11,6 +11,7 @@ export interface DocRecord {
   persistenceName: string
   lastOpenedAt: number
   hasHandle: boolean
+  shortKey?: string
 }
 
 const DB_NAME = 'md_reader_registry'
@@ -107,7 +108,7 @@ export async function createRecord(init: {
     hasHandle: false,
   }
   await putRecord(record)
-  return record
+  return ensureShortKey(docId)
 }
 
 const inFlightByOrigin = new Map<string, Promise<DocRecord>>()
@@ -314,4 +315,72 @@ export async function writeDocText(
       await p.destroy()
     }
   }
+}
+
+const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+function randomKey(): string {
+  const b = crypto.getRandomValues(new Uint8Array(4))
+  return Array.from(b, (x) => B62[x % 62]).join('')
+}
+
+export function docSlug(name: string): string {
+  const base = name.replace(/\.[^./\\]*$/, '')
+  const s = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24)
+    .replace(/-+$/g, '')
+  return s || 'doc'
+}
+
+export function docParam(rec: DocRecord): string {
+  return `${docSlug(rec.title)}-${rec.shortKey ?? ''}`
+}
+
+/** Additive: assigns a unique 4-char key to a record that has none (new or old docs). */
+export async function ensureShortKey(docId: string): Promise<DocRecord> {
+  const db = await openDb()
+  const tx = db.transaction('docs', 'readwrite')
+  const store = tx.objectStore('docs')
+  const finished = done(tx)
+  const cur = (await req(store.get(docId))) as DocRecord | undefined
+  if (!cur) {
+    await finished
+    throw new Error('Record not found: ' + docId)
+  }
+  if (cur.shortKey) {
+    await finished
+    return cur
+  }
+  const all = (await req(store.getAll())) as DocRecord[]
+  const used = new Set(all.map((r) => r.shortKey))
+  let key = randomKey()
+  while (used.has(key)) key = randomKey()
+  const next = { ...cur, shortKey: key }
+  store.put(next)
+  await finished
+  return next
+}
+
+/** `?d=<slug>-<key>` query for a doc (assigns the key lazily). */
+export async function docQuery(docId: string): Promise<string> {
+  return '?d=' + docParam(await ensureShortKey(docId))
+}
+
+export async function resolveDocParam(params: URLSearchParams): Promise<string | null> {
+  const d = params.get('d')
+  if (d) {
+    const key = d.slice(d.lastIndexOf('-') + 1)
+    const db = await openDb()
+    const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]
+    return all.find((r) => r.shortKey === key)?.docId ?? null
+  }
+  const legacy = params.get('doc')
+  if (!legacy) return null
+  return (await getRecord(legacy))?.docId ?? null
 }
