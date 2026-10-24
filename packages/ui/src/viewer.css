@@ -16,39 +16,39 @@
 @import './theme/formatting-toolbar.css';
 @import './theme/split-view.css';
 .md-viewer {
-  background-color: var(--md-bg);
-  color: var(--md-fg);
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 .md-viewer .hljs-keyword,
 .md-viewer .hljs-literal,
 .md-viewer .hljs-symbol,
 .md-viewer .hljs-name {
-  color: var(--md-hljs-keyword);
+  color: var(--code-keyword);
 }
 
 .md-viewer .hljs-link {
-  color: var(--md-hljs-link);
+  color: var(--accent);
 }
 
 .md-viewer .hljs-built_in,
 .md-viewer .hljs-type {
-  color: var(--md-hljs-type);
+  color: var(--code-type);
 }
 
 .md-viewer .hljs-number,
 .md-viewer .hljs-class {
-  color: var(--md-hljs-number);
+  color: var(--code-number);
 }
 
 .md-viewer .hljs-string,
 .md-viewer .hljs-meta .hljs-string {
-  color: var(--md-hljs-string);
+  color: var(--code-string);
 }
 
 .md-viewer .hljs-regexp,
 .md-viewer .hljs-template-tag {
-  color: var(--md-hljs-regexp);
+  color: var(--code-string);
 }
 
 .md-viewer .hljs-subst,
@@ -56,29 +56,29 @@
 .md-viewer .hljs-title,
 .md-viewer .hljs-params,
 .md-viewer .hljs-formula {
-  color: var(--md-hljs-function);
+  color: var(--code-function);
 }
 
 .md-viewer .hljs-comment,
 .md-viewer .hljs-quote {
-  color: var(--md-hljs-comment);
+  color: var(--code-comment);
 }
 
 .md-viewer .hljs-doctag {
-  color: var(--md-hljs-doctag);
+  color: var(--code-keyword);
 }
 
 .md-viewer .hljs-meta,
 .md-viewer .hljs-meta .hljs-keyword {
-  color: var(--md-hljs-meta);
+  color: var(--code-meta);
 }
 
 .md-viewer .hljs-meta .hljs-string {
-  color: var(--md-hljs-meta-string);
+  color: var(--code-string);
 }
 
 .md-viewer .hljs-attr,
 .md-viewer .hljs-attribute,
 .md-viewer .hljs-builtin-name {
-  color: var(--md-hljs-attr);
+  color: var(--code-attr);
 }
