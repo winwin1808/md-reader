@@ -305,6 +305,14 @@ export function MindmapModal({
   }, [selected])
 
   const toggleCollapse = useCallback((id: string) => {
+    if (root) {
+      const find = (n: MindNode): MindNode | undefined =>
+        n.id === id ? n : n.children?.map(find).find(Boolean)
+      const hasDesc = (n: MindNode, target: string): boolean =>
+        (n.children ?? []).some((c) => c.id === target || hasDesc(c, target))
+      const target = find(root)
+      setSelectedId((cur) => (target && !collapsedIds.has(id) && hasDesc(target, cur) ? id : cur))
+    }
     setCollapsedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -314,7 +322,7 @@ export function MindmapModal({
       }
       return next
     })
-  }, [])
+  }, [root, collapsedIds])
 
   const handleExpandAll = useCallback(() => {
     setCollapsedIds(new Set())
@@ -322,6 +330,7 @@ export function MindmapModal({
 
   const handleCollapseAll = useCallback(() => {
     if (!root) return
+    setSelectedId(root.id)
     const ids = new Set<string>()
     function traverse(n: MindNode, isRoot: boolean) {
       if (n.children && n.children.length > 0) {
@@ -411,12 +420,18 @@ export function MindmapModal({
     return null
   }
 
+  const setSizeOf = (id: string) => {
+    const sibs = nodes.find((p) => p.children.some((c) => c.node.id === id))?.children
+    if (!sibs) return { size: 1, pos: 1 }
+    return { size: sibs.length, pos: sibs.findIndex((c) => c.node.id === id) + 1 }
+  }
+
   const handleTreeKeyDown = (e: React.KeyboardEvent<SVGGElement>) => {
     if (!selected || e.ctrlKey || e.metaKey || e.altKey) return
     const parentOf = (id: string): LayoutNode | undefined =>
       nodes.find((p) => p.children.some((c) => c.node.id === id))
     const go = (n: LayoutNode | undefined) => {
-      if (!n) return
+      if (!n || n.node.id === selected.node.id) return
       focusPendingRef.current = true
       setSelectedId(n.node.id)
     }
@@ -671,6 +686,8 @@ export function MindmapModal({
                 className="mindmap-node"
                 role="treeitem"
                 aria-level={n.depth + 1}
+                aria-setsize={setSizeOf(n.node.id).size}
+                aria-posinset={setSizeOf(n.node.id).pos}
                 aria-expanded={hasChildren ? !isCollapsed : undefined}
                 aria-selected={n.node.id === effectiveSelectedId}
                 aria-label={n.node.text}
