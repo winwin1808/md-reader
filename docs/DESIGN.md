@@ -89,7 +89,7 @@ nhưng mất granularity actor, đúng thứ cần cho "trace ai sửa chỗ nà
 | Phase | Provider | Ghi ở đâu |
 |---|---|---|
 | 1-7 | `y-indexeddb` | IndexedDB trong extension origin, một DB mỗi `docId` (từ 6e) |
-| 8 | `y-indexeddb` + WebSocket provider (`y-partyserver`) tới `apps/api` | Cloudflare Durable Object (SQLite) mỗi `docId` giữ trạng thái nóng; snapshot bền + checkpoint ra R2; token/quyền trong D1 |
+| 8 | `y-indexeddb` + WebSocket provider (`y-partyserver`) tới `apps/api` | Cloudflare Durable Object (SQLite) mỗi `docId` giữ trạng thái + snapshot (chia khúc 1 MB); token/quyền trong D1. **Không R2** (2026-10-24: không dùng sản phẩm nào có thể tính phí) |
 
 `packages/core` **không được biết provider nào đang chạy** — nó nhận vào một
 `Y.Doc` đã bind sẵn. Việc chọn và gắn provider là của `apps/extension`
@@ -385,8 +385,8 @@ Ship: *gửi link cho người khác xem → cho họ sửa → xem ai sửa ch�
 
 Backend là **Cloudflare Workers, chạy trong gói Workers Free** (quyết định
 2026-10-24, thay cho NestJS + Postgres ở bản trước): Durable Object SQLite
-mỗi `docId` làm hub WebSocket + trạng thái nóng qua `y-partyserver`; R2 giữ
-snapshot bền và checkpoint lịch sử; D1 giữ share token, quyền, hạn dùng.
+mỗi `docId` làm hub WebSocket + lưu trạng thái/snapshot qua `y-partyserver`; D1 giữ
+share token, quyền, hạn dùng. Không R2 — DO storage đã bền và nằm trong 5 GB Free.
 `apps/web` là trang tĩnh render phía client bằng `@md-reader/ui`; Worker chỉ
 trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md`.
 
@@ -396,7 +396,7 @@ trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong
 | 8b1 | `core/share` | Kiểu `ShareRole`/`ShareLink`/`RoomBinding`, `API_PATHS`, build/parse URL chia sẻ |
 | 8a1 | `apps/api` scaffold | Worker + wrangler, `DocRoom extends YServer`, route `/parties/doc/:roomId`, deploy workers.dev |
 | 8a2 | Token | D1 schema, `TokenStore` (D1 + Memory), route `/api/rooms`, `/api/s/:token`; chỉ lưu SHA-256 token |
-| 8a3 | Persistence | DO storage snapshot + log, gộp ≥200 update hoặc ≥256 KB, R2 `latest.bin` khi phòng trống, endpoint snapshot |
+| 8a3 | Persistence | DO storage snapshot (chia khúc 1 MB) + log, gộp ≥200 update hoặc ≥256 KB và khi phòng trống, endpoint snapshot |
 | 8b2 | `apps/web` xem | Trang tĩnh `/s/:token` render snapshot bằng `@md-reader/ui`; 410 khi link hết hiệu lực |
 | 8b3 | `ShareModal` | Bật chia sẻ, tạo link xem, copy, thu hồi |
 | 8b4 | Nối share vào extension | `useShare`, registry `room`, nút Chia sẻ, wrangler `assets`, script deploy |

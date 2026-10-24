@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@md-reader/core": "workspace:*",
     "partyserver": "0.5.10",
     "y-partyserver": "2.2.0",
     "yjs": "13.6.33"
