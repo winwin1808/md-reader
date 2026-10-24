@@ -23,9 +23,11 @@ vi.mock('./hooks/useFileSave', async (orig) => {
     return saveOverride.state ? { ...r, saveState: saveOverride.state } : r
   } }
 })
+const useSessionCalls: any[] = []
 vi.mock('./hooks/useDocSession', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useDocSession: (...a: any[]) => {
+    useSessionCalls.push(a[0])
     const r0 = actual.useDocSession(...a)
     const r = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
     return docOverride.external
@@ -1576,6 +1578,9 @@ describe('App', () => {
       expect(screen.getByRole('dialog', { name: 'Chia sẻ' })).toBeDefined()
       await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
       expect(await screen.findByText('Tạo link xem')).toBeDefined()
+      const last = useSessionCalls[useSessionCalls.length - 1]
+      expect(last.room.roomId).toBe('r1')
+      expect(last.room.ownerToken).toBe('tok')
     } finally {
       docOverride.shareDoc = false
       vi.unstubAllGlobals()
