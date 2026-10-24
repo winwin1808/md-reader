@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { authorizeWs, handleApi, _resetAuthCache } from './api.js'
+import { authorizeWs, handleApi, _resetAuthCache, _authCacheSize } from './api.js'
+import { handleRequest } from './index.js'
 import { MemoryTokenStore } from './tokens.js'
 
 let t = 1_000_000
@@ -170,5 +171,87 @@ describe('authorizeWs', () => {
     expect(((await authorizeWs(wsReq('bad'), store, now)) as Response).status).toBe(410)
     expect(((await authorizeWs(wsReq('bad'), store, now)) as Response).status).toBe(410)
     expect(spy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('hardening (8a2.5)', () => {
+  async function link(store: MemoryTokenStore, roomId: string, ownerToken: string, body: unknown) {
+    return (await handleApi(req('POST', `/api/rooms/${roomId}/links`, { bearer: ownerToken, body }), store))!
+  }
+
+  it('malformed percent-encoding -> 400', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const a = (await handleApi(req('GET', '/api/s/%E0%A4%A'), store))!
+    expect(a.status).toBe(400)
+    expect(await a.json()).toEqual({ error: 'bad path' })
+    expect((await handleApi(req('GET', '/api/rooms/%/links', { bearer: ownerToken }), store))!.status).toBe(400)
+    expect((await handleApi(req('DELETE', `/api/rooms/${roomId}/links/%`, { bearer: ownerToken }), store))!.status).toBe(400)
+  })
+
+  it('owner of room A cannot touch room B', async () => {
+    const a = await setup()
+    const b = await setup()
+    expect((await handleApi(req('GET', `/api/rooms/${b.roomId}/links`, { bearer: a.ownerToken }), a.store))!.status).toBe(401)
+    expect((await handleApi(req('POST', `/api/rooms/${b.roomId}/links`, { bearer: a.ownerToken, body: { role: 'view', expiresIn: null } }), a.store))!.status).toBe(401)
+    expect((await handleApi(req('DELETE', `/api/rooms/${b.roomId}/links/abcdef`, { bearer: a.ownerToken }), a.store))!.status).toBe(401)
+  })
+
+  it('second DELETE of same prefix -> 404; resolve body keys', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const l = (await (await link(store, roomId, ownerToken, { role: 'view', expiresIn: null })).json()) as { token: string; tokenPrefix: string }
+    const r = (await handleApi(req('GET', `/api/s/${l.token}`), store))!
+    expect(Object.keys(await r.json())).toEqual(['roomId', 'role', 'title'])
+    const d = () => handleApi(req('DELETE', `/api/rooms/${roomId}/links/${l.tokenPrefix}`, { bearer: ownerToken }), store)
+    expect((await d())!.status).toBe(204)
+    expect((await d())!.status).toBe(404)
+  })
+
+  it('rejects bad expiresIn / label / oversize body', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    for (const expiresIn of [-1, 0, 1.5, 1e999, '7', 10 * 365 * 86_400_000 + 1]) {
+      const res = await handleApi(
+        new Request(`http://x/api/rooms/${roomId}/links`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${ownerToken}`, 'content-type': 'application/json' },
+          body: `{"role":"view","expiresIn":${typeof expiresIn === 'string' ? JSON.stringify(expiresIn) : String(expiresIn)}}`,
+        }),
+        store,
+      )
+      expect(res!.status, String(expiresIn)).toBe(400)
+    }
+    expect((await link(store, roomId, ownerToken, { role: 'view', expiresIn: 1, label: 'x'.repeat(121) })).status).toBe(400)
+    expect((await link(store, roomId, ownerToken, { role: 'view', expiresIn: 1, label: 'x'.repeat(120) })).status).toBe(201)
+    const big = await link(store, roomId, ownerToken, { role: 'view', expiresIn: null, label: 'x'.repeat(5000) })
+    expect(big.status).toBe(413)
+    const bad = await handleApi(
+      new Request(`http://x/api/rooms/${roomId}/links`, { method: 'POST', headers: { authorization: `Bearer ${ownerToken}` }, body: '{' }),
+      store,
+    )
+    expect(bad!.status).toBe(400)
+  })
+
+  it('MemoryTokenStore listLinks newest first, ties by insertion desc', async () => {
+    const { store, roomId } = await setup()
+    const a = await store.createLink(roomId, { role: 'view', expiresIn: null })
+    const b = await store.createLink(roomId, { role: 'view', expiresIn: null })
+    expect((await store.listLinks(roomId)).map((l) => l.tokenPrefix)).toEqual([b.tokenPrefix, a.tokenPrefix])
+  })
+
+  it('authCache is capped', async () => {
+    const store = new MemoryTokenStore(now)
+    for (let i = 0; i < 6000; i++) {
+      await authorizeWs(new Request(`http://x/parties/doc-room/r?token=t${i}`), store, now)
+    }
+    expect(_authCacheSize()).toBeLessThanOrEqual(5000)
+  })
+
+  it('handleRequest: bad roomId encoding -> 400 before routeParty', async () => {
+    const routeParty = vi.fn(async () => new Response('x'))
+    const res = await handleRequest(new Request('http://x/parties/doc-room/%?token=x'), {} as never, {
+      routeParty,
+      store: new MemoryTokenStore(now),
+    })
+    expect(res.status).toBe(400)
+    expect(routeParty).not.toHaveBeenCalled()
   })
 })

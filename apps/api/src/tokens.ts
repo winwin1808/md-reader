@@ -43,12 +43,14 @@ interface LinkRow {
   createdAt: number
   expiresAt: number | null
   revokedAt: number | null
+  seq: number
 }
 
 export class MemoryTokenStore implements TokenStore {
   // rooms: roomId -> ownerTokenHash ; links: tokenHash -> LinkRow
   readonly rooms = new Map<string, { ownerTokenHash: string; createdAt: number }>()
   readonly links = new Map<string, LinkRow>()
+  private seq = 0
 
   constructor(private now: () => number = Date.now) {}
 
@@ -77,6 +79,7 @@ export class MemoryTokenStore implements TokenStore {
       createdAt,
       expiresAt: req.expiresIn === null ? null : createdAt + req.expiresIn,
       revokedAt: null,
+      seq: this.seq++,
     }
     this.links.set(row.tokenHash, row)
     return this.toLink(row, token)
@@ -85,18 +88,20 @@ export class MemoryTokenStore implements TokenStore {
   async listLinks(roomId: string): Promise<ShareLink[]> {
     return [...this.links.values()]
       .filter((r) => r.roomId === roomId)
-      .sort((a, b) => b.createdAt - a.createdAt)
+      .sort((a, b) => b.createdAt - a.createdAt || b.seq - a.seq)
       .map((r) => this.toLink(r, ''))
   }
 
   async revoke(roomId: string, prefix: string): Promise<boolean> {
+    let first: LinkRow | null = null
     for (const r of this.links.values()) {
       if (r.roomId === roomId && r.tokenPrefix === prefix && r.revokedAt === null) {
-        r.revokedAt = this.now()
-        return true
+        if (!first || r.createdAt < first.createdAt || (r.createdAt === first.createdAt && r.seq < first.seq)) first = r
       }
     }
-    return false
+    if (!first) return false
+    first.revokedAt = this.now()
+    return true
   }
 
   async resolve(token: string): Promise<{ roomId: string; role: ShareRole } | null> {
