@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { createDoc } from './doc.js'
-import { trackLocalActor } from './checkpoint.js'
+import { trackLocalActor, registerActor } from './checkpoint.js'
 
 const actors = (d: Y.Doc) => (d.getMap('meta').get('actors') as Y.Map<string> | undefined)
 
@@ -56,5 +56,38 @@ describe('trackLocalActor', () => {
     off()
     d.getText('source').insert(0, 'x')
     expect(actors(d)?.get(String(d.clientID))).toBeUndefined()
+  })
+})
+
+describe('registerActor before sync', () => {
+  const sync = (x: Y.Doc, y: Y.Doc) => {
+    Y.applyUpdate(y, Y.encodeStateAsUpdate(x))
+    Y.applyUpdate(x, Y.encodeStateAsUpdate(y))
+  }
+  it('keeps both names when joiner registers before sync', () => {
+    const b = new Y.Doc({ gc: false })
+    registerActor(b, 'Bình')
+    const a = createDoc()
+    registerActor(a, 'An')
+    sync(a, b)
+    sync(a, b)
+    for (const d of [a, b]) {
+      expect(actors(d)?.get(String(a.clientID))).toBe('An')
+      expect(actors(d)?.get(String(b.clientID))).toBe('Bình')
+    }
+  })
+  it('only the last pending name is written', () => {
+    const b = new Y.Doc({ gc: false })
+    registerActor(b, 'X')
+    registerActor(b, 'Y')
+    const a = createDoc()
+    registerActor(a, 'An')
+    sync(a, b)
+    expect(actors(b)?.get(String(b.clientID))).toBe('Y')
+  })
+  it('initialised doc registers synchronously', () => {
+    const d = createDoc()
+    registerActor(d, 'An')
+    expect(actors(d)?.get(String(d.clientID))).toBe('An')
   })
 })

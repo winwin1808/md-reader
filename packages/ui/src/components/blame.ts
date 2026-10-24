@@ -12,15 +12,23 @@ export interface LineAuthor { clientId: number; actor: string | null }
 export function lineAuthors(ranges: BlameRange[], text: string): Array<LineAuthor | null> {
   const out: Array<LineAuthor | null> = []
   const parts = text.split('\n')
+  const byFrom = ranges.map((_, i) => i).sort((a, b) => ranges[a]!.from - ranges[b]!.from || a - b)
+  let ptr = 0
+  let active: number[] = []
   let start = 0
   for (let i = 0; i < parts.length; i++) {
     const end = start + parts[i]!.length + (i < parts.length - 1 ? 1 : 0)
+    while (ptr < byFrom.length && ranges[byFrom[ptr]!]!.from <= (end === start ? start : end - 1)) active.push(byFrom[ptr++]!)
+    active = active.filter((k) => ranges[k]!.to > start)
+    // original input order keeps the first-seen tie-break
+    const cand = active.slice().sort((a, b) => a - b)
     let best: BlameRange | null = null
     let bestOverlap = 0
     const totals = new Map<number, number>()
     const first = new Map<number, BlameRange>()
     const order: number[] = []
-    for (const r of ranges) {
+    for (const k of cand) {
+      const r = ranges[k]!
       const o = Math.min(end, r.to) - Math.max(start, r.from)
       if (o <= 0) continue
       if (!totals.has(r.clientId)) {
@@ -38,7 +46,7 @@ export function lineAuthors(ranges: BlameRange[], text: string): Array<LineAutho
       }
     }
     if (!best && end === start) {
-      best = ranges.find((r) => r.from <= start && start < r.to) ?? null
+      best = cand.map((k) => ranges[k]!).find((r) => r.from <= start && start < r.to) ?? null
     }
     out.push(best ? { clientId: best.clientId, actor: best.actor } : null)
     start = end

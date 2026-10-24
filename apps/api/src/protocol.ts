@@ -27,7 +27,21 @@ export function sanitizeUser(user: unknown): { name: string; color: string; colo
   return { name, color, colorLight: `color-mix(in srgb, ${color} 20%, transparent)` }
 }
 
+export const MAX_AWARENESS_BYTES = 16 * 1024
+const MAX_CURSOR_CHARS = 1024
+
+function cursorOk(c: unknown): boolean {
+  if (c === null) return true
+  if (typeof c !== 'object' || Array.isArray(c)) return false
+  try {
+    return JSON.stringify(c).length <= MAX_CURSOR_CHARS
+  } catch {
+    return false
+  }
+}
+
 export function sanitizeAwarenessMessage(buf: Uint8Array): Uint8Array | null {
+  if (buf.length > MAX_AWARENESS_BYTES) return null
   try {
     const d = decoding.createDecoder(buf)
     if (decoding.readVarUint(d) !== 1) return null
@@ -53,7 +67,7 @@ export function sanitizeAwarenessMessage(buf: Uint8Array): Uint8Array | null {
       const out: Record<string, unknown> = {}
       const user = sanitizeUser(s.user)
       if (user) out.user = user
-      if ('cursor' in s) out.cursor = s.cursor
+      if ('cursor' in s && cursorOk(s.cursor)) out.cursor = s.cursor
       entries.push([id, clock, JSON.stringify(out)])
     }
     const inner = encoding.createEncoder()
