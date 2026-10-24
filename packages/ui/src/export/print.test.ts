@@ -47,7 +47,7 @@ describe('print.css', () => {
   it('contains @page configuration', () => {
     const content = fs.readFileSync(cssPath, 'utf8')
     expect(content).toContain('@page')
-    expect(content).toContain('margin: 20mm 15mm 20mm 15mm;')
+    expect(content).toContain('margin: 20mm;')
   })
 
   it('contains @media print rules to hide UI chrome and format content', () => {
@@ -58,7 +58,7 @@ describe('print.css', () => {
     expect(content).toContain('.settings-btn')
     expect(content).toContain('.md-no-print')
     expect(content).toContain('page-break-after: avoid')
-    expect(content).toContain('page-break-inside: avoid')
+    expect(content).toContain('break-inside: avoid')
   })
 
   it('is imported in viewer.css', () => {
@@ -85,9 +85,33 @@ describe('print.css', () => {
 
   it('keeps pre/code blocks readable with light background and dark text', () => {
     const content = fs.readFileSync(cssPath, 'utf8')
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#f6f8fa\s*!important/)
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#1f2328\s*!important/)
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d0d7de\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#e5eae7\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#000000\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d3dad7\s*!important/)
+  })
+})
+
+describe('print.css page breaks', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '../theme/print.css'), 'utf8')
+  it('wraps pre and avoids breaking only small blocks', () => {
+    expect(content).toMatch(/white-space:\s*pre-wrap/)
+    expect(content).toContain('overflow-wrap: anywhere')
+    expect(content).toMatch(/@page\s*\{[^}]*margin:\s*20mm;/)
+    for (const m of content.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (/break-inside:\s*avoid/.test(m[2]!)) {
+        expect(m[1]).not.toMatch(/\b(pre|table)\b/)
+      }
+    }
+  })
+})
+
+describe('getDefaultExportCss Giấy literals', () => {
+  it('uses literal tokens, no var()', async () => {
+    const { getDefaultExportCss } = await import('./css')
+    const css = getDefaultExportCss()
+    expect(css).toContain('#F1F3F2')
+    expect(css).toContain('Literata')
+    expect(css).not.toContain('var(')
   })
 })
 
@@ -160,5 +184,25 @@ describe('getDefaultExportCss math rules', () => {
     const css = getDefaultExportCss()
     expect(css).toMatch(/\.katex-html\s*\{\s*display:\s*none/)
     expect(css).toContain('.katex-display')
+  })
+})
+
+describe('print.css review fixes', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '../theme/print.css'), 'utf8')
+  it('forces wrapping, white container, inline alerts, no icons, Giấy greys', () => {
+    expect(content).toMatch(/\.md-viewer pre,\s*\.md-viewer pre code\s*\{[^}]*white-space:\s*pre-wrap\s*!important/)
+    expect(content).toMatch(/\.a4-document-container\s*\{[^}]*background:\s*#ffffff\s*!important/)
+    expect(content).toMatch(/\.md-viewer div\.markdown-alert\s*\{[^}]*float:\s*none/)
+    expect(content).toMatch(/\.external-link-icon\s*\{[^}]*display:\s*none/)
+    expect(content).toContain('a[href^="http"]:not([href*="localhost"])')
+    expect(content).not.toMatch(/#d0d7de|#f6f8fa|#1f2328/i)
+  })
+  it('export css has alert tones and icon sizing', async () => {
+    const { getDefaultExportCss } = await import('./css')
+    const css = getDefaultExportCss()
+    expect(css).toContain('.markdown-alert-warning')
+    expect(css).toContain('#8A500F')
+    expect(css).toContain('#A2352B')
+    expect(css).toMatch(/\.markdown-alert-icon[^{]*\{[^}]*width:\s*1em/)
   })
 })

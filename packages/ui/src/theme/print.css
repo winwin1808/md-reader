@@ -1,6 +1,6 @@
 @page {
   size: auto;
-  margin: 20mm 15mm 20mm 15mm;
+  margin: 20mm;
 }
 
 @media print {
@@ -61,7 +61,7 @@
   }
 
   blockquote {
-    border-left: 4px solid #d0d7de !important;
+    border-left: 4px solid #d3dad7 !important;
     color: #000000 !important;
   }
 
@@ -72,26 +72,59 @@
   table,
   th,
   td {
-    border-color: #d0d7de !important;
+    border-color: #d3dad7 !important;
     color: #000000 !important;
   }
 
-  table,
-  pre,
-  code,
   img,
-  blockquote {
+  figure,
+  .markdown-alert,
+  tr {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  .md-viewer pre,
+  .md-viewer pre code {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+  }
+
+  .a4-document-container,
+  .reading-mode .a4-document-container {
+    background: #ffffff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+  }
+
+  .md-viewer div.markdown-alert {
+    float: none !important;
+    width: auto !important;
+    margin: 1em 0 !important;
+  }
+
+  a[href^="http"]:not([href*="localhost"]):not([href*="127.0.0.1"])::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+  }
+
+  .external-link-icon {
+    display: none !important;
   }
 
   pre,
   code,
   .md-viewer pre,
   .md-viewer code {
-    border: 1px solid #d0d7de !important;
-    background-color: #f6f8fa !important;
-    color: #1f2328 !important;
+    border: 1px solid #d3dad7 !important;
+    background-color: #e5eae7 !important;
+    color: #000000 !important;
   }
 
   pre code,
