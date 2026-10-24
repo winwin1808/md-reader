@@ -5,7 +5,7 @@
 <h1 align="center">MD Reader</h1>
 
 <p align="center">
-  Đọc, soạn, trình chiếu và xuất Markdown ngay trong Chrome. Chạy hoàn toàn trên máy.
+  Đọc, soạn, trình chiếu và xuất Markdown ngay trong Chrome. Chạy trên máy; chia sẻ là tuỳ chọn.
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
 </p>
 
-> **TL;DR (English)** — MD Reader is a Chrome (MV3) extension that turns any `.md` file into a calm reading page, with a CodeMirror editor and split view, slides with speaker view, mind maps, and export to HTML / PDF / Word. No account, no server, no tracking: documents and settings never leave your browser.
+> **TL;DR (English)** — MD Reader is a Chrome (MV3) extension that turns any `.md` file into a calm reading page, with a CodeMirror editor and split view, slides with speaker view, mind maps, and export to HTML / PDF / Word. No account, no tracking: documents and settings stay in your browser unless you turn on optional sharing, which you can self-host.
 
 ## 📖 Giới thiệu
 
@@ -75,9 +75,18 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 
 HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ ngang.
 
+### Chia sẻ & cộng tác
+
+- Tạo link xem hoặc link sửa, cùng sửa một tài liệu theo thời gian thực, thấy ai đang mở và xem dòng nào do ai viết.
+- Tính năng này là tuỳ chọn và tắt theo mặc định. Khi chưa bật, không có gì rời khỏi trình duyệt.
+- Tự host: `pnpm deploy:api` triển khai `apps/api` lên tài khoản Cloudflare của bạn (gói Workers Free), dùng Durable Objects (SQLite) và D1, không cần R2 hay KV. Cần đặt biến môi trường `CLOUDFLARE_API_TOKEN` (token của bạn, đừng commit vào repo).
+- Sau khi triển khai, nhập địa chỉ máy chủ (ví dụ `https://<ten-worker>.<tai-khoan>.workers.dev`) tại Cài đặt → Cộng tác.
+- Chạy thử cục bộ: `pnpm --filter @md-reader/extension e2e:collab` (dùng `wrangler dev` chạy cục bộ).
+- Chi tiết dữ liệu nào được gửi đi: [chính sách riêng tư](docs/store/privacy-policy.md).
+
 ### Riêng tư
 
-Không tài khoản, không máy chủ, không theo dõi. Tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn. Font được đóng gói sẵn, không gọi ra ngoài khi đọc. Xem [chính sách riêng tư](docs/store/privacy-policy.md).
+Không tài khoản, không theo dõi. Mặc định tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ thì nội dung tài liệu được chia sẻ mới đi qua máy chủ do bạn chọn. Font được đóng gói sẵn, không gọi ra ngoài khi đọc. Xem [chính sách riêng tư](docs/store/privacy-policy.md).
 
 ## 🚀 Cài đặt
 
