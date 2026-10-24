@@ -404,7 +404,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8c1b: done      (Settings "Cộng tác" + trạng thái đồng bộ trên toolbar)
 - 8c2: done
 - 8d1: done
-- 8d2: planned
+- 8d2: done
 - 8e1: pending
 - 8e2: pending
 - 8f1: pending
