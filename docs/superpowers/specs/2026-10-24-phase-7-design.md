@@ -414,6 +414,7 @@ format) · `ReadingProgress.tsx` (2px `--accent`) · `packages/ui/src/theme/read
 Test: reduced-motion matchMedia true → confetti renders nothing; word count text format.
 
 ### 7s1 — deferred from phase 6: e2e and registry
+(+ ui flake: CodeCopy.test "does not change button text … if clipboard write fails" fails ~1/3 runs — fix the async wait.)
 (+ from 7q1 review: speaker-view preview renders mermaid via Deck's SlideContent; slide-PDF print uses pre-rendered SVG from the MermaidBlock cache. If this pushes 7s1 over sizing, split into 7s1a/7s1b.)
 FILES `apps/extension/e2e-pw/smoke.spec.ts` (waitForTimeout → wait for a signal/selector)
 · `apps/extension/e2e-pw/fixtures.ts` + `apps/extension/playwright.config.ts` (dist path
@@ -463,7 +464,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7p2: done
 - 7q1: done
 - 7q2: done
-- 7r: pending
+- 7r: planned
 - 7s1: pending
 - 7s2: pending
 

@@ -7,6 +7,10 @@ export interface ReadingProgressProps {
 
 export function ReadingProgress(props?: ReadingProgressProps): React.JSX.Element {
   const [progress, setProgress] = useState(0)
+  const reduced =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   useEffect(() => {
     let ticking = false
@@ -52,11 +56,11 @@ export function ReadingProgress(props?: ReadingProgressProps): React.JSX.Element
         position: 'fixed',
         top: 0,
         left: 0,
-        height: '3px',
+        height: '2px',
         zIndex: 9999,
-        transition: 'width 0.1s ease-out',
+        transition: reduced ? 'none' : 'width 0.1s ease-out',
         width: `${progress}%`,
-        backgroundColor: props?.color || 'var(--md-accent, #3b82f6)',
+        backgroundColor: props?.color || 'var(--accent)',
       }}
     />
   )
