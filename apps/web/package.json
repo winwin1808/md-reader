@@ -16,6 +16,7 @@
     "katex": "0.16.22",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "y-partyserver": "2.2.0",
     "yjs": "13.6.32"
   },
   "devDependencies": {
