@@ -296,6 +296,13 @@ Binding happens after `whenSynced` of IndexedDB and only when `registry.room` ex
 destroyed on doc switch. `syncStatus` text: Ngoại tuyến / Đang kết nối / Đã đồng bộ.
 Test: `bindRoom` with a fake `YProvider` constructor — status transitions and destroy.
 
+**Split at plan time (2026-10-24)** because files and lines exceed the sizing rule:
+- **8c1a** — `bindRoom` (+ `y-partyserver` dependency), `useDocSession` gains
+  `opts.room` / `opts.displayName` and returns `syncStatus` + `awareness`; App passes
+  `share.binding` and the default name "Bạn". Enabling share now uploads the doc.
+- **8c1b** — `SettingsModal` tab "Cộng tác" (`serverUrl`, `displayName`), `TopToolbar`
+  `syncStatus` text, App reads both settings (serverUrl through `normalizeServerUrl`).
+
 ### 8c2 — edit mode on the web
 FILES `apps/web/src/SharePage.tsx` · `src/EditPage.tsx` · `src/collab.ts` (bindRoom twin,
 same signature, no registry) · `src/EditPage.test.tsx`. Role `edit` → name prompt once
@@ -393,7 +400,8 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8b2: done
 - 8b3: done
 - 8b4: done
-- 8c1: pending
+- 8c1a: planned   (provider + đẩy nội dung; tách từ 8c1 vì >300 dòng)
+- 8c1b: pending   (Settings "Cộng tác" + trạng thái đồng bộ trên toolbar)
 - 8c2: pending
 - 8d1: pending
 - 8d2: pending

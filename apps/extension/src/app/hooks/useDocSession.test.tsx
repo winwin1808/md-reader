@@ -377,3 +377,82 @@ describe('useDocSession debounce', () => {
     }
   })
 })
+
+const bind = vi.hoisted(() => ({ calls: [] as any[], conns: [] as any[] }))
+vi.mock('../collab/bindRoom', () => ({
+  bindRoom: vi.fn((doc: unknown, opts: unknown) => {
+    let cb: ((s: string) => void) | null = null
+    const conn = {
+      awareness: { setLocalStateField: vi.fn() },
+      status$: (f: (s: string) => void) => { cb = f; f('connecting'); return () => { cb = null } },
+      destroy: vi.fn(),
+      emit: (s: string) => cb?.(s),
+    }
+    bind.calls.push([doc, opts]); bind.conns.push(conn)
+    return conn
+  }),
+}))
+import { bindRoom } from '../collab/bindRoom'
+
+describe('useDocSession room binding', () => {
+  const room = { serverUrl: 'https://s.test', roomId: 'r1', ownerToken: 'tok' } as any
+  let recId = ''
+  beforeEach(async () => {
+    idbUpdate = null; names = []; bind.calls.length = 0; bind.conns.length = 0
+    vi.mocked(bindRoom).mockClear()
+    await __resetForTests()
+    const rec = await createRecord({ title: 'r.md', originKind: 'drop', originPath: null, persistenceName: 'pname-room' })
+    recId = rec.docId
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+  })
+  const mount = (props: { room: any; displayName?: string }) =>
+    renderHook((p: { room: any; displayName?: string }) => useDocSession({ docId: recId, fileUrl: null, room: p.room, displayName: p.displayName }), { initialProps: props })
+
+  it('no room -> never binds, status off', async () => {
+    const { result } = mount({ room: null })
+    await flush(); await act(async () => { resolveSync() }); await flush()
+    expect(bindRoom).not.toHaveBeenCalled()
+    expect(result.current.syncStatus).toBe('off')
+    expect(result.current.awareness).toBeNull()
+  })
+
+  it('binds once after IndexedDB synced, with token and default name; status flows', async () => {
+    const { result } = mount({ room })
+    await flush()
+    expect(bindRoom).not.toHaveBeenCalled()
+    await act(async () => { resolveSync() }); await flush()
+    expect(bindRoom).toHaveBeenCalledTimes(1)
+    expect(bind.calls[0][1]).toEqual({ serverUrl: 'https://s.test', roomId: 'r1', token: 'tok', name: 'Bạn' })
+    expect(result.current.syncStatus).toBe('connecting')
+    expect(result.current.awareness).toBe(bind.conns[0].awareness)
+    act(() => bind.conns[0].emit('online'))
+    expect(result.current.syncStatus).toBe('online')
+  })
+
+  it('room becoming null destroys the connection', async () => {
+    const { result, rerender } = mount({ room })
+    await flush(); await act(async () => { resolveSync() }); await flush()
+    rerender({ room: null })
+    await flush()
+    expect(bind.conns[0].destroy).toHaveBeenCalled()
+    expect(result.current.syncStatus).toBe('off')
+    expect(result.current.awareness).toBeNull()
+  })
+
+  it('unmount before whenSynced -> never binds', async () => {
+    const { unmount } = mount({ room })
+    await flush()
+    unmount()
+    await act(async () => { resolveSync() }); await flush()
+    expect(bindRoom).not.toHaveBeenCalled()
+  })
+
+  it('displayName change updates awareness without a new provider', async () => {
+    const { rerender } = mount({ room })
+    await flush(); await act(async () => { resolveSync() }); await flush()
+    rerender({ room, displayName: 'Lan' })
+    await flush()
+    expect(bindRoom).toHaveBeenCalledTimes(1)
+    expect(bind.conns[0].awareness.setLocalStateField).toHaveBeenCalledWith('user', { name: 'Lan' })
+  })
+})
