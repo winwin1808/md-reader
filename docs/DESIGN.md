@@ -400,7 +400,8 @@ trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong
 | 8b2 | `apps/web` xem | Trang tĩnh `/s/:token` render snapshot bằng `@md-reader/ui`; 410 khi link hết hiệu lực |
 | 8b3 | `ShareModal` | Bật chia sẻ, tạo link xem, copy, thu hồi |
 | 8b4 | Nối share vào extension | `useShare`, registry `room`, nút Chia sẻ, wrangler `assets`, script deploy |
-| 8c1 | Provider trong extension | `bindRoom` cạnh `y-indexeddb`, Settings `serverUrl`/`displayName`, trạng thái đồng bộ |
+| 8c1a | Provider trong extension | `bindRoom` cạnh `y-indexeddb`, bật chia sẻ là đẩy nội dung lên phòng |
+| 8c1b | Cài đặt cộng tác | Settings `serverUrl`/`displayName`, trạng thái đồng bộ trên toolbar |
 | 8c2 | Sửa trên web | Link edit → hỏi tên → `Editor` + preview qua provider |
 | 8d1 | Presence UI | `PresenceBar`, con trỏ màu theo `peerColor`, `Editor` nhận `awareness` |
 | 8d2 | Nối awareness | `user {name,color}`, `registerActor`, `awarenessToPeers` |
