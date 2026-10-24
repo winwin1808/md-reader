@@ -2,6 +2,8 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 import type * as Y from 'yjs'
+// @codemirror/view is not a dependency of apps/web; reach the ui package's copy (same realpath => same module instance).
+import { EditorView } from '../../../packages/ui/node_modules/@codemirror/view'
 import { EditPage } from './EditPage'
 import type { SyncStatus, BindRoomOptions } from './collab'
 
@@ -27,6 +29,7 @@ function makeBind() {
   return {
     bind, calls,
     get destroy() { return calls[0]!.destroy },
+    emitAt: (i: number, s: SyncStatus) => act(() => { cbs[i]?.(s) }),
     emit: (s: SyncStatus) => act(() => { cbs[cbs.length - 1]?.(s) }),
   }
 }
@@ -125,10 +128,44 @@ describe('EditPage', () => {
   })
   it('localStorage.getItem throwing still shows the form', () => {
     const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
+    try {
+      const m = makeBind()
+      render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+      expect(screen.getByText('Tên của bạn')).toBeTruthy()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+  it('localStorage.setItem throwing on submit still binds with the name', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+    try {
+      const m = makeBind()
+      render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+      fireEvent.change(screen.getByLabelText('Tên của bạn'), { target: { value: 'Lan' } })
+      fireEvent.click(screen.getByText('Bắt đầu sửa'))
+      expect(m.calls[0]!.opts).toMatchObject({ name: 'Lan' })
+      expect(screen.queryByRole('alert')).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+  it('StrictMode: editor works on the last bind; stale offline callbacks are ignored', async () => {
+    localStorage.setItem('mdr.displayName', 'Binh')
     const m = makeBind()
-    render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
-    expect(screen.getByText('Tên của bạn')).toBeTruthy()
-    spy.mockRestore()
+    const { container } = render(<React.StrictMode><EditPage token={TOKEN} info={info} bind={m.bind as never} /></React.StrictMode>)
+    expect(m.calls.length).toBeGreaterThanOrEqual(2)
+    m.emit('online')
+    await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
+    const last = m.calls[m.calls.length - 1]!
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
+    expect(view).toBeTruthy()
+    act(() => { view.dispatch({ changes: { from: 0, insert: 'strict' } }) })
+    expect(last.doc.getText('source').toString()).toContain('strict')
+    act(() => { fireEvent.click(screen.getByTitle('Hoàn tác (⌘Z)')) })
+    expect(last.doc.getText('source').toString()).not.toContain('strict')
+    for (let i = 0; i < m.calls.length - 1; i++) m.emitAt(i, 'offline')
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(container.querySelector('.cm-editor')).toBeTruthy()
   })
   it('toolbar bold edits the Y.Text and undo reverts', async () => {
     localStorage.setItem('mdr.displayName', 'Binh')
@@ -138,7 +175,7 @@ describe('EditPage', () => {
     await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
     const yText = m.calls[0]!.doc.getText('source')
     act(() => { m.calls[0]!.doc.transact(() => yText.insert(0, 'hello'), 'remote') })
-    const view = (container.querySelector('.cm-content') as any).cmTile.root.view
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
     act(() => { view.dispatch({ selection: { anchor: 0, head: 5 } }) })
     const bold = screen.getByTitle('Đậm (⌘B)') as HTMLButtonElement
     const before = yText.toString()
