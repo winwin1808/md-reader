@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
 import type { Slide } from '@md-reader/core'
-import { ThemeProvider } from '../theme/ThemeProvider'
+import { ThemeProvider, useResolvedTheme } from '../theme/ThemeProvider'
+import { MermaidBlock } from './MermaidBlock'
+import { createRoot } from 'react-dom/client'
 
 export interface PresentationSettings {
   slideBgColor?: string
@@ -24,6 +26,7 @@ export interface DeckProps {
   onOpenSpeaker?: () => void
   mode?: 'light' | 'dark' | 'system'
   presentationSettings?: PresentationSettings
+  mermaid?: boolean
 }
 
 export const SLIDE_W = 1280
@@ -32,6 +35,35 @@ export const SLIDE_H = 720
 export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slideH = SLIDE_H): number {
   if (!(stageW > 0) || !(stageH > 0)) return 1
   return Math.min(stageW / slideW, stageH / slideH)
+}
+
+function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const theme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
+  useEffect(() => {
+    if (!mermaid) return
+    const container = ref.current
+    if (!container) return
+    const items: { root: ReturnType<typeof createRoot>; node: HTMLDivElement; pre: HTMLElement }[] = []
+    container.querySelectorAll('code.language-mermaid').forEach((codeEl) => {
+      const pre = codeEl.parentElement
+      if (!pre || pre.tagName.toLowerCase() !== 'pre') return
+      const node = document.createElement('div')
+      pre.parentNode?.insertBefore(node, pre.nextSibling)
+      pre.style.display = 'none'
+      const root = createRoot(node)
+      root.render(<MermaidBlock code={codeEl.textContent || ''} theme={theme} />)
+      items.push({ root, node, pre })
+    })
+    return () => {
+      items.forEach(({ root, node, pre }) => {
+        setTimeout(() => root.unmount(), 0)
+        node.remove()
+        pre.style.display = ''
+      })
+    }
+  }, [html, mermaid, theme])
+  return <div ref={ref} className="md-viewer deck-slide-content" dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 export function Deck(props: DeckProps): React.JSX.Element {
@@ -238,10 +270,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
                 aria-hidden="true"
               />
             )}
-            <div
-              className="md-viewer deck-slide-content"
-              dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
-            />
+            <SlideContent html={currentSlide?.html ?? ''} mermaid={props.mermaid !== false} />
           </div>
         </div>
 

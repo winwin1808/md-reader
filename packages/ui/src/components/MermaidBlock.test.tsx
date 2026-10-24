@@ -57,7 +57,7 @@ describe('MermaidBlock cache', () => {
     await waitFor(() => expect(screen.getByTestId('mermaid-svg')).toBeDefined())
     first.unmount()
     expect(m.render).toHaveBeenCalledTimes(1)
-    expect(m.initialize).toHaveBeenCalledWith({ startOnLoad: false, securityLevel: 'strict' })
+    expect(m.initialize).toHaveBeenCalledWith(expect.objectContaining({ startOnLoad: false, securityLevel: 'strict', theme: 'default' }))
     const second = render(<MermaidBlock code="X" />)
     expect(second.container.querySelector('[data-testid="mermaid-svg"]')).not.toBeNull()
     expect(m.render).toHaveBeenCalledTimes(1)
@@ -78,5 +78,23 @@ describe('MermaidBlock cache', () => {
     const evicted = render(<MermaidBlock code="c0" />)
     expect(evicted.container.querySelector('pre')).not.toBeNull()
     await waitFor(() => expect(m.render).toHaveBeenCalledTimes(52))
+  })
+})
+
+describe('MermaidBlock theme', () => {
+  it('renders per theme and keeps both in the cache', async () => {
+    const m = (await import('mermaid')).default as any
+    __clearMermaidCache()
+    m.render.mockClear()
+    m.initialize.mockClear()
+    const r = render(<MermaidBlock code="T" theme="default" />)
+    await waitFor(() => expect(r.container.querySelector('[data-testid="mermaid-svg"]')).not.toBeNull())
+    expect(m.initialize.mock.calls.at(-1)[0].theme).toBe('default')
+    r.rerender(<MermaidBlock code="T" theme="dark" />)
+    await waitFor(() => expect(m.render).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(m.initialize.mock.calls.at(-1)[0].theme).toBe('dark'))
+    r.rerender(<MermaidBlock code="T" theme="default" />)
+    await new Promise((res) => setTimeout(res, 20))
+    expect(m.render).toHaveBeenCalledTimes(2)
   })
 })

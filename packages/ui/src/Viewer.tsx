@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { iconSvg } from './components/Icon'
 import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
+import { useResolvedTheme } from './theme/ThemeProvider'
 import { ExcalidrawBlock } from './components/ExcalidrawBlock'
 import './viewer.css'
 
@@ -98,6 +99,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     }
   }, [html])
 
+  const mermaidTheme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
   // Mermaid
   useEffect(() => {
     if (!mermaid) return
@@ -117,7 +119,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
         pre.style.display = 'none'
 
         const root = createRoot(wrapper)
-        root.render(<MermaidBlock code={codeContent} />)
+        root.render(<MermaidBlock code={codeContent} theme={mermaidTheme} />)
 
         roots.push({ root, node: wrapper, pre })
       }
@@ -130,7 +132,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
         pre.style.display = ''
       })
     }
-  }, [html, mermaid])
+  }, [html, mermaid, mermaidTheme])
 
   // In-page anchor clicks: resolve against prefixed ids
   useEffect(() => {

@@ -431,3 +431,17 @@ describe('Deck scaling and controls', () => {
     }
   })
 })
+
+describe('Deck mermaid prop', () => {
+  const mm: Slide[] = [
+    { id: 's', index: 0, html: '<pre><code class="language-mermaid">graph TD; A--&gt;B</code></pre>', rawMarkdown: '', notes: [] },
+  ]
+  it('mermaid={false} keeps the code block visible and mounts no MermaidBlock', async () => {
+    const { container } = render(<Deck slides={mm} mermaid={false} />)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    const pre = container.querySelector('pre') as HTMLElement
+    expect(pre).not.toBeNull()
+    expect(pre.style.display).not.toBe('none')
+    expect(container.querySelectorAll('.deck-slide-content > div').length).toBe(0)
+  })
+})
