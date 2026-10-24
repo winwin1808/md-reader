@@ -6,7 +6,7 @@ import { Icon, ICON_NAMES } from './Icon'
 
 describe('Icon', () => {
   it('renders at least one path for every icon name', () => {
-    expect(ICON_NAMES.length).toBe(31)
+    expect(ICON_NAMES.length).toBe(32)
     for (const name of ICON_NAMES) {
       const { container, unmount } = render(<Icon name={name} />)
       expect(container.querySelectorAll('svg path').length).toBeGreaterThan(0)
