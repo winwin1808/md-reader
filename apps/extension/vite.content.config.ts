@@ -13,20 +13,6 @@ export default defineConfig({
       'react': path.resolve(preactPath, 'compat/dist/compat.module.js'),
     }
   },
-  plugins: [
-    {
-      name: 'mock-highlight',
-      enforce: 'pre',
-      resolveId(source) {
-        if (source === 'rehype-highlight') return '\0mock-highlight'
-        return null
-      },
-      load(id) {
-        if (id === '\0mock-highlight') return `export default function() {}`
-        return null
-      }
-    }
-  ],
   build: {
     target: 'chrome120',
     emptyOutDir: false,

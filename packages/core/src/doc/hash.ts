@@ -1,4 +1,4 @@
-/** SHA-256 hex qua (globalThis as unknown as SubtleLike).crypto.subtle. Chạy cả Node 18+ và browser. */
+/** SHA-256 hex qua crypto.subtle (globalThis). Chạy cả Node 18+ và browser. */
 type SubtleLike = { crypto: { subtle: { digest(algo: string, data: Uint8Array): Promise<ArrayBuffer> } } }
 
 export async function hashText(text: string): Promise<string> {
