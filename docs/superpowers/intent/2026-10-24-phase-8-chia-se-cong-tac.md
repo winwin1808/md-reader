@@ -1,5 +1,6 @@
 # Intent: Phase 8 — Chia sẻ & cộng tác
-Author: Hao Nguyen. Status: draft. Phase: 8
+Author: Hao Nguyen. Status: designed. Phase: 8
+Design: docs/superpowers/specs/2026-10-24-phase-8-design.md
 
 ## Problem
 

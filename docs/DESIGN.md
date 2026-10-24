@@ -392,17 +392,29 @@ trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong
 
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 8a0 | Spike `y-partyserver` trên Durable Object | Hai client đồng bộ thật qua DO; đo bundle Worker; bảng kết quả + xác nhận gói Free đủ, ghi vào §5.6 |
-| 8a | `apps/api` scaffold | Worker + wrangler, DO `DocRoom`, D1 migration, R2 binding, deploy được lên workers.dev |
-| 8b | Share link read-only | Token D1 + hạn dùng + thu hồi; `apps/web` tĩnh render snapshot bằng `@md-reader/ui`; nút Chia sẻ trên app page |
-| 8c | WebSocket provider | Đồng bộ hai chiều thật extension ↔ web, chạy cạnh `y-indexeddb`; URL server cấu hình được trong Settings |
-| 8d | Awareness | Con trỏ + presence với tên tự khai |
-| 8e | Phân quyền | view / edit theo từng link; server chặn update từ kết nối view |
-| 8f | `BlameGutter` | Blame theo ký tự từ `clientID` + tên |
-| 8g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc, snapshot từ R2 |
-| 8h | Đọc tại chỗ trong content script (nợ 7o) | Core inject plugin + yaml lazy; content script render tại chỗ < 50 KB gz |
-| 8i | Khoá import | Hai tab cùng mở một URL mới chỉ tạo một doc |
-| 8j | Store kit | Listing + privacy policy nói đúng về chia sẻ (opt-in theo tài liệu); bump version |
+| 8a0 | Spike `y-partyserver` trên Durable Object | Hai client đồng bộ thật qua DO; đo bundle Worker + số message/phiên; xác nhận Free nhận SQLite DO; ghi vào §5.6 |
+| 8b1 | `core/share` | Kiểu `ShareRole`/`ShareLink`/`RoomBinding`, `API_PATHS`, build/parse URL chia sẻ |
+| 8a1 | `apps/api` scaffold | Worker + wrangler, `DocRoom extends YServer`, route `/parties/doc/:roomId`, deploy workers.dev |
+| 8a2 | Token | D1 schema, `TokenStore` (D1 + Memory), route `/api/rooms`, `/api/s/:token`; chỉ lưu SHA-256 token |
+| 8a3 | Persistence | DO storage snapshot + log, gộp ≥200 update hoặc ≥256 KB, R2 `latest.bin` khi phòng trống, endpoint snapshot |
+| 8b2 | `apps/web` xem | Trang tĩnh `/s/:token` render snapshot bằng `@md-reader/ui`; 410 khi link hết hiệu lực |
+| 8b3 | `ShareModal` | Bật chia sẻ, tạo link xem, copy, thu hồi |
+| 8b4 | Nối share vào extension | `useShare`, registry `room`, nút Chia sẻ, wrangler `assets`, script deploy |
+| 8c1 | Provider trong extension | `bindRoom` cạnh `y-indexeddb`, Settings `serverUrl`/`displayName`, trạng thái đồng bộ |
+| 8c2 | Sửa trên web | Link edit → hỏi tên → `Editor` + preview qua provider |
+| 8d1 | Presence UI | `PresenceBar`, con trỏ màu theo `peerColor`, `Editor` nhận `awareness` |
+| 8d2 | Nối awareness | `user {name,color}`, `registerActor`, `awarenessToPeers` |
+| 8e1 | Chặn ghi từ link xem | `classifyMessage`, drop step2/update từ role view trong DO |
+| 8e2 | Quản lý link | Chọn Xem/Sửa, hạn 7/30 ngày/không, nhãn, thu hồi tất cả |
+| 8f1 | `computeBlame` | Khoảng ký tự theo `clientID`, test hội tụ hai doc |
+| 8f2 | `BlameGutter` | Thanh tông màu theo tác giả cạnh Editor, bật/tắt |
+| 8g1 | `textAtCheckpoint` / `restoreCheckpoint` | Dựng text từ snapshot, khôi phục bằng delta nhỏ nhất |
+| 8g2 | `HistoryTimeline` | Panel lịch sử, xem mốc, khôi phục, đi bằng bàn phím |
+| 8h1 | Core nhận plugin từ caller (7n) | `renderToHtml({plugins})`, `parseYaml` tiêm vào, subpath `@md-reader/core/plugins`; plan có thể tách 8h1a/8h1b |
+| 8h2 | Đọc tại chỗ trong content script (7o) | Render trong shadow root, placeholder math/mermaid, mục tiêu ≤ 50 KB gz |
+| 8i | Khoá import | `navigator.locks` quanh `findOrCreateByOrigin` |
+| 8j | E2E | Playwright: extension ↔ web qua `wrangler dev` |
+| 8k | Store kit | Listing + privacy nói đúng về chia sẻ; version 1.1.0 |
 
 Danh tính: tên tự khai lưu local, gửi qua awareness; `clientID` Yjs + tên
 dùng cho blame. Không OAuth, không bảng user. Nút Chia sẻ chỉ ở app page;
