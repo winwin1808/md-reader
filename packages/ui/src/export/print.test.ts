@@ -47,7 +47,7 @@ describe('print.css', () => {
   it('contains @page configuration', () => {
     const content = fs.readFileSync(cssPath, 'utf8')
     expect(content).toContain('@page')
-    expect(content).toContain('margin: 20mm 15mm 20mm 15mm;')
+    expect(content).toContain('margin: 20mm;')
   })
 
   it('contains @media print rules to hide UI chrome and format content', () => {
@@ -58,7 +58,7 @@ describe('print.css', () => {
     expect(content).toContain('.settings-btn')
     expect(content).toContain('.md-no-print')
     expect(content).toContain('page-break-after: avoid')
-    expect(content).toContain('page-break-inside: avoid')
+    expect(content).toContain('break-inside: avoid')
   })
 
   it('is imported in viewer.css', () => {
@@ -88,6 +88,30 @@ describe('print.css', () => {
     expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#f6f8fa\s*!important/)
     expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#1f2328\s*!important/)
     expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d0d7de\s*!important/)
+  })
+})
+
+describe('print.css page breaks', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '../theme/print.css'), 'utf8')
+  it('wraps pre and avoids breaking only small blocks', () => {
+    expect(content).toMatch(/white-space:\s*pre-wrap/)
+    expect(content).toContain('overflow-wrap: anywhere')
+    expect(content).toMatch(/@page\s*\{[^}]*margin:\s*20mm;/)
+    for (const m of content.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (/break-inside:\s*avoid/.test(m[2]!)) {
+        expect(m[1]).not.toMatch(/\b(pre|table)\b/)
+      }
+    }
+  })
+})
+
+describe('getDefaultExportCss Giấy literals', () => {
+  it('uses literal tokens, no var()', async () => {
+    const { getDefaultExportCss } = await import('./css')
+    const css = getDefaultExportCss()
+    expect(css).toContain('#F1F3F2')
+    expect(css).toContain('Literata')
+    expect(css).not.toContain('var(')
   })
 })
 
