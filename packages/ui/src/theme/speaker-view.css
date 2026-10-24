@@ -170,6 +170,22 @@
   width: 100%;
   background-color: transparent !important;
   color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.speaker-slide-canvas .md-viewer h1,
+.speaker-slide-canvas .md-viewer h2,
+.speaker-slide-canvas .md-viewer h3,
+.speaker-slide-canvas .md-viewer h4 {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.speaker-slide-canvas .md-viewer code,
+.speaker-slide-canvas .md-viewer pre {
+  font-family: var(--font-code);
 }
 
 .speaker-slide-frame.speaker-slide-empty {

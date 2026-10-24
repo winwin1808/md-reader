@@ -187,11 +187,70 @@ describe('Deck component', () => {
       expect(screen.getByText('Trang 1 / 3')).toBeDefined()
       expect(onSlideChange).not.toHaveBeenCalled()
 
-      const button = screen.getByTestId('test-button')
-      button.focus()
-      fireEvent.keyDown(button, { key: 'ArrowRight' })
-      expect(screen.getByText('Trang 1 / 3')).toBeDefined()
+    })
+
+    it('leaves Space and Enter on a focused button to the button', () => {
+      const onSlideChange = vi.fn()
+      render(<Deck slides={mockSlides} onSlideChange={onSlideChange} />)
+      const next = screen.getByRole('button', { name: 'Trang sau' })
+      next.focus()
+      fireEvent.keyDown(next, { key: ' ' })
+      fireEvent.keyDown(next, { key: 'Enter' })
       expect(onSlideChange).not.toHaveBeenCalled()
+    })
+
+    it('focuses the overlay on open, handles keys, and restores focus on close', () => {
+      const outside = document.createElement('button')
+      document.body.appendChild(outside)
+      outside.focus()
+      expect(document.activeElement).toBe(outside)
+      const onClose = vi.fn()
+      const { container, unmount } = render(<Deck slides={mockSlides} onClose={onClose} />)
+      const overlay = container.querySelector('.deck-overlay') as HTMLElement
+      expect(overlay.getAttribute('role')).toBe('dialog')
+      expect(overlay.getAttribute('aria-modal')).toBe('true')
+      expect(overlay.getAttribute('aria-label')).toBe('Trình chiếu')
+      expect(document.activeElement).toBe(overlay)
+      fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowRight' })
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
+      fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' })
+      expect(onClose).toHaveBeenCalledTimes(1)
+      unmount()
+      expect(document.activeElement).toBe(outside)
+      outside.remove()
+    })
+
+    it('ArrowRight advances while a deck control button is focused', () => {
+      render(<Deck slides={mockSlides} />)
+      const speaker = screen.getByRole('button', { name: 'Cửa sổ diễn giả' })
+      speaker.focus()
+      fireEvent.keyDown(speaker, { key: 'ArrowRight' })
+      expect(screen.getByText('Trang 2 / 3')).toBeDefined()
+    })
+
+    it('Tab cycles within the deck controls', () => {
+      render(<Deck slides={mockSlides} />)
+      const exit = screen.getByRole('button', { name: 'Thoát trình chiếu' })
+      const next = screen.getByRole('button', { name: 'Trang sau' })
+      exit.focus()
+      fireEvent.keyDown(exit, { key: 'Tab' })
+      expect(document.activeElement).toBe(next)
+      fireEvent.keyDown(next, { key: 'Tab', shiftKey: true })
+      expect(document.activeElement).toBe(exit)
+    })
+
+    it('a keydown reveals hidden controls', () => {
+      vi.useFakeTimers()
+      try {
+        const { container } = render(<Deck slides={mockSlides} />)
+        const controls = container.querySelector('.deck-controls') as HTMLElement
+        act(() => { vi.advanceTimersByTime(2100) })
+        expect(controls.classList.contains('deck-controls-hidden')).toBe(true)
+        fireEvent.keyDown(window, { key: 'ArrowRight' })
+        expect(controls.classList.contains('deck-controls-hidden')).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 
@@ -227,10 +286,12 @@ describe('Deck component', () => {
         />
       )
       const overlay = container.querySelector('.deck-overlay') as HTMLElement
-      expect(overlay).not.toBeNull()
-      expect(overlay.style.backgroundColor).toBe('rgb(18, 52, 86)')
-      expect(overlay.style.color).toBe('rgb(171, 205, 239)')
-      expect(overlay.style.fontFamily).toBe('Georgia, serif')
+      const frame = container.querySelector('.deck-slide-frame') as HTMLElement
+      expect(overlay.style.backgroundColor).toBe('')
+      expect(overlay.style.color).toBe('')
+      expect(frame.style.getPropertyValue('--slide-bg')).toBe('#123456')
+      expect(frame.style.getPropertyValue('--slide-fg')).toBe('#abcdef')
+      expect(frame.style.getPropertyValue('--slide-font')).toBe('Georgia, serif')
     })
 
     it('renders background image and applies opacity', () => {
@@ -309,9 +370,10 @@ describe('Deck component', () => {
       expect(slide).not.toBeNull()
       expect(mdViewer).not.toBeNull()
       expect(slide.contains(mdViewer)).toBe(true)
-      expect(overlay.style.backgroundColor).toBe('rgb(34, 34, 34)')
-      expect(overlay.style.color).toBe('rgb(240, 240, 240)')
-      expect(overlay.style.fontFamily).toBe('Inter, sans-serif')
+      expect(overlay.style.backgroundColor).toBe('')
+      expect(slide.style.getPropertyValue('--slide-bg')).toBe('#222222')
+      expect(slide.style.getPropertyValue('--slide-fg')).toBe('#f0f0f0')
+      expect(slide.style.getPropertyValue('--slide-font')).toBe('Inter, sans-serif')
 
       // Verify deck.css cascade rules for .deck-slide .md-viewer
       const cssPath = path.resolve(__dirname, '../theme/deck.css')
@@ -320,7 +382,7 @@ describe('Deck component', () => {
       expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*color:\s*inherit;/)
       expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s*\{[^}]*font-family:\s*inherit;/)
       expect(css).toMatch(/\.deck-slide\s+\.md-viewer\s+p,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+li,\s*\n*\s*\.deck-slide\s+\.md-viewer\s+span\s*\{[^}]*color:\s*inherit;/)
-      expect(css).toMatch(/\.deck-slide-content\s*\{[^}]*color:\s*inherit;/)
+      expect(css).not.toMatch(/\.deck-slide-content\s*\{[^}]*(color|font-family):\s*inherit;/)
     })
   })
 })
