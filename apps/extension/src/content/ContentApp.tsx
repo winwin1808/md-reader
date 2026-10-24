@@ -56,7 +56,7 @@ function BookIcon() {
 
 export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
   const [isOpening, setIsOpening] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState<boolean | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(initialError)
 
   useEffect(() => {
@@ -64,11 +64,13 @@ export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
     try {
       Promise.resolve(chrome.storage?.local?.get?.(COLLAPSED_KEY))
         .then((r: any) => {
-          if (live && r && r[COLLAPSED_KEY] === true) setCollapsed(true)
+          if (live) setCollapsed(!!(r && r[COLLAPSED_KEY] === true))
         })
-        .catch(() => {})
+        .catch(() => {
+          if (live) setCollapsed(false)
+        })
     } catch {
-      /* expanded */
+      setCollapsed(false)
     }
     return () => {
       live = false
@@ -93,6 +95,8 @@ export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
       setIsOpening(false)
     }
   }
+
+  if (collapsed === null) return null
 
   if (collapsed) {
     return (

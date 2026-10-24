@@ -26,7 +26,7 @@ describe('ContentApp', () => {
     const setMock = setupChrome(send)
 
     render(<ContentApp markdown="# Test" />)
-    fireEvent.click(screen.getByRole('button', { name: /Đọc trong MD Reader/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/i }))
 
     await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
     expect(setMock).toHaveBeenCalledTimes(1)
@@ -44,7 +44,7 @@ describe('ContentApp', () => {
     setupChrome(vi.fn((_m: any, cb: any) => cb?.({ success: false })))
 
     render(<ContentApp markdown="# Test" />)
-    fireEvent.click(screen.getByRole('button', { name: /Đọc trong MD Reader/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/i }))
 
     expect(await screen.findByText(FAIL)).toBeTruthy()
     expect(removeMock).toHaveBeenCalledWith('file_content_http://localhost:3000/')
@@ -55,7 +55,7 @@ describe('ContentApp', () => {
   it('renders tab; Ẩn writes collapsed=true and shows strip', async () => {
     const setMock = setupChrome(vi.fn())
     render(<ContentApp markdown="# T" />)
-    expect(screen.getByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ẩn' }))
     expect(setMock).toHaveBeenCalledWith({ 'mdr.widget.collapsed': true })
     expect(screen.queryByRole('button', { name: /Đọc trong MD Reader/ })).toBeNull()
@@ -69,10 +69,18 @@ describe('ContentApp', () => {
     expect(screen.queryByRole('button', { name: /Đọc trong MD Reader/ })).toBeNull()
   })
 
+  it('renders nothing until stored state resolves', async () => {
+    let resolve!: (v: any) => void
+    setupChrome(vi.fn(), vi.fn(() => new Promise((r) => (resolve = r))))
+    const { container } = render(<ContentApp markdown="# T" />)
+    expect(container.innerHTML).toBe('')
+    resolve({ 'mdr.widget.collapsed': true })
+    expect(await screen.findByRole('button', { name: /Mở MD Reader/ })).toBeTruthy()
+  })
+
   it('storage error stays expanded', async () => {
     setupChrome(vi.fn(), vi.fn().mockRejectedValue(new Error('x')))
     render(<ContentApp markdown="# T" />)
-    await new Promise((r) => setTimeout(r, 10))
-    expect(screen.getByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
   })
 })
