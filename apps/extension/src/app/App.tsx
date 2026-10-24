@@ -342,14 +342,17 @@ export function App(): React.JSX.Element {
     parseResult,
   })
 
-  const [printHtml, setPrintHtml] = useState<string[] | null>(null)
+  const [printHtml, setPrintHtml] = useState<{ id: string; html: string }[] | null>(null)
   const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
+    if (preparingSlides) return
     if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
       setPreparingSlides(true)
       try {
         const list = splitIntoSlides(content, { math: readerSettings.enableMath !== false })
-        const out = await Promise.all(list.map((sl) => inlineMermaid(sl.html, 'default')))
+        const out = await Promise.all(
+          list.map(async (sl) => ({ id: sl.id, html: await inlineMermaid(sl.html, 'default') })),
+        )
         flushSync(() => setPrintHtml(out))
       } catch {
         setPrintHtml(null)
@@ -425,9 +428,9 @@ export function App(): React.JSX.Element {
       {preparingSlides && <div role="status" className="deck-print-busy">Đang chuẩn bị sơ đồ…</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
-          {slides.map((slide, idx) => (
+          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html }))).map((slide, idx) => (
             <div key={slide.id || idx} className="deck-print-slide md-viewer">
-              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: printHtml?.[idx] ?? slide.html }} />
+              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
             </div>
           ))}
         </div>
