@@ -43,9 +43,9 @@ describe('ReadingProgress', () => {
     expect(el.style.position).toBe('fixed')
     expect(el.style.top).toBe('0px')
     expect(el.style.left).toBe('0px')
-    expect(el.style.height).toBe('3px')
+    expect(el.style.height).toBe('2px')
     expect(el.style.zIndex).toBe('9999')
-    expect(el.style.backgroundColor).toBe('var(--md-accent, #3b82f6)')
+    expect(el.style.backgroundColor).toBe('var(--accent)')
     expect(el.style.width).toBe('0%')
   })
 
