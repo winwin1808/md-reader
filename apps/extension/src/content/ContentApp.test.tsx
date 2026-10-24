@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ContentApp } from './ContentApp'
+import { requestPageRender } from './render'
 import React from 'react'
 
 const FAIL = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
@@ -82,5 +83,97 @@ describe('ContentApp', () => {
     setupChrome(vi.fn(), vi.fn().mockRejectedValue(new Error('x')))
     render(<ContentApp markdown="# T" />)
     expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+  })
+
+  describe('reader mode', () => {
+    const R = { html: '<h1>Hi</h1><p>x</p>', title: 'Hi' }
+
+    it('shows article and bar', async () => {
+      setupChrome(vi.fn())
+      const { container } = render(<ContentApp markdown="# Hi" render={R} />)
+      expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+      expect(container.querySelector('article.doc h1')?.textContent).toBe('Hi')
+      expect(container.querySelector('header.bar')?.textContent).toContain('Hi')
+      expect(screen.getByRole('button', { name: 'Xem bản thô' })).toBeTruthy()
+    })
+
+    it('toggles raw view', async () => {
+      setupChrome(vi.fn())
+      const onShowRaw = vi.fn()
+      render(<ContentApp markdown="# Hi" render={R} onShowRaw={onShowRaw} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Xem bản thô' }))
+      expect(onShowRaw).toHaveBeenLastCalledWith(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Xem bản đọc' }))
+      expect(onShowRaw).toHaveBeenLastCalledWith(false)
+      expect(screen.getByRole('button', { name: 'Xem bản thô' })).toBeTruthy()
+    })
+
+    describe('anchor clicks', () => {
+      const A = { html: '<a id="l1" href="#sec">go</a><a id="l2" href="#">top</a><a id="l3" href="#missing">m</a><h2 id="sec">S</h2>', title: 'T' }
+      const setup = () => {
+        setupChrome(vi.fn())
+        const { container } = render(<ContentApp markdown="# T" render={A} />)
+        const target = container.querySelector('#sec') as HTMLElement
+        target.scrollIntoView = vi.fn()
+        return { container, target }
+      }
+      const click = (el: Element, init: MouseEventInit = {}) => {
+        const ev = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init })
+        el.dispatchEvent(ev)
+        return ev
+      }
+
+      it('plain click scrolls and prevents default', async () => {
+        const { container, target } = setup()
+        const ev = click(container.querySelector('#l1')!)
+        expect(target.scrollIntoView).toHaveBeenCalled()
+        expect(ev.defaultPrevented).toBe(true)
+      })
+      it('ctrl-click is not prevented', async () => {
+        const { container, target } = setup()
+        const ev = click(container.querySelector('#l1')!, { ctrlKey: true })
+        expect(ev.defaultPrevented).toBe(false)
+        expect(target.scrollIntoView).not.toHaveBeenCalled()
+      })
+      it("'#' is not prevented", async () => {
+        const { container } = setup()
+        expect(click(container.querySelector('#l2')!).defaultPrevented).toBe(false)
+      })
+      it("'#missing' is not prevented", async () => {
+        const { container } = setup()
+        expect(click(container.querySelector('#l3')!).defaultPrevented).toBe(false)
+      })
+    })
+
+    it('open button sends openApp', async () => {
+      const send = vi.fn((_m: any, cb: any) => cb?.({ success: true }))
+      setupChrome(send)
+      render(<ContentApp markdown="# Hi" render={R} />)
+      fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/ }))
+      await waitFor(() => expect(send).toHaveBeenCalled())
+      expect(send.mock.calls[0]![0]).toMatchObject({ action: 'openApp' })
+    })
+  })
+
+  describe('requestPageRender', () => {
+    it('ok -> PageRender', async () => {
+      setupChrome(vi.fn((_m: any, cb: any) => cb?.({ ok: true, html: '<p>a</p>', title: 'T' })))
+      expect(await requestPageRender('a')).toEqual({ html: '<p>a</p>', title: 'T' })
+    })
+    it('ok:false -> null', async () => {
+      setupChrome(vi.fn((_m: any, cb: any) => cb?.({ ok: false, error: 'x' })))
+      expect(await requestPageRender('a')).toBeNull()
+    })
+    it('no answer -> null after timeout', async () => {
+      vi.useFakeTimers()
+      try {
+        setupChrome(vi.fn())
+        const p = requestPageRender('a', 100)
+        await vi.advanceTimersByTimeAsync(150)
+        expect(await p).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

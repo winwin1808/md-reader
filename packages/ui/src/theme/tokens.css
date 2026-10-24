@@ -2,6 +2,12 @@
 
 :root,
 [data-theme="light"] {
+  --peer-1: #9C3B2E;
+  --peer-2: #34607F;
+  --peer-3: #3F6B47;
+  --peer-4: #6B4A7A;
+  --peer-5: #8A6420;
+  --peer-6: #2F6B6B;
   --paper: #F1F3F2;
   --surface: #E5EAE7;
   --ink: #1B2422;
@@ -24,6 +30,12 @@
 }
 
 [data-theme="dark"] {
+  --peer-1: #E08A7A;
+  --peer-2: #7FAFD6;
+  --peer-3: #8FBF98;
+  --peer-4: #B99AD0;
+  --peer-5: #D9B26A;
+  --peer-6: #7FC4C0;
   --paper: #161C1B;
   --surface: #1F2726;
   --ink: #E3E8E6;
@@ -47,6 +59,12 @@
 
 [data-contrast="high"][data-theme="light"],
 :root[data-contrast="high"]:not([data-theme="dark"]) {
+  --peer-1: #B00020;
+  --peer-2: #0B5FFF;
+  --peer-3: #006B3C;
+  --peer-4: #8A2BE2;
+  --peer-5: #B85C00;
+  --peer-6: #007A8A;
   --paper: #FFFFFF;
   --surface: #F2F2F2;
   --ink: #000000;
@@ -69,6 +87,12 @@
 }
 
 [data-contrast="high"][data-theme="dark"] {
+  --peer-1: #FF6B81;
+  --peer-2: #6CA6FF;
+  --peer-3: #4ADE80;
+  --peer-4: #C792FF;
+  --peer-5: #FFB454;
+  --peer-6: #3DD6E8;
   --paper: #000000;
   --surface: #121212;
   --ink: #FFFFFF;
@@ -142,3 +166,27 @@
 [data-width="full"] .md-viewer,
 [data-width="full"] .notice { max-width: none; }
 [data-width="full"] .app-layout { max-width: none; }
+
+.presence-bar { display: inline-flex; align-items: center; padding-left: 6px; }
+.presence-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin-left: -6px; border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--paper);
+  background: var(--peer, var(--pencil)); color: var(--paper);
+  font-size: 11px; font-weight: 600; line-height: 1; user-select: none;
+}
+.presence-more { --peer: var(--pencil); }
+
+.cm-blame-gutter { width: 6px; }
+.cm-blame-mark { display: block; width: 3px; height: 100%; min-height: 1em; border-radius: 1px; background: var(--peer, var(--pencil)); }
+
+.history-panel {
+  width: 320px;
+  overflow-y: auto;
+  border-left: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+}
+.history-panel ul { list-style: none; margin: 0; padding: 0; }
+.history-panel .history-row { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.history-panel .history-row[aria-selected='true'] { background: var(--hl); color: var(--hl-ink); }

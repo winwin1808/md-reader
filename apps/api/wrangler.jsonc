@@ -1,0 +1,15 @@
+{
+  "name": "md-reader-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "DOC_ROOM", "class_name": "DocRoom" }]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "md-reader", "database_id": "fa46f112-5484-45bf-ad28-cef5efc0e734", "migrations_dir": "migrations" }
+  ],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DocRoom"] }],
+  "assets": { "directory": "../web/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*", "/parties/*"] },
+  "observability": { "enabled": true }
+}

@@ -12,7 +12,6 @@ export default defineConfig({
       // content script build riêng ở vite.content.config.ts — MV3 không nạp ES module
       input: {
         app: 'app.html',
-        worker: 'src/worker/index.ts',
       },
       output: {
         format: 'es',
@@ -22,5 +21,5 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], exclude: ['e2e-pw/**', 'node_modules/**', 'dist/**'] },
+  test: { testTimeout: 15000, environment: 'jsdom', setupFiles: ['./src/test-setup.ts'], include: ['src/**/*.test.{ts,tsx}'], exclude: ['e2e-pw/**', 'node_modules/**', 'dist/**'] },
 })

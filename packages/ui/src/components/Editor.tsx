@@ -18,6 +18,7 @@ import { tags as t } from '@lezer/highlight'
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { applyFormat } from './markdown-commands'
 import type { FormatAction } from './FormattingToolbar'
+import { blameGutter, type LineAuthor } from './blame'
 import '../theme/editor.css'
 
 export const lereSachHighlight = HighlightStyle.define([
@@ -69,6 +70,8 @@ export interface EditorProps {
   readOnly?: boolean
   onScroll?: (scrollTop: number, scrollHeight: number, clientHeight: number) => void
   onEditorReady?: (view: EditorView) => void
+  awareness?: Parameters<typeof yCollab>[1]
+  blame?: Array<LineAuthor | null> | null
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
@@ -81,10 +84,15 @@ export function Editor({
   onScroll,
   onEditorReady,
   editorViewRef,
+  awareness,
+  blame,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const readOnlyCompartmentRef = useRef(new Compartment())
+  const blameCompartmentRef = useRef(new Compartment())
+  const blameRef = useRef(blame)
+  blameRef.current = blame
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
 
@@ -97,6 +105,12 @@ export function Editor({
       })
     }
   }, [readOnly])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: blameCompartmentRef.current.reconfigure(blame ? blameGutter(blame) : []),
+    })
+  }, [blame])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -115,8 +129,9 @@ export function Editor({
           ...yUndoManagerKeymap,
         ])
       ),
-      yCollab(yText, null, undoManager !== undefined ? { undoManager } : undefined),
+      yCollab(yText, awareness ?? null, undoManager !== undefined ? { undoManager } : undefined),
       readOnlyCompartmentRef.current.of(EditorState.readOnly.of(Boolean(readOnly))),
+      blameCompartmentRef.current.of(blameRef.current ? blameGutter(blameRef.current) : []),
       EditorView.domEventHandlers({
         scroll: (_event, view) => {
           if (onScrollRef.current) {
@@ -151,7 +166,7 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager])
+  }, [yText, undoManager, awareness])
 
   return <div ref={containerRef} className={className} style={{ height: '100%', minHeight: 0 }} />
 }

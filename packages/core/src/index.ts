@@ -6,7 +6,7 @@ export { sanitizeSchema } from './parse/index.js'
 
 export { extractToc, renderToHtml, HEADING_ID_PREFIX } from './render/index.js'
 export { HIGHLIGHT_LANGUAGES } from './render/languages.js'
-export type { TocEntry, RenderOptions, RenderResult } from './render/index.js'
+export type { TocEntry, RenderOptions, RenderResult, RenderPlugins } from './render/index.js'
 export { processFrontmatter } from './render/index.js'
 export type { HighlightLanguage } from './render/languages.js'
 
@@ -42,5 +42,10 @@ export type { MindNode } from './mindmap/mindmap.js'
 export { computeLineDiff, detectConflict } from './diff/diff.js'
 export type { DiffLine } from './diff/diff.js'
 
-export { createCheckpointTracker, registerActor } from './doc/checkpoint.js'
+export { createCheckpointTracker, registerActor, trackLocalActor } from './doc/checkpoint.js'
 export type { CheckpointTracker } from './doc/checkpoint.js'
+
+export * from './share/index.js'
+export { computeBlame } from './doc/blame.js'
+export type { BlameRange } from './doc/blame.js'
+export { textAtCheckpoint, restoreCheckpoint } from './doc/restore.js'

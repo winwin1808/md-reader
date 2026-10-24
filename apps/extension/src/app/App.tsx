@@ -1,11 +1,12 @@
 import { docQuery } from './doc-registry'
-import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   ThemeProvider,
   SettingsModal,
   Viewer,
   Toc,
   ExportModal,
+  ShareModal,
   ReadingProgress,
   TopToolbar,
   DocumentSearch,
@@ -18,12 +19,15 @@ import {
   applyFormat,
   Icon,
   Logo,
+  HistoryTimeline,
+  historyLabel,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid } from '@md-reader/ui'
+import { inlineMermaid, usePeers, lineAuthors } from '@md-reader/ui'
+import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
 import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
@@ -34,17 +38,26 @@ import {
   extractMindmap,
   applyTextChange,
   computeTextChanges,
+  buildShareUrl,
+  normalizeServerUrl,
+  computeBlame,
 } from '@md-reader/core'
-import type { MindNode } from '@md-reader/core'
+import type { MindNode, RoomBinding } from '@md-reader/core'
+import { defaultRenderPlugins, parseYaml } from '@md-reader/core/plugins'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { openLocalFileAsDoc } from './fs/file-system'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
+import { useHistory } from './hooks/useHistory'
 import { useExport } from './hooks/useExport'
+import { useShare } from './collab/useShare'
+import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
 import './app.css'
+
+const PLUGINS = defaultRenderPlugins()
 
 const persistSettings = (patch: Record<string, any>) => {
   try {
@@ -134,9 +147,14 @@ export function App(): React.JSX.Element {
   })
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
-  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl })
+  const [room, setRoom] = useState<RoomBinding | null>(null)
+  const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? DEFAULT_SERVER_URL
+  const displayName = readerSettings.displayName?.trim() || 'Bạn'
+  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const history = useHistory(doc, session.checkpoints, displayName)
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
@@ -144,11 +162,40 @@ export function App(): React.JSX.Element {
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
   const editorViewRef = useRef<EditorView | null>(null)
+  const [blameOn, setBlameOn] = useState(false)
+  const [blameLines, setBlameLines] = useState<Array<LineAuthor | null> | null>(null)
+  useEffect(() => {
+    if (!blameOn || viewMode === 'reading') { setBlameLines(null); return }
+    const meta = doc.getMap('meta')
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const compute = () => { setBlameLines(lineAuthors(computeBlame(doc), yText.toString())) }
+    const schedule = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { timer = null; compute() }, 300)
+    }
+    compute()
+    yText.observe(schedule)
+    meta.observeDeep(schedule)
+    return () => {
+      yText.unobserve(schedule)
+      meta.unobserveDeep(schedule)
+      if (timer) clearTimeout(timer)
+    }
+  }, [blameOn, viewMode, doc, yText])
+  const peers = usePeers(session.awareness)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
   const [exportOpen, setExportOpen] = useState<boolean>(false)
+  const [shareOpen, setShareOpen] = useState<boolean>(false)
+  const share = useShare({ docId: session.docId, serverUrl })
+  useEffect(() => { setRoom(share.binding) }, [share.binding])
+  const shareRoomId = share.binding?.roomId
+  const shareRefresh = share.refresh
+  useEffect(() => {
+    if (shareOpen && shareRoomId) void shareRefresh().catch(() => {})
+  }, [shareOpen, shareRoomId, shareRefresh])
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
@@ -296,6 +343,33 @@ export function App(): React.JSX.Element {
     handleSettingChange('mode', mode)
   }
 
+  const renderHtmlFor = useCallback((text: string) => {
+    const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false, parseYaml })
+    const rendered = renderToHtml(parsed, {
+      math: readerSettings?.enableMath !== false,
+      stripFrontmatter: readerSettings?.stripFrontmatter,
+      displayMetadata: readerSettings?.displayMetadata,
+      typographer: readerSettings?.typographer,
+      externalLinks: readerSettings?.externalLinks,
+      githubAlerts: readerSettings?.githubAlerts,
+      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
+      plugins: PLUGINS,
+    })
+    return { parsed, rendered }
+  }, [readerSettings])
+  const previewHtml = useMemo(
+    () => (history.previewText === null ? null : renderHtmlFor(history.previewText).rendered.html),
+    [history.previewText, renderHtmlFor],
+  )
+  const previewEntry = history.previewId ? history.entries.find((e) => e.id === history.previewId) : undefined
+  const previewBanner = previewHtml !== null && previewEntry ? (
+    <div role="status" className="history-preview-banner">
+      Đang xem mốc {historyLabel(previewEntry.label)} — {new Date(previewEntry.ts).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}. Đây là bản chỉ đọc.
+      <button type="button" onClick={() => history.preview(null)}>Thoát xem</button>
+    </div>
+  ) : null
+  const closeHistory = () => { history.preview(null); setHistoryOpen(false) }
+
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
     if (!content) {
       const emptyTree = { type: 'root', children: [] } as any
@@ -306,23 +380,14 @@ export function App(): React.JSX.Element {
         parsedDoc: { tree: emptyTree },
       }
     }
-    const parsed = parseMarkdown(content, { math: readerSettings?.enableMath !== false })
-    const rendered = renderToHtml(parsed, {
-      math: readerSettings?.enableMath !== false,
-      stripFrontmatter: readerSettings?.stripFrontmatter,
-      displayMetadata: readerSettings?.displayMetadata,
-      typographer: readerSettings?.typographer,
-      externalLinks: readerSettings?.externalLinks,
-      githubAlerts: readerSettings?.githubAlerts,
-      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
-    })
+    const { parsed, rendered } = renderHtmlFor(content)
     return {
       html: rendered.html,
       toc: rendered.toc,
       parseResult: parsed,
       parsedDoc: parsed,
     }
-  }, [content, readerSettings])
+  }, [content, renderHtmlFor])
 
   const mindmapRoot = useMemo(() => {
     if (!isMindmapOpen) return null
@@ -359,6 +424,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           })
         const out = await Promise.all(
@@ -387,6 +453,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           }).length > 1 : false),
     [exportOpen, content, readerSettings.enableMath],
@@ -400,6 +467,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           }) : []),
     [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
@@ -449,6 +517,8 @@ export function App(): React.JSX.Element {
   const toolbarActions: ToolbarAction[] = [
     { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
     { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
+    ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? 'Ẩn người viết' : 'Hiện người viết', icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
+    { id: 'history', label: 'Lịch sử', icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
     { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
   ]
 
@@ -527,6 +597,8 @@ export function App(): React.JSX.Element {
           onComplete={() => setIsConfettiActive(false)}
         />
         <TopToolbar
+          syncStatus={session.syncStatus}
+          presence={session.syncStatus !== 'off' ? peers : undefined}
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
           onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
@@ -545,10 +617,24 @@ export function App(): React.JSX.Element {
           saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
           actions={toolbarActions}
+          onShare={session.docId ? () => setShareOpen(true) : undefined}
         />
         <>
           <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
-          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
+          <ShareModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            binding={share.binding}
+            links={share.links}
+            onEnable={async () => { await share.enable() }}
+            onCreateLink={share.createLink}
+            onRevoke={share.revoke}
+            onRevokeAll={share.revokeAll}
+            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl, t)}
+            busy={share.busy}
+            error={share.error}
+          />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} />
         </>
         {isReadingMode && (
           <button
@@ -614,8 +700,9 @@ export function App(): React.JSX.Element {
           {viewMode === 'reading' && hasContent && (
             <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
+                {previewBanner}
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
+                  <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
@@ -634,13 +721,38 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
+          {historyOpen && (
+            <div className="history-drawer">
+              <HistoryTimeline
+                entries={history.entries}
+                actors={history.actors}
+                previewId={history.previewId}
+                previewText={history.previewText}
+                onPreview={history.preview}
+                onRestore={(id) => { history.restore(id) }}
+                onClose={closeHistory}
+              />
+            </div>
+          )}
+
           {viewMode === 'editor' && (
             <div className="editor-mode-container">
-              <FormattingToolbar onAction={handleFormatAction} />
+              {previewHtml === null && <FormattingToolbar onAction={handleFormatAction} />}
               <div className="editor-mode-body">
+                {previewHtml !== null ? (
+                  <div className="history-preview-scroll">
+                    {previewBanner}
+                    <div className="main-content" data-font-scale={fontScale}>
+                      <div className="a4-document-container">
+                        <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} />
                 </Suspense>
+                )}
               </div>
             </div>
           )}
@@ -652,11 +764,14 @@ export function App(): React.JSX.Element {
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
-                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
+                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} /></Suspense>}
                   preview={
-                    <div ref={docContainerRef} className="a4-document-container">
-                      <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
-                    </div>
+                    <>
+                      {previewBanner}
+                      <div ref={docContainerRef} className="a4-document-container">
+                        <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} />
+                      </div>
+                    </>
                   }
                 />
                 </Suspense>
