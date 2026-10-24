@@ -3,7 +3,7 @@ import * as Y from 'yjs'
 import * as encoding from 'lib0/encoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness'
-import { classifyMessage, sanitizeAwarenessMessage, sanitizeUser } from './protocol'
+import { classifyMessage, MAX_AWARENESS_BYTES, sanitizeAwarenessMessage, sanitizeUser } from './protocol'
 
 function sync(fn: (e: encoding.Encoder, d: Y.Doc) => void): Uint8Array {
   const d = new Y.Doc()
@@ -79,6 +79,25 @@ describe('sanitizeAwarenessMessage', () => {
     expect(out).not.toBeNull()
     applyAwarenessUpdate(rec, inner(out), 'x')
     expect(rec.getStates().has(aw.clientID)).toBe(false)
+  })
+  describe('cursor shape', () => {
+    const st = (cursor: unknown) => {
+      const src = mk({ user: { name: 'bob' }, cursor })
+      const aw = await_decode(sanitizeAwarenessMessage(awMsg(src))!)
+      return aw.getStates().get(src.clientID) as any
+    }
+    it('drops string cursor, keeps name', () => {
+      const r = st('boom')
+      expect('cursor' in r).toBe(false)
+      expect(r.user.name).toBe('bob')
+    })
+    it('drops array', () => expect('cursor' in st([1, 2])).toBe(false))
+    it('drops 2KB object', () => expect('cursor' in st({ a: 'x'.repeat(2048) })).toBe(false))
+    it('keeps small object', () => expect(st({ anchor: 1 }).cursor).toEqual({ anchor: 1 }))
+    it('keeps null', () => expect(st(null).cursor).toBeNull())
+    it('drops oversized buffer', () => {
+      expect(sanitizeAwarenessMessage(new Uint8Array(MAX_AWARENESS_BYTES + 1))).toBeNull()
+    })
   })
   it('garbage null', () => {
     expect(sanitizeAwarenessMessage(new Uint8Array([9, 9]))).toBeNull()
