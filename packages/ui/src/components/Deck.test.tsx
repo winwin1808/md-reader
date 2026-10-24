@@ -9,6 +9,8 @@ afterEach(() => {
 import type { Slide } from '@md-reader/core'
 import { Deck, fitScale } from './Deck'
 
+vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
+
 vi.mock('./MermaidBlock', () => ({
   MermaidBlock: ({ code, theme }: { code: string; theme?: string }) => (
     <div data-testid="mb" data-theme={theme}>{code}</div>
