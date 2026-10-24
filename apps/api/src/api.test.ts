@@ -254,4 +254,50 @@ describe('hardening (8a2.5)', () => {
     expect(res.status).toBe(400)
     expect(routeParty).not.toHaveBeenCalled()
   })
+
+  describe('snapshot', () => {
+    async function setup() {
+      const store = new MemoryTokenStore(now)
+      const room = await store.createRoom()
+      const link = await store.createLink(room.roomId, { role: 'view', expiresIn: null })
+      return { store, room, link }
+    }
+    const bytes = new Uint8Array([1, 2, 3])
+    const okSnap = () => new Response(bytes, { status: 200, headers: { 'content-type': 'application/octet-stream' } })
+
+    it('valid token -> 200 octet-stream with bytes', async () => {
+      const { store, room, link } = await setup()
+      const snapshot = vi.fn(async (_id: string) => okSnap())
+      const res = await handleApi(new Request(`http://x/api/s/${link.token}/snapshot`), store, { snapshot })
+      expect(res!.status).toBe(200)
+      expect(res!.headers.get('content-type')).toBe('application/octet-stream')
+      expect([...new Uint8Array(await res!.arrayBuffer())]).toEqual([1, 2, 3])
+      expect(snapshot).toHaveBeenCalledWith(room.roomId)
+    })
+    it('unknown token -> 410, snapshot not called', async () => {
+      const { store } = await setup()
+      const snapshot = vi.fn(async (_id: string) => okSnap())
+      const res = await handleApi(new Request('http://x/api/s/nope/snapshot'), store, { snapshot })
+      expect(res!.status).toBe(410)
+      expect(snapshot).not.toHaveBeenCalled()
+    })
+    it('missing deps.snapshot -> 501', async () => {
+      const { store, link } = await setup()
+      const res = await handleApi(new Request(`http://x/api/s/${link.token}/snapshot`), store)
+      expect(res!.status).toBe(501)
+    })
+    it('handleRequest: snapshot path on party route -> 404, routeParty not called', async () => {
+      const { store, room, link } = await setup()
+      const routeParty = vi.fn(async () => new Response('x'))
+      const res = await handleRequest(
+        new Request(`http://x/parties/doc-room/${room.roomId}/snapshot?token=${link.token}`, {
+          headers: { 'x-mdr-internal': '1' },
+        }),
+        {} as never,
+        { routeParty, store },
+      )
+      expect(res.status).toBe(404)
+      expect(routeParty).not.toHaveBeenCalled()
+    })
+  })
 })

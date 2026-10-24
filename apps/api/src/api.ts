@@ -42,7 +42,11 @@ function parseLinkRequest(body: unknown): CreateLinkRequest | null {
   return { role: b.role, expiresIn: b.expiresIn, ...(b.label !== undefined ? { label: b.label } : {}) } as CreateLinkRequest
 }
 
-export async function handleApi(req: Request, store: TokenStore): Promise<Response | null> {
+export interface ApiDeps {
+  snapshot?: (roomId: string) => Promise<Response>
+}
+
+export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps = {}): Promise<Response | null> {
   const url = new URL(req.url)
   const path = url.pathname
   if (!path.startsWith('/api/')) return null
@@ -90,6 +94,16 @@ export async function handleApi(req: Request, store: TokenStore): Promise<Respon
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
     const ok = await store.revoke(roomId, prefix)
     return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+  }
+
+  const snap = /^\/api\/s\/([^/]+)\/snapshot$/.exec(path)
+  if (snap && method === 'GET') {
+    const tok = safeDecode(snap[1]!)
+    if (tok === null) return badPath()
+    const r = await store.resolve(tok)
+    if (!r) return json({ error: 'link expired or revoked' }, 410)
+    if (!deps.snapshot) return json({ error: 'snapshot not available' }, 501)
+    return deps.snapshot(r.roomId)
   }
 
   const s = /^\/api\/s\/([^/]+)$/.exec(path)
