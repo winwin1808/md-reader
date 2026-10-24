@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ContentApp } from './ContentApp'
+import { requestPageRender } from './render'
 import React from 'react'
 
 const FAIL = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
@@ -82,5 +83,60 @@ describe('ContentApp', () => {
     setupChrome(vi.fn(), vi.fn().mockRejectedValue(new Error('x')))
     render(<ContentApp markdown="# T" />)
     expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+  })
+
+  describe('reader mode', () => {
+    const R = { html: '<h1>Hi</h1><p>x</p>', title: 'Hi' }
+
+    it('shows article and bar', async () => {
+      setupChrome(vi.fn())
+      const { container } = render(<ContentApp markdown="# Hi" render={R} />)
+      expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
+      expect(container.querySelector('article.doc h1')?.textContent).toBe('Hi')
+      expect(container.querySelector('header.bar')?.textContent).toContain('Hi')
+      expect(screen.getByRole('button', { name: 'Xem bản thô' })).toBeTruthy()
+    })
+
+    it('toggles raw view', async () => {
+      setupChrome(vi.fn())
+      const onShowRaw = vi.fn()
+      render(<ContentApp markdown="# Hi" render={R} onShowRaw={onShowRaw} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Xem bản thô' }))
+      expect(onShowRaw).toHaveBeenLastCalledWith(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Xem bản đọc' }))
+      expect(onShowRaw).toHaveBeenLastCalledWith(false)
+      expect(screen.getByRole('button', { name: 'Xem bản thô' })).toBeTruthy()
+    })
+
+    it('open button sends openApp', async () => {
+      const send = vi.fn((_m: any, cb: any) => cb?.({ success: true }))
+      setupChrome(send)
+      render(<ContentApp markdown="# Hi" render={R} />)
+      fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/ }))
+      await waitFor(() => expect(send).toHaveBeenCalled())
+      expect(send.mock.calls[0]![0]).toMatchObject({ action: 'openApp' })
+    })
+  })
+
+  describe('requestPageRender', () => {
+    it('ok -> PageRender', async () => {
+      setupChrome(vi.fn((_m: any, cb: any) => cb?.({ ok: true, html: '<p>a</p>', title: 'T' })))
+      expect(await requestPageRender('a')).toEqual({ html: '<p>a</p>', title: 'T' })
+    })
+    it('ok:false -> null', async () => {
+      setupChrome(vi.fn((_m: any, cb: any) => cb?.({ ok: false, error: 'x' })))
+      expect(await requestPageRender('a')).toBeNull()
+    })
+    it('no answer -> null after timeout', async () => {
+      vi.useFakeTimers()
+      try {
+        setupChrome(vi.fn())
+        const p = requestPageRender('a', 100)
+        await vi.advanceTimersByTimeAsync(150)
+        expect(await p).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

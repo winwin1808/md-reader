@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { makeCacheEntry } from '../shared/md-url'
+import type { PageRender } from './render'
 
 export const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
 
@@ -41,6 +42,8 @@ export async function openInApp(markdown: string, replace = true): Promise<boole
 export interface ContentAppProps {
   markdown: string
   initialError?: string | null
+  render?: PageRender | null
+  onShowRaw?(raw: boolean): void
 }
 
 const COLLAPSED_KEY = 'mdr.widget.collapsed'
@@ -54,7 +57,8 @@ function BookIcon() {
   )
 }
 
-export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
+export function ContentApp({ markdown, initialError = null, render = null, onShowRaw }: ContentAppProps) {
+  const [raw, setRaw] = useState(false)
   const [isOpening, setIsOpening] = useState(false)
   const [collapsed, setCollapsed] = useState<boolean | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(initialError)
@@ -94,6 +98,28 @@ export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
       setErrorMsg(FAIL_TEXT)
       setIsOpening(false)
     }
+  }
+
+  if (render) {
+    const flip = () => {
+      const next = !raw
+      setRaw(next)
+      onShowRaw?.(next)
+    }
+    return (
+      <>
+        <header className="bar">
+          <BookIcon />
+          <span className="title">{render.title || 'Tài liệu Markdown'}</span>
+          <button type="button" className="open" onClick={() => handleOpen(true)} disabled={isOpening}>
+            {isOpening ? 'Đang mở...' : 'Đọc trong MD Reader'}
+          </button>
+          <button type="button" className="toggle" onClick={flip}>{raw ? 'Xem bản đọc' : 'Xem bản thô'}</button>
+          {errorMsg ? <span className="err" role="alert">{errorMsg}</span> : null}
+        </header>
+        {raw ? null : <article className="doc" dangerouslySetInnerHTML={{ __html: render.html }} />}
+      </>
+    )
   }
 
   if (collapsed === null) return null
