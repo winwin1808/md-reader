@@ -166,3 +166,10 @@ describe('splitIntoSlides math option', () => {
     expect(s[0]!.html).toContain('katex')
   })
 })
+
+describe('splitIntoSlides render options', () => {
+  it('renders github alerts when githubAlerts passed', () => {
+    const [s] = splitIntoSlides('> [!NOTE]\n> x', { render: { githubAlerts: true } })
+    expect(s!.html).toContain('markdown-alert')
+  })
+})

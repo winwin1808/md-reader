@@ -24,7 +24,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   text-transform: lowercase;
-  color: var(--md-fg-muted, #656d76);
+  color: var(--pencil);
   font-weight: 500;
 }
 
