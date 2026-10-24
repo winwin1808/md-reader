@@ -63,8 +63,8 @@ Rejected:
    `mdr.displayName` on the web (prompted once before the first edit). Sent through
    awareness `user: { name, color }` and written to `meta.actors` via `registerActor`.
 9. **Default server URL** is a constant `DEFAULT_SERVER_URL` in
-   `apps/extension/src/shared/collab.ts`, filled with the real `workers.dev` host in
-   8a1 after the first deploy. Settings → "Cộng tác" shows it, editable.
+   `apps/extension/src/shared/collab.ts`, set to `https://md-reader-api.qhao-work.workers.dev` (deployed in
+   8a1.3). Settings → "Cộng tác" shows it, editable.
 
 ## Shared interfaces (produced early, consumed verbatim later)
 
