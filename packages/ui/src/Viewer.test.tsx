@@ -7,6 +7,8 @@ import { Viewer, Toc } from './index'
 import { Icon, iconSvg } from './components/Icon'
 import type { TocEntry } from '@md-reader/core'
 
+vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
+
 describe('Viewer', () => {
   it('renders provided html securely (assumed sanitized by core)', () => {
     const html = '<h1 id="test-heading">Test</h1><p>Content</p>'

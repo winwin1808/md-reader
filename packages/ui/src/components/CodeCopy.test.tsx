@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
 import { Viewer } from '../Viewer'
 
+vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
+
 describe('Viewer code copy and header enhancement', () => {
   beforeEach(() => {
     vi.useFakeTimers()
