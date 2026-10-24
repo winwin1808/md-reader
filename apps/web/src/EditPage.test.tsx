@@ -1,5 +1,5 @@
 import React from 'react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 import type * as Y from 'yjs'
 import { EditorView } from '@codemirror/view'
@@ -7,6 +7,8 @@ import { EditPage } from './EditPage'
 import type { SyncStatus, BindRoomOptions } from './collab'
 
 const info = { roomId: 'room-1', role: 'edit' as const, title: 'T' }
+
+beforeAll(async () => { await import('@md-reader/ui/editor') }, 30000)
 const TOKEN = 'abcdefghijklmnop1234'
 
 function makeBind() {
