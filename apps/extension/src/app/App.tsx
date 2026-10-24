@@ -43,6 +43,7 @@ import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useExport } from './hooks/useExport'
 import { useShortcuts } from './hooks/useShortcuts'
+import { FileAccessHint } from './FileAccessHint'
 import './app.css'
 
 const persistSettings = (patch: Record<string, any>) => {
@@ -587,6 +588,7 @@ export function App(): React.JSX.Element {
               </div>
             </div>
           )}
+          <FileAccessHint fileUrl={fileUrlParam} failed={!!error} />
           {error && (
             <div className="notice notice--danger" role="alert">
               <span>{error}</span>
