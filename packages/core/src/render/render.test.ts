@@ -2,6 +2,7 @@ import { test, expect, describe } from 'vitest'
 import { extractToc, renderToHtml } from './index.js'
 import { Slugger } from './slug.js'
 import { parseMarkdown } from '../parse/index.js'
+import { defaultRenderPlugins } from '../plugins/index.js'
 
 describe('Slugger', () => {
   test('slug generation', () => {
@@ -67,7 +68,7 @@ describe('renderToHtml', () => {
   test('renders markdown to html with highlight, sanitize, slug', () => {
     const markdown = '# Hello World\n\n```js\nconsole.log(1)\n```\n\n<script>alert(1)</script>'
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { highlight: true, allowRawHtml: false })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), highlight: true, allowRawHtml: false })
     
     expect(result.html).toContain('<h1 id="user-content-hello-world">Hello World</h1>')
     expect(result.html).toContain('<span class="hljs-variable">console</span>')
@@ -100,7 +101,7 @@ const x = 1;
 ![Image](https://example.com/img.png)
 `
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { highlight: true, allowRawHtml: false })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), highlight: true, allowRawHtml: false })
     
     expect(result.html).toContain('<h1 id="user-content-title">Title</h1>')
     expect(result.html).toContain('<table>')
@@ -110,7 +111,7 @@ const x = 1;
   test('highlight: false -> <pre><code> does not have hljs classes', () => {
     const markdown = '```js\nconsole.log(1)\n```'
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { highlight: false })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), highlight: false })
     expect(result.html).toContain('<pre><code class="language-js">console.log(1)\n</code></pre>')
     expect(result.html).not.toContain('hljs')
   })
@@ -118,7 +119,7 @@ const x = 1;
   test('allowRawHtml: false -> removes <script> and on* attributes', () => {
     const markdown = '<script>alert("hack")</script>\n<button onclick="alert(1)">Click</button>'
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { allowRawHtml: false })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: false })
     expect(result.html).not.toContain('<script>')
     expect(result.html).not.toContain('onclick')
     expect(result.html).not.toContain('alert(1)')
@@ -127,20 +128,20 @@ const x = 1;
 
   test('1. Thẻ inline HTML lồng text', () => {
     const parsed = parseMarkdown('Hello <span>text</span>')
-    const result = renderToHtml(parsed, { allowRawHtml: true })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(result.html).toContain('<p>Hello <span>text</span></p>')
   })
 
   test('2. Entity HTML', () => {
     const parsed = parseMarkdown('<div>&amp;</div>')
-    const result = renderToHtml(parsed, { allowRawHtml: true })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(result.html).toContain('&#x26;')
     expect(result.html).not.toContain('&#x26;amp;')
   })
 
   test('3. Script và on* vẫn bị loại bỏ triệt để', () => {
     const parsed = parseMarkdown('<div onclick="alert(1)"><script>alert(2)</script>Safe</div>')
-    const result = renderToHtml(parsed, { allowRawHtml: true })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(result.html).not.toContain('<script>')
     expect(result.html).not.toContain('alert(2)')
     expect(result.html).not.toContain('onclick')
@@ -149,7 +150,7 @@ const x = 1;
 
   test('4. Attribute chứa >', () => {
     const parsed = parseMarkdown('<span title="> ">hello</span>')
-    const result = renderToHtml(parsed, { allowRawHtml: true })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(result.html).toContain('title="> "')
   })
 
@@ -161,7 +162,7 @@ const x = 1;
 ## H2 again
 `
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed)
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins() })
 
     const checkTocIds = (items: typeof result.toc) => {
       for (const item of items) {
@@ -179,19 +180,19 @@ const x = 1;
   test('Error handling: link javascript:... is sanitized, href removed or changed', () => {
     const markdown = '[hack](javascript:alert(1))'
     const parsed = parseMarkdown(markdown)
-    const result = renderToHtml(parsed, { allowRawHtml: false })
+    const result = renderToHtml(parsed, { plugins: defaultRenderPlugins(), allowRawHtml: false })
     
     expect(result.html).not.toContain('javascript:')
   })
 
   test('highlight: block contains class hljs and language-*', () => {
-    const result = renderToHtml(parseMarkdown('```ts\nconst x = 1\n```'))
+    const result = renderToHtml(parseMarkdown('```ts\nconst x = 1\n```'), { plugins: defaultRenderPlugins() })
     expect(result.html).toMatch(/<code[^>]*class="[^"]*hljs language-ts[^"]*"[^>]*>/)
   })
 
   test('ToC ID collision sync: duplicates get unique suffixes and sync perfectly with html', () => {
     const markdown = '# Heading\n# Heading\n# Heading'
-    const result = renderToHtml(parseMarkdown(markdown))
+    const result = renderToHtml(parseMarkdown(markdown), { plugins: defaultRenderPlugins() })
     
     expect(result.toc).toHaveLength(3)
     expect(result.toc[0]!.id).toBe('user-content-heading')
@@ -211,7 +212,7 @@ describe('prefixed ids', () => {
     expect(toc[0]!.id).toBe('user-content-hello')
   })
   test('raw html id/name are prefixed', () => {
-    const { html } = renderToHtml(parseMarkdown('<a id="x" name="y">t</a>'), { allowRawHtml: true })
+    const { html } = renderToHtml(parseMarkdown('<a id="x" name="y">t</a>'), { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(html).toContain('id="user-content-x"')
     expect(html).toContain('name="user-content-y"')
   })
@@ -230,7 +231,21 @@ describe('prefixed ids', () => {
     expect(html).toContain('href="https://e.com/#a"')
   })
   test('foreignObject is stripped', () => {
-    const { html } = renderToHtml(parseMarkdown('<svg><foreignObject><div>x</div></foreignObject></svg>'), { allowRawHtml: true })
+    const { html } = renderToHtml(parseMarkdown('<svg><foreignObject><div>x</div></foreignObject></svg>'), { plugins: defaultRenderPlugins(), allowRawHtml: true })
     expect(html.toLowerCase()).not.toContain('foreignobject')
+  })
+})
+
+describe('renderToHtml optional plugins', () => {
+  const md = '```js\nvar a = 1\n```\n\n$x$'
+  test('without plugins: no hljs, no katex', () => {
+    const { html } = renderToHtml(parseMarkdown(md), { math: true })
+    expect(html).not.toContain('hljs')
+    expect(html).not.toContain('katex')
+  })
+  test('with defaultRenderPlugins: hljs and katex appear', () => {
+    const { html } = renderToHtml(parseMarkdown(md), { math: true, plugins: defaultRenderPlugins() })
+    expect(html).toContain('hljs')
+    expect(html).toContain('katex')
   })
 })

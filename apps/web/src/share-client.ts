@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import { defaultRenderPlugins, parseYaml } from '@md-reader/core/plugins'
 import {
   API_PATHS,
   exportText,
@@ -43,8 +44,10 @@ export async function loadShare(token: string, fetchFn: typeof fetch = fetch): P
   }
 }
 
+const PLUGINS = defaultRenderPlugins()
+
 export function renderShareHtml(text: string): string {
-  const parsed = parseMarkdown(text, { gfm: true, math: true })
+  const parsed = parseMarkdown(text, { gfm: true, math: true, parseYaml })
   return renderToHtml(parsed, {
     math: true,
     githubAlerts: true,
@@ -53,5 +56,6 @@ export function renderShareHtml(text: string): string {
     displayMetadata: true,
     typographer: true,
     externalLinks: true,
+    plugins: PLUGINS,
   }).html
 }
