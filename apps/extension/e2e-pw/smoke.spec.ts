@@ -41,7 +41,9 @@ test('editor edits persist across reload', async ({ context, server }) => {
   await cm.click()
   await app.keyboard.press('ControlOrMeta+End')
   await app.keyboard.type('xyz')
-  await app.waitForTimeout(500)
+  await expect(app.locator('.cm-content')).toContainText('xyz')
+  await expect(app.locator('.dirty-indicator')).toHaveCount(0).catch(() => {})
+  await app.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))))
   await app.reload()
   await expect(app.locator('body')).toContainText('xyz')
 })
@@ -54,8 +56,28 @@ test('remote change with local edits shows the banner', async ({ context, server
   await cm.click()
   await app.keyboard.press('ControlOrMeta+End')
   await app.keyboard.type('local edit')
-  await app.waitForTimeout(500)
+  await expect(app.locator('.cm-content')).toContainText('local edit')
+  await app.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))))
   server.write('doc.md', '# Remote\n\nv2 changed\n')
   await app.reload()
   await expect(app.getByText('Tài liệu gốc đã thay đổi')).toBeVisible()
+})
+
+test('app page applies the Lề sách theme', async ({ context, server }) => {
+  server.write('doc.md', '# Theme\n\nreading text\n')
+  const app = await openViaContentScript(context, `${server.origin}/doc.md`)
+  await expect(app.getByRole('heading', { level: 1, name: 'Theme' })).toBeVisible()
+  // body paints --surface; --paper (rgb(241, 243, 242)) is the sheet colour
+  await expect(app.locator('body')).toHaveCSS('background-color', 'rgb(229, 234, 231)')
+  const paper = await app.evaluate(() => {
+    const d = document.createElement('div')
+    d.style.backgroundColor = 'var(--paper)'
+    document.body.appendChild(d)
+    const c = getComputedStyle(d).backgroundColor
+    d.remove()
+    return c
+  })
+  expect(paper).toBe('rgb(241, 243, 242)')
+  const ff = await app.getByText('reading text').first().evaluate((el) => getComputedStyle(el).fontFamily)
+  expect(ff.replace(/["']/g, '')).toMatch(/^Literata/)
 })

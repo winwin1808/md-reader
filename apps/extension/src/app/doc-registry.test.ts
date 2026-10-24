@@ -143,6 +143,28 @@ describe('doc-registry', () => {
     expect(new Set(all.map((r) => r.originPath)).size).toBe(2)
   })
 
+  it('two module instances (tabs) migrate once and leave a migratedAt marker', async () => {
+    legacy = [
+      { id: 'file:///a.md', name: 'a', lastOpened: 100 },
+      { id: 'https://x.com/b.md', name: 'b', lastOpened: 200 },
+    ]
+    vi.resetModules()
+    const other = await import('./doc-registry')
+    const [x, y] = await Promise.all([migrateLegacyRegistry(), other.migrateLegacyRegistry()])
+    expect(x + y).toBe(2)
+    expect((await listRecent(100)).length).toBe(2)
+    const marker = await new Promise<unknown>((res, rej) => {
+      const q = indexedDB.open('md_reader_registry', 1)
+      q.onsuccess = () => {
+        const g = q.result.transaction('meta').objectStore('meta').get('migratedAt')
+        g.onsuccess = () => { q.result.close(); res(g.result) }
+        g.onerror = () => rej(g.error)
+      }
+      q.onerror = () => rej(q.error)
+    })
+    expect(typeof marker).toBe('number')
+  })
+
   it('retry after deleting only the flag creates no duplicate drop record', async () => {
     await new Promise<void>((res, rej) => {
       const q = indexedDB.open('md-reader', 1)

@@ -4,8 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { AddressInfo } from 'node:net'
+import { fileURLToPath } from 'node:url'
 
-const builtDist = path.resolve(process.cwd(), 'dist')
+const builtDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 
 export interface MdServer {
   origin: string
