@@ -332,4 +332,30 @@ describe('MindmapModal', () => {
       ;(globalThis as any).Image = origImage
     }
   })
+
+  it('one tone per section branch; a drag ending on a handle does not toggle', () => {
+    const mk = (id: string): MindNode => ({ id, text: id, depth: 2, children: [] })
+    const tree: MindNode = {
+      id: 'r',
+      text: 'Root',
+      depth: 0,
+      children: [
+        { id: 'a', text: 'A', depth: 1, children: [mk('B'), mk('C'), mk('D')] },
+      ],
+    }
+    const { container } = render(<MindmapModal root={tree} isOpen={true} onClose={vi.fn()} />)
+    const strokeOf = (label: string) =>
+      screen.getByText(label).closest('g.mindmap-node')?.querySelector('rect')?.getAttribute('stroke')
+    const tones = new Set([strokeOf('B'), strokeOf('C'), strokeOf('D')])
+    expect(tones.size).toBe(3)
+
+    const handle = container.querySelector('.mindmap-collapse-handle') as Element
+    const label = handle.getAttribute('aria-label')
+    const svg = handle
+    fireEvent.pointerDown(svg, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { clientX: 120, clientY: 100 })
+    fireEvent.pointerUp(svg, { clientX: 120, clientY: 100 })
+    fireEvent.click(handle)
+    expect(container.querySelector('.mindmap-collapse-handle')?.getAttribute('aria-label')).toBe(label)
+  })
 })

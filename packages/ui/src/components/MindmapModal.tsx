@@ -125,7 +125,12 @@ function computeTreeLayout(
   const nodes: LayoutNode[] = []
   const edges: Edge[] = []
 
-  function assignY(node: MindNode, depth: number, branchColor: string): LayoutNode {
+  function assignY(
+    node: MindNode,
+    depth: number,
+    branchColor: string,
+    toned = false
+  ): LayoutNode {
     const isRoot = depth === 0
     const label = layoutLabel(node.text)
     const width = label.width
@@ -154,10 +159,9 @@ function computeTreeLayout(
     for (let i = 0; i < rawChildren.length; i++) {
       const child = rawChildren[i]
       if (!child) continue
-      const childColor = isRoot
-        ? toneVar(i)
-        : branchColor
-      layoutChildren.push(assignY(child, depth + 1, childColor))
+      const fork = !toned && rawChildren.length > 1
+      const childColor = fork ? toneVar(i) : branchColor
+      layoutChildren.push(assignY(child, depth + 1, childColor, toned || fork))
     }
 
     const firstChild = layoutChildren[0]
@@ -378,6 +382,11 @@ export function MindmapModal({
     isDraggingRef.current = true
     movedRef.current = false
     downPosRef.current = { x: e.clientX, y: e.clientY }
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    } catch {
+      /* synthetic pointer */
+    }
     dragStartRef.current = {
       x: e.clientX - transform.x,
       y: e.clientY - transform.y,
@@ -483,7 +492,7 @@ export function MindmapModal({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onWheel={handleWheel}
       >
         <g
@@ -561,9 +570,10 @@ export function MindmapModal({
                     className="mindmap-collapse-handle"
                     role="button"
                     aria-label={isCollapsed ? `Expand ${n.node.text}` : `Collapse ${n.node.text}`}
-                    transform={`translate(${n.width}, ${n.height / 2})`}
+                    transform={`translate(${n.width + 14}, ${n.height / 2})`}
                     onClick={(e) => {
                       e.stopPropagation()
+                      if (movedRef.current) return
                       toggleCollapse(n.node.id)
                     }}
                   >
