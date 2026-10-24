@@ -106,3 +106,50 @@ describe('handleRequest', () => {
     expect(routeParty).not.toHaveBeenCalled()
   })
 })
+
+describe('CORS', () => {
+  it('OPTIONS preflight returns 204 without touching store', async () => {
+    const store = new MemoryTokenStore()
+    const spy = vi.spyOn(store, 'createRoom')
+    const routeParty = vi.fn(ok)
+    const res = await handleRequest(
+      new Request('http://x/api/rooms/abc/links', { method: 'OPTIONS' }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(204)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    expect(res.headers.get('access-control-allow-methods')).toBe('GET, POST, DELETE, OPTIONS')
+    expect(res.headers.get('access-control-allow-headers')).toBe('authorization, content-type')
+    expect(res.headers.get('access-control-max-age')).toBe('86400')
+    expect(res.headers.get('access-control-allow-credentials')).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    expect(routeParty).not.toHaveBeenCalled()
+  })
+
+  it('POST /api/rooms carries ACAO *', async () => {
+    const res = await handleRequest(new Request('http://x/api/rooms', { method: 'POST' }), env, {
+      routeParty: ok,
+      store: new MemoryTokenStore(),
+    })
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    expect(res.headers.get('access-control-expose-headers')).toBe('content-type')
+  })
+
+  it('401 from GET links carries ACAO *', async () => {
+    const res = await handleRequest(new Request('http://x/api/rooms/abc/links'), env, {
+      routeParty: ok,
+      store: new MemoryTokenStore(),
+    })
+    expect(res.status).toBe(401)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+  })
+
+  it('parties path has no ACAO', async () => {
+    const res = await handleRequest(new Request('http://x/parties/doc-room/x'), env, {
+      routeParty: ok,
+      store: new MemoryTokenStore(),
+    })
+    expect(res.headers.get('access-control-allow-origin')).toBeNull()
+  })
+})
