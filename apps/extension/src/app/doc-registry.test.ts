@@ -92,6 +92,50 @@ describe('doc-registry', () => {
     expect(d.originPath).toBeNull()
   })
 
+  describe('findOrCreateByOrigin under Web Lock (8i)', () => {
+    function fakeLocks() {
+      const chains = new Map<string, Promise<unknown>>()
+      const names: string[] = []
+      let active = 0
+      let maxActive = 0
+      return {
+        names,
+        get maxActive() { return maxActive },
+        request: ((name: string, cb: () => Promise<unknown>) => {
+          names.push(name)
+          const prev = chains.get(name) ?? Promise.resolve()
+          const run = prev.then(async () => {
+            active++; maxActive = Math.max(maxActive, active)
+            try { await sleep(2); return await cb() } finally { active-- }
+          })
+          chains.set(name, run.catch(() => {}))
+          return run
+        }) as unknown as LockManager['request'],
+      }
+    }
+    const init = { title: 'L', originKind: 'url' as const, originPath: 'https://x.com/lock.md' }
+
+    it('(a) concurrent calls serialize through the lock: one docId, one record', async () => {
+      const locks = fakeLocks()
+      const rs = await Promise.all([findOrCreateByOrigin(init, locks), findOrCreateByOrigin(init, locks)])
+      expect(rs[0].docId).toBe(rs[1].docId)
+      expect(locks.names.length).toBe(2)
+      expect(locks.maxActive).toBe(1)
+      expect((await listRecent(50)).filter((r) => r.originPath === init.originPath).length).toBe(1)
+    })
+
+    it('(b) works with locks undefined', async () => {
+      const r = await findOrCreateByOrigin(init, undefined)
+      expect((await getRecord(r.docId))?.originPath).toBe(init.originPath)
+    })
+
+    it('(c) lock name is mdr:import: + origin key', async () => {
+      const locks = fakeLocks()
+      await findOrCreateByOrigin(init, locks)
+      expect(locks.names).toEqual(['mdr:import:https://x.com/lock.md'])
+    })
+  })
+
   it('findOrCreateByOrigin is atomic across concurrent callers', async () => {
     const init = { title: 'A', originKind: 'url' as const, originPath: 'https://x.com/a.md' }
     const rs = await Promise.all([1, 2, 3, 4, 5].map(() => findOrCreateByOrigin(init)))
