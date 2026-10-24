@@ -103,7 +103,7 @@
   --dur-1: 120ms;
   --dur-2: 200ms;
   --ease: cubic-bezier(.2,.7,.2,1);
-  --measure: 68ch;
+  --measure: 84ch;
   --body-size: 1.125rem;
   --body-lh: 1.62;
   --hover: color-mix(in srgb, var(--ink) 6%, transparent);
@@ -132,3 +132,13 @@
   background: var(--hl);
   color: var(--hl-ink);
 }
+
+[data-width="narrow"] { --measure: 68ch; }
+[data-width="medium"] { --measure: 84ch; }
+[data-width="wide"] { --measure: 104ch; }
+[data-width="full"] { --measure: none; }
+[data-width="full"] .a4-document-container,
+[data-width="full"] .a4-document-container:has(.markdown-alert),
+[data-width="full"] .md-viewer,
+[data-width="full"] .notice { max-width: none; }
+[data-width="full"] .app-layout { max-width: none; }
