@@ -7,7 +7,7 @@ import { useShare } from './useShare'
 
 const SERVER = 'https://x.test'
 const json = (body: unknown, status = 200) =>
-  Promise.resolve({ ok: status >= 200 && status < 300, status, json: async () => body } as Response)
+  Promise.resolve(new Response(JSON.stringify(body), { status }))
 const link = (token: string, prefix: string) => ({
   token, tokenPrefix: prefix, roomId: 'r1', role: 'view', label: '', createdAt: 1, expiresAt: null, revokedAt: null,
 })
@@ -74,12 +74,13 @@ describe('useShare', () => {
     const h = await bound()
     fetchMock.mockReturnValueOnce(json(link('S', 'aaaa')))
     await act(async () => { await h.result.current.createLink({ role: 'view', expiresIn: null }) })
-    fetchMock.mockReturnValueOnce(json({}))
+    fetchMock.mockReturnValueOnce(Promise.resolve(new Response(null, { status: 204 })))
     await act(async () => { await h.result.current.revoke('aaaa') })
     const [url, init] = fetchMock.mock.calls[2]
     expect(url).toBe(`${SERVER}/api/rooms/r1/links/aaaa`)
     expect(init.method).toBe('DELETE')
     expect(h.result.current.links).toEqual([])
+    expect(h.result.current.error).toBeNull()
   })
 
   it('401 sets error and rejects', async () => {
@@ -111,7 +112,7 @@ describe('useShare', () => {
     act(() => { p = h.result.current.enable() })
     await waitFor(() => expect(h.result.current.busy).toBe(true))
     await act(async () => {
-      release({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'o' }) } as Response)
+      release(new Response(JSON.stringify(({ roomId: 'r1', ownerToken: 'o' })), { status: 200 }))
       await p
     })
     expect(h.result.current.busy).toBe(false)
@@ -125,7 +126,7 @@ describe('useShare', () => {
     act(() => { p1 = h.result.current.enable(); p2 = h.result.current.enable() })
     let out: unknown[] = []
     await act(async () => {
-      release({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'o' }) } as Response)
+      release(new Response(JSON.stringify(({ roomId: 'r1', ownerToken: 'o' })), { status: 200 }))
       out = await Promise.all([p1, p2])
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -143,7 +144,7 @@ describe('useShare', () => {
     cur = docB
     h.rerender()
     await act(async () => {
-      release({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'o' }) } as Response)
+      release(new Response(JSON.stringify(({ roomId: 'r1', ownerToken: 'o' })), { status: 200 }))
       await p.catch(() => {})
     })
     expect(h.result.current.binding).toBeNull()
@@ -153,9 +154,7 @@ describe('useShare', () => {
 
   it('maps non-JSON 2xx to invalid-data error', async () => {
     const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
-    fetchMock.mockReturnValueOnce(Promise.resolve({
-      ok: true, status: 200, json: async () => { throw new SyntaxError('x') },
-    } as unknown as Response))
+    fetchMock.mockReturnValueOnce(Promise.resolve(new Response('<html>', { status: 200 })))
     await act(async () => {
       await expect(h.result.current.enable()).rejects.toThrow('Máy chủ trả dữ liệu không hợp lệ')
     })
@@ -174,14 +173,50 @@ describe('useShare', () => {
     })
     await waitFor(() => expect(h.result.current.busy).toBe(true))
     await act(async () => {
-      r1({ ok: true, status: 200, json: async () => [] } as Response)
+      r1(new Response('[]', { status: 200 }))
       await p1
     })
     expect(h.result.current.busy).toBe(true)
     await act(async () => {
-      r2({ ok: true, status: 200, json: async () => link('S', 'aaaa') } as Response)
+      r2(new Response(JSON.stringify(link('S', 'aaaa')), { status: 200 }))
       await p2
     })
     expect(h.result.current.busy).toBe(false)
+  })
+
+  it('refresh resolving after createLink keeps the new link', async () => {
+    const h = await bound()
+    let r1!: (r: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { r1 = r }))
+    fetchMock.mockReturnValueOnce(json(link('SECRET', 'aaaa')))
+    let p1!: Promise<unknown>
+    act(() => { p1 = h.result.current.refresh() })
+    await act(async () => { await h.result.current.createLink({ role: 'view', expiresIn: null }) })
+    await act(async () => {
+      r1(new Response(JSON.stringify([link('', 'bbbb')]), { status: 200 }))
+      await p1
+    })
+    expect(h.result.current.links.map((l) => [l.tokenPrefix, l.token])).toEqual([['aaaa', 'SECRET'], ['bbbb', '']])
+  })
+
+  it('refresh does not resurrect a revoked session link', async () => {
+    const h = await bound()
+    fetchMock.mockReturnValueOnce(json(link('S', 'aaaa')))
+    await act(async () => { await h.result.current.createLink({ role: 'view', expiresIn: null }) })
+    fetchMock.mockReturnValueOnce(Promise.resolve(new Response(null, { status: 204 })))
+    await act(async () => { await h.result.current.revoke('aaaa') })
+    fetchMock.mockReturnValueOnce(json([]))
+    await act(async () => { await h.result.current.refresh() })
+    expect(h.result.current.links).toEqual([])
+  })
+
+  it('enable retries after a rejected attempt', async () => {
+    const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+    fetchMock.mockRejectedValueOnce(new TypeError('boom'))
+    await act(async () => { await expect(h.result.current.enable()).rejects.toThrow() })
+    fetchMock.mockReturnValueOnce(json({ roomId: 'r1', ownerToken: 'own' }))
+    await act(async () => { await h.result.current.enable() })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(h.result.current.binding?.roomId).toBe('r1')
   })
 })
