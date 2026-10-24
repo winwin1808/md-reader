@@ -487,4 +487,4 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - app.js main chunk is 408 kB gz after 6j (KaTeX CSS/JS in the main chunk) — lazy-load
   KaTeX when a doc contains math: candidate for 8x performance pass.
 - 7v: done
-- 7w: planned
+- 7w: done
