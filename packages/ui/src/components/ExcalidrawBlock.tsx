@@ -23,6 +23,25 @@ interface ExcalidrawElement {
   isDeleted?: boolean
 }
 
+const mix = (tone: string) => `color-mix(in srgb, var(${tone}) 20%, transparent)`
+const STROKE_MAP: Record<string, string> = {
+  '#000000': 'var(--ink)', '#000': 'var(--ink)', '#1e1e1e': 'var(--ink)', black: 'var(--ink)',
+  '#e03131': 'var(--danger)', '#2f9e44': 'var(--ok)', '#1971c2': 'var(--accent)', '#868e96': 'var(--pencil)',
+}
+const FILL_MAP: Record<string, string> = {
+  '#ffffff': 'none', '#fff': 'none', white: 'none', transparent: 'none',
+  '#ffc9c9': mix('--danger'), '#b2f2bb': mix('--ok'), '#a5d8ff': mix('--accent'),
+  '#e03131': 'var(--danger)', '#2f9e44': 'var(--ok)', '#1971c2': 'var(--accent)', '#868e96': 'var(--pencil)',
+}
+export function mapStroke(c?: string): string {
+  if (!c) return 'var(--ink)'
+  return STROKE_MAP[c.trim().toLowerCase()] ?? c
+}
+export function mapFill(c?: string): string {
+  if (!c) return 'none'
+  return FILL_MAP[c.trim().toLowerCase()] ?? c
+}
+
 function pointsToSvgPath(points: [number, number][] | undefined, baseX: number, baseY: number): string {
   if (!points || points.length === 0) return ''
   const [first, ...rest] = points
@@ -224,8 +243,8 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
 
         {elements.map((el, idx) => {
           const key = el.id || `el-${idx}`
-          const stroke = el.strokeColor || 'currentColor'
-          const fill = el.backgroundColor === 'transparent' ? 'none' : (el.backgroundColor || 'none')
+          const stroke = mapStroke(el.strokeColor)
+          const fill = mapFill(el.backgroundColor)
           const strokeWidth = el.strokeWidth || 1.5
 
           switch (el.type) {
@@ -307,7 +326,7 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
                   y={el.y + (el.fontSize || 16)}
                   fontSize={el.fontSize || 16}
                   fill={stroke}
-                  fontFamily="sans-serif, system-ui"
+                  fontFamily="var(--font-ui)"
                 >
                   {el.text}
                 </text>
