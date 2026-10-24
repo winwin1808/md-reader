@@ -115,13 +115,24 @@ export async function createRecord(init: {
 
 const inFlightByOrigin = new Map<string, Promise<DocRecord>>()
 
-export function findOrCreateByOrigin(init: {
+type FindOrCreateInit = {
   title: string
   originKind: OriginKind
   originPath: string
   persistenceName?: string
   lastOpenedAt?: number
-}): Promise<DocRecord> {
+}
+
+/** Cross-tab safe: the find+create runs under an exclusive Web Lock keyed by origin. */
+export function findOrCreateByOrigin(
+  init: FindOrCreateInit,
+  locks: Pick<LockManager, 'request'> | undefined = globalThis.navigator?.locks,
+): Promise<DocRecord> {
+  if (!locks) return findOrCreateByOriginBody(init)
+  return locks.request('mdr:import:' + init.originPath, () => findOrCreateByOriginBody(init)) as Promise<DocRecord>
+}
+
+function findOrCreateByOriginBody(init: FindOrCreateInit): Promise<DocRecord> {
   const existing = inFlightByOrigin.get(init.originPath)
   if (existing) return existing
   const p = (async () => {
