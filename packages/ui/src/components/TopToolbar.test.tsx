@@ -251,4 +251,18 @@ describe('TopToolbar', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Giảm cỡ chữ' }))
     expect(onFontScaleChange).toHaveBeenLastCalledWith('sm')
   })
+
+  it('omits the share button without onShare', () => {
+    render(<TopToolbar {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Chia sẻ' })).toBeNull()
+  })
+
+  it('renders a share button that calls onShare', () => {
+    const onShare = vi.fn()
+    render(<TopToolbar {...defaultProps} onShare={onShare} />)
+    const btn = screen.getByRole('button', { name: 'Chia sẻ' })
+    expect(btn.getAttribute('title')).toBe('Chia sẻ')
+    fireEvent.click(btn)
+    expect(onShare).toHaveBeenCalledTimes(1)
+  })
 })
