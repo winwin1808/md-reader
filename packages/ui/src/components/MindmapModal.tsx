@@ -258,6 +258,11 @@ export function MindmapModal({
   const dragStartRef = useRef({ x: 0, y: 0 })
   const downPosRef = useRef({ x: 0, y: 0 })
   const movedRef = useRef(false)
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const pinchRef = useRef<{ dist: number; scale: number; x: number; y: number } | null>(null)
+  const [selectedId, setSelectedId] = useState<string>(root?.id ?? '')
+  const [keyboardMode, setKeyboardMode] = useState(false)
+  const focusPendingRef = useRef(false)
 
   const { nodes, edges, bounds } = useMemo(() => {
     if (!root) {
@@ -270,7 +275,44 @@ export function MindmapModal({
     return computeTreeLayout(root, collapsedIds)
   }, [root, collapsedIds])
 
+  const selected = nodes.find((n) => n.node.id === selectedId) ?? nodes[0]
+  const effectiveSelectedId = selected?.node.id
+
+  useEffect(() => {
+    if (!focusPendingRef.current || !selected) return
+    focusPendingRef.current = false
+    const svgEl = svgRef.current
+    const el = svgEl?.querySelector<SVGGElement>('g.mindmap-node[tabindex="0"]')
+    el?.focus?.()
+    // keep the selected node in view (pan just enough)
+    const w = svgEl?.clientWidth || 800
+    const h = svgEl?.clientHeight || 600
+    setTransform((t) => {
+      const left = t.x + selected.x * t.scale
+      const right = t.x + (selected.x + selected.width) * t.scale
+      const top = t.y + (selected.y - selected.height / 2) * t.scale
+      const bottom = t.y + (selected.y + selected.height / 2) * t.scale
+      const m = 24
+      let dx = 0
+      let dy = 0
+      if (left < m) dx = m - left
+      else if (right > w - m) dx = w - m - right
+      if (top < m) dy = m - top
+      else if (bottom > h - m) dy = h - m - bottom
+      if (dx === 0 && dy === 0) return t
+      return { ...t, x: Number((t.x + dx).toFixed(1)), y: Number((t.y + dy).toFixed(1)) }
+    })
+  }, [selected])
+
   const toggleCollapse = useCallback((id: string) => {
+    if (root) {
+      const find = (n: MindNode): MindNode | undefined =>
+        n.id === id ? n : n.children?.map(find).find(Boolean)
+      const hasDesc = (n: MindNode, target: string): boolean =>
+        (n.children ?? []).some((c) => c.id === target || hasDesc(c, target))
+      const target = find(root)
+      setSelectedId((cur) => (target && !collapsedIds.has(id) && hasDesc(target, cur) ? id : cur))
+    }
     setCollapsedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -280,7 +322,7 @@ export function MindmapModal({
       }
       return next
     })
-  }, [])
+  }, [root, collapsedIds])
 
   const handleExpandAll = useCallback(() => {
     setCollapsedIds(new Set())
@@ -288,6 +330,7 @@ export function MindmapModal({
 
   const handleCollapseAll = useCallback(() => {
     if (!root) return
+    setSelectedId(root.id)
     const ids = new Set<string>()
     function traverse(n: MindNode, isRoot: boolean) {
       if (n.children && n.children.length > 0) {
@@ -377,8 +420,96 @@ export function MindmapModal({
     return null
   }
 
+  const setSizeOf = (id: string) => {
+    const sibs = nodes.find((p) => p.children.some((c) => c.node.id === id))?.children
+    if (!sibs) return { size: 1, pos: 1 }
+    return { size: sibs.length, pos: sibs.findIndex((c) => c.node.id === id) + 1 }
+  }
+
+  const handleTreeKeyDown = (e: React.KeyboardEvent<SVGGElement>) => {
+    if (!selected || e.ctrlKey || e.metaKey || e.altKey) return
+    const parentOf = (id: string): LayoutNode | undefined =>
+      nodes.find((p) => p.children.some((c) => c.node.id === id))
+    const go = (n: LayoutNode | undefined) => {
+      if (!n || n.node.id === selected.node.id) return
+      focusPendingRef.current = true
+      setSelectedId(n.node.id)
+    }
+    const hasKids = (selected.node.children?.length ?? 0) > 0
+    const isCollapsed = collapsedIds.has(selected.node.id)
+    const sibs = parentOf(selected.node.id)?.children ?? [selected]
+    const idx = sibs.findIndex((c) => c.node.id === selected.node.id)
+    let handled = true
+    switch (e.key) {
+      case 'ArrowDown':
+        go(sibs[idx + 1])
+        break
+      case 'ArrowUp':
+        go(sibs[idx - 1])
+        break
+      case 'ArrowRight':
+        if (hasKids && isCollapsed) toggleCollapse(selected.node.id)
+        else go(selected.children[0])
+        break
+      case 'ArrowLeft':
+        if (hasKids && !isCollapsed) toggleCollapse(selected.node.id)
+        else go(parentOf(selected.node.id))
+        break
+      case 'Home':
+        go(nodes[0])
+        break
+      case 'End':
+        go(nodes[nodes.length - 1])
+        break
+      case 'Enter':
+        onNodeClick?.(selected.node)
+        break
+      case ' ':
+        if (hasKids) toggleCollapse(selected.node.id)
+        break
+      case '+':
+      case '=':
+        handleZoomIn()
+        break
+      case '-':
+        handleZoomOut()
+        break
+      case '0':
+        fitToScreen()
+        break
+      default:
+        handled = false
+    }
+    if (handled) {
+      e.preventDefault()
+      e.stopPropagation()
+      setKeyboardMode(true)
+    }
+  }
+
+  const pinchStart = () => {
+    const pts = Array.from(pointersRef.current.values())
+    const a = pts[0]
+    const b = pts[1]
+    if (!a || !b) return
+    pinchRef.current = {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      scale: transform.scale,
+      x: transform.x,
+      y: transform.y,
+    }
+    isDraggingRef.current = false
+    movedRef.current = true
+  }
+
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return
+    setKeyboardMode(false)
+    pointersRef.current.set(e.pointerId ?? 0, { x: e.clientX, y: e.clientY })
+    if (pointersRef.current.size === 2) {
+      pinchStart()
+      return
+    }
     isDraggingRef.current = true
     movedRef.current = false
     downPosRef.current = { x: e.clientX, y: e.clientY }
@@ -394,6 +525,27 @@ export function MindmapModal({
   }
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const id = e.pointerId ?? 0
+    if (pointersRef.current.has(id)) pointersRef.current.set(id, { x: e.clientX, y: e.clientY })
+    const pinch = pinchRef.current
+    if (pinch && pointersRef.current.size >= 2) {
+      const [a, b] = Array.from(pointersRef.current.values()) as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ]
+      const dist = Math.hypot(a.x - b.x, a.y - b.y)
+      const scale = Math.min(3, Math.max(0.2, Number((pinch.scale * (dist / pinch.dist)).toFixed(2))))
+      const rect = svgRef.current?.getBoundingClientRect()
+      const mx = (a.x + b.x) / 2 - (rect?.left ?? 0)
+      const my = (a.y + b.y) / 2 - (rect?.top ?? 0)
+      const ratio = scale / pinch.scale
+      setTransform({
+        x: Number((mx - (mx - pinch.x) * ratio).toFixed(1)),
+        y: Number((my - (my - pinch.y) * ratio).toFixed(1)),
+        scale,
+      })
+      return
+    }
     if (!isDraggingRef.current) return
     if (
       !movedRef.current &&
@@ -409,7 +561,9 @@ export function MindmapModal({
     }))
   }
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e?: React.PointerEvent<SVGSVGElement>) => {
+    pointersRef.current.delete(e?.pointerId ?? 0)
+    if (pointersRef.current.size < 2) pinchRef.current = null
     isDraggingRef.current = false
   }
 
@@ -494,6 +648,7 @@ export function MindmapModal({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
       >
         <g
           className="mindmap-viewport"
@@ -520,6 +675,7 @@ export function MindmapModal({
           })}
 
           {/* Nodes */}
+          <g role="tree" aria-label="Sơ đồ tư duy" onKeyDown={handleTreeKeyDown}>
           {nodes.map((n) => {
             const isRoot = n.depth === 0
             const hasChildren = Boolean(n.node.children && n.node.children.length > 0)
@@ -528,6 +684,17 @@ export function MindmapModal({
               <g
                 key={n.node.id}
                 className="mindmap-node"
+                role="treeitem"
+                aria-level={n.depth + 1}
+                aria-setsize={setSizeOf(n.node.id).size}
+                aria-posinset={setSizeOf(n.node.id).pos}
+                aria-expanded={hasChildren ? !isCollapsed : undefined}
+                aria-selected={n.node.id === effectiveSelectedId}
+                aria-label={n.node.text}
+                tabIndex={n.node.id === effectiveSelectedId ? 0 : -1}
+                onFocus={(e) => {
+                  if (e.target === e.currentTarget) setSelectedId(n.node.id)
+                }}
                 transform={`translate(${n.x}, ${n.y - n.height / 2})`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -535,6 +702,19 @@ export function MindmapModal({
                   onNodeClick?.(n.node)
                 }}
               >
+                {keyboardMode && n.node.id === effectiveSelectedId && (
+                  <rect
+                    className="mindmap-focus-ring"
+                    x={-3}
+                    y={-3}
+                    width={n.width + 6}
+                    height={n.height + 6}
+                    rx={9}
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth={2}
+                  />
+                )}
                 <rect
                   className="mindmap-node-rect"
                   x={0}
@@ -610,6 +790,7 @@ export function MindmapModal({
               </g>
             )
           })}
+          </g>
         </g>
       </svg>
 
