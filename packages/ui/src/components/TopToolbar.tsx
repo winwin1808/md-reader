@@ -23,6 +23,7 @@ export interface TopToolbarProps {
   onOpenSearch?: () => void
   onPresent?: () => void
   onOpenMindmap?: () => void
+  onShare?: () => void
   actions?: ToolbarAction[]
   viewMode?: ViewMode
   onViewModeChange?: (mode: ViewMode) => void
@@ -209,6 +210,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
     if (props.onOpenSearch) overflowItems.push({ id: 'search', label: 'Tìm', icon: 'search', onSelect: props.onOpenSearch })
     if (props.onPresent) overflowItems.push({ id: 'present', label: 'Trình chiếu', icon: 'present', onSelect: props.onPresent })
     if (props.onOpenMindmap) overflowItems.push({ id: 'mindmap', label: 'Sơ đồ', icon: 'mindmap', onSelect: props.onOpenMindmap })
+    if (props.onShare) overflowItems.push({ id: 'share', label: 'Chia sẻ', icon: 'share', onSelect: props.onShare })
     for (const a of actions) overflowItems.push(a)
     if (props.onSave) overflowItems.push({ id: 'save', label: 'Lưu', icon: 'save', onSelect: props.onSave })
   }
@@ -258,6 +260,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
             {props.onOpenSearch && <IconBtn icon="search" label="Tìm" title="Tìm kiếm (Cmd+F)" onClick={props.onOpenSearch} />}
             {props.onPresent && <IconBtn icon="present" label="Trình chiếu" title="Trình chiếu (P)" onClick={props.onPresent} />}
             {props.onOpenMindmap && <IconBtn icon="mindmap" label="Sơ đồ" title="Sơ đồ (Cmd+M)" onClick={props.onOpenMindmap} />}
+            {props.onShare && <IconBtn icon="share" label="Chia sẻ" onClick={props.onShare} />}
             {actions.map((a) => (
               <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} />
             ))}
