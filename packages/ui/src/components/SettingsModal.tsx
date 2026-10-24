@@ -6,12 +6,15 @@ import { Icon } from './Icon';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
+export type PageWidth = 'narrow' | 'medium' | 'wide' | 'full';
+
 export interface ReaderSettings {
   // Display
   mode?: 'light' | 'dark' | 'system';
   contrast: Contrast;
   settingsVersion: number;
   fontFamily?: FontFamily;
+  pageWidth?: PageWidth;
   autoFormatMd?: boolean;
   formatOnSave?: boolean;
   alwaysOpenApp?: boolean;
@@ -608,6 +611,31 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                               handleSettingChange('fontFamily', opt.key);
                             }}
                             aria-pressed={isSelected}
+                            className="settings-choice"
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="settings-field">
+                    <span id="settings-l-width" className="settings-field-label">Độ rộng trang</span>
+                    <div className="settings-btn-group" role="radiogroup" aria-labelledby="settings-l-width">
+                      {([
+                        { key: 'narrow', label: 'Hẹp' },
+                        { key: 'medium', label: 'Vừa' },
+                        { key: 'wide', label: 'Rộng' },
+                        { key: 'full', label: 'Toàn khung' },
+                      ] as const).map((opt) => {
+                        const isSelected = (settings?.pageWidth ?? 'medium') === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() => handleSettingChange('pageWidth', opt.key)}
                             className="settings-choice"
                           >
                             {opt.label}

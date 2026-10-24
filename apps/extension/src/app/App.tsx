@@ -58,6 +58,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   contrast: 'standard',
   settingsVersion: 2,
   fontFamily: 'serif',
+  pageWidth: 'medium',
   autoFormatMd: true,
   alwaysOpenApp: false,
   stripFrontmatter: true,
@@ -515,7 +516,7 @@ export function App(): React.JSX.Element {
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
       />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily} data-width={readerSettings.pageWidth ?? 'medium'}>
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
           text={content}

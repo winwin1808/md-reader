@@ -28,7 +28,7 @@ body {
   grid-template-columns: minmax(0, 1fr) 260px;
   justify-content: center;
   column-gap: 40px;
-  max-width: 1200px;
+  max-width: calc(var(--measure) + 112px + 17rem + 348px);
   margin: 0 auto;
   padding: 24px 24px 80px;
   align-items: start;
