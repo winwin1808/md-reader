@@ -11,11 +11,12 @@ import * as deckMod from '@md-reader/ui/deck'
 import * as docxMod from '@md-reader/core/docx'
 import type { ReaderSettings } from '@md-reader/ui'
 import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
+import { DEFAULT_SERVER_URL } from '../shared/collab'
 import * as fsSystem from './fs/file-system'
 
 
 const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
-const docOverride = vi.hoisted(() => ({ shareDoc: false, external: false, accept: null as any, dismiss: null as any }))
+const docOverride = vi.hoisted(() => ({ syncStatus: null as any, shareDoc: false, external: false, accept: null as any, dismiss: null as any }))
 vi.mock('./hooks/useFileSave', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useFileSave: (...a: any[]) => {
@@ -29,7 +30,8 @@ vi.mock('./hooks/useDocSession', async (orig) => {
   return { ...actual, useDocSession: (...a: any[]) => {
     useSessionCalls.push(a[0])
     const r0 = actual.useDocSession(...a)
-    const r = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
+    const r1 = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
+    const r = docOverride.syncStatus ? { ...r1, syncStatus: docOverride.syncStatus } : r1
     return docOverride.external
       ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
       : r
@@ -1585,5 +1587,37 @@ describe('App', () => {
       docOverride.shareDoc = false
       vi.unstubAllGlobals()
     }
+  })
+
+  describe('collab settings', () => {
+    const enableShare = async (stored: any) => {
+      docOverride.shareDoc = true
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+      vi.stubGlobal('fetch', fetchMock)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, ...stored })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
+      await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
+      return fetchMock
+    }
+    afterEach(() => { docOverride.shareDoc = false; docOverride.syncStatus = null; vi.unstubAllGlobals() })
+    it('dùng serverUrl từ Cài đặt', async () => {
+      const f = await enableShare({ serverUrl: 'https://own.example' })
+      expect(f.mock.calls[0]![0]).toBe('https://own.example/api/rooms')
+    })
+    it('serverUrl không hợp lệ rơi về mặc định', async () => {
+      const f = await enableShare({ serverUrl: 'http://bad.example' })
+      expect(f.mock.calls[0]![0]).toBe(DEFAULT_SERVER_URL + '/api/rooms')
+    })
+    it('displayName được cắt khoảng trắng', async () => {
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, displayName: '  Lan ' })
+      await act(async () => { render(<App />) })
+      expect(useSessionCalls[useSessionCalls.length - 1].displayName).toBe('Lan')
+    })
+    it('toolbar hiện trạng thái đồng bộ', async () => {
+      docOverride.syncStatus = 'online'
+      await act(async () => { render(<App />) })
+      expect(screen.getByRole('status').textContent).toContain('Đã đồng bộ')
+    })
   })
 })

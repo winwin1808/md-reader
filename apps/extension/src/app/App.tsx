@@ -36,6 +36,7 @@ import {
   applyTextChange,
   computeTextChanges,
   buildShareUrl,
+  normalizeServerUrl,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -139,7 +140,9 @@ export function App(): React.JSX.Element {
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
   const [room, setRoom] = useState<RoomBinding | null>(null)
-  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName: 'Bạn' })
+  const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? DEFAULT_SERVER_URL
+  const displayName = readerSettings.displayName?.trim() || 'Bạn'
+  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
@@ -155,7 +158,7 @@ export function App(): React.JSX.Element {
   const docContainerRef = useRef<HTMLDivElement | null>(null)
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
-  const share = useShare({ docId: session.docId, serverUrl: DEFAULT_SERVER_URL })
+  const share = useShare({ docId: session.docId, serverUrl })
   useEffect(() => { setRoom(share.binding) }, [share.binding])
   const shareRoomId = share.binding?.roomId
   const shareRefresh = share.refresh
@@ -540,6 +543,7 @@ export function App(): React.JSX.Element {
           onComplete={() => setIsConfettiActive(false)}
         />
         <TopToolbar
+          syncStatus={session.syncStatus}
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
           onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
@@ -570,11 +574,11 @@ export function App(): React.JSX.Element {
             onEnable={async () => { await share.enable() }}
             onCreateLink={share.createLink}
             onRevoke={share.revoke}
-            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? DEFAULT_SERVER_URL, t)}
+            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl, t)}
             busy={share.busy}
             error={share.error}
           />
-          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} />
         </>
         {isReadingMode && (
           <button
