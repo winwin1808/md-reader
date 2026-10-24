@@ -69,6 +69,7 @@ export interface EditorProps {
   readOnly?: boolean
   onScroll?: (scrollTop: number, scrollHeight: number, clientHeight: number) => void
   onEditorReady?: (view: EditorView) => void
+  awareness?: Parameters<typeof yCollab>[1]
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
@@ -81,6 +82,7 @@ export function Editor({
   onScroll,
   onEditorReady,
   editorViewRef,
+  awareness,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -115,7 +117,7 @@ export function Editor({
           ...yUndoManagerKeymap,
         ])
       ),
-      yCollab(yText, null, undoManager !== undefined ? { undoManager } : undefined),
+      yCollab(yText, awareness ?? null, undoManager !== undefined ? { undoManager } : undefined),
       readOnlyCompartmentRef.current.of(EditorState.readOnly.of(Boolean(readOnly))),
       EditorView.domEventHandlers({
         scroll: (_event, view) => {
@@ -151,7 +153,7 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager])
+  }, [yText, undoManager, awareness])
 
   return <div ref={containerRef} className={className} style={{ height: '100%', minHeight: 0 }} />
 }
