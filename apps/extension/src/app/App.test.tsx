@@ -1733,6 +1733,22 @@ describe('App', () => {
       expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
       await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
     })
+    it('(d) editor: bản cũ nằm trong history-preview-scroll cùng banner; toolbar ẩn khi xem', async () => {
+      await loadDoc(); await seed()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
+      expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).not.toBeNull()
+      await openPanel()
+      const rows = screen.getAllByRole('option')
+      await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
+      const wrap = document.querySelector('.history-preview-scroll') as HTMLElement
+      expect(wrap).not.toBeNull()
+      expect(wrap.textContent).toContain('Bản đầu')
+      expect(wrap.querySelector('.history-preview-banner')).not.toBeNull()
+      expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).toBeNull()
+      await act(async () => { fireEvent.click(within(wrap as HTMLElement).getByRole('button', { name: 'Thoát xem' })) })
+      await waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).not.toBeNull())
+    })
     it('(c) tên actor độc hại chỉ là text', async () => {
       await loadDoc(); await seed()
       const d = lastSession.s.doc
