@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { processFrontmatter } from './options.js'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from './render.js'
-import { defaultRenderPlugins } from '../plugins/index.js'
+import { defaultRenderPlugins, parseYaml } from '../plugins/index.js'
 
 describe('Render Options', () => {
   const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), ...o } as any).html
@@ -118,7 +118,7 @@ describe('Render Options', () => {
       expect(result.html).toContain('“test”')
     })
     it('renders metadata card when displayMetadata is true with escaped content', () => {
-      const parsed = parseMarkdown('---\ntitle: <script>xss</script>\nauthor: Alice & Bob\n---\n# Content')
+      const parsed = parseMarkdown('---\ntitle: <script>xss</script>\nauthor: Alice & Bob\n---\n# Content', { parseYaml })
       const result = renderToHtml(parsed, { displayMetadata: true })
       expect(result.html).toContain('markdown-metadata-card')
       expect(result.html).toContain('&#x3C;script>xss&#x3C;/script>')

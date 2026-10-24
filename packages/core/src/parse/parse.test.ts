@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseMarkdown, sanitizeSchema } from './index'
+import { parseYaml } from '../plugins/index.js'
 
 describe('parseMarkdown', () => {
   it('parses basic markdown', () => {
@@ -12,7 +13,7 @@ describe('parseMarkdown', () => {
 
   it('extracts valid yaml frontmatter and removes it from tree', () => {
     const md = '---\ntitle: test\n---\n# Content'
-    const result = parseMarkdown(md)
+    const result = parseMarkdown(md, { parseYaml })
     expect(result.frontmatter).toEqual({ title: 'test' })
     expect(result.tree.children.length).toBe(1) // YAML removed
     expect(result.tree.children[0]?.type).toBe('heading')
@@ -21,11 +22,23 @@ describe('parseMarkdown', () => {
 
   it('handles invalid yaml frontmatter without throwing', () => {
     const md = '---\ntitle: : invalid\n---\n# Content'
-    const result = parseMarkdown(md)
+    const result = parseMarkdown(md, { parseYaml })
     expect(result.frontmatter).toHaveProperty('__parseError')
     expect(typeof result.frontmatter.__parseError).toBe('string')
     expect(result.tree.children.length).toBe(1) // YAML removed
     expect(result.tree.children[0]?.type).toBe('heading')
+  })
+
+  it('without parseYaml: frontmatter is {} and yaml text does not leak into the tree', () => {
+    const result = parseMarkdown('---\ntitle: A\n---\n# H')
+    expect(result.frontmatter).toEqual({})
+    expect(result.tree.children.length).toBe(1)
+    expect(result.tree.children[0]?.type).toBe('heading')
+    expect(JSON.stringify(result.tree)).not.toContain('title: A')
+  })
+
+  it('with parseYaml: frontmatter is parsed', () => {
+    expect(parseMarkdown('---\ntitle: A\n---\n# H', { parseYaml }).frontmatter).toEqual({ title: 'A' })
   })
 
   it('handles empty source', () => {
@@ -38,14 +51,14 @@ describe('parseMarkdown', () => {
 
   it('handles array yaml frontmatter', () => {
     const md = '---\n- item1\n- item2\n---\n# Content'
-    const result = parseMarkdown(md)
+    const result = parseMarkdown(md, { parseYaml })
     expect(result.frontmatter).toEqual({})
     expect(result.tree.children[0]?.type).toBe('heading')
   })
 
   it('parses GFM by default (tables)', () => {
     const md = '| a | b |\n| - | - |\n| 1 | 2 |'
-    const result = parseMarkdown(md)
+    const result = parseMarkdown(md, { parseYaml })
     expect(result.tree.children[0]?.type).toBe('table')
   })
 
