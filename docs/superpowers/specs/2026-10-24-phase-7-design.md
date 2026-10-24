@@ -1,5 +1,5 @@
 # Design: Phase 7 — Giao diện Lề sách (+ logo app)
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 7
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 7
 Intent: docs/superpowers/intent/2026-10-24-phase-7-le-sach.md
 Mockup: docs/design/ui-redesign-options.html (option A · Lề sách) · Audit: docs/design/2026-10-23-ui-audit.md
 Branch: `phase-7` from `phase-6` (stacked; phase 7 consumes phase-6 hooks: saveState, registry, banners).
