@@ -2,6 +2,7 @@ import * as Y from 'yjs'
 import type { Connection, ConnectionContext } from 'partyserver'
 import { YServer } from 'y-partyserver'
 import type { Env } from './env.js'
+import { classifyMessage, sanitizeAwarenessMessage } from './protocol'
 import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike, type LogStats } from './persistence.js'
 
 export class DocRoom extends YServer<Env> {
@@ -71,6 +72,33 @@ export class DocRoom extends YServer<Env> {
     const role = ctx.request.headers.get('x-mdr-role') ?? 'view'
     conn.setState({ role })
     super.onConnect(conn, ctx)
+  }
+
+  droppedWrites = 0
+
+  isReadOnly(conn: Connection): boolean {
+    return (conn.state as { role?: string } | null)?.role !== 'edit'
+  }
+
+  handleMessage(conn: Connection, message: string | ArrayBuffer | ArrayBufferView): void {
+    if (typeof message === 'string') return super.handleMessage(conn, message)
+    const bytes =
+      message instanceof Uint8Array
+        ? message
+        : message instanceof ArrayBuffer
+          ? new Uint8Array(message)
+          : new Uint8Array(message.buffer, message.byteOffset, message.byteLength)
+    const k = classifyMessage(bytes)
+    if ((k === 'step2' || k === 'update') && this.isReadOnly(conn)) {
+      this.droppedWrites++
+      return
+    }
+    if (k === 'awareness') {
+      const s = sanitizeAwarenessMessage(bytes)
+      if (!s) return
+      return super.handleMessage(conn, s)
+    }
+    return super.handleMessage(conn, message)
   }
 
   async onRequest(req: Request): Promise<Response> {
