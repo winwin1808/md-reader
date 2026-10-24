@@ -42,6 +42,8 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const tokens = useRef(new Map<string, string>())
   const session = useRef(new Map<string, ShareLink>())
   const gen = useRef(0)
+  const linksRef = useRef<ShareLink[]>([])
+  linksRef.current = links
   const enabling = useRef<Promise<RoomBinding> | null>(null)
 
   useEffect(() => {
@@ -142,5 +144,27 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     setLinks((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
   }), [run])
 
-  return { binding, links, enable, createLink, revoke, refresh, busy: pending > 0, error }
+  const revokeAll = useCallback(() => run(async (stale) => {
+    const b = need()
+    const active = linksRef.current.filter((l) => l.revokedAt === null).map((l) => l.tokenPrefix)
+    let failed = 0
+    for (const prefix of active) {
+      try {
+        await call<unknown>(`${b.serverUrl}${API_PATHS.revoke(b.roomId, prefix)}`, { method: 'DELETE', headers: auth(b) })
+      } catch {
+        failed++
+        continue
+      }
+      if (stale()) return
+      tokens.current.delete(prefix)
+      session.current.delete(prefix)
+      const now = Date.now()
+      setLinks((cur) => cur.map((l) => (l.tokenPrefix === prefix ? { ...l, revokedAt: now } : l)))
+    }
+    if (stale()) return
+    try { await refresh() } catch { /* local marks stand */ }
+    if (failed > 0) throw new Error(`Còn ${failed} link chưa thu hồi được`)
+  }), [run, refresh])
+
+  return { binding, links, enable, createLink, revoke, revokeAll, refresh, busy: pending > 0, error }
 }
