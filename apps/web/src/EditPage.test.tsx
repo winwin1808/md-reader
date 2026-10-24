@@ -2,8 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 import type * as Y from 'yjs'
-// @codemirror/view is not a dependency of apps/web; reach the ui package's copy (same realpath => same module instance).
-import { EditorView } from '../../../packages/ui/node_modules/@codemirror/view'
+import { EditorView } from '@codemirror/view'
 import { EditPage } from './EditPage'
 import type { SyncStatus, BindRoomOptions } from './collab'
 
