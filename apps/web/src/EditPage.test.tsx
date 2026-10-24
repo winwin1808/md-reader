@@ -1,7 +1,8 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
+import { createDoc } from '@md-reader/core'
 import { EditorView } from '@codemirror/view'
 import { EditPage } from './EditPage'
 import type { SyncStatus, BindRoomOptions } from './collab'
@@ -212,17 +213,33 @@ describe('EditPage', () => {
     act(() => { aw!.states.set(2, { user: { name: 'Lan' } }); aw!.emit() })
     expect(container.querySelectorAll('.presence-avatar').length).toBe(2)
   })
-  it('a local edit registers the stored name as actor', async () => {
+  const syncRoom = (doc: Y.Doc) => act(() => { Y.applyUpdate(doc, Y.encodeStateAsUpdate(createDoc())) })
+  const actorsOf = (doc: Y.Doc) => JSON.stringify((doc.getMap('meta').get('actors') as Y.Map<unknown> | undefined)?.toJSON() ?? null)
+  it('a local edit after room sync registers the stored name as actor', async () => {
     localStorage.setItem('mdr.displayName', 'Binh')
     const m = makeBind()
     const { container } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
     m.emit('online')
     await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
+    const doc = m.calls[0]!.doc
+    syncRoom(doc)
     const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
     act(() => { view.dispatch({ changes: { from: 0, insert: 'abc' } }) })
+    expect(actorsOf(doc)).toContain('Binh')
+    expect(actorsOf(doc)).toContain(String(doc.clientID))
+  })
+  it('a joiner editing before the room sync still gets registered once it arrives', async () => {
+    localStorage.setItem('mdr.displayName', 'Binh')
+    const m = makeBind()
+    const { container } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+    m.emit('online')
+    await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
     const doc = m.calls[0]!.doc
-    const actors = doc.getMap('meta').get('actors') as Record<string, unknown> | undefined
-    expect(JSON.stringify(actors)).toContain('Binh')
-    expect(JSON.stringify(actors)).toContain(String(doc.clientID))
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
+    act(() => { view.dispatch({ changes: { from: 0, insert: 'abc' } }) })
+    expect(doc.getMap('meta').get('actors')).toBeUndefined()
+    syncRoom(doc)
+    expect(actorsOf(doc)).toContain('Binh')
+    expect(actorsOf(doc)).toContain(String(doc.clientID))
   })
 })
