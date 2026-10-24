@@ -167,6 +167,15 @@ describe('SettingsModal', () => {
     expect(onSettingChange).toHaveBeenCalledWith('fontFamily', 'serif');
   });
 
+  it('page width radio group fires pageWidth', () => {
+    const onSettingChange = vi.fn();
+    render(<SettingsModal {...defaultProps} open onSettingChange={onSettingChange} />);
+    const look = section('Chữ và màu');
+    expect(within(look).getAllByRole('radio', { name: /^(Hẹp|Vừa|Rộng|Toàn khung)$/ })).toHaveLength(4);
+    fireEvent.click(within(look).getByRole('radio', { name: 'Rộng' }));
+    expect(onSettingChange).toHaveBeenCalledWith('pageWidth', 'wide');
+  });
+
   it('shows an index at >= 900px that scrolls the section into view', () => {
     window.matchMedia = ((q: string) => ({
       matches: q.includes('900'),
