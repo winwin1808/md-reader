@@ -189,9 +189,16 @@ describe('ShareModal', () => {
       fireEvent.change(screen.getByLabelText('Nhãn (tuỳ chọn)'), { target: { value: '  Nhóm A ' } })
       fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
       expect(p.onCreateLink).toHaveBeenCalledWith({ role: 'edit', expiresIn: SHARE_EXPIRY_PRESETS['7d'], label: 'Nhóm A' })
-      await flush()
-      expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).value).toBe('')
+      await waitFor(() => expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).value).toBe(''))
       expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).maxLength).toBe(120)
+    })
+
+    it('keeps the typed label when onCreateLink rejects', async () => {
+      setup({ onCreateLink: vi.fn().mockRejectedValue(new Error('x')) })
+      fireEvent.change(screen.getByLabelText('Nhãn (tuỳ chọn)'), { target: { value: 'Nhóm A' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('x'))
+      expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).value).toBe('Nhóm A')
     })
 
     it('formatRemaining cases', () => {
