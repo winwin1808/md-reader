@@ -11,6 +11,21 @@ const info = { roomId: 'room-1', role: 'edit' as const, title: 'T' }
 beforeAll(async () => { await import('@md-reader/ui/editor') }, 30000)
 const TOKEN = 'abcdefghijklmnop1234'
 
+function makeAwareness() {
+  const states = new Map<number, Record<string, unknown>>([[1, { user: { name: 'Binh' } }]])
+  const hs = new Set<(c?: unknown) => void>()
+  return {
+    clientID: 1,
+    getStates: () => states,
+    on: (_e: 'change', cb: (c?: unknown) => void) => { hs.add(cb) },
+    off: (_e: 'change', cb: (c?: unknown) => void) => { hs.delete(cb) },
+    setLocalStateField: () => {},
+    getLocalState: () => ({}),
+    states,
+    emit: () => { for (const h of [...hs]) h({ added: [], updated: [], removed: [] }) },
+  }
+}
+
 function makeBind() {
   const calls: Array<{ doc: Y.Doc; opts: BindRoomOptions; destroy: ReturnType<typeof vi.fn>; destroyed: boolean }> = []
   const cbs: Array<((s: SyncStatus) => void) | null> = []
@@ -22,7 +37,7 @@ function makeBind() {
     calls.push(rec)
     return {
       provider: {} as never,
-      awareness: {} as never,
+      awareness: makeAwareness() as never,
       status$(c: (s: SyncStatus) => void) { cbs[idx] = c; c('connecting'); return () => { cbs[idx] = null } },
       destroy,
     }
@@ -186,5 +201,28 @@ describe('EditPage', () => {
     const undoBtn = screen.getByTitle('Hoàn tác (⌘Z)') as HTMLButtonElement
     act(() => { fireEvent.click(undoBtn) })
     expect(yText.toString()).toBe(before)
+  })
+  it('renders a presence avatar per peer from awareness', async () => {
+    localStorage.setItem('mdr.displayName', 'Binh')
+    const m = makeBind()
+    const { container } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+    m.emit('online')
+    await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
+    const aw = m.calls.length ? (m.bind.mock.results[0]!.value.awareness as ReturnType<typeof makeAwareness>) : null
+    act(() => { aw!.states.set(2, { user: { name: 'Lan' } }); aw!.emit() })
+    expect(container.querySelectorAll('.presence-avatar').length).toBe(2)
+  })
+  it('a local edit registers the stored name as actor', async () => {
+    localStorage.setItem('mdr.displayName', 'Binh')
+    const m = makeBind()
+    const { container } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+    m.emit('online')
+    await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement)!
+    act(() => { view.dispatch({ changes: { from: 0, insert: 'abc' } }) })
+    const doc = m.calls[0]!.doc
+    const actors = doc.getMap('meta').get('actors') as Record<string, unknown> | undefined
+    expect(JSON.stringify(actors)).toContain('Binh')
+    expect(JSON.stringify(actors)).toContain(String(doc.clientID))
   })
 })
