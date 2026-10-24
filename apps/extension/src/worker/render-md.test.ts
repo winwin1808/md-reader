@@ -30,4 +30,9 @@ describe('renderMarkdownForPage', () => {
     const r = renderMarkdownForPage('---\ntitle: SECRETFM\n---\n\n# Hi\n')
     expect(r.html).not.toContain('SECRETFM')
   })
+  it('drops javascript: and data:text/html hrefs', () => {
+    const r = renderMarkdownForPage('[x](javascript:alert(1))\n\n[y](data:text/html,<b>)\n')
+    expect(r.html.toLowerCase()).not.toContain('javascript:')
+    expect(r.html.toLowerCase()).not.toContain('data:text/html')
+  })
 })

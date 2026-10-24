@@ -120,6 +120,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   }
 
   const render = await requestPageRender(markdownText)
+  // Another run may have mounted while we awaited the worker.
+  if (document.getElementById('md-reader-root')) {
+    return
+  }
 
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
