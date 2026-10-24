@@ -103,11 +103,3 @@
 .tb-menu-row .tb-menu-label { flex: 1; }
 .tb-menu-row .tb-btn { width: 28px; height: 28px; }
 .tb-scale { min-width: 40px; text-align: center; user-select: none; }
-.toolbar-modal-hosts {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}

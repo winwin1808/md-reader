@@ -469,7 +469,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7s1b: done
 - 7s1c: done
 - 7s2a: done
-- 7s2b: pending
+- 7s2b: planned
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
 - packages/core: pure TS — no react, chrome.*, document/window. packages/ui: no chrome.*.
