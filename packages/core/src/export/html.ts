@@ -2,6 +2,8 @@ export interface ExportHtmlOptions {
   html: string
   cssContent: string
   title: string
+  /** Document language for <html lang>. Defaults to 'vi'. */
+  lang?: string
   /**
    * Optional custom fetcher for images. Defaults to global fetch if available.
    * Return base64 data string and mimeType, or null on error.
@@ -48,7 +50,7 @@ async function defaultFetchImage(url: string): Promise<{ base64: string; mimeTyp
 }
 
 export async function exportToHtml(options: ExportHtmlOptions): Promise<string> {
-  const { html, cssContent, title, fetchImage } = options
+  const { html, cssContent, title, fetchImage, lang = 'vi' } = options
   const fetcher = fetchImage ?? defaultFetchImage
 
   const imgTagRegex = /<img\b([^>]*)>/gi
@@ -106,7 +108,7 @@ export async function exportToHtml(options: ExportHtmlOptions): Promise<string> 
   const escapedTitle = escapeHtml(title)
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
