@@ -28,7 +28,7 @@ export function bindRoom(
   const provider = new Provider(wsHost(opts.serverUrl), opts.roomId, doc, {
     party: API_PATHS.party,
     params: { token: opts.token },
-    connect: true,
+    connect: false,
     ...(opts.serverUrl.startsWith('http://') ? { protocol: 'ws' as const } : {}),
   })
   provider.awareness.setLocalStateField('user', { name: opts.name })
@@ -47,11 +47,25 @@ export function bindRoom(
       if (status === 'offline') set('connecting')
     }
   }
+  const onConnFail = () => {
+    if (status === 'connecting') set('offline')
+  }
   const onSynced = (synced: boolean) => {
     if (synced) set('online')
   }
   provider.on('status', onStatus)
   provider.on('synced', onSynced)
+  provider.on('connection-close', onConnFail)
+  provider.on('connection-error', onConnFail)
+
+  void provider.connect().then(
+      () => {
+        if (destroyed) provider.disconnect()
+      },
+      () => {
+        if (destroyed) provider.disconnect()
+      },
+    )
 
   return {
     provider,
@@ -68,6 +82,8 @@ export function bindRoom(
       destroyed = true
       provider.off('status', onStatus)
       provider.off('synced', onSynced)
+      provider.off('connection-close', onConnFail)
+      provider.off('connection-error', onConnFail)
       provider.destroy()
       set('off')
       subs.clear()
