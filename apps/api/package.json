@@ -7,7 +7,8 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "dev": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@md-reader/core": "workspace:*",
@@ -19,6 +20,7 @@
     "@cloudflare/workers-types": "^4",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0",
-    "wrangler": "^4.152.0"
+    "wrangler": "^4.152.0",
+    "ws": "^8.22.0"
   }
 }
