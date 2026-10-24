@@ -2,8 +2,49 @@
  * Mindmap Export utilities: SVG and PNG
  */
 
+const VAR_RE = /var\((--[\w-]+)(?:\s*,\s*([^)]*))?\)/g
+
+function substituteVars(raw: string, cs: CSSStyleDeclaration): string {
+  return raw.replace(
+    VAR_RE,
+    (_m, name: string, fallback?: string) =>
+      cs.getPropertyValue(name).trim() || fallback?.trim() || 'currentColor'
+  )
+}
+
+function resolveVars(live: SVGSVGElement, cloned: SVGSVGElement): void {
+  const liveEls = [live as Element, ...Array.from(live.querySelectorAll('*'))]
+  const clonedEls = [cloned as Element, ...Array.from(cloned.querySelectorAll('*'))]
+  clonedEls.forEach((el, i) => {
+    const src = liveEls[i]
+    if (!src) return
+    const cs = getComputedStyle(src)
+    for (const prop of ['fill', 'stroke', 'color']) {
+      const raw = el.getAttribute(prop)
+      if (raw && raw.includes('var(')) {
+        const computed = cs.getPropertyValue(prop)
+        el.setAttribute(
+          prop,
+          computed && !computed.includes('var(') ? computed : substituteVars(raw, cs)
+        )
+      }
+    }
+    const style = el.getAttribute('style')
+    if (style && style.includes('var(')) el.setAttribute('style', substituteVars(style, cs))
+    if (el.tagName.toLowerCase() === 'text') {
+      const ff = cs.getPropertyValue('font-family')
+      if (ff) el.setAttribute('font-family', ff)
+      const fs = cs.getPropertyValue('font-size')
+      if (fs) el.setAttribute('font-size', fs)
+      const fw = cs.getPropertyValue('font-weight')
+      if (fw) el.setAttribute('font-weight', fw)
+    }
+  })
+}
+
 export function exportMindmapToSvg(svgElement: SVGSVGElement, title?: string): string {
   const cloned = svgElement.cloneNode(true) as SVGSVGElement
+  resolveVars(svgElement, cloned)
   if (cloned.namespaceURI !== 'http://www.w3.org/2000/svg') {
     cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
   }
@@ -101,14 +142,12 @@ export function exportMindmapToSvg(svgElement: SVGSVGElement, title?: string): s
     if (!cloned.getAttribute('viewBox')) cloned.setAttribute('viewBox', `0 0 ${width} ${height}`)
   }
 
-  // Embed default font and styles for standalone rendering
+  const rootCs = getComputedStyle(svgElement)
+  const fontUi = rootCs.getPropertyValue('--font-ui').trim() || 'sans-serif'
   const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style')
   styleEl.textContent = `
-    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    text { font-family: ${fontUi}; }
     .mindmap-branch { fill: none; }
-    .mindmap-node-rect { fill: #ffffff; }
-    .mindmap-node-text { fill: #0f172a; font-size: 13px; }
-    .mindmap-collapsed-badge { font-family: sans-serif; }
   `
   cloned.insertBefore(styleEl, cloned.firstChild)
 
@@ -117,6 +156,16 @@ export function exportMindmapToSvg(svgElement: SVGSVGElement, title?: string): s
     titleEl.textContent = title
     cloned.insertBefore(titleEl, cloned.firstChild)
   }
+
+  const paper = rootCs.getPropertyValue('--paper').trim() || 'Canvas'
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+  const vb = (cloned.getAttribute('viewBox') || '').trim().split(/\s+/)
+  bg.setAttribute('x', vb[0] || '0')
+  bg.setAttribute('y', vb[1] || '0')
+  bg.setAttribute('width', '100%')
+  bg.setAttribute('height', '100%')
+  bg.setAttribute('fill', paper)
+  cloned.insertBefore(bg, cloned.firstChild)
 
   const serializer = new XMLSerializer()
   return serializer.serializeToString(cloned)
@@ -180,8 +229,6 @@ export function exportMindmapToPng(
     const img = new Image()
 
     img.onload = () => {
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
       if (hasCreateObjectURL && url.startsWith('blob:')) {
