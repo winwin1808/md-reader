@@ -1,5 +1,5 @@
 # Intent: Phase 9 — Soạn ngay trên trang đọc (+ hoàn thiện chia sẻ)
-Author: haonq. Status: captured (chờ duyệt). Phase: 9
+Author: haonq. Status: approved (2026-10-25). Phase: 9
 
 Nguồn: yêu cầu người dùng 2026-10-25 — "Modal share – hoàn thiện UI, thêm copy link button cho những link đã tạo.
 Phía được share → UI edit thẳng trên md đã build ra view cho dễ xem, có view mode. Đọc với soạn ở phía extension cũng tương
