@@ -13,6 +13,7 @@
     "build": "pnpm -r build",
     "test:core": "pnpm --filter @md-reader/core test",
     "test:ui": "pnpm --filter @md-reader/ui test",
-    "test:extension": "pnpm --filter @md-reader/extension test"
+    "test:extension": "pnpm --filter @md-reader/extension test",
+    "deploy:api": "pnpm --filter @md-reader/web build && pnpm --filter @md-reader/api exec wrangler deploy"
   }
 }
