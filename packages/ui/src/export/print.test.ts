@@ -85,9 +85,9 @@ describe('print.css', () => {
 
   it('keeps pre/code blocks readable with light background and dark text', () => {
     const content = fs.readFileSync(cssPath, 'utf8')
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#f6f8fa\s*!important/)
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#1f2328\s*!important/)
-    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d0d7de\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*background-color:\s*#e5eae7\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*color:\s*#000000\s*!important/)
+    expect(content).toMatch(/pre[\s\S]*?code[\s\S]*?\{[^}]*border:\s*1px solid #d3dad7\s*!important/)
   })
 })
 
@@ -184,5 +184,25 @@ describe('getDefaultExportCss math rules', () => {
     const css = getDefaultExportCss()
     expect(css).toMatch(/\.katex-html\s*\{\s*display:\s*none/)
     expect(css).toContain('.katex-display')
+  })
+})
+
+describe('print.css review fixes', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '../theme/print.css'), 'utf8')
+  it('forces wrapping, white container, inline alerts, no icons, Giấy greys', () => {
+    expect(content).toMatch(/\.md-viewer pre,\s*\.md-viewer pre code\s*\{[^}]*white-space:\s*pre-wrap\s*!important/)
+    expect(content).toMatch(/\.a4-document-container\s*\{[^}]*background:\s*#ffffff\s*!important/)
+    expect(content).toMatch(/\.md-viewer div\.markdown-alert\s*\{[^}]*float:\s*none/)
+    expect(content).toMatch(/\.external-link-icon\s*\{[^}]*display:\s*none/)
+    expect(content).toContain('a[href^="http"]:not([href*="localhost"])')
+    expect(content).not.toMatch(/#d0d7de|#f6f8fa|#1f2328/i)
+  })
+  it('export css has alert tones and icon sizing', async () => {
+    const { getDefaultExportCss } = await import('./css')
+    const css = getDefaultExportCss()
+    expect(css).toContain('.markdown-alert-warning')
+    expect(css).toContain('#8A500F')
+    expect(css).toContain('#A2352B')
+    expect(css).toMatch(/\.markdown-alert-icon[^{]*\{[^}]*width:\s*1em/)
   })
 })

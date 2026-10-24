@@ -63,6 +63,18 @@ blockquote {
   border-left: 3px solid #23568C;
 }
 
+.markdown-alert-tip { border-left-color: #23568C; }
+.markdown-alert-important { border-left-color: #1B2422; }
+.markdown-alert-warning { border-left-color: #8A500F; }
+.markdown-alert-caution { border-left-color: #A2352B; }
+
+.markdown-alert-icon,
+.external-link-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
 .markdown-alert-title {
   margin: 0 0 0.3em 0;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
