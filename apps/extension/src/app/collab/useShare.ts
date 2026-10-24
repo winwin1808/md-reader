@@ -15,8 +15,18 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
   }
   if (res.status === 401) throw new Error('Không có quyền với phòng này')
   if (!res.ok) throw new Error(`Máy chủ trả lỗi ${res.status}`)
+  if (res.status === 204) return undefined as T
+  let text: string
   try {
-    return (await res.json()) as T
+    // Test doubles elsewhere only implement json(); real Responses always have text().
+    if (typeof res.text !== 'function') return (await res.json()) as T
+    text = await res.text()
+  } catch {
+    throw new Error(INVALID)
+  }
+  if (text.trim() === '') return undefined as T
+  try {
+    return JSON.parse(text) as T
   } catch {
     throw new Error(INVALID)
   }
@@ -30,6 +40,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const [error, setError] = useState<string | null>(null)
   const bindingRef = useRef<RoomBinding | null>(null)
   const tokens = useRef(new Map<string, string>())
+  const session = useRef(new Map<string, ShareLink>())
   const gen = useRef(0)
   const enabling = useRef<Promise<RoomBinding> | null>(null)
 
@@ -39,6 +50,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     enabling.current = null
     bindingRef.current = null
     tokens.current.clear()
+    session.current.clear()
     setBinding(null)
     setLinks([])
     if (docId) {
@@ -100,7 +112,10 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     const list = await call<ShareLink[]>(`${b.serverUrl}${API_PATHS.links(b.roomId)}`, { headers: auth(b) })
     if (!Array.isArray(list)) throw new Error(INVALID)
     if (stale()) return
-    setLinks(list.map((l) => ({ ...l, token: l.token || tokens.current.get(l.tokenPrefix) || '' })))
+    const server = list.map((l) => ({ ...l, token: l.token || tokens.current.get(l.tokenPrefix) || '' }))
+    const seen = new Set(server.map((l) => l.tokenPrefix))
+    const kept = [...session.current.values()].filter((l) => !seen.has(l.tokenPrefix))
+    setLinks([...kept.reverse(), ...server])
   }), [run])
 
   const createLink = useCallback((req: CreateLinkRequest) => run(async (stale) => {
@@ -113,6 +128,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     if (!isObj(l) || typeof l.tokenPrefix !== 'string') throw new Error(INVALID)
     if (stale()) return l
     tokens.current.set(l.tokenPrefix, l.token)
+    if (l.token !== '') session.current.set(l.tokenPrefix, l)
     setLinks((cur) => [l, ...cur])
     return l
   }), [run])
@@ -122,6 +138,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     await call<unknown>(`${b.serverUrl}${API_PATHS.revoke(b.roomId, prefix)}`, { method: 'DELETE', headers: auth(b) })
     if (stale()) return
     tokens.current.delete(prefix)
+    session.current.delete(prefix)
     setLinks((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
   }), [run])
 
