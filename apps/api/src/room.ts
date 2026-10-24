@@ -37,8 +37,8 @@ export class DocRoom extends YServer<Env> {
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
-    this.document.on('update', (u: Uint8Array, origin: unknown) => {
-      if (origin !== this) void this.persistUpdate(u).catch((e) => console.error('persist failed', e))
+    this.document.on('update', (u: Uint8Array) => {
+      void this.persistUpdate(u).catch((e) => console.error('persist failed', e))
     })
   }
 
@@ -47,6 +47,24 @@ export class DocRoom extends YServer<Env> {
       const empty = [...this.getConnections()].length === 0
       if (shouldCompact(this.stats, empty)) this.stats = await compact(this.kv, this.document)
     })
+  }
+
+  private compactIfEmpty(closing: Connection): void {
+    const others = [...this.getConnections()].filter((c) => c.id !== closing.id)
+    if (others.length > 0 || this.stats.updates === 0) return
+    void this.enqueue(async () => {
+      if (this.stats.updates > 0) this.stats = await compact(this.kv, this.document)
+    }).catch((e) => console.error('compact failed', e))
+  }
+
+  async onClose(conn: Connection, code: number, reason: string, wasClean: boolean): Promise<void> {
+    await super.onClose(conn, code, reason, wasClean)
+    this.compactIfEmpty(conn)
+  }
+
+  async onError(conn: Connection, error: unknown): Promise<void> {
+    await super.onError(conn, error)
+    this.compactIfEmpty(conn)
   }
 
   onConnect(conn: Connection, ctx: ConnectionContext): void {

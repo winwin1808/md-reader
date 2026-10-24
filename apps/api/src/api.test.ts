@@ -255,6 +255,32 @@ describe('hardening (8a2.5)', () => {
     expect(routeParty).not.toHaveBeenCalled()
   })
 
+  describe('x-mdr-internal header', () => {
+    it('client header is stripped; snapshot route adds it', async () => {
+      const store = new MemoryTokenStore(now)
+      const room = await store.createRoom()
+      const link = await store.createLink(room.roomId, { role: 'view', expiresIn: null })
+      const seen: Request[] = []
+      const routeParty = vi.fn(async (r: Request) => {
+        seen.push(r)
+        return new Response('x')
+      })
+      await handleRequest(
+        new Request(`http://x/parties/doc-room/${room.roomId}?token=${link.token}`, { headers: { 'x-mdr-internal': '1' } }),
+        {} as never,
+        { routeParty: routeParty as never, store },
+      )
+      expect(seen[0]!.headers.get('x-mdr-internal')).toBeNull()
+      await handleRequest(new Request(`http://x/api/s/${link.token}/snapshot`), {} as never, {
+        routeParty: routeParty as never,
+        store,
+      })
+      const snap = seen[1]!
+      expect(snap.headers.get('x-mdr-internal')).toBe('1')
+      expect(new URL(snap.url).pathname).toBe(`/parties/doc-room/${room.roomId}/snapshot`)
+    })
+  })
+
   describe('snapshot', () => {
     async function setup() {
       const store = new MemoryTokenStore(now)
