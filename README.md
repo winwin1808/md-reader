@@ -165,7 +165,7 @@ Quy trình đưa lên Chrome Web Store (listing, ảnh, giải trình quyền) n
 | 5 | Chỉnh sửa, lưu đĩa an toàn | Xong |
 | 6 | Gia cố (không mất/nhân đôi chữ, quyền tối thiểu, Playwright) | Xong |
 | 7 | Giao diện Lề sách và logo | Xong |
-| 8 | Chia sẻ và cộng tác (Cloudflare Workers) | Đang thực hiện |
+| 8 | Chia sẻ và cộng tác (Cloudflare Workers) | Xong |
 
 ## 📄 Giấy phép và liên hệ
 
