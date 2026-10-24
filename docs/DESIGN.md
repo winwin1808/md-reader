@@ -642,7 +642,7 @@ vừa là thư mục. Bản nháp đầu ghi `phase-N/<id>` và không tạo đ�
 | Editor | CodeMirror 6 + y-codemirror.next | Monaco · ProseMirror |
 | Yjs trong content script | Không | Có |
 
-### 5.6 Gói Workers Free và chi phí WebSocket — chưa xác minh
+### 5.6 Gói Workers Free và chi phí WebSocket — đã đo 2026-10-24
 
 Hạn mức Free: ≤ 100k request/ngày, ≤ 5 GB DO storage/tài khoản, D1 trả lỗi
 khi vượt hạn mức đọc/ghi ngày (từ 2026-09-01). Message WebSocket gửi lên
@@ -651,3 +651,15 @@ cache token theo kết nối thay vì đọc D1 mỗi message. Spike 8a0 phải 
 đây: `y-partyserver` chạy trên DO được không, hai client đồng bộ được không,
 bundle Worker bao nhiêu KB, và ước lượng request/ngày cho một phiên sửa 30
 phút hai người. Không stage nào được ship 8c trước khi bảng này có số liệu.
+
+**Kết quả spike 8a0 (2026-10-24)**
+
+| Câu hỏi | Kết quả quan sát | Nguồn (task) |
+|---|---|---|
+| (1) Hai client hội tụ? | Có: local 3/3 lượt (13 · 8 · 7 ms); remote wss 3/3 lượt (128 · 54 · 59 ms). y-partyserver 2.2.0 chạy trên DO. | 8a0.1, 8a0.3 |
+| (2) Bundle Worker gz | 74 116 B (wrangler báo 72.26 KiB gzip) | 8a0.2 |
+| (3) Message/phiên và % ngân sách ngày | 358 message inbound/60s (2 client × 3 edit/s) ≈ 10 740 message/phiên 30 phút ≈ 537 request; 10 phiên/ngày ≈ 5 370 request = 5,37 % của 100 000 | 8a0.2 |
+| (4) Free nhận SQLite DO + host workers.dev | Có: deploy gói Free chấp nhận `new_sqlite_classes`; host `mdr-spike-do-yjs.qhao-work.workers.dev` (subdomain tài khoản `qhao-work.workers.dev`) | 8a0.3 |
+| (5) `onConnect` đọc header upgrade | Có: đọc được `x-mdr-role=view` từ `ctx.request.headers`; phải gọi `super.onConnect(conn, ctx)` | 8a0.1 |
+
+Kết luận theo luật quyết định của spec 8a0: hội tụ = yes; Free nhận SQLite DO = yes; mức dùng 5,37 % ≥ 5 % nên batching update phía client được đưa vào Deferred 8c. R2 chưa bật trên tài khoản (lỗi 10042) nên 8a3 phải chờ bật R2.
