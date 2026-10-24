@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { MermaidBlock, __clearMermaidCache } from './MermaidBlock'
+import { MermaidBlock, __clearMermaidCache, inlineMermaid } from './MermaidBlock'
 
 vi.mock('mermaid', () => {
   return {
@@ -119,5 +119,21 @@ describe('MermaidBlock serialization', () => {
     expect(order).toEqual(['init:default', 'render', 'init:dark', 'render'])
     m.initialize.mockReset()
     m.render.mockImplementation(orig)
+  })
+})
+
+describe('inlineMermaid', () => {
+  it('replaces mermaid blocks with svg, keeps other code, caches', async () => {
+    const m = (await import('mermaid')).default as any
+    __clearMermaidCache()
+    m.render.mockClear()
+    const html = '<pre><code class="language-mermaid">A-->B</code></pre><pre><code class="language-js">x</code></pre>'
+    const out = await inlineMermaid(html, 'default')
+    expect(out).toContain('<svg')
+    expect(out).not.toContain('language-mermaid')
+    expect(out).toContain('language-js')
+    expect(m.render).toHaveBeenCalledTimes(1)
+    await inlineMermaid(html, 'default')
+    expect(m.render).toHaveBeenCalledTimes(1)
   })
 })

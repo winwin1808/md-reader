@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Slide } from '@md-reader/core'
 import { Icon } from './Icon'
-import { fitScale, SLIDE_W, SLIDE_H } from './Deck'
+import { fitScale, SLIDE_W, SLIDE_H, SlideContent } from './Deck'
 
 export interface SpeakerViewProps {
   slides: Slide[]
@@ -9,6 +9,7 @@ export interface SpeakerViewProps {
   onSlideChange: (index: number) => void
   elapsedSeconds?: number
   onResetTimer?: () => void
+  mermaid?: boolean
 }
 
 function formatClock(date: Date): string {
@@ -35,7 +36,7 @@ function formatElapsed(totalSeconds: number): string {
   return `${mm}:${ss}`
 }
 
-function ScaledSlide({ html, className = '' }: { html: string; className?: string }): React.JSX.Element {
+function ScaledSlide({ html, className = '', mermaid }: { html: string; className?: string; mermaid: boolean }): React.JSX.Element {
   const paneRef = useRef<HTMLDivElement | null>(null)
   const [scale, setScale] = useState(1)
   useEffect(() => {
@@ -55,7 +56,7 @@ function ScaledSlide({ html, className = '' }: { html: string; className?: strin
           className="speaker-slide-canvas"
           style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}
         >
-          <div className="md-viewer" dangerouslySetInnerHTML={{ __html: html }} />
+          <SlideContent html={html} mermaid={mermaid} />
         </div>
       </div>
     </div>
@@ -68,6 +69,7 @@ export function SpeakerView({
   onSlideChange,
   elapsedSeconds,
   onResetTimer,
+  mermaid,
 }: SpeakerViewProps): React.JSX.Element {
   const totalSlides = slides.length
   const currentSlide = slides[currentSlideIndex]
@@ -212,14 +214,14 @@ export function SpeakerView({
       <main className="speaker-view-body">
         <section className="speaker-current-slide-wrapper">
           <div className="speaker-section-label">Trang hiện tại</div>
-          <ScaledSlide html={currentSlide?.html || ''} />
+          <ScaledSlide html={currentSlide?.html || ''} mermaid={mermaid !== false} />
         </section>
 
         <section className="speaker-sidebar-wrapper">
           <div className="speaker-next-slide-wrapper">
             <div className="speaker-section-label">Trang tiếp theo</div>
             {nextSlide ? (
-              <ScaledSlide html={nextSlide.html || ''} />
+              <ScaledSlide html={nextSlide.html || ''} mermaid={mermaid !== false} />
             ) : (
               <div className="speaker-slide-frame speaker-slide-empty">
                 <span>(Đã đến slide cuối cùng)</span>

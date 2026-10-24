@@ -35,3 +35,4 @@ export type { SplitViewContainerProps, ViewMode } from './components/SplitViewCo
 export { Logo } from './components/Logo'
 export { Icon } from './components/Icon'
 export type { IconName } from './components/Icon'
+export { inlineMermaid } from './components/MermaidBlock'

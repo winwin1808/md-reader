@@ -22,6 +22,9 @@ const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ defa
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
+import { inlineMermaid } from '@md-reader/ui'
+import type { ExportFormat } from '@md-reader/ui'
+import { flushSync } from 'react-dom'
 import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
 import {
   parseMarkdown,
@@ -333,11 +336,34 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
-  const { exportAs, isPrintingSlides } = useExport({
+  const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
   })
+
+  const [printHtml, setPrintHtml] = useState<string[] | null>(null)
+  const [preparingSlides, setPreparingSlides] = useState(false)
+  const exportAs = async (format: ExportFormat): Promise<void> => {
+    if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
+      setPreparingSlides(true)
+      try {
+        const list = splitIntoSlides(content, { math: readerSettings.enableMath !== false })
+        const out = await Promise.all(list.map((sl) => inlineMermaid(sl.html, 'default')))
+        flushSync(() => setPrintHtml(out))
+      } catch {
+        setPrintHtml(null)
+      } finally {
+        setPreparingSlides(false)
+      }
+    } else {
+      setPrintHtml(null)
+    }
+    await baseExportAs(format)
+  }
+  useEffect(() => {
+    if (!isPrintingSlides) setPrintHtml(null)
+  }, [isPrintingSlides])
 
   const hasSlides = useMemo(
     () => (exportOpen ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }).length > 1 : false),
@@ -367,6 +393,7 @@ export function App(): React.JSX.Element {
           setCurrentSlideIndex(idx)
           channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
         }}
+        mermaid={readerSettings.enableMermaid !== false}
       />
     )
   }
@@ -395,11 +422,12 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
+      {preparingSlides && <div role="status" className="deck-print-busy">Đang chuẩn bị sơ đồ…</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
           {slides.map((slide, idx) => (
             <div key={slide.id || idx} className="deck-print-slide md-viewer">
-              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
+              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: printHtml?.[idx] ?? slide.html }} />
             </div>
           ))}
         </div>
