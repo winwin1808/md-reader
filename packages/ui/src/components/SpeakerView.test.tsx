@@ -3,6 +3,10 @@ import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import type { Slide } from '@md-reader/core'
 import { SpeakerView } from './SpeakerView'
 
+vi.mock('mermaid', () => ({
+  default: { initialize: vi.fn(), render: vi.fn(async () => ({ svg: '<svg data-testid="mm"></svg>' })) },
+}))
+
 describe('SpeakerView', () => {
   const slides: Slide[] = [
     {
@@ -241,5 +245,12 @@ describe('SpeakerView', () => {
       expect(t).not.toBe(t.toUpperCase())
     }
     expect(screen.getByText('Đã trình bày')).not.toBeNull()
+  })
+
+  it('mounts a diagram for mermaid blocks when mermaid is on', async () => {
+    vi.useRealTimers()
+    const ms: Slide[] = [{ id: 's', index: 0, rawMarkdown: '', html: '<pre><code class="language-mermaid">graph TD;A-->B</code></pre>', notes: [] }]
+    const { container } = render(<SpeakerView slides={ms} currentSlideIndex={0} onSlideChange={() => {}} mermaid />)
+    await vi.waitFor(() => expect(container.querySelector('svg')).not.toBeNull())
   })
 })

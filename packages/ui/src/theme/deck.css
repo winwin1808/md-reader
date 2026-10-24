@@ -161,3 +161,6 @@
     transition: none;
   }
 }
+
+.mermaid-inline { display: flex; justify-content: center; }
+.mermaid-inline svg { max-width: 100%; height: auto; }
