@@ -96,7 +96,7 @@ export const API_PATHS = {
   revoke: (roomId: string, prefix: string) => `/api/rooms/${roomId}/links/${prefix}`, // DELETE
   resolve: (token: string) => `/api/s/${token}`,        // GET → ResolveTokenResponse | 410
   snapshot: (token: string) => `/api/s/${token}/snapshot`, // GET → application/octet-stream (Y update)
-  party: 'doc',                                         // YProvider party name → /parties/doc/:roomId?token=
+  party: 'doc-room',                                    // YProvider party name (kebab của binding DocRoom, đo ở 8a0) → /parties/doc-room/:roomId?token=
 } as const
 ```
 Pure TS, no I/O. Shared by `apps/api`, `apps/web`, `apps/extension`.
@@ -134,7 +134,7 @@ export class DocRoom extends YServer<Env> {
 }
 // src/index.ts
 export default { fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> }
-// order: /api/* → handleApi · /parties/* → authorizeWs then routePartykitRequest · else env.ASSETS.fetch
+// order: /api/* → handleApi · /parties/doc-room/* → authorizeWs then routePartykitRequest · else env.ASSETS.fetch
 ```
 ```sql
 -- migrations/0001_init.sql
@@ -385,7 +385,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 
 ## Sub-phase queue
 - 8a0: done      (spike; stop-and-ask if Free plan rejects SQLite DO)
-- 8b1: pending   (core share types — before 8a2 which consumes them)
+- 8b1: planned   (core share types — before 8a2 which consumes them)
 - 8a1: pending
 - 8a2: pending
 - 8a3: pending
