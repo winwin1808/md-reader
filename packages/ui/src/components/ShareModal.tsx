@@ -71,6 +71,12 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const visiblePrefixes = links.filter((l) => l.revokedAt === null).map((l) => l.tokenPrefix).join('\u0000')
+  useEffect(() => {
+    if (visiblePrefixes === '') setConfirmAll(false)
+    setConfirming((c) => (c !== null && visiblePrefixes.split('\u0000').includes(c) ? c : null))
+  }, [visiblePrefixes])
+
   if (!open) return null
 
   const copy = async (l: ShareLink) => {
