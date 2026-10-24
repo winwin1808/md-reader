@@ -116,4 +116,72 @@ describe('useShare', () => {
     })
     expect(h.result.current.busy).toBe(false)
   })
+
+  it('two enable() calls share one request', async () => {
+    const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+    let release!: (r: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { release = r }))
+    let p1!: Promise<unknown>, p2!: Promise<unknown>
+    act(() => { p1 = h.result.current.enable(); p2 = h.result.current.enable() })
+    let out: unknown[] = []
+    await act(async () => {
+      release({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'o' }) } as Response)
+      out = await Promise.all([p1, p2])
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(out[0]).toEqual(out[1])
+  })
+
+  it('drops stale enable result after doc change', async () => {
+    const docB = (await createRecord({ title: 'b', originKind: 'drop', originPath: null })).docId
+    let cur = docId
+    const h = renderHook(() => useShare({ docId: cur, serverUrl: SERVER }))
+    let release!: (r: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { release = r }))
+    let p!: Promise<unknown>
+    act(() => { p = h.result.current.enable() })
+    cur = docB
+    h.rerender()
+    await act(async () => {
+      release({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'o' }) } as Response)
+      await p.catch(() => {})
+    })
+    expect(h.result.current.binding).toBeNull()
+    expect((await getRecord(docId))?.room?.roomId).toBe('r1')
+    expect((await getRecord(docB))?.room).toBeFalsy()
+  })
+
+  it('maps non-JSON 2xx to invalid-data error', async () => {
+    const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+    fetchMock.mockReturnValueOnce(Promise.resolve({
+      ok: true, status: 200, json: async () => { throw new SyntaxError('x') },
+    } as unknown as Response))
+    await act(async () => {
+      await expect(h.result.current.enable()).rejects.toThrow('Máy chủ trả dữ liệu không hợp lệ')
+    })
+    expect(h.result.current.error).toBe('Máy chủ trả dữ liệu không hợp lệ')
+  })
+
+  it('overlapping refresh and createLink keep busy until both finish', async () => {
+    const h = await bound()
+    let r1!: (r: Response) => void, r2!: (r: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { r1 = r }))
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { r2 = r }))
+    let p1!: Promise<unknown>, p2!: Promise<unknown>
+    act(() => {
+      p1 = h.result.current.refresh()
+      p2 = h.result.current.createLink({ role: 'view', expiresIn: null })
+    })
+    await waitFor(() => expect(h.result.current.busy).toBe(true))
+    await act(async () => {
+      r1({ ok: true, status: 200, json: async () => [] } as Response)
+      await p1
+    })
+    expect(h.result.current.busy).toBe(true)
+    await act(async () => {
+      r2({ ok: true, status: 200, json: async () => link('S', 'aaaa') } as Response)
+      await p2
+    })
+    expect(h.result.current.busy).toBe(false)
+  })
 })
