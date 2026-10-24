@@ -16,17 +16,14 @@ describe('WordCountBar', () => {
 
     const bar = screen.getByRole('status')
     expect(bar).not.toBeNull()
-    expect(bar.textContent).toContain('11 từ')
-    expect(bar.textContent).toContain('52 ký tự')
-    expect(bar.textContent).toContain('~1 phút đọc')
+    expect(bar.textContent).toBe('11 từ · 1 phút đọc')
   })
 
   it('handles empty text gracefully', () => {
     render(<WordCountBar text="   " />)
     const bar = screen.getByRole('status')
     expect(bar.textContent).toContain('0 từ')
-    expect(bar.textContent).toContain('3 ký tự')
-    expect(bar.textContent).toContain('~1 phút đọc')
+    expect(bar.textContent).toContain('1 phút đọc')
   })
 
   it('returns null when visible is false', () => {
@@ -100,5 +97,25 @@ describe('CelebrationConfetti', () => {
     })
 
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('7r reading aids', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('formats 1240 words with vi-VN grouping', () => {
+    render(<WordCountBar text={Array(1240).fill('a').join(' ')} />)
+    const t = screen.getByRole('status').textContent ?? ''
+    expect(t).toContain('1.240 từ')
+    expect(t).toContain('phút đọc')
+  })
+
+  it('confetti renders nothing under reduced motion', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: true, media: q }))
+    const { container } = render(<CelebrationConfetti active={true} />)
+    expect(container.firstChild).toBeNull()
   })
 })
