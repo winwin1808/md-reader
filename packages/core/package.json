@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./docx": "./src/export/docx.ts"
+    "./docx": "./src/export/docx.ts",
+    "./plugins": "./src/plugins/index.ts"
   },
   "sideEffects": false,
   "scripts": {
