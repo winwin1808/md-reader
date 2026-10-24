@@ -17,3 +17,4 @@ spike/
 .claude/settings.local.json
 .vitest/
 docs/store/*.zip
+.wrangler/
