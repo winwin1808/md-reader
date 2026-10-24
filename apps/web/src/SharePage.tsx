@@ -24,7 +24,7 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     if (state.kind === 'ready') document.title = state.info.title ?? 'MD Reader'
   }, [state])
 
-  const html = useMemo(() => (state.kind === 'ready' ? renderShareHtml(state.text) : ''), [state])
+  const html = useMemo(() => (state.kind === 'ready' && state.info.role !== 'edit' ? renderShareHtml(state.text) : ''), [state])
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   let body: React.JSX.Element

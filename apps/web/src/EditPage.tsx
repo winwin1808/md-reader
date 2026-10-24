@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { computeTextChanges, type ResolveTokenResponse } from '@md-reader/core'
 import { FormattingToolbar, SplitViewContainer, Viewer, applyFormat } from '@md-reader/ui'
@@ -65,28 +65,42 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const { token, info, serverUrl, bind, name } = props
   const [status, setStatus] = useState<SyncStatus>('connecting')
   const [wasOnline, setWasOnline] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [html, setHtml] = useState('')
   const [, setTick] = useState(0)
   const editorViewRef = useRef<EditorView | null>(null)
 
-  const session = useMemo(() => {
+  const [retry, setRetry] = useState(0)
+  const [session, setSession] = useState<{
+    doc: Y.Doc
+    yText: Y.Text
+    undo: Y.UndoManager
+    conn: ReturnType<typeof bindRoom>
+  } | null>(null)
+
+  useEffect(() => {
+    setStatus('connecting')
+    setWasOnline(false)
+    setFailed(false)
+    setHtml('')
     const doc = new Y.Doc({ gc: false })
     const yText = doc.getText('source')
     const undo = new Y.UndoManager(yText)
-    return { doc, yText, undo }
-  }, [])
-
-  useEffect(() => {
-    const { doc, yText, undo } = session
     const conn = (bind ?? bindRoom)(doc, {
       serverUrl: serverUrl ?? location.origin,
       roomId: info.roomId,
       token,
       name,
     })
+    let everOnline = false
     const off = conn.status$((s) => {
       setStatus(s)
-      if (s === 'online') setWasOnline(true)
+      if (s === 'online') {
+        everOnline = true
+        setWasOnline(true)
+      } else if (s === 'offline' && !everOnline) {
+        setFailed(true)
+      }
     })
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
@@ -98,6 +112,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     undo.on('stack-item-added', onStack)
     undo.on('stack-item-popped', onStack)
     setHtml(renderShareHtml(yText.toString()))
+    setSession({ doc, yText, undo, conn })
     return () => {
       if (timer) clearTimeout(timer)
       yText.unobserve(onChange)
@@ -107,13 +122,14 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
       conn.destroy()
       undo.destroy()
       doc.destroy()
+      setSession(null)
     }
-  }, [session, bind, serverUrl, info.roomId, token, name])
+  }, [bind, serverUrl, info.roomId, token, name, retry])
 
   const onAction = useCallback(
     (action: FormatAction) => {
       const view = editorViewRef.current
-      if (!view) return
+      if (!view || !session) return
       const { from, to } = view.state.selection.main
       const current = session.yText.toString()
       const r = applyFormat(current, from, to, action)
@@ -132,7 +148,15 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     [session],
   )
 
-  if (!wasOnline) return <p role="status">Đang tải tài liệu…</p>
+  if (failed && !wasOnline) {
+    return (
+      <div>
+        <p role="alert">Không kết nối được phòng sửa. Link có thể đã bị thu hồi hoặc máy chủ không phản hồi.</p>
+        <button type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại</button>
+      </div>
+    )
+  }
+  if (!wasOnline || !session) return <p role="status">Đang tải tài liệu…</p>
 
   return (
     <div>
