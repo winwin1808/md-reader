@@ -21,22 +21,34 @@ function asBinary(key: string, v: Uint8Array | string): Uint8Array {
   throw new Error(`persistence: value at "${key}" is not a Uint8Array`)
 }
 
-async function readSnapshot(kv: KVLike): Promise<Uint8Array | null> {
-  const metaRaw = await kv.get('snap:meta')
-  if (metaRaw === undefined) return null
-  let chunks: number
+interface SnapMeta {
+  gen: number
+  chunks: number
+  bytes: number
+}
+
+async function readMeta(kv: KVLike): Promise<SnapMeta | null> {
+  const raw = await kv.get('snap:meta')
+  if (raw === undefined) return null
   try {
-    const text = typeof metaRaw === 'string' ? metaRaw : new TextDecoder().decode(metaRaw)
-    chunks = (JSON.parse(text) as { chunks: number }).chunks
+    const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw)
+    const m = JSON.parse(text) as Partial<SnapMeta>
+    if (!Number.isInteger(m.gen) || !Number.isInteger(m.chunks) || (m.gen as number) < 0 || (m.chunks as number) <= 0) return null
+    return m as SnapMeta
   } catch {
     return null
   }
-  if (!Number.isInteger(chunks) || chunks <= 0) return null
+}
+
+async function readSnapshot(kv: KVLike): Promise<Uint8Array | null> {
+  const meta = await readMeta(kv)
+  if (!meta) return null
   const parts: Uint8Array[] = []
-  for (let i = 0; i < chunks; i++) {
-    const c = await kv.get(`snap:${i}`)
-    if (c === undefined) return null // torn write: bỏ snapshot
-    parts.push(asBinary(`snap:${i}`, c))
+  for (let i = 0; i < meta.chunks; i++) {
+    const key = `snap:${meta.gen}:${i}`
+    const c = await kv.get(key)
+    if (c === undefined) return null // thiếu khúc: bỏ snapshot
+    parts.push(asBinary(key, c))
   }
   const total = parts.reduce((n, p) => n + p.length, 0)
   const out = new Uint8Array(total)
@@ -85,27 +97,27 @@ export function shouldCompact(stats: LogStats, roomEmpty: boolean): boolean {
 export async function compact(kv: KVLike, doc: Y.Doc): Promise<LogStats> {
   const state = Y.encodeStateAsUpdate(doc)
   const chunks = Math.max(1, Math.ceil(state.length / CHUNK_BYTES))
-  let oldChunks = 0
-  const oldMeta = await kv.get('snap:meta')
-  if (oldMeta !== undefined) {
-    try {
-      const t = typeof oldMeta === 'string' ? oldMeta : new TextDecoder().decode(oldMeta)
-      oldChunks = (JSON.parse(t) as { chunks: number }).chunks || 0
-    } catch {
-      oldChunks = 0
-    }
-  }
+  const old = await readMeta(kv)
+  const gen = old ? old.gen + 1 : 0
   for (let i = 0; i < chunks; i++) {
-    await kv.put(`snap:${i}`, state.slice(i * CHUNK_BYTES, (i + 1) * CHUNK_BYTES))
+    await kv.put(`snap:${gen}:${i}`, state.slice(i * CHUNK_BYTES, (i + 1) * CHUNK_BYTES))
   }
   // meta SAU các khúc
-  await kv.put('snap:meta', JSON.stringify({ chunks, bytes: state.length }))
+  await kv.put('snap:meta', JSON.stringify({ gen, chunks, bytes: state.length }))
   for (const [k] of await listUpdates(kv)) await kv.delete(k)
-  for (let i = chunks; i < oldChunks; i++) await kv.delete(`snap:${i}`)
+  const prefix = `snap:${gen}:`
+  for (const k of (await kv.list({ prefix: 'snap:' })).keys()) {
+    if (k !== 'snap:meta' && !k.startsWith(prefix)) await kv.delete(k)
+  }
   return { updates: 0, bytes: 0 }
 }
 
 export async function readStats(kv: KVLike): Promise<LogStats> {
   const ups = await listUpdates(kv)
-  return { updates: ups.length, bytes: ups.reduce((n, [, v]) => n + v.length, 0) }
+  let max = -1
+  for (const [k] of ups) {
+    const n = Number.parseInt(k.slice(2), 10)
+    if (Number.isFinite(n) && n > max) max = n
+  }
+  return { updates: max + 1, bytes: ups.reduce((n, [, v]) => n + v.length, 0) }
 }
