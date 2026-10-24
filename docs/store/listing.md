@@ -10,7 +10,7 @@ MD Reader — đọc, soạn, trình chiếu Markdown
 
 ## Mô tả ngắn (≤ 132 ký tự)
 
-VI: Mở file .md là đọc đẹp ngay. Soạn, chia đôi màn hình, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ khi ngoại tuyến; chia sẻ là tuỳ chọn.
+VI: Mở file .md là đọc đẹp ngay. Soạn, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ ngoại tuyến; chia sẻ là tuỳ chọn.
 
 EN: Open any .md file and read it beautifully. Edit, split view, slides, mind map, PDF/Word export. Works fully offline; sharing is optional.
 
