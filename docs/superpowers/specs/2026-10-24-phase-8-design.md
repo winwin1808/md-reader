@@ -424,7 +424,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8g2: done
 - 8h1: done      (plan may split 8h1a core / 8h1b callers)
 - 8h2: done
-- 8i: planned
+- 8i: done
 - 8j: pending
 - 8k: pending
 
