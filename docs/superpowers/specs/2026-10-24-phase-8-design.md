@@ -427,7 +427,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8i: done
 - 8j: done
 - 8j2: done        (gia cố: actors race, awareness cap, lineAuthors tuyến tính, anchor content, test infra)
-- 8k: pending
+- 8k: planned
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
 - packages/core: pure TS — no react, chrome.*, document/window; it receives a bound Y.Doc and never imports a provider.

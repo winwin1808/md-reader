@@ -6,24 +6,28 @@ Cập nhật / Last updated: 2026-10-24
 
 MD Reader là extension Chrome để đọc, soạn và trình bày file Markdown.
 
-- **Không thu thập dữ liệu.** MD Reader không thu thập, lưu trữ trên máy chủ, bán hay chia sẻ bất kỳ thông tin cá nhân hay nội dung tài liệu nào.
-- **Dữ liệu ở lại trên máy bạn.** Tài liệu bạn mở, bản chỉnh sửa, lịch sử và cài đặt được lưu trong bộ nhớ của trình duyệt (IndexedDB, `chrome.storage`) trên chính thiết bị của bạn. Cài đặt có thể được Chrome đồng bộ giữa các máy của bạn nếu bạn bật Chrome Sync — việc này do Google thực hiện, MD Reader không có máy chủ riêng.
-- **Không gọi ra ngoài.** Font chữ và mọi mã chạy đều đóng gói sẵn trong extension. Khi đọc tài liệu, extension không gửi yêu cầu mạng nào ngoài việc tải chính tài liệu bạn mở. Ảnh hoặc liên kết nằm trong tài liệu được trình duyệt tải như bình thường.
-- **Quyền truy cập.** Extension chỉ đọc nội dung các trang Markdown (.md) để hiển thị chúng, và chỉ ghi vào file trên đĩa khi bạn bấm Lưu.
-- **Xoá dữ liệu.** Gỡ extension sẽ xoá toàn bộ dữ liệu nó đã lưu trong trình duyệt.
-
-Nếu sau này có tính năng chia sẻ lên máy chủ, chính sách này sẽ được cập nhật trước khi tính năng đó phát hành, và việc chia sẻ chỉ xảy ra khi bạn chủ động bấm chia sẻ.
+- **Mặc định mọi dữ liệu ở lại trên máy bạn.** Tài liệu bạn mở, bản chỉnh sửa, lịch sử và cài đặt được lưu trong bộ nhớ của trình duyệt (IndexedDB, `chrome.storage`) trên chính thiết bị của bạn. Cài đặt có thể được Chrome đồng bộ giữa các máy của bạn nếu bạn bật Chrome Sync — việc này do Google thực hiện.
+- **Chỉ rời máy khi bạn bật chia sẻ cho một tài liệu.** Khi đó, các dữ liệu sau được gửi đi và lưu trên máy chủ cộng tác: nội dung tài liệu (các bản cập nhật Yjs và ảnh chụp trạng thái), tên hiển thị do người sửa tự khai, tiêu đề và thời điểm tạo phòng; với mỗi liên kết: vai trò xem/sửa, hạn dùng, thời điểm thu hồi, nhãn (nếu có), mã băm SHA-256 của token và một đoạn đầu ngắn của token được lưu dạng văn bản thường để nhận diện và thu hồi liên kết. Token gốc không bao giờ được lưu. Tài liệu chưa bật chia sẻ thì không được gửi đi.
+- **Ai vận hành máy chủ.** Khi bật chia sẻ, tài liệu được gửi tới máy chủ mặc định của tác giả (Cloudflare Workers, tên miền `md-reader-api.qhao-work.workers.dev`), trừ khi bạn nhập địa chỉ máy chủ của riêng mình tại Cài đặt → Cộng tác. Với máy chủ mặc định, tác giả vận hành nơi lưu trữ dữ liệu đó. Với máy chủ riêng, người chạy Worker ở địa chỉ ấy vận hành.
+- **Thời gian lưu.** Tắt chia sẻ hoặc thu hồi liên kết chỉ chặn truy cập (người dùng liên kết nhận lỗi 410, liên kết hết hạn cũng vậy). Thao tác này KHÔNG xoá nội dung và siêu dữ liệu đã lưu; chúng vẫn nằm trên máy chủ. Muốn xoá, hãy liên hệ người vận hành máy chủ, hoặc với máy chủ riêng thì tự xoá dữ liệu Worker/D1 của bạn.
+- **Hiện diện trực tiếp.** Tên, màu và vị trí con trỏ của người đang sửa chỉ được chuyển tiếp theo thời gian thực, không được lưu.
+- **Không phân tích, không theo dõi, không quảng cáo, không bán dữ liệu, không tài khoản.**
+- **Không gọi ra ngoài ngoài chia sẻ.** Font chữ và mọi mã chạy đều đóng gói sẵn trong extension. Khi đọc tài liệu mà không bật chia sẻ, extension không gửi yêu cầu mạng nào ngoài việc tải chính tài liệu bạn mở. Ảnh hoặc liên kết nằm trong tài liệu được trình duyệt tải như bình thường.
+- **Quyền truy cập.** Extension chỉ đọc nội dung các trang Markdown (.md) để hiển thị chúng, và chỉ ghi vào file trên đĩa khi bạn bấm Lưu. Quyền của extension: `storage`, `activeTab` và truy cập các URL Markdown.
+- **Xoá dữ liệu.** Gỡ extension sẽ xoá toàn bộ dữ liệu nó đã lưu trong trình duyệt. Dữ liệu đã chia sẻ nằm trên máy chủ cộng tác thì theo mục Thời gian lưu ở trên.
 
 ## English
 
 MD Reader is a Chrome extension for reading, editing and presenting Markdown files.
 
-- **No data collection.** MD Reader does not collect, store on any server, sell or share any personal information or document content.
-- **Your data stays on your device.** Documents you open, edits, history and settings are stored in your browser's local storage (IndexedDB, `chrome.storage`) on your own device. Settings may be synced across your devices by Chrome Sync if you enable it — that is done by Google; MD Reader runs no server.
-- **No outbound requests.** Fonts and all code are bundled in the extension. While you read, the extension makes no network requests other than loading the document you opened. Images or links inside a document are loaded by the browser as usual.
-- **Access.** The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save.
-- **Deleting data.** Uninstalling the extension removes all data it stored in your browser.
-
-If a feature to share documents through a server is added later, this policy will be updated before that feature ships, and sharing will happen only when you explicitly choose to share.
+- **By default all data stays on your device.** Documents you open, edits, history and settings are stored in your browser's local storage (IndexedDB, `chrome.storage`) on your own device. Settings may be synced across your devices by Chrome Sync if you enable it — that is done by Google.
+- **Data leaves your device only when you turn on sharing for a document.** Then the following is sent to and stored on the collaboration server: the document content (Yjs updates and snapshot), the self-declared display names of the people editing, the room title and creation time; and for each link: role (view/edit), expiry, revoked time, optional label, the SHA-256 hash of the token and a short plaintext token prefix used to identify and revoke the link. The full token is never stored. Documents you have not shared are not sent.
+- **Who runs the server.** When sharing is on, the document goes to the extension author's default server (Cloudflare Workers, host `md-reader-api.qhao-work.workers.dev`), unless you enter your own server URL in Settings → Collaboration. With the default server, the author operates the storage. With your own server, whoever runs that Worker operates it.
+- **Retention.** Turning sharing off or revoking a link only stops access (anyone using it gets a 410 error, as with expired links). It does NOT delete the stored content or metadata; they stay on the server. To have them deleted, contact the server operator, or with your own server delete the Worker/D1 data yourself.
+- **Live presence.** The name, colour and cursor of people editing are relayed in real time and not stored.
+- **No analytics, no tracking, no ads, no sale of data, no accounts.**
+- **No outbound requests besides sharing.** Fonts and all code are bundled in the extension. While you read without sharing, the extension makes no network requests other than loading the document you opened. Images or links inside a document are loaded by the browser as usual.
+- **Access.** The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: `storage`, `activeTab` and access to Markdown URLs.
+- **Deleting data.** Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention item above.
 
 Contact: <điền email hỗ trợ công khai trước khi publish>
