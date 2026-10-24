@@ -153,3 +153,44 @@ describe('CORS', () => {
     expect(res.headers.get('access-control-allow-origin')).toBeNull()
   })
 })
+
+describe('CORS on errors and passthrough', () => {
+  it('thrown store error becomes 500 with ACAO * and no error text', async () => {
+    const store = new MemoryTokenStore()
+    const boom = 'secret-db-failure-xyz'
+    vi.spyOn(store, 'listLinks').mockRejectedValue(new Error(boom))
+    vi.spyOn(store, 'verifyOwner').mockRejectedValue(new Error(boom))
+    const res = await handleRequest(
+      new Request('http://x/api/rooms/r/links', { headers: { authorization: 'Bearer owner-tok' } }),
+      env,
+      { routeParty: ok, store },
+    )
+    expect(res.status).toBe(500)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    const text = await res.text()
+    expect(text).not.toContain(boom)
+    expect(JSON.parse(text)).toEqual({ error: 'internal' })
+  })
+
+  it('snapshot passes octet-stream bytes with ACAO *', async () => {
+    const { store, a, view } = await twoRooms()
+    const bytes = new Uint8Array([0, 1, 2, 250, 255])
+    const routeParty = vi.fn(() =>
+      Promise.resolve(new Response(bytes, { status: 200, headers: { 'content-type': 'application/octet-stream' } })),
+    )
+    const res = await handleRequest(new Request(`http://x/api/s/${view.token}/snapshot`), env, { routeParty, store })
+    expect(a.roomId).toBeTruthy()
+    expect(res.status).toBe(200)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes)
+  })
+
+  it('unknown /api path is 404 with ACAO *', async () => {
+    const res = await handleRequest(new Request('http://x/api/nope'), env, {
+      routeParty: ok,
+      store: new MemoryTokenStore(),
+    })
+    expect(res.status).toBe(404)
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+  })
+})

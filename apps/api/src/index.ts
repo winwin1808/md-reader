@@ -45,15 +45,19 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
         },
       })
     }
-    return withCors((await handleApi(req, store, {
-      snapshot: (roomId) =>
-        deps.routeParty(
-          new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
-            headers: { 'x-mdr-internal': '1' },
-          }),
-          env,
-        ).then((r) => r ?? json({ error: 'not found' }, 404)),
-    })) ?? json({ error: 'not found' }, 404))
+    try {
+      return withCors((await handleApi(req, store, {
+        snapshot: (roomId) =>
+          deps.routeParty(
+            new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
+              headers: { 'x-mdr-internal': '1' },
+            }),
+            env,
+          ).then((r) => r ?? json({ error: 'not found' }, 404)),
+      })) ?? json({ error: 'not found' }, 404))
+    } catch {
+      return withCors(json({ error: 'internal' }, 500))
+    }
   }
 
   if (url.pathname.startsWith('/parties/')) {

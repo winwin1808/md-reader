@@ -8,6 +8,8 @@ Cloudflare Worker duy nhất của md-reader. Phục vụ:
 
 ## Chạy local
 
+Phải build `apps/web` trước (`pnpm --filter @md-reader/web build`) vì `wrangler.jsonc` trỏ assets vào `../web/dist`.
+
 ```
 pnpm --filter @md-reader/api dev     # wrangler dev, cổng 8787
 ```
