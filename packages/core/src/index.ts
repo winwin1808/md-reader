@@ -44,3 +44,5 @@ export type { DiffLine } from './diff/diff.js'
 
 export { createCheckpointTracker, registerActor } from './doc/checkpoint.js'
 export type { CheckpointTracker } from './doc/checkpoint.js'
+
+export * from './share/index.js'
