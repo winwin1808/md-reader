@@ -1,0 +1,8 @@
+{
+  "name": "mdr-spike-do-yjs",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "DocRoom", "class_name": "DocRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DocRoom"] }]
+}
