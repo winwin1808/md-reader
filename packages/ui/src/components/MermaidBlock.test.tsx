@@ -98,3 +98,26 @@ describe('MermaidBlock theme', () => {
     expect(m.render).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('MermaidBlock serialization', () => {
+  it('initialize immediately precedes its own render', async () => {
+    const m = (await import('mermaid')).default as any
+    __clearMermaidCache()
+    m.render.mockClear()
+    m.initialize.mockClear()
+    const order: string[] = []
+    m.initialize.mockImplementation((c: any) => { order.push('init:' + c.theme) })
+    const orig = m.render.getMockImplementation()
+    m.render.mockImplementation(async (id: string, code: string) => {
+      order.push('render')
+      await new Promise((r) => setTimeout(r, 5))
+      return orig(id, code)
+    })
+    render(<><MermaidBlock code="P" theme="default" /><MermaidBlock code="Q" theme="dark" /></>)
+    await waitFor(() => expect(order.length).toBe(4))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(order).toEqual(['init:default', 'render', 'init:dark', 'render'])
+    m.initialize.mockReset()
+    m.render.mockImplementation(orig)
+  })
+})

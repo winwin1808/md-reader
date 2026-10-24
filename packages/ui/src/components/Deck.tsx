@@ -37,7 +37,7 @@ export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slide
   return Math.min(stageW / slideW, stageH / slideH)
 }
 
-function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
+export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
   useEffect(() => {

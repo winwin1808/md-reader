@@ -36,6 +36,21 @@ const THEME_VARS = {
   dark: { primaryColor: '#1F2726', lineColor: '#A3AFAC', textColor: '#E3E8E6' },
 } as const
 
+let renderChain: Promise<unknown> = Promise.resolve()
+
+function renderSerialized(code: string, theme: 'default' | 'dark'): Promise<string> {
+  const run = async (): Promise<string> => {
+    const m = await import('mermaid')
+    m.default.initialize({ startOnLoad: false, securityLevel: 'strict', theme, themeVariables: THEME_VARS[theme] })
+    const id = `mermaid-${Math.random().toString(36).substring(2, 9)}`
+    const result = await m.default.render(id, code)
+    return result.svg
+  }
+  const p = renderChain.then(run, run)
+  renderChain = p.catch(() => undefined)
+  return p
+}
+
 export function MermaidBlock({ code, theme = 'default' }: MermaidBlockProps): React.JSX.Element {
   const key = `${theme}\u0000${code}`
   const [cached] = useState(() => cacheGet(key))
@@ -58,14 +73,11 @@ export function MermaidBlock({ code, theme = 'default' }: MermaidBlockProps): Re
 
     async function renderMermaid() {
       try {
-        const m = await import('mermaid')
-        m.default.initialize({ startOnLoad: false, securityLevel: 'strict', theme, themeVariables: THEME_VARS[theme] })
-        const id = `mermaid-${Math.random().toString(36).substring(2, 9)}`
-        const result = await m.default.render(id, code)
-        cacheSet(key, result.svg)
+        const svgOut = await renderSerialized(code, theme)
+        cacheSet(key, svgOut)
 
         if (isMounted) {
-          setSvg(result.svg)
+          setSvg(svgOut)
           setError(null)
           setLoading(false)
         }
