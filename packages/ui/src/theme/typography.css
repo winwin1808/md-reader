@@ -165,6 +165,20 @@
   .md-viewer div.markdown-alert-caution { border-top-color: var(--danger); }
   .md-viewer div.markdown-alert-warning { border-top: 3px solid var(--hl); }
   .md-viewer h1, .md-viewer h2, .md-viewer h3, .md-viewer h4, .md-viewer h5, .md-viewer h6 { clear: none; }
+  [data-width="wide"] .md-viewer,
+  [data-width="full"] .md-viewer { padding-right: 0; max-width: var(--measure); }
+  [data-width="full"] .md-viewer { max-width: none; }
+  [data-width="wide"] .md-viewer div.markdown-alert,
+  [data-width="full"] .md-viewer div.markdown-alert {
+    float: none;
+    clear: none;
+    width: auto;
+    margin: 0 0 1em;
+    padding: 10px 14px;
+    border-top: 0;
+    border-left: 3px solid var(--tone, var(--ink));
+    font-size: 1em;
+  }
 }
 
 .md-viewer div.markdown-metadata-card {
