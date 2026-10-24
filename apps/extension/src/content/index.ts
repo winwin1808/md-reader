@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ContentApp, openInApp, FAIL_TEXT } from './ContentApp'
 import css from './content.css?inline'
 import { isMarkdownUrl } from '../shared/md-url'
+import { requestPageRender } from './render'
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: () => void }, { hasError: boolean }> {
   constructor(props: any) {
@@ -118,6 +119,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
+  const render = await requestPageRender(markdownText)
+  // Another run may have mounted while we awaited the worker.
+  if (document.getElementById('md-reader-root')) {
+    return
+  }
+
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
   targetContainer.appendChild(rootEl)
@@ -130,8 +137,33 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   const mount = document.createElement('div')
   shadow.appendChild(mount)
 
+  // Source nodes hidden in reader mode, with their previous inline display.
+  const hidden: Array<{ el: HTMLElement; display: string }> = []
+  const hideSource = () => {
+    if (hidden.length === 0) {
+      const els: HTMLElement[] =
+        pre && pre.textContent && document.body?.contains(pre)
+          ? [pre]
+          : Array.from(document.body?.children ?? []).filter((c): c is HTMLElement => c !== rootEl && c instanceof HTMLElement)
+      for (const el of els) hidden.push({ el, display: el.style.display })
+    }
+    for (const h of hidden) h.el.style.display = 'none'
+  }
+  const showSource = () => {
+    for (const h of hidden) h.el.style.display = h.display
+  }
   const restore = () => {
+    showSource()
     rootEl.remove()
+  }
+  if (render) {
+    rootEl.setAttribute('data-mode', 'read')
+    hideSource()
+  }
+  const onShowRaw = (raw: boolean) => {
+    if (raw) showSource()
+    else hideSource()
+    rootEl.setAttribute('data-mode', raw ? 'raw' : 'read')
   }
 
   try {
@@ -140,7 +172,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       React.createElement(
         ErrorBoundary,
         { onError: restore },
-        React.createElement(ContentApp, { markdown: markdownText, initialError })
+        React.createElement(ContentApp, { markdown: markdownText, initialError, render, onShowRaw })
       )
     )
   } catch (error) {
