@@ -146,4 +146,20 @@ describe('ExcalidrawBlock', () => {
     const arrowPath = Array.from(paths).find(p => p.getAttribute('marker-end')?.includes('excalidraw-arrow'))
     expect(arrowPath).toBeDefined()
   })
+
+  it('maps colours to palette tokens', () => {
+    const data = JSON.stringify({ elements: [
+      { id: 'a', type: 'rectangle', x: 0, y: 0, width: 10, height: 10, strokeColor: '#1E1E1E', backgroundColor: '#ffffff' },
+      { id: 'b', type: 'rectangle', x: 20, y: 0, width: 10, height: 10, strokeColor: '#e03131', backgroundColor: '#ffc9c9' },
+      { id: 'c', type: 'rectangle', x: 40, y: 0, width: 10, height: 10, strokeColor: '#123456', backgroundColor: 'transparent' },
+    ] })
+    const { container } = render(<ExcalidrawBlock data={data} isAppPage={true} />)
+    const r = container.querySelectorAll('rect')
+    expect(r[0]?.getAttribute('stroke')).toBe('var(--ink)')
+    expect(r[0]?.getAttribute('fill')).toBe('none')
+    expect(r[1]?.getAttribute('stroke')).toBe('var(--danger)')
+    expect(r[1]?.getAttribute('fill')).toContain('color-mix')
+    expect(r[2]?.getAttribute('stroke')).toBe('#123456')
+    expect(r[2]?.getAttribute('fill')).toBe('none')
+  })
 })
