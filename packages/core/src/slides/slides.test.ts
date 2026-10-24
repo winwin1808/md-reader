@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { splitIntoSlides } from './index.js'
+import { defaultRenderPlugins } from '../plugins/index.js'
 
 describe('splitIntoSlides', () => {
   it('returns a single empty slide for empty source', () => {
@@ -162,7 +163,7 @@ describe('splitIntoSlides math option', () => {
     expect(s[0]!.html).not.toContain('katex')
   })
   it('renders katex by default', () => {
-    const s = splitIntoSlides('# T\n\n$a^2$')
+    const s = splitIntoSlides('# T\n\n$a^2$', { render: { plugins: defaultRenderPlugins() } })
     expect(s[0]!.html).toContain('katex')
   })
 })
