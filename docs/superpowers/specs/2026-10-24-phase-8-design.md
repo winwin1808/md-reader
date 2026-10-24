@@ -32,8 +32,10 @@ Rejected:
 
 1. **Compaction and batching.** DO storage keeps `snapshot` + an update log `u:<seq>`.
    `onSave` (y-partyserver debounce 2 s, max 10 s) compacts when the log holds ≥ 200
-   updates **or** ≥ 256 KB; on room-empty it also writes `rooms/<roomId>/latest.bin`
-   to R2. **No client-side batching in 8c**: Yjs already merges a transaction per
+   updates **or** ≥ 256 KB, and always compacts when the room empties. **R2 is dropped
+   (decision 2026-10-24, user wants zero billable products):** Durable Object SQLite
+   storage is already durable, co-located and inside the Free plan's 5 GB; a snapshot
+   larger than 1 MB is stored in `snap:<i>` chunks of 1 MB. **No client-side batching in 8c**: Yjs already merges a transaction per
    keystroke, and incoming WS messages are cheap on the Free plan. 8a0 measures
    messages per 30-minute two-person session; batching becomes a Deferred item only if
    that exceeds 5 % of the daily request budget.
@@ -107,7 +109,6 @@ Pure TS, no I/O. Shared by `apps/api`, `apps/web`, `apps/extension`.
 export interface Env {
   DOC_ROOM: DurableObjectNamespace<DocRoom>
   DB: D1Database
-  SNAPSHOTS: R2Bucket
   ASSETS: Fetcher
 }
 // src/tokens.ts
@@ -126,8 +127,8 @@ export function newToken(): string                                // 32 bytes ba
 // src/room.ts
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }
-  onLoad(): Promise<void>      // DO storage snapshot + u:* log, else R2 latest.bin
-  onSave(): Promise<void>      // compaction rule (decision 1) + R2 on empty room
+  onLoad(): Promise<void>      // DO storage snap:* chunks + u:* log
+  onSave(): Promise<void>      // compaction rule (decision 1); always compact on empty room
   onConnect(conn, ctx): void   // role from header x-mdr-role → conn.setState({ role })
   onMessage(conn, msg): void   // 8e1: drop sync step2/update from role 'view'
   fetch(req): Promise<Response> // GET /snapshot → encodeStateAsUpdate
@@ -250,12 +251,12 @@ revoke → resolve 410; expired link 410; wrong owner 401; `hashToken` stable.
 
 ### 8a3 — persistence and snapshot endpoint
 FILES `apps/api/src/room.ts` · `src/persistence.ts` · `src/api.ts` · `src/persistence.test.ts`.
-`persistence.ts`: `loadState(storage, r2, roomId): Promise<Uint8Array | null>`,
-`appendUpdate(storage, u)`, `shouldCompact(stats): boolean`, `compact(storage, doc)`,
-`writeLatest(r2, roomId, doc)` — pure functions over a `KVLike` interface so they test in
-node with a Map. `GET /api/s/:token/snapshot` → DO `fetch('/snapshot')`. Tests:
-compaction thresholds (199 vs 200 updates; 256 KB), load order snapshot→log→R2, empty room
-writes R2 once.
+`persistence.ts`: `loadState(storage): Promise<Uint8Array | null>`, `appendUpdate(storage, u)`,
+`shouldCompact(stats): boolean`, `compact(storage, doc)` (writes `snap:<i>` 1 MB chunks +
+`snap:meta {chunks, bytes}`, deletes `u:*`) — pure functions over a `KVLike` interface
+(get/put/delete/list) so they test in node with a Map. No R2. `GET /api/s/:token/snapshot`
+→ DO `fetch('/snapshot')`. Tests: compaction thresholds (199 vs 200 updates; 256 KB), load
+order snapshot→log, chunking at > 1 MB round-trips, empty room compacts once.
 
 ### 8b1 — core `share/`
 FILES `packages/core/src/share/share.ts` · `share/index.ts` · `src/index.ts` ·
@@ -344,7 +345,7 @@ snapshot → null and false.
 ### 8g2 — `HistoryTimeline`
 FILES `packages/ui/src/components/HistoryTimeline.tsx` · `HistoryTimeline.test.tsx` ·
 `src/index.ts` · `apps/extension/src/app/App.tsx` · `apps/extension/src/app/hooks/useHistory.ts`.
-Right-side panel "Lịch sử": entries newest first with actor names from `meta.actors`,
+Right-side panel "Lịch sử": entries newest first (snapshots come from `Y.Array "history"`, no server fetch) with actor names from `meta.actors`,
 "Xem" swaps the Viewer text (read-only banner "Đang xem mốc …"), "Khôi phục" calls
 `restoreCheckpoint`. Keyboard: ↑↓ move, Enter preview, Esc exit.
 
@@ -413,7 +414,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - packages/ui: no chrome.*. apps/api: no document/window, no chrome.*. apps/web: no chrome.*.
 - Cross-package imports by workspace name only (`@md-reader/core`, `@md-reader/core/plugins`, `@md-reader/ui`).
 - Y.Doc schema unchanged (`formatVersion: 2`); tokens never stored in the Y.Doc; `meta.actors` is the only collab data in the doc.
-- Server stores only SHA-256 of tokens; view connections cannot write; 410 for expired/revoked.
+- Server stores only SHA-256 of tokens; view connections cannot write; 410 for expired/revoked. No R2 binding anywhere.
 - Content script: no Yjs, no ui package, no katex/mermaid, ≤ 60 KB gz (target ≤ 50 KB).
 - Writes to Y.Text are minimal deltas (`applyTextChange`) or CodeMirror transactions.
 - Copy in Vietnamese, sentence case, no emoji, icon-only buttons have aria-label.
