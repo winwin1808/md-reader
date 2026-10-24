@@ -20,23 +20,38 @@ export type ShareState =
   | { kind: 'error'; message: string }
 
 export async function loadShare(token: string, fetchFn: typeof fetch = fetch): Promise<ShareState> {
+  let res: Response
+  let snap: Response
   try {
-    const res = await fetchFn(API_PATHS.resolve(token))
+    res = await fetchFn(API_PATHS.resolve(token))
     if (res.status === 410) return { kind: 'gone' }
-    if (!res.ok) return { kind: 'error', message: `Không tải được liên kết (${res.status}).` }
+    if (!res.ok) return { kind: 'error', message: `Máy chủ trả lỗi ${res.status}` }
     const info = (await res.json()) as ResolveTokenResponse
-    const snap = await fetchFn(API_PATHS.snapshot(token))
+    snap = await fetchFn(API_PATHS.snapshot(token))
     if (snap.status === 410) return { kind: 'gone' }
-    if (!snap.ok) return { kind: 'error', message: `Không tải được nội dung (${snap.status}).` }
-    const doc = new Y.Doc({ gc: false })
-    Y.applyUpdate(doc, new Uint8Array(await snap.arrayBuffer()))
-    return { kind: 'ready', info, text: exportText(doc) }
+    if (!snap.ok) return { kind: 'error', message: `Máy chủ trả lỗi ${snap.status}` }
+    const bytes = new Uint8Array(await snap.arrayBuffer())
+    try {
+      const doc = new Y.Doc({ gc: false })
+      Y.applyUpdate(doc, bytes)
+      return { kind: 'ready', info, text: exportText(doc) }
+    } catch {
+      return { kind: 'error', message: 'Dữ liệu chia sẻ không hợp lệ' }
+    }
   } catch {
-    return { kind: 'error', message: 'Lỗi mạng. Kiểm tra kết nối rồi thử lại.' }
+    return { kind: 'error', message: 'Không kết nối được máy chủ' }
   }
 }
 
 export function renderShareHtml(text: string): string {
   const parsed = parseMarkdown(text, { gfm: true, math: true })
-  return renderToHtml(parsed, { math: true, githubAlerts: true }).html
+  return renderToHtml(parsed, {
+    math: true,
+    githubAlerts: true,
+    localizeAlerts: 'vi',
+    stripFrontmatter: true,
+    displayMetadata: true,
+    typographer: true,
+    externalLinks: true,
+  }).html
 }

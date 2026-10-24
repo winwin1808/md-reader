@@ -4,8 +4,8 @@ import { loadShare, renderShareHtml, type ShareState } from './share-client'
 
 const REPO = 'https://github.com/winwin1808/md-reader'
 
-export function SharePage(props: { token: string | null; load?: typeof loadShare }): React.JSX.Element {
-  const { token, load = loadShare } = props
+export function SharePage(props: { token: string | null; load?: typeof loadShare; mermaid?: boolean }): React.JSX.Element {
+  const { token, load = loadShare, mermaid = true } = props
   const [state, setState] = useState<ShareState>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -13,7 +13,9 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     if (!token) return
     let cancelled = false
     setState({ kind: 'loading' })
-    load(token).then((s) => { if (!cancelled) setState(s) })
+    load(token)
+      .then((s) => { if (!cancelled) setState(s) })
+      .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Lỗi không xác định' }) })
     return () => { cancelled = true }
   }, [token, load, attempt])
 
@@ -35,7 +37,7 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
         <button type="button" onClick={retry}>Thử lại</button>
       </div>
     )
-  } else body = <Viewer html={html} isAppPage mermaid={false} />
+  } else body = <Viewer html={html} isAppPage mermaid={mermaid} />
 
   return (
     <main style={{ maxWidth: 780, margin: '0 auto', padding: '32px 20px', color: 'var(--text, inherit)' }}>
