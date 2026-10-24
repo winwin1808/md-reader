@@ -105,4 +105,74 @@ describe('ShareModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Đóng' }))
     expect(p.onClose).toHaveBeenCalledTimes(2)
   })
+  describe('review fixes', () => {
+    const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); await new Promise((r) => setTimeout(r, 0)) }
+    const guard = () => { const spy = vi.fn(); process.on('unhandledRejection', spy); return spy }
+
+    it('onEnable rejection shows message, no unhandled rejection', async () => {
+      const spy = guard()
+      setup({ binding: null, onEnable: vi.fn().mockRejectedValue(new Error('x')) })
+      fireEvent.click(screen.getByRole('button', { name: 'Bật chia sẻ' }))
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('x'))
+      await flush()
+      process.off('unhandledRejection', spy)
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('onCreateLink rejection shows alert', async () => {
+      const spy = guard()
+      setup({ onCreateLink: vi.fn().mockRejectedValue(new Error('c')) })
+      fireEvent.click(screen.getByRole('button', { name: 'Tạo link xem' }))
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('c'))
+      await flush()
+      process.off('unhandledRejection', spy)
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('onRevoke rejection shows alert; non-Error falls back', async () => {
+      const spy = guard()
+      setup({ links: [link()], onRevoke: vi.fn().mockRejectedValue('boom') })
+      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Không thực hiện được'))
+      await flush()
+      process.off('unhandledRejection', spy)
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('error prop wins over local error', async () => {
+      setup({ binding: null, error: 'P', onEnable: vi.fn().mockRejectedValue(new Error('x')) })
+      fireEvent.click(screen.getByRole('button', { name: 'Bật chia sẻ' }))
+      await flush()
+      expect(screen.getByRole('alert').textContent).toBe('P')
+    })
+
+    it('reopening resets copied state', async () => {
+      vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+      const props = {
+        open: true, onClose: vi.fn(), binding, links: [link({ token: 'TOK' })],
+        onEnable: async () => {}, onCreateLink: async () => link(), onRevoke: async () => {},
+        buildUrl: (t: string) => `https://app/s/${t}`,
+      }
+      const { rerender } = render(<ShareModal {...props} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeTruthy())
+      rerender(<ShareModal {...props} open={false} />)
+      rerender(<ShareModal {...props} open={true} />)
+      expect(screen.getByRole('button', { name: 'Sao chép' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Đã sao chép' })).toBeNull()
+    })
+
+    it('double click on copy calls writeText once', async () => {
+      let resolve!: () => void
+      const writeText = vi.fn().mockReturnValue(new Promise<void>((r) => { resolve = r }))
+      vi.stubGlobal('navigator', { clipboard: { writeText } })
+      setup({ links: [link({ token: 'TOK' })] })
+      const b = screen.getByRole('button', { name: 'Sao chép' })
+      fireEvent.click(b)
+      fireEvent.click(b)
+      expect(writeText).toHaveBeenCalledTimes(1)
+      resolve()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeTruthy())
+    })
+  })
 })

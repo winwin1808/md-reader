@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, RoomBinding, ShareLink } from '@md-reader/core'
@@ -36,6 +36,16 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   const titleId = useId()
   const [copied, setCopied] = useState<string | null>(null)
   const [copyFailed, setCopyFailed] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const copying = useRef(false)
+
+  useEffect(() => {
+    if (!open) {
+      setCopied(null)
+      setCopyFailed(false)
+      setLocalError(null)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -49,6 +59,8 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   if (!open) return null
 
   const copy = async (l: ShareLink) => {
+    if (copying.current) return
+    copying.current = true
     setCopyFailed(false)
     try {
       await navigator.clipboard.writeText(buildUrl(l.token))
@@ -56,6 +68,17 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     } catch {
       setCopied(null)
       setCopyFailed(true)
+    } finally {
+      copying.current = false
+    }
+  }
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setLocalError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setLocalError(e instanceof Error && e.message ? e.message : 'Không thực hiện được')
     }
   }
 
@@ -94,12 +117,12 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
             <p style={{ fontSize: '14px', color: 'var(--pencil)', lineHeight: 1.5 }}>
               Tài liệu sẽ được tải lên máy chủ đồng bộ. Chỉ người có link mới xem được.
             </p>
-            <button type="button" disabled={busy} onClick={() => { void onEnable() }} style={btn}>Bật chia sẻ</button>
+            <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} style={btn}>Bật chia sẻ</button>
           </div>
         ) : (
           <div>
             <button type="button" disabled={busy} style={btn}
-              onClick={() => { void onCreateLink({ role: 'view', expiresIn: SHARE_EXPIRY_PRESETS['30d'] }) }}>
+              onClick={() => { void run(() => onCreateLink({ role: 'view', expiresIn: SHARE_EXPIRY_PRESETS['30d'] })) }}>
               Tạo link xem
             </button>
             {visible.length === 0 ? (
@@ -124,7 +147,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
                       ) : (
                         <span style={{ flex: 1, fontSize: '12px', color: 'var(--pencil)' }}>Chỉ sao chép được ngay khi tạo</span>
                       )}
-                      <button type="button" disabled={busy} style={btn} onClick={() => { void onRevoke(l.tokenPrefix) }}>Thu hồi</button>
+                      <button type="button" disabled={busy} style={btn} onClick={() => { void run(() => onRevoke(l.tokenPrefix)) }}>Thu hồi</button>
                     </div>
                   </li>
                 ))}
@@ -134,8 +157,8 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
           </div>
         )}
 
-        {error && (
-          <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--accent)' }}>{error}</div>
+        {(error || localError) && (
+          <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--accent)' }}>{error || localError}</div>
         )}
       </div>
     </div>
