@@ -328,6 +328,8 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
+    const sys = screen.getByRole('radio', { name: /Theo hệ thống/ })
+    expect(sys.getAttribute('aria-checked') === 'true' || (sys as HTMLInputElement).checked).toBe(true)
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
