@@ -63,8 +63,8 @@ Rejected:
    `mdr.displayName` on the web (prompted once before the first edit). Sent through
    awareness `user: { name, color }` and written to `meta.actors` via `registerActor`.
 9. **Default server URL** is a constant `DEFAULT_SERVER_URL` in
-   `apps/extension/src/shared/collab.ts`, filled with the real `workers.dev` host in
-   8a1 after the first deploy. Settings → "Cộng tác" shows it, editable.
+   `apps/extension/src/shared/collab.ts`, set to `https://md-reader-api.qhao-work.workers.dev` (deployed in
+   8a1.3). Settings → "Cộng tác" shows it, editable.
 
 ## Shared interfaces (produced early, consumed verbatim later)
 
@@ -386,7 +386,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 ## Sub-phase queue
 - 8a0: done      (spike; stop-and-ask if Free plan rejects SQLite DO)
 - 8b1: done      (core share types — before 8a2 which consumes them)
-- 8a1: pending
+- 8a1: planned
 - 8a2: pending
 - 8a3: pending
 - 8b2: pending
