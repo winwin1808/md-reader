@@ -424,5 +424,53 @@ describe('MindmapModal', () => {
       fireEvent.pointerUp(svg, { pointerId: 2 })
       fireEvent.pointerUp(svg, { pointerId: 1 })
     })
+
+    const deep: MindNode = {
+      id: 'r', text: 'R', depth: 0,
+      children: [
+        { id: 'a', text: 'A', depth: 1, children: [
+          { id: 'b', text: 'B', depth: 2, children: [{ id: 'c', text: 'C', depth: 3, children: [] }] },
+        ] },
+      ],
+    }
+    const item = (label: string) =>
+      document.querySelector(`[role="treeitem"][aria-label="${label}"]`) as Element
+
+    it('selection moves to the collapsing ancestor', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      expect(sel().getAttribute('aria-label')).toBe('C')
+      fireEvent.click(item('A').querySelector('.mindmap-collapse-handle')!)
+      expect(item('A').getAttribute('aria-selected')).toBe('true')
+      expect(item('A').getAttribute('tabindex')).toBe('0')
+    })
+
+    it('Collapse All selects the root', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      fireEvent.click(screen.getByRole('button', { name: 'Gập tất cả nhánh' }))
+      expect(sel().getAttribute('aria-label')).toBe('R')
+    })
+
+    it('ArrowDown moves focus and posinset is exposed', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      fireEvent.keyDown(tree(), { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(item('Section 2'))
+      expect(item('Section 2').getAttribute('aria-posinset')).toBe('2')
+      expect(item('Section 2').getAttribute('aria-setsize')).toBe('2')
+    })
+
+    it('pinch then pointerup on a node does not click it', () => {
+      const onNodeClick = vi.fn()
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />)
+      const svg = document.querySelector('svg.mindmap-svg')!
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 2, clientX: 200, clientY: 100 })
+      fireEvent.pointerUp(svg, { pointerId: 2 })
+      fireEvent.pointerUp(svg, { pointerId: 1 })
+      fireEvent.click(item('Section 1'))
+      expect(onNodeClick).not.toHaveBeenCalled()
+    })
   })
 })
