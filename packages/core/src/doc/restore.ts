@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import type { HistoryEntry } from './schema.js'
 import { getSource } from './doc.js'
 import { applyTextChange, ORIGIN_REVERT } from './apply.js'
-import { createCheckpointTracker } from './checkpoint.js'
+import { createCheckpointTracker, type CheckpointTracker } from './checkpoint.js'
 
 /** Nội dung Y.Text "source" tại thời điểm checkpoint; null nếu không có/không đọc được snapshot. */
 export function textAtCheckpoint(doc: Y.Doc, entry: HistoryEntry): string | null {
@@ -18,17 +18,34 @@ export function textAtCheckpoint(doc: Y.Doc, entry: HistoryEntry): string | null
   }
 }
 
-export function restoreCheckpoint(doc: Y.Doc, entry: HistoryEntry, actor: string): boolean {
+/**
+ * Callers with a live (long-lived) tracker MUST pass it: otherwise the app's
+ * tracker sees the revert as a fresh edit and later writes a duplicate 'auto'
+ * entry. Without a tracker a temporary one is used.
+ */
+export function restoreCheckpoint(
+  doc: Y.Doc,
+  entry: HistoryEntry,
+  actor: string,
+  tracker?: CheckpointTracker,
+): boolean {
   const text = textAtCheckpoint(doc, entry)
   if (text === null) return false
   const src = getSource(doc)
   if (src.toString() === text) return true
-  const tracker = createCheckpointTracker(doc, { quietMs: 1e9 })
+  const label = `Khôi phục: ${entry.label}`
+  if (tracker) {
+    tracker.flush('auto', actor)
+    applyTextChange(src, text, ORIGIN_REVERT)
+    tracker.flush(label, actor, { force: true })
+    return true
+  }
+  const tmp = createCheckpointTracker(doc, { quietMs: 1e9 })
   try {
     applyTextChange(src, text, ORIGIN_REVERT)
-    tracker.flush(`Khôi phục: ${entry.label}` as 'save', actor, { force: true })
+    tmp.flush(label, actor, { force: true })
   } finally {
-    tracker.dispose()
+    tmp.dispose()
   }
   return true
 }
