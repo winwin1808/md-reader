@@ -5,7 +5,7 @@ import { getHistory, getMeta, getSource } from './doc.js'
 export const ORIGIN_CHECKPOINT = 'md:checkpoint'
 
 export interface CheckpointTracker {
-  flush(label: 'save' | 'auto' | 'import', actor: string, opts?: { force?: boolean }): HistoryEntry | null
+  flush(label: string, actor: string, opts?: { force?: boolean }): HistoryEntry | null
   dispose(): void
 }
 
