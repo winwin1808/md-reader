@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const flags = vi.hoisted(() => ({ real: false }))
+const flags = vi.hoisted(() => ({ real: false, roots: [] as any[] }))
 vi.mock('react-dom/client', async (orig) => {
   const actual: any = await orig()
   return {
     ...actual,
-    createRoot: vi.fn((el: any) => (flags.real ? actual.createRoot(el) : { render: vi.fn() })),
+    createRoot: vi.fn((el: any) => {
+      if (!flags.real) return { render: vi.fn() }
+      const r = actual.createRoot(el)
+      flags.roots.push(r)
+      return r
+    }),
   }
 })
 vi.mock('./ContentApp', async (orig) => {
@@ -37,6 +42,8 @@ describe('Content script entry point', () => {
   })
 
   afterEach(() => {
+    for (const r of flags.roots.splice(0)) r.unmount()
+    document.getElementById('md-reader-root')?.remove()
     vi.clearAllMocks()
     delete (globalThis as any).chrome
   })
