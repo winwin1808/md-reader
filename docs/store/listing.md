@@ -10,9 +10,9 @@ MD Reader — đọc, soạn, trình chiếu Markdown
 
 ## Mô tả ngắn (≤ 132 ký tự)
 
-VI: Mở file .md là đọc đẹp ngay. Soạn, chia đôi màn hình, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy hoàn toàn trên máy.
+VI: Mở file .md là đọc đẹp ngay. Soạn, chia đôi màn hình, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ khi ngoại tuyến; chia sẻ là tuỳ chọn.
 
-EN: Open any .md file and read it beautifully. Edit, split view, slides, mind map, PDF/Word export. Everything stays on your device.
+EN: Open any .md file and read it beautifully. Edit, split view, slides, mind map, PDF/Word export. Works fully offline; sharing is optional.
 
 ## Danh mục · ngôn ngữ
 
@@ -39,11 +39,16 @@ Trình bày
 • Speaker view có đồng hồ, slide kế tiếp và ghi chú diễn giả.
 • Sơ đồ tư duy từ các đề mục, đi được bằng bàn phím, xuất SVG/PNG.
 
+Chia sẻ
+• Gửi link xem hoặc link sửa cho người khác, cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
+• Xem ai đã viết dòng nào.
+• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi tới máy chủ cộng tác bạn cấu hình.
+
 Xuất
 • HTML một file, PDF (in từ trình duyệt), Word (.docx), PDF slide khổ ngang.
 
 Riêng tư
-• Không tài khoản, không máy chủ, không theo dõi. Tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn. Font được đóng gói sẵn — không gọi ra ngoài khi đọc.
+• Không tài khoản, không theo dõi. Mặc định tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ rời máy khi bạn bật chia sẻ. Font được đóng gói sẵn — không gọi ra ngoài khi đọc.
 
 Mẹo: muốn đọc file trên máy (file://), vào chrome://extensions → MD Reader → bật “Cho phép truy cập URL tệp”.
 
@@ -67,11 +72,16 @@ Present
 • Speaker view with clock, next slide and speaker notes.
 • Mind map of your headings, keyboard navigable, export to SVG/PNG.
 
+Share
+• Send a view link or an edit link, edit together live and see each other's names and cursors.
+• See who wrote which line.
+• Sharing is optional and off by default; only documents you choose to share are sent to the collaboration server you configure.
+
 Export
 • Single-file HTML, PDF (browser print), Word (.docx), landscape slide PDF.
 
 Private by design
-• No account, no server, no tracking. Documents and settings stay in your browser. Fonts are bundled — nothing is fetched while you read.
+• No account, no tracking. By default documents and settings stay in your browser; they leave only when you turn on sharing. Fonts are bundled — nothing is fetched while you read.
 
 Tip: to open local files (file://), go to chrome://extensions → MD Reader → enable “Allow access to file URLs”.
 
@@ -85,14 +95,14 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 
 | Quyền | Lý do (EN — dán vào dashboard) |
 |---|---|
-| `storage` | Saves the user's reading settings (palette, font size, page width) and the widget's collapsed state. No document content is sent anywhere. |
+| `storage` | Saves the user's reading settings (palette, font size, page width) and the widget's collapsed state. Document content is not sent anywhere by this permission. |
 | `activeTab` | Opens the Markdown document in the current tab in the reader page when the user clicks the extension. |
-| Content script on `.md` URLs (host access) | Detects raw Markdown pages (.md / .markdown) and shows a small "Read in MD Reader" tab. It reads the page text only to open it in the reader; nothing is transmitted. |
+| Content script on `.md` URLs (host access) | Detects raw Markdown pages (.md / .markdown) and shows a small "Read in MD Reader" tab. It reads the page text only to open it in the reader; nothing is transmitted unless you turn on sharing for that document. |
 | Remote code | **No** — all code is bundled in the package. |
 
 ## Data usage (tab Privacy practices)
 
-- Thu thập dữ liệu người dùng: **Không** cho mọi mục (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
+- Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó và tên hiển thị tự khai được gửi tới máy chủ cộng tác do người dùng cấu hình — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
 - Tick cả ba cam kết: không bán dữ liệu cho bên thứ ba · không dùng/chuyển cho mục đích không liên quan · không dùng để xét tín dụng.
 - Privacy policy URL: link tới `docs/store/privacy-policy.md` trên GitHub (hoặc GitHub Pages), xem file cùng thư mục.
 
