@@ -43,6 +43,7 @@ import {
   computeBlame,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
+import { defaultRenderPlugins, parseYaml } from '@md-reader/core/plugins'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { openLocalFileAsDoc } from './fs/file-system'
@@ -55,6 +56,8 @@ import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
 import './app.css'
+
+const PLUGINS = defaultRenderPlugins()
 
 const persistSettings = (patch: Record<string, any>) => {
   try {
@@ -341,7 +344,7 @@ export function App(): React.JSX.Element {
   }
 
   const renderHtmlFor = useCallback((text: string) => {
-    const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false })
+    const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false, parseYaml })
     const rendered = renderToHtml(parsed, {
       math: readerSettings?.enableMath !== false,
       stripFrontmatter: readerSettings?.stripFrontmatter,
@@ -350,6 +353,7 @@ export function App(): React.JSX.Element {
       externalLinks: readerSettings?.externalLinks,
       githubAlerts: readerSettings?.githubAlerts,
       localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
+      plugins: PLUGINS,
     })
     return { parsed, rendered }
   }, [readerSettings])
@@ -420,6 +424,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           })
         const out = await Promise.all(
@@ -448,6 +453,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           }).length > 1 : false),
     [exportOpen, content, readerSettings.enableMath],
@@ -461,6 +467,7 @@ export function App(): React.JSX.Element {
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
               localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              plugins: PLUGINS,
             },
           }) : []),
     [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
