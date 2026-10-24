@@ -11,6 +11,8 @@ export interface ParseOptions {
   gfm?: boolean
   /** Math ($..$, $$..$$) via remark-math. Default: true */
   math?: boolean
+  /** Inject a YAML parser (default: yaml.parse) */
+  parseYaml?: (src: string) => unknown
 }
 
 export interface ParseResult {
@@ -70,7 +72,7 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
   if (tree.children[0]?.type === 'yaml') {
     const yamlNode = tree.children[0] as any // actually yaml node type isn't in default mdast
     try {
-      const parsed = yaml.parse(yamlNode.value)
+      const parsed = (options?.parseYaml ?? yaml.parse)(yamlNode.value)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         frontmatter = parsed
       }
