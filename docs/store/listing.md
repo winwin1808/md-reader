@@ -42,7 +42,7 @@ Trình bày
 Chia sẻ
 • Gửi link xem hoặc link sửa cho người khác, cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
 • Xem ai đã viết dòng nào.
-• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi tới máy chủ cộng tác bạn cấu hình.
+• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng nếu bạn nhập trong Cài đặt. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu.
 
 Xuất
 • HTML một file, PDF (in từ trình duyệt), Word (.docx), PDF slide khổ ngang.
@@ -75,7 +75,7 @@ Present
 Share
 • Send a view link or an edit link, edit together live and see each other's names and cursors.
 • See who wrote which line.
-• Sharing is optional and off by default; only documents you choose to share are sent to the collaboration server you configure.
+• Sharing is optional and off by default; only documents you choose to share are sent, to the author's default server (Cloudflare Workers) or your own server if you set one in Settings. Turning sharing off or revoking a link only stops access; it does not delete stored data.
 
 Export
 • Single-file HTML, PDF (browser print), Word (.docx), landscape slide PDF.
@@ -102,7 +102,7 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 
 ## Data usage (tab Privacy practices)
 
-- Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó và tên hiển thị tự khai được gửi tới máy chủ cộng tác do người dùng cấu hình — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
+- Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó (nội dung liên lạc/nội dung trang web) và tên hiển thị tự khai mới được gửi, tới máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng của người dùng — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
 - Tick cả ba cam kết: không bán dữ liệu cho bên thứ ba · không dùng/chuyển cho mục đích không liên quan · không dùng để xét tín dụng.
 - Privacy policy URL: link tới `docs/store/privacy-policy.md` trên GitHub (hoặc GitHub Pages), xem file cùng thư mục.
 
