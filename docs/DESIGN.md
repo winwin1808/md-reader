@@ -89,7 +89,7 @@ nhưng mất granularity actor, đúng thứ cần cho "trace ai sửa chỗ nà
 | Phase | Provider | Ghi ở đâu |
 |---|---|---|
 | 1-7 | `y-indexeddb` | IndexedDB trong extension origin, một DB mỗi `docId` (từ 6e) |
-| 8 | `y-indexeddb` + WebSocket provider tới `apps/api` | thêm Postgres phía server |
+| 8 | `y-indexeddb` + WebSocket provider (`y-partyserver`) tới `apps/api` | Cloudflare Durable Object (SQLite) mỗi `docId` giữ trạng thái nóng; snapshot bền + checkpoint ra R2; token/quyền trong D1 |
 
 `packages/core` **không được biết provider nào đang chạy** — nó nhận vào một
 `Y.Doc` đã bind sẵn. Việc chọn và gắn provider là của `apps/extension`
@@ -127,8 +127,10 @@ apps/extension      MV3. Lớp DUY NHẤT được dùng chrome.*
 (phase 8) apps/api · apps/web
 ```
 
-Ranh giới này tồn tại để phase 8 chạy được `packages/core` trên Node (render
-preview cho share link) và `packages/ui` trong web app mà không viết lại.
+Ranh giới này tồn tại để phase 8 chạy được `packages/core` trên runtime
+Workers (`apps/api`) và `packages/ui` trong `apps/web` mà không viết lại.
+`apps/api` và `apps/web` cũng chỉ import core qua `@md-reader/core`; `apps/api`
+KHÔNG `document`/`window`, cả hai KHÔNG `chrome.*`.
 Vi phạm là blocker cứng ở `review-before-ship`, không phải góp ý.
 
 Import chéo package luôn bằng tên workspace (`@md-reader/core`), không bao giờ
@@ -381,18 +383,31 @@ mọi bề mặt + logo app.* Interface từng phase con: `docs/superpowers/spec
 
 Ship: *gửi link cho người khác xem → cho họ sửa → xem ai sửa chỗ nào.*
 
+Backend là **Cloudflare Workers, chạy trong gói Workers Free** (quyết định
+2026-10-24, thay cho NestJS + Postgres ở bản trước): Durable Object SQLite
+mỗi `docId` làm hub WebSocket + trạng thái nóng qua `y-partyserver`; R2 giữ
+snapshot bền và checkpoint lịch sử; D1 giữ share token, quyền, hạn dùng.
+`apps/web` là trang tĩnh render phía client bằng `@md-reader/ui`; Worker chỉ
+trả snapshot. Intent: `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md`.
+
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
-| 8a | `apps/api` scaffold | NestJS + Postgres, lưu Y update binary, migration |
-| 8b | Share link read-only | Token + hạn dùng; `apps/web` render bằng `core/render` chạy trên Node |
-| 8c | WebSocket provider | Đồng bộ hai chiều thật giữa hai client |
-| 8d | Awareness | Con trỏ + presence |
-| 8e | Phân quyền | view / comment / edit theo từng link |
-| 8f | `BlameGutter` | Blame theo ký tự từ `clientID` |
-| 8g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc |
+| 8a0 | Spike `y-partyserver` trên Durable Object | Hai client đồng bộ thật qua DO; đo bundle Worker; bảng kết quả + xác nhận gói Free đủ, ghi vào §5.6 |
+| 8a | `apps/api` scaffold | Worker + wrangler, DO `DocRoom`, D1 migration, R2 binding, deploy được lên workers.dev |
+| 8b | Share link read-only | Token D1 + hạn dùng + thu hồi; `apps/web` tĩnh render snapshot bằng `@md-reader/ui`; nút Chia sẻ trên app page |
+| 8c | WebSocket provider | Đồng bộ hai chiều thật extension ↔ web, chạy cạnh `y-indexeddb`; URL server cấu hình được trong Settings |
+| 8d | Awareness | Con trỏ + presence với tên tự khai |
+| 8e | Phân quyền | view / edit theo từng link; server chặn update từ kết nối view |
+| 8f | `BlameGutter` | Blame theo ký tự từ `clientID` + tên |
+| 8g | `HistoryTimeline` | Feed checkpoint, tua lại được từng mốc, snapshot từ R2 |
+| 8h | Đọc tại chỗ trong content script (nợ 7o) | Core inject plugin + yaml lazy; content script render tại chỗ < 50 KB gz |
+| 8i | Khoá import | Hai tab cùng mở một URL mới chỉ tạo một doc |
+| 8j | Store kit | Listing + privacy policy nói đúng về chia sẻ (opt-in theo tài liệu); bump version |
 
-Danh tính: 8b dùng tên tự khai lưu trong link token. Auth thật chỉ đặt ra khi
-có nhu cầu thực — không dựng account system trước.
+Danh tính: tên tự khai lưu local, gửi qua awareness; `clientID` Yjs + tên
+dùng cho blame. Không OAuth, không bảng user. Nút Chia sẻ chỉ ở app page;
+content script không gọi server. Không có gì rời máy cho tới khi người dùng
+bấm Chia sẻ.
 
 ## 5. Rủi ro
 
@@ -614,3 +629,13 @@ vừa là thư mục. Bản nháp đầu ghi `phase-N/<id>` và không tạo đ�
 | Excalidraw | chỉ app page, viewMode, lazy | render trong content script |
 | Editor | CodeMirror 6 + y-codemirror.next | Monaco · ProseMirror |
 | Yjs trong content script | Không | Có |
+
+### 5.6 Gói Workers Free và chi phí WebSocket — chưa xác minh
+
+Hạn mức Free: ≤ 100k request/ngày, ≤ 5 GB DO storage/tài khoản, D1 trả lỗi
+khi vượt hạn mức đọc/ghi ngày (từ 2026-09-01). Message WebSocket gửi lên
+tính là request, nên client phải gộp update trước khi gửi và server phải
+cache token theo kết nối thay vì đọc D1 mỗi message. Spike 8a0 phải ghi vào
+đây: `y-partyserver` chạy trên DO được không, hai client đồng bộ được không,
+bundle Worker bao nhiêu KB, và ước lượng request/ngày cho một phiên sửa 30
+phút hai người. Không stage nào được ship 8c trước khi bảng này có số liệu.
