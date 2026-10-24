@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { IndexeddbPersistence, storeState } from 'y-indexeddb'
+import type { RoomBinding } from '@md-reader/core'
 import { ensureDoc, getSource, getMeta, applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core'
 
 export type OriginKind = 'url' | 'file' | 'drop'
@@ -12,6 +13,7 @@ export interface DocRecord {
   lastOpenedAt: number
   hasHandle: boolean
   shortKey?: string
+  room?: RoomBinding
 }
 
 const DB_NAME = 'md_reader_registry'
