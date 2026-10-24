@@ -465,7 +465,9 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7q1: done
 - 7q2: done
 - 7r: done
-- 7s1: split → 7s1a planned · 7s1b pending · 7s1c pending
+- 7s1a: planned
+- 7s1b: pending
+- 7s1c: pending
 - 7s2: pending
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
