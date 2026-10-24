@@ -24,7 +24,8 @@ const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ defa
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid, usePeers } from '@md-reader/ui'
+import { inlineMermaid, usePeers, lineAuthors } from '@md-reader/ui'
+import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
 import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
@@ -37,6 +38,7 @@ import {
   computeTextChanges,
   buildShareUrl,
   normalizeServerUrl,
+  computeBlame,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
@@ -152,6 +154,26 @@ export function App(): React.JSX.Element {
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
   const editorViewRef = useRef<EditorView | null>(null)
+  const [blameOn, setBlameOn] = useState(false)
+  const [blameLines, setBlameLines] = useState<Array<LineAuthor | null> | null>(null)
+  useEffect(() => {
+    if (!blameOn || viewMode === 'reading') { setBlameLines(null); return }
+    const meta = doc.getMap('meta')
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const compute = () => { setBlameLines(lineAuthors(computeBlame(doc), yText.toString())) }
+    const schedule = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { timer = null; compute() }, 300)
+    }
+    compute()
+    yText.observe(schedule)
+    meta.observeDeep(schedule)
+    return () => {
+      yText.unobserve(schedule)
+      meta.unobserveDeep(schedule)
+      if (timer) clearTimeout(timer)
+    }
+  }, [blameOn, viewMode, doc, yText])
   const peers = usePeers(session.awareness)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
@@ -466,6 +488,7 @@ export function App(): React.JSX.Element {
   const toolbarActions: ToolbarAction[] = [
     { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
     { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
+    ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? 'Ẩn người viết' : 'Hiện người viết', icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
     { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
   ]
 
@@ -672,7 +695,7 @@ export function App(): React.JSX.Element {
               <FormattingToolbar onAction={handleFormatAction} />
               <div className="editor-mode-body">
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} />
                 </Suspense>
               </div>
             </div>
@@ -685,7 +708,7 @@ export function App(): React.JSX.Element {
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
-                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
+                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} /></Suspense>}
                   preview={
                     <div ref={docContainerRef} className="a4-document-container">
                       <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
