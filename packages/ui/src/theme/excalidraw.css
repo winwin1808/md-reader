@@ -3,10 +3,10 @@
 .excalidraw-container {
   position: relative;
   margin: 24px 0;
-  border: 1px solid var(--md-border, #e2e8f0);
-  border-radius: 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-m);
   overflow: hidden;
-  background: var(--md-bg-card, #ffffff);
+  background: transparent;
 }
 
 .excalidraw-svg {
@@ -14,6 +14,8 @@
   max-height: 500px;
   display: block;
   margin: 0 auto;
+  background: transparent;
+  font-family: var(--font-ui);
 }
 
 .excalidraw-placeholder-card {
