@@ -85,6 +85,14 @@ export function Deck(props: DeckProps): React.JSX.Element {
   }, [revealControls])
 
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    stageRef.current?.focus()
+    return () => {
+      if (previous && typeof previous.focus === 'function' && previous.isConnected) previous.focus()
+    }
+  }, [])
+
+  useEffect(() => {
     const start = props.initialIndex ?? props.initialSlide
     if (start !== undefined && slides.length > 0) {
       const clamped = Math.max(0, Math.min(slides.length - 1, start))
@@ -107,30 +115,50 @@ export function Deck(props: DeckProps): React.JSX.Element {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      revealControls()
       const target = e.target as HTMLElement | null
+      let onButton = false
       if (target && typeof target.closest === 'function') {
         const tagName = target.tagName?.toLowerCase()
         if (
           tagName === 'input' ||
           tagName === 'textarea' ||
-          tagName === 'button' ||
           target.isContentEditable ||
-          target.closest('button') ||
           target.closest('input') ||
           target.closest('textarea')
         ) {
           return
         }
+        onButton = tagName === 'button' || Boolean(target.closest('button'))
       }
+
+      if (e.key === 'Tab') {
+        const root = stageRef.current
+        if (!root) return
+        const btns = Array.from(
+          root.querySelectorAll<HTMLButtonElement>('.deck-controls button:not(:disabled)')
+        )
+        e.preventDefault()
+        if (btns.length === 0) {
+          root.focus()
+          return
+        }
+        const i = btns.indexOf(document.activeElement as HTMLButtonElement)
+        let next: number
+        if (i === -1) next = e.shiftKey ? btns.length - 1 : 0
+        else next = (i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length
+        btns[next]?.focus()
+        return
+      }
+
+      const isSpace = e.key === ' ' || e.key === 'Space' || e.key === 'Spacebar' || e.code === 'Space'
+      if (onButton && (isSpace || e.key === 'Enter')) return
 
       if (
         e.key === 'ArrowRight' ||
         e.key === 'ArrowDown' ||
         e.key === 'PageDown' ||
-        e.key === ' ' ||
-        e.key === 'Space' ||
-        e.key === 'Spacebar' ||
-        e.code === 'Space'
+        isSpace
       ) {
         e.preventDefault()
         goToSlide(currentIndex + 1)
@@ -158,7 +186,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [currentIndex, slides.length, goToSlide, onClose])
+  }, [currentIndex, slides.length, goToSlide, onClose, revealControls])
 
   const handleOpenSpeaker = () => {
     onOpenSpeaker?.()
@@ -170,14 +198,13 @@ export function Deck(props: DeckProps): React.JSX.Element {
   const counterText = totalSlides > 0 ? `Trang ${currentIndex + 1} / ${totalSlides}` : 'Trang 0 / 0'
 
   const overlayStyle: React.CSSProperties & Record<string, string | undefined> = {
-    backgroundColor: presentationSettings?.slideBgColor || undefined,
-    color: presentationSettings?.slideTextColor || undefined,
-    fontFamily: presentationSettings?.slideFont || undefined,
-    '--slide-bg': presentationSettings?.slideBgColor,
-    '--slide-fg': presentationSettings?.slideTextColor,
-    '--slide-font': presentationSettings?.slideFont,
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,
     '--slide-custom-accent': presentationSettings?.slideAccentColor,
+  }
+  const frameVars: Record<string, string | undefined> = {
+    '--slide-bg': presentationSettings?.slideBgColor || undefined,
+    '--slide-fg': presentationSettings?.slideTextColor || undefined,
+    '--slide-font': presentationSettings?.slideFont || undefined,
   }
 
   return (
@@ -186,27 +213,31 @@ export function Deck(props: DeckProps): React.JSX.Element {
         className="deck-overlay"
         style={overlayStyle}
         ref={stageRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trình chiếu"
         onMouseMove={revealControls}
         onFocus={revealControls}
       >
-        {Boolean(presentationSettings?.slideBgImage) && (
-          <div
-            className="deck-custom-bg-image"
-            style={{
-              backgroundImage: `url(${presentationSettings!.slideBgImage})`,
-              opacity: (presentationSettings?.slideImageOpacity ?? 100) / 100,
-            }}
-            aria-hidden="true"
-          />
-        )}
         <div
           className="deck-slide-box"
           style={{ width: SLIDE_W * scale, height: SLIDE_H * scale }}
         >
           <div
-            className="deck-slide deck-slide-frame deck-slide-container deck-slide-content"
-            style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}
+            className="deck-slide deck-slide-frame deck-slide-container"
+            style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})`, ...frameVars }}
           >
+            {Boolean(presentationSettings?.slideBgImage) && (
+              <div
+                className="deck-custom-bg-image"
+                style={{
+                  backgroundImage: `url(${presentationSettings!.slideBgImage})`,
+                  opacity: (presentationSettings?.slideImageOpacity ?? 100) / 100,
+                }}
+                aria-hidden="true"
+              />
+            )}
             <div
               className="md-viewer deck-slide-content"
               dangerouslySetInnerHTML={{ __html: currentSlide?.html ?? '' }}
