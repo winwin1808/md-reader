@@ -27,18 +27,27 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
   const store = deps.store ?? new D1TokenStore(env.DB)
 
   if (url.pathname.startsWith('/api/')) {
-    return (await handleApi(req, store)) ?? json({ error: 'not found' }, 404)
+    return (await handleApi(req, store, {
+      snapshot: (roomId) =>
+        deps.routeParty(
+          new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
+            headers: { 'x-mdr-internal': '1' },
+          }),
+          env,
+        ).then((r) => r ?? json({ error: 'not found' }, 404)),
+    })) ?? json({ error: 'not found' }, 404)
   }
 
   if (url.pathname.startsWith('/parties/')) {
-    const [, , party, roomId] = url.pathname.split('/')
-    if (party !== 'doc-room') return json({ error: 'not found' }, 404)
+    const [, , party, roomId, ...rest] = url.pathname.split('/')
+    if (party !== 'doc-room' || rest.some((s) => s !== '')) return json({ error: 'not found' }, 404)
     const wantedRoom = safeDecode(roomId ?? '')
     if (wantedRoom === null) return json({ error: 'bad path' }, 400)
     const auth = await authorizeWs(req, store)
     if (auth instanceof Response) return auth
     if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
     const req2 = new Request(req)
+    req2.headers.delete('x-mdr-internal')
     req2.headers.set('x-mdr-role', auth.role)
     const res = await deps.routeParty(req2, env)
     return res ?? json({ error: 'not found' }, 404)
