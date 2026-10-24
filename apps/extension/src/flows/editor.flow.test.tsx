@@ -1,8 +1,9 @@
+import 'fake-indexeddb/auto'
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, waitFor, fireEvent, act, cleanup } from '@testing-library/react'
 import { EditorView } from '@md-reader/ui'
-import * as fsSystem from '../src/app/fs/file-system'
+import * as fsSystem from '../app/fs/file-system'
 
 if (typeof Range.prototype.getClientRects !== 'function') {
   Range.prototype.getClientRects = () => [{
@@ -66,7 +67,7 @@ globalThis.fetch = vi.fn().mockResolvedValue({
   text: async () => '# Phase 5 Architecture\n\nInitial content with sample word here.'
 })
 
-import { App } from '../src/app/App'
+import { App } from '../app/App'
 
 describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, and Conflict Resolution', () => {
   afterEach(() => {

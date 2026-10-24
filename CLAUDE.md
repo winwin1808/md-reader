@@ -125,7 +125,9 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
 | 3 | Trình chiếu | Bấm Present là trình bày được, có speaker view |
 | 4 | Mindmap & Excalidraw | Nhìn cấu trúc dạng cây; xem được sơ đồ excalidraw nhúng |
 | 5 | Chỉnh sửa | Sửa và lưu về đĩa an toàn, có phát hiện lệch file |
-| 6 | Chia sẻ & cộng tác | Link xem → cùng sửa → trace ai sửa chỗ nào (3 lần ship nhỏ) |
+| 6 | Gia cố | Không mất/nhân đôi chữ, lưu thẳng về đĩa sau reload, quyền tối thiểu, Playwright thật |
+| 7 | Giao diện Lề sách | Giao diện phương án A cho mọi bề mặt + logo app |
+| 8 | Chia sẻ & cộng tác | Link xem → cùng sửa → trace ai sửa chỗ nào (3 lần ship nhỏ) |
 
 ## Status
 
@@ -160,3 +162,4 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
 
 
 
+- 2026-10-24 — **Phase 6 HOÀN TẤT (Gia cố)**: 30 phase con (6a..6l, gồm 6e4/6f3/6j4 tách lúc plan) merge vào `phase-6`, MR `phase-6` → `main` đã mở, **chưa merge**. Bây giờ đúng: ghi Y.Text luôn là delta nhỏ nhất; `formatVersion: 2` (`gc:false`, migration v1 + fixture); registry `docId` (`?doc=<id>`), mỗi doc một IDB; handle theo doc, xin lại quyền (Cmd+S cũng xin); diff 3 chiều thật; mốc URL `meta.remoteHash` tách khỏi mốc đĩa `originHash`; rehype plugin trước sanitize + `clobberPrefix`; quyền `storage`+`activeTab`; math KaTeX; checkpoint có `clientIds` + snapshot; Playwright `pnpm --filter extension e2e` 3/3. Test: core 182 · ui 215 · extension 169; typecheck/build exit 0; content.js gz 11.76KB. Còn mở: một flake IDB `TransactionInactiveError` (~1/10 lượt suite extension) → 7s1; app.js gz 408KB (KaTeX trong chunk chính). Phase tiếp theo: **Phase 7 (Giao diện Lề sách)**, branch `phase-7` xếp chồng trên `phase-6`.

@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>md-reader · phương án giao diện</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Source+Sans+3:wght@400;500;600&family=Source+Code+Pro:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ───────────── Mockup chrome (không thuộc thiết kế) ───────────── */
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:#cfcfcf;color:#222}
+.mock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:8px 16px;background:#e6e6e6;border-bottom:1px solid #bbb}
+.mock b{font-weight:600}
+.mock .grp{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.mock .grp span{color:#555;margin-right:4px}
+.mock button{font:inherit;padding:4px 10px;border:1px solid #aaa;background:#f6f6f6;border-radius:3px;cursor:pointer;color:#222}
+.mock button[aria-pressed=true]{background:#222;color:#fff;border-color:#222}
+.mock .idea{flex-basis:100%;color:#333;margin:0}
+.tokens{display:none;flex-basis:100%;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#333}
+.mock.show-tokens .tokens{display:flex}
+.tokens .sw{display:inline-flex;align-items:center;gap:6px}
+.tokens .sw i{width:18px;height:18px;border:1px solid #0003;display:inline-block}
+
+/* ───────────── Token theo phương án ───────────── */
+#app{
+  --bg:#fff;--surface:#f4f4f4;--text:#222;--mute:#666;--rule:#ddd;--accent:#1a5;--accent-ink:#fff;--hl:#fe6;
+  --font-body:Georgia,serif;--font-ui:system-ui,sans-serif;--font-code:ui-monospace,monospace;
+  --r-s:3px;--r-m:6px;--body-size:18px;--body-lh:1.62;--measure:36rem;
+  --k:var(--text);--str:var(--text);--com:var(--mute);
+}
+#app[data-opt=a]{
+  --bg:#F1F3F2;--surface:#E5EAE7;--text:#1B2422;--mute:#5E6A67;--rule:#D3DAD7;--accent:#23568C;--accent-ink:#fff;--hl:#F3DE4A;
+  --font-body:"Literata",Georgia,serif;--font-ui:"IBM Plex Sans",system-ui,sans-serif;--font-code:"IBM Plex Mono",ui-monospace,monospace;
+  --r-s:3px;--r-m:6px;--body-size:18px;--body-lh:1.62;--measure:35rem;
+  --k:#1B2422;--str:#2F6B4F;--com:#6F7B78;
+}
+#app[data-opt=b]{
+  --bg:#FFFFFF;--surface:#F3F5F6;--text:#2A2E33;--mute:#767D85;--rule:#E3E6E9;--accent:#0E7470;--accent-ink:#fff;--hl:#CDEDEA;
+  --font-body:"Source Serif 4",Georgia,serif;--font-ui:"Source Sans 3",system-ui,sans-serif;--font-code:"Source Code Pro",ui-monospace,monospace;
+  --r-s:2px;--r-m:4px;--body-size:18px;--body-lh:1.66;--measure:37rem;
+  --k:#0E7470;--str:#8A5A12;--com:#8A9199;
+}
+#app[data-opt=c]{
+  --bg:#161F2B;--surface:#1D2734;--text:#DDE2E9;--mute:#8D98A7;--rule:#2B3747;--accent:#EDB35A;--accent-ink:#1A1206;--hl:#5A4420;
+  --font-body:"Newsreader",Georgia,serif;--font-ui:"Be Vietnam Pro",system-ui,sans-serif;--font-code:"Source Code Pro",ui-monospace,monospace;
+  --r-s:4px;--r-m:10px;--body-size:19.5px;--body-lh:1.72;--measure:34rem;
+  --k:#EDB35A;--str:#A9CDB3;--com:#7F8B9B;
+  color-scheme:dark;
+}
+
+/* ───────────── Khung app ───────────── */
+#app{position:relative;height:calc(100vh - var(--mock-h,88px));overflow:hidden;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font-family:var(--font-ui)}
+#app button{font:inherit;color:inherit;cursor:pointer}
+#app :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+.topbar{flex:none;display:flex;align-items:center;gap:6px;height:52px;padding:0 12px 0 8px;border-bottom:1px solid var(--rule);font-size:14px}
+.crumb{display:flex;gap:4px;align-items:baseline;min-width:0;margin-right:auto;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb .dir{color:var(--mute)}
+.crumb .file{font-weight:500}
+.ib{display:inline-grid;place-items:center;width:34px;height:34px;border:0;background:none;border-radius:var(--r-s)}
+.ib:hover{background:var(--surface)}
+.tb{height:34px;padding:0 10px;border:0;background:none;border-radius:var(--r-s);white-space:nowrap}
+.tb:hover{background:var(--surface)}
+.seg{display:inline-flex;gap:2px;margin:0 6px}
+.seg button{white-space:nowrap;border:0;background:none;padding:6px 8px;border-bottom:2px solid transparent;color:var(--mute)}
+.seg button[aria-pressed=true]{color:var(--text);border-bottom-color:var(--accent)}
+.save{display:inline-flex;align-items:center;gap:6px;color:var(--mute);margin:0 8px;white-space:nowrap}
+.save .dot{width:7px;height:7px;border-radius:50%;background:var(--mute)}
+#app[data-dirty=true] .save{color:var(--text)}
+#app[data-dirty=true] .save .dot{background:var(--accent)}
+
+.body{flex:1;min-height:0;display:flex}
+.toc{flex:none;width:15.5rem;overflow:auto;padding:28px 16px 28px 20px;border-right:1px solid var(--rule);font-size:14px}
+.toc h2{font-size:13px;font-weight:600;margin:0 0 12px;color:var(--text)}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc ol ol{padding-left:14px}
+.toc a{display:block;padding:5px 6px;color:var(--mute);text-decoration:none;border-radius:var(--r-s);line-height:1.35}
+.toc a:hover{color:var(--text)}
+.toc a[aria-current=true]{color:var(--text);font-weight:500}
+.page{flex:1;min-width:0;overflow:auto;scroll-behavior:smooth}
+.minimap,.status,.editor,.fmt,.conflict,.palette{display:none}
+.scrim,.sheet,.present,.raw{display:none}
+
+/* ───────────── Nội dung tài liệu (dùng chung) ───────────── */
+.doc{max-width:var(--measure);margin:0 auto;padding:56px 24px 120px;font-family:var(--font-body);font-size:var(--body-size);line-height:var(--body-lh)}
+.doc h1,.doc h2,.doc h3{font-weight:600;line-height:1.2;position:relative;margin:2.2em 0 .6em}
+.doc h1{font-size:2.25em;margin-top:0;letter-spacing:-.01em}
+.doc h2{font-size:1.4em}
+.doc h3{font-size:1.12em}
+.doc p,.doc ol,.doc ul{margin:0 0 1em}
+.doc .lede{font-size:1.12em;color:var(--text)}
+.doc a{color:var(--accent);text-underline-offset:.18em}
+.doc code{white-space:nowrap;font-family:var(--font-code);font-size:.84em;background:var(--surface);padding:.08em .32em;border-radius:var(--r-s)}
+.doc ol{padding-left:1.4em}
+.doc li{margin:.35em 0}
+.doc li::marker{color:var(--mute);font-family:var(--font-ui)}
+.doc mark{background:var(--hl);color:inherit;padding:0 .08em;border-radius:2px}
+.g{display:none}
+.note{display:block;margin:0 0 1.2em;font-family:var(--font-ui);font-size:14.5px;line-height:1.55;color:var(--mute)}
+.note strong{color:var(--text);font-weight:600;margin-right:.35em}
+.table-wrap{overflow-x:auto;margin:1.2em 0 1.6em}
+.doc table{width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:15px;line-height:1.45}
+.doc th{text-align:left;font-weight:600;padding:8px 12px 8px 0;border-bottom:1.5px solid var(--text)}
+.doc td{padding:9px 12px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.doc td code{font-size:.92em}
+.code{margin:1.2em 0 1.6em;background:var(--surface);border-radius:var(--r-m);overflow:hidden}
+.code figcaption{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 0 16px;font-family:var(--font-ui);font-size:12.5px;color:var(--mute)}
+.code .copy{border:0;background:none;padding:4px 8px;border-radius:var(--r-s);color:var(--mute)}
+.code .copy:hover{color:var(--text);background:var(--bg)}
+.code pre{margin:0;padding:8px 16px 16px;overflow-x:auto;font-family:var(--font-code);font-size:14px;line-height:1.6}
+.code pre code{background:none;padding:0;font-size:inherit}
+.code .fence{display:none}
+.k{color:var(--k);font-weight:500}.s{color:var(--str)}.c{color:var(--com);font-style:italic}
+
+/* ───────────── Editor (Viết / Song song) ───────────── */
+.editor{flex:1;min-width:0;overflow:auto;background:var(--bg);font-family:var(--font-code);font-size:14px;line-height:1.7;counter-reset:ln;padding:20px 0 80px}
+.editor .ln{position:relative;padding:0 24px 0 56px;white-space:pre-wrap;word-break:break-word;min-height:1.7em}
+.editor .ln::before{counter-increment:ln;content:counter(ln);position:absolute;left:0;width:40px;text-align:right;color:var(--mute);opacity:.6;font-size:12px}
+.editor .ln.on{background:var(--surface)}
+.editor .ln.on::before{opacity:1}
+.editor .mh{font-weight:500}
+.editor .mm{color:var(--mute)}
+.editor .caret{display:inline-block;width:2px;height:1.2em;vertical-align:-.2em;background:var(--accent);margin-left:1px}
+.fmt{flex:none;gap:2px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--rule);font-size:13px}
+.fmt button{border:0;background:none;padding:5px 8px;border-radius:var(--r-s);color:var(--mute)}
+.fmt button:hover{background:var(--surface);color:var(--text)}
+.fmt .sep{width:1px;background:var(--rule);margin:4px 6px}
+.conflict{flex:none;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--surface);font-size:14px}
+.conflict p{margin:0 auto 0 0;max-width:46rem}
+.conflict p b{font-weight:600}
+.btn{height:32px;padding:0 12px;border:1px solid var(--rule);background:var(--bg);border-radius:var(--r-s);white-space:nowrap}
+.btn:hover{border-color:var(--mute)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink) !important}
+.btn.quiet{border-color:transparent;background:none}
+.pane-split{display:none}
+
+#app[data-screen=write] .page,#app[data-screen=split] .toc,#app[data-screen=write] .toc{display:none}
+#app[data-screen=write] .editor,#app[data-screen=split] .editor{display:block}
+#app[data-screen=write] .fmt,#app[data-screen=split] .fmt{display:flex}
+#app[data-screen=split] .conflict{display:flex}
+#app[data-screen=split] .editor{border-right:1px solid var(--rule);flex:1 1 50%}
+#app[data-screen=split] .page{flex:1 1 50%}
+#app[data-screen=split] .doc{padding-top:40px}
+#app[data-screen=write] .editor{max-width:none}
+#app[data-screen=write] .editor .ln{max-width:52rem;margin:0 auto}
+
+/* ───────────── Cài đặt ───────────── */
+#app[data-screen=settings] .scrim{display:block;position:absolute;inset:0;background:color-mix(in srgb,var(--text) 28%,transparent);z-index:20}
+#app[data-screen=settings] .sheet{display:flex}
+.sheet{position:absolute;top:0;right:0;bottom:0;width:min(27rem,100%);z-index:21;flex-direction:column;background:var(--bg);border-left:1px solid var(--rule);font-size:14px}
+.sheet>header{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 12px 24px;border-bottom:1px solid var(--rule)}
+.sheet>header h2{margin:0;font-size:17px;font-weight:600}
+.sheet-body{overflow:auto;padding:8px 24px 48px}
+.grp{padding:20px 0 8px;border-bottom:1px solid var(--rule)}
+.grp:last-child{border-bottom:0}
+.grp h3{margin:0 0 12px;font-size:15px;font-weight:600}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 0}
+.row.col{flex-direction:column;align-items:stretch}
+.lbl{font-weight:500}
+.sheet .seg{margin:0;border:1px solid var(--rule);border-radius:var(--r-s);padding:2px}
+.sheet .seg button{border:0;padding:5px 10px;border-radius:calc(var(--r-s) - 1px)}
+.sheet .seg button[aria-pressed=true]{background:var(--surface);color:var(--text)}
+.swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.swatch{border:1px solid var(--rule);border-radius:var(--r-m);padding:10px;text-align:left;background:var(--bg)}
+.swatch .chip{display:block;height:46px;border-radius:var(--r-s);padding:6px 8px;font:600 18px/1 var(--font-body);position:relative}
+.swatch .chip i{position:absolute;left:8px;bottom:7px;width:22px;height:4px;border-radius:2px}
+.swatch .nm{display:block;margin-top:8px;font-size:13px}
+.swatch[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.fonts{display:flex;flex-direction:column;gap:6px}
+.fontopt{display:flex;align-items:baseline;gap:12px;padding:8px 10px;border:1px solid var(--rule);border-radius:var(--r-s);background:var(--bg);text-align:left}
+.fontopt[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.fontopt .nm{width:6.5rem;flex:none;font-size:13px;color:var(--mute)}
+.fontopt .smp{font-size:16px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.range{display:flex;align-items:center;gap:10px}
+.range input{accent-color:var(--accent);width:9rem}
+.range output{width:3.2rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--mute)}
+.tg{display:flex;align-items:flex-start;gap:12px;padding:9px 0;cursor:pointer}
+.tg input{position:absolute;opacity:0;pointer-events:none}
+.tg .track{flex:none;width:34px;height:20px;border-radius:10px;background:var(--rule);position:relative;margin-top:1px;transition:background .15s}
+.tg .track::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--bg);transition:transform .15s}
+.tg input:checked+.track{background:var(--accent)}
+.tg input:checked+.track::after{transform:translateX(14px)}
+.tg input:focus-visible+.track{outline:2px solid var(--accent);outline-offset:2px}
+.tg .txt{display:flex;flex-direction:column;gap:2px}
+.tg small,.rd small,.row small{color:var(--mute);font-size:13px}
+.rd{display:flex;gap:10px;align-items:flex-start;padding:7px 0;cursor:pointer}
+.rd input{accent-color:var(--accent);margin-top:3px}
+.rd span{display:flex;flex-direction:column;gap:2px}
+
+/* ───────────── Trình chiếu (bảng điều khiển diễn giả) ───────────── */
+#app[data-screen=present] .present{display:grid}
+.present{position:absolute;inset:0;z-index:30;background:var(--bg);grid-template-columns:minmax(0,1fr) minmax(16rem,24rem);grid-template-rows:auto minmax(0,1fr);gap:20px;padding:20px 24px 24px}
+.p-head{grid-column:1/-1;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.timer{display:flex;align-items:baseline;gap:14px}
+.t-big{font-size:56px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.t-sub{color:var(--mute);font-size:15px}
+.p-count{font-size:15px;color:var(--mute)}
+.p-clock{font-size:15px;color:var(--mute);font-variant-numeric:tabular-nums}
+.p-actions{margin-left:auto;display:flex;gap:8px}
+.p-actions .btn{height:40px;padding:0 16px;font-size:15px}
+.stage-wrap{min-height:0;display:flex;align-items:center;justify-content:center}
+.stage{width:100%;max-height:100%;aspect-ratio:16/9;container-type:inline-size;background:var(--surface);border-radius:var(--r-m);overflow:hidden}
+.stage-wrap .stage{width:min(100%,calc((100vh - 220px) * 16 / 9))}
+.slide{height:100%;padding:7cqw 8cqw;font-family:var(--font-body);font-size:3.1cqw;line-height:1.45}
+.slide h2{font-size:2em;font-weight:600;margin:0 0 .7em;line-height:1.1}
+.slide ul,.slide ol{margin:0;padding-left:1.1em}
+.slide li{margin:.35em 0}
+.slide li::marker{color:var(--accent)}
+.p-side{min-height:0;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.p-side .lab{font-size:14px;color:var(--mute);margin-top:6px}
+.p-notes{font-size:21px;line-height:1.5}
+.p-notes p{margin:0 0 .7em}
+
+/* ───────────── Trang .md thô (content script) ───────────── */
+#app[data-screen=raw] .raw{display:block}
+.raw{position:absolute;inset:0;z-index:30;background:#fff;color:#000;overflow:auto}
+.raw pre{margin:0;padding:8px;font:13px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.raw-tab{position:fixed;right:0;top:calc(var(--mock-h,88px) + 40vh);display:flex;flex-direction:column;align-items:stretch;background:var(--bg);color:var(--text);border:1px solid var(--rule);border-right:0;border-radius:var(--r-m) 0 0 var(--r-m);font-family:var(--font-ui);font-size:14px;box-shadow:0 1px 2px color-mix(in srgb,var(--text) 18%,transparent)}
+.raw-open{display:flex;align-items:center;gap:8px;padding:12px 14px;border:0;background:none}
+.raw-open:hover{background:var(--surface)}
+.raw-hide{border:0;border-top:1px solid var(--rule);background:none;padding:6px 14px;font-size:12.5px;color:var(--mute) !important;text-align:left}
+
+/* ═════════════ A · Lề sách ═════════════ */
+#app[data-opt=a] .toc a[aria-current=true]{background:linear-gradient(transparent 18%,var(--hl) 18%,var(--hl) 86%,transparent 86%);background-size:100% 100%;border-radius:0}
+#app[data-opt=a] .doc{max-width:calc(var(--measure) + 17rem);padding-right:calc(17rem + 24px)}
+#app[data-opt=a] .note{float:right;clear:right;width:14.5rem;margin:.3em -17rem 1em 0;padding-top:10px;border-top:1px solid var(--text)}
+#app[data-opt=a] .note strong{display:block;margin-bottom:2px}
+#app[data-opt=a] .doc h1{font-size:2.4em;font-weight:600}
+#app[data-opt=a] .doc h3{font-style:italic;font-weight:400;font-size:1.2em}
+#app[data-opt=a] .code pre{font-size:13.5px}
+#app[data-opt=a] .t-big{font-family:var(--font-body)}
+#app[data-opt=a] .raw-open svg{color:var(--accent)}
+@media (max-width:1100px){
+  #app[data-opt=a] .doc{max-width:var(--measure);padding-right:24px}
+  #app[data-opt=a] .note{float:none;width:auto;margin:0 0 1.2em}
+}
+
+/* ═════════════ B · Mã nguồn ═════════════ */
+#app[data-opt=b] .topbar,#app[data-opt=b] .toc{display:none}
+#app[data-opt=b] .status{display:flex}
+.status{flex:none;align-items:center;gap:2px;height:36px;padding:0 6px 0 14px;border-top:1px solid var(--rule);background:var(--surface);font-size:13px;color:var(--mute);white-space:nowrap;overflow-x:auto}
+.status .cell{padding:0 10px 0 0}
+.status .cell.file{color:var(--text);font-weight:500}
+.status .spacer{flex:1}
+.status .seg{margin:0 4px}
+.status .seg button{padding:4px 7px;border-bottom-width:2px}
+.status .tb,.status .ib{height:28px;color:var(--text)}
+.status .ib{width:28px}
+.status kbd{font-family:var(--font-ui);font-size:12px;color:var(--mute);margin-left:4px}
+#app[data-opt=b] .doc{padding-left:5rem;max-width:calc(var(--measure) + 5rem)}
+#app[data-opt=b] .g{display:inline;position:absolute;right:calc(100% + .55rem);top:.22em;font:400 .56em/1.6 var(--font-code);color:var(--mute);letter-spacing:.02em;white-space:nowrap}
+#app[data-opt=b] .doc h1 .g{top:.32em;font-size:.4em}
+#app[data-opt=b] .doc h1{font-size:2.05em}
+#app[data-opt=b] .doc ol{list-style:none;counter-reset:li;padding-left:0}
+#app[data-opt=b] .doc ol li{position:relative;counter-increment:li}
+#app[data-opt=b] .doc ol li::before{content:counter(li) ".";position:absolute;right:calc(100% + .7rem);font:400 .8em/2 var(--font-code);color:var(--mute)}
+#app[data-opt=b] .note{position:relative;padding-left:1em;border-left:2px solid var(--rule);font-family:var(--font-body);font-size:inherit;line-height:inherit;color:var(--text)}
+#app[data-opt=b] .note .note-g{position:absolute;right:calc(100% + .55rem);top:.3em;font-size:.72em}
+#app[data-opt=b] .note strong{display:none}
+#app[data-opt=b] .code{border-radius:var(--r-s)}
+#app[data-opt=b] .code figcaption{display:none}
+#app[data-opt=b] .code .fence{display:block;padding:10px 16px 0;font:13px/1.6 var(--font-code);color:var(--mute)}
+#app[data-opt=b] .code .fence:last-child{padding:0 16px 10px}
+#app[data-opt=b] .code pre{padding:2px 16px}
+#app[data-opt=b] .doc code{border-radius:var(--r-s)}
+#app[data-opt=b] .editor{font-size:14.5px}
+#app[data-opt=b] .t-big{font-weight:500}
+#app[data-opt=b] .palette.open{display:block}
+.palette{position:absolute;z-index:25;top:56px;left:50%;transform:translateX(-50%);width:min(32rem,calc(100% - 32px));background:var(--bg);border:1px solid var(--rule);border-radius:var(--r-m);box-shadow:0 6px 24px color-mix(in srgb,var(--text) 16%,transparent);font-size:15px}
+.palette input{width:100%;border:0;border-bottom:1px solid var(--rule);padding:14px 16px;font:inherit;background:none;color:var(--text);outline:0}
+.palette ul{list-style:none;margin:0;padding:6px}
+.palette li a{display:flex;gap:12px;padding:8px 10px;border-radius:var(--r-s);color:var(--text);text-decoration:none}
+.palette li a:hover,.palette li a.sel{background:var(--surface)}
+.palette li a span{font-family:var(--font-code);color:var(--mute);width:2.2rem;text-align:right;font-size:13px}
+
+/* ═════════════ C · Đèn bàn ═════════════ */
+#app[data-opt=c] .toc{display:none}
+#app[data-opt=c] .minimap{display:block}
+#app[data-opt=c] .topbar{border-bottom-color:transparent;color:var(--mute)}
+#app[data-opt=c] .crumb .file{color:var(--text)}
+#app[data-opt=c] .doc h1,#app[data-opt=c] .doc h2,#app[data-opt=c] .doc h3{font-weight:500}
+#app[data-opt=c] .doc h1{font-size:2.2em;letter-spacing:-.015em;text-wrap:balance}
+#app[data-opt=c] .doc h3{font-style:italic;font-weight:400}
+#app[data-opt=c] .doc>*{transition:opacity .35s ease}
+#app[data-opt=c][data-lamp=on] .doc>.dim{opacity:.36}
+#app[data-opt=c] .note{padding-left:1.4rem;font-family:var(--font-body);font-size:.92em;font-style:italic;line-height:1.6}
+#app[data-opt=c] .note strong{font-style:normal;font-family:var(--font-ui);font-size:.82em;color:var(--accent)}
+#app[data-opt=c] .doc th{border-bottom-color:var(--mute)}
+#app[data-opt=c] .doc code{background:var(--surface)}
+#app[data-opt=c] .editor .ln.on{background:#202B39}
+#app[data-opt=c] .t-big{color:var(--accent)}
+.minimap{flex:none;width:56px;position:relative;border-left:1px solid var(--rule)}
+.minimap button{position:absolute;right:14px;height:9px;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:flex-end}
+.minimap button i{display:block;height:2px;width:100%;background:var(--mute);border-radius:1px;opacity:.6}
+.minimap button[aria-current=true] i{background:var(--accent);opacity:1;height:3px}
+.minimap button:hover i{opacity:1}
+.minimap button span{position:absolute;right:calc(100% + 10px);white-space:nowrap;font-size:13px;background:var(--surface);color:var(--text);padding:4px 8px;border-radius:var(--r-s);opacity:0;pointer-events:none}
+.minimap button:hover span,.minimap button:focus-visible span{opacity:1}
+
+/* ───────────── Màn hẹp ───────────── */
+@media (max-width:860px){
+  .toc{display:none !important}
+  .crumb .dir,.topbar .tb.wide,.topbar .save-txt{display:none}
+  .crumb{min-width:5.5rem}
+  .topbar{gap:2px;padding:0 6px 0 4px}
+  .topbar .seg{margin:0}
+  .topbar .save{margin:0 4px}
+  .doc{padding:32px 18px 96px}
+  #app[data-opt=b] .doc{padding-left:3.2rem}
+  #app[data-screen=split] .body{flex-direction:column}
+  #app[data-screen=split] .editor{border-right:0;border-bottom:1px solid var(--rule)}
+  .present{grid-template-columns:1fr;grid-template-rows:auto auto auto;overflow:auto}
+  .t-big{font-size:42px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important;scroll-behavior:auto !important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-toc" viewBox="0 0 20 20"><path d="M3 5h14M6 10h11M6 15h11"/></symbol>
+  <symbol id="i-search" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5"/><path d="M12.3 12.3 17 17"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 20 20"><path d="M3 6h8M15 6h2M3 14h2M9 14h8"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></symbol>
+  <symbol id="i-open" viewBox="0 0 20 20"><path d="M4 3.5h7l4 4v9h-11z"/><path d="M11 3.5v4h4M7 11h6M7 14h4"/></symbol>
+</svg>
+
+<div class="mock" id="mock">
+  <div class="grp"><span>Phương án</span>
+    <button data-opt="a">A · Lề sách</button><button data-opt="b">B · Mã nguồn</button><button data-opt="c">C · Đèn bàn</button>
+  </div>
+  <div class="grp"><span>Màn hình</span>
+    <button data-screen="read">Đọc</button><button data-screen="split">Song song + xung đột</button><button data-screen="write">Viết</button><button data-screen="settings">Cài đặt</button><button data-screen="present">Trình chiếu</button><button data-screen="raw">Trang .md thô</button>
+  </div>
+  <div class="grp"><button id="tok-btn" aria-pressed="false">Xem bộ token</button></div>
+  <p class="idea" id="idea"></p>
+  <div class="tokens" id="tokens"></div>
+</div>
+
+<div id="app" data-opt="a" data-screen="read" data-lamp="on">
+
+  <div class="topbar">
+    <button class="ib" aria-label="Mục lục" title="Mục lục"><svg class="i"><use href="#i-toc"/></svg></button>
+    <div class="crumb"><span class="dir">docs /</span><span class="file">dong-bo-tai-lieu.md</span></div>
+    <div class="seg" role="group" aria-label="Chế độ xem">
+      <button data-go="read" aria-pressed="true">Đọc</button><button data-go="write">Viết</button><button data-go="split">Song song</button>
+    </div>
+    <span class="save" aria-live="polite"><span class="dot"></span><span class="save-txt">Đã lưu 14:02</span></span>
+    <button class="ib" aria-label="Tìm trong tài liệu (⌘F)" title="Tìm trong tài liệu (⌘F)"><svg class="i"><use href="#i-search"/></svg></button>
+    <button class="tb wide" data-go="present">Trình chiếu</button>
+    <button class="tb wide">Xuất file</button>
+    <button class="ib" data-go="settings" aria-label="Cài đặt" title="Cài đặt"><svg class="i"><use href="#i-sliders"/></svg></button>
+  </div>
+
+  <div class="fmt" role="toolbar" aria-label="Định dạng">
+    <button title="Đậm (⌘B)"><b>Đậm</b></button><button title="Nghiêng (⌘I)"><i>Nghiêng</i></button><button title="Mã (⌘E)">Mã</button><button title="Liên kết (⌘K)">Liên kết</button>
+    <span class="sep"></span>
+    <button>Tiêu đề</button><button>Danh sách</button><button>Việc cần làm</button><button>Trích dẫn</button><button>Bảng</button>
+    <span class="sep"></span>
+    <button title="Hoàn tác (⌘Z)">Hoàn tác</button><button title="Làm lại (⇧⌘Z)">Làm lại</button>
+  </div>
+
+  <div class="conflict" role="status">
+    <p><b>File trên đĩa vừa được sửa ở nơi khác.</b> Bản bạn đang sửa chưa có thay đổi đó. Tự động lưu đã tạm dừng cho tới khi bạn chọn.</p>
+    <button class="btn quiet">Xem khác biệt (3 dòng)</button>
+    <button class="btn">Lấy bản trên đĩa</button>
+    <button class="btn primary">Giữ bản của tôi và ghi đè</button>
+  </div>
+
+  <div class="body">
+    <nav class="toc" aria-label="Mục lục">
+      <h2>Mục lục</h2>
+      <ol>
+        <li><a href="#h-top">Đồng bộ tài liệu bằng Yjs</a>
+          <ol>
+            <li><a href="#h-why">Vì sao Y.Doc là nguồn sự thật</a></li>
+            <li><a href="#h-schema">Lược đồ</a></li>
+            <li><a href="#h-provider">Gắn provider</a>
+              <ol><li><a href="#h-check">Kiểm tra nhanh</a></li></ol>
+            </li>
+          </ol>
+        </li>
+      </ol>
+    </nav>
+
+    <div class="editor" aria-label="Mã nguồn Markdown">
+      <div class="ln"><span class="mm"># </span><span class="mh">Đồng bộ tài liệu bằng Yjs</span></div>
+      <div class="ln"></div>
+      <div class="ln">Mỗi file Markdown bạn mở được nạp vào một Y.Doc. Từ lúc đó, mọi thay đổi như gõ phím, dán hay định dạng đều đi vào Y.Doc trước, rồi mới được ghi xuống đĩa khi bạn lưu.</div>
+      <div class="ln"></div>
+      <div class="ln"><span class="mm">## </span><span class="mh">Vì sao Y.Doc là nguồn sự thật</span></div>
+      <div class="ln"></div>
+      <div class="ln"><span class="mm">&gt; [!NOTE]</span></div>
+      <div class="ln"><span class="mm">&gt; </span>File .md chỉ là cổng nhập và xuất. Đừng đọc lại file để lấy state giữa phiên làm việc.</div>
+      <div class="ln"></div>
+      <div class="ln on">File .md trên đĩa có thể bị sửa bởi trình soạn thảo khác, bởi <span class="mm">`</span>git pull<span class="mm">`</span>, hoặc bởi đồng nghiệp. Nếu coi file là state, mỗi lần như vậy app phải đoán bản nào đúng.<span class="caret"></span></div>
+      <div class="ln"></div>
+      <div class="ln">Lịch sử chỉnh sửa cũng nằm trong Y.Doc, nên bạn quay lại được bất kỳ lần lưu nào, kể cả sau khi đã đóng tab.</div>
+      <div class="ln"></div>
+      <div class="ln"><span class="mm">## </span><span class="mh">Lược đồ</span></div>
+      <div class="ln"></div>
+      <div class="ln">Mỗi tài liệu có ba khoá ở gốc. Đổi lược đồ khi đã có dữ liệu thật thì bắt buộc kèm migration và một bộ dữ liệu mẫu cũ để kiểm thử.</div>
+      <div class="ln"></div>
+      <div class="ln"><span class="mm">| </span>Khoá<span class="mm"> | </span>Kiểu<span class="mm"> | </span>Chứa gì<span class="mm"> |</span></div>
+      <div class="ln"><span class="mm">|---|---|---|</span></div>
+      <div class="ln"><span class="mm">| `</span>source<span class="mm">` | </span>Y.Text<span class="mm"> | </span>Toàn bộ nội dung Markdown<span class="mm"> |</span></div>
+      <div class="ln"><span class="mm">| `</span>meta<span class="mm">` | </span>Y.Map<span class="mm"> | </span>Tên file, mã băm bản gốc, formatVersion<span class="mm"> |</span></div>
+      <div class="ln"><span class="mm">| `</span>history<span class="mm">` | </span>Y.Array<span class="mm"> | </span>Các mốc lưu, mỗi mốc một ảnh chụp<span class="mm"> |</span></div>
+    </div>
+
+    <main class="page" id="page">
+      <article class="doc" id="doc">
+        <h1 id="h-top"><span class="g">#</span>Đồng bộ tài liệu bằng Yjs</h1>
+        <p class="lede">Mỗi file Markdown bạn mở được nạp vào một Y.Doc. Từ lúc đó, mọi thay đổi như gõ phím, dán hay định dạng đều đi vào Y.Doc trước, rồi mới được ghi xuống đĩa khi bạn lưu.</p>
+
+        <h2 id="h-why"><span class="g">##</span>Vì sao Y.Doc là nguồn sự thật</h2>
+        <aside class="note"><span class="g note-g">&gt; [!NOTE]</span><strong>Ghi chú</strong>File .md chỉ là cổng nhập và xuất. Đừng đọc lại file để lấy state giữa phiên làm việc.</aside>
+        <p>File .md trên đĩa có thể bị sửa bởi trình soạn thảo khác, bởi <code>git pull</code>, hoặc bởi đồng nghiệp. Nếu coi file là state, mỗi lần như vậy app phải đoán bản nào đúng. Giữ state trong Y.Doc cho phép gộp thay đổi từ nhiều nguồn mà không mất chữ nào.</p>
+        <p>Lịch sử chỉnh sửa cũng nằm trong Y.Doc, nên bạn quay lại được bất kỳ lần lưu nào, kể cả sau khi đã đóng tab.</p>
+
+        <h2 id="h-schema"><span class="g">##</span>Lược đồ</h2>
+        <p>Mỗi tài liệu có ba khoá ở gốc. Đổi lược đồ khi đã có dữ liệu thật thì bắt buộc kèm migration và một bộ dữ liệu mẫu cũ để kiểm thử.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Khoá</th><th>Kiểu</th><th>Chứa gì</th></tr></thead>
+            <tbody>
+              <tr><td><code>source</code></td><td>Y.Text</td><td>Toàn bộ nội dung Markdown</td></tr>
+              <tr><td><code>meta</code></td><td>Y.Map</td><td>Tên file, mã băm bản gốc, <code>formatVersion</code></td></tr>
+              <tr><td><code>history</code></td><td>Y.Array</td><td>Các mốc lưu, mỗi mốc một ảnh chụp</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="h-provider"><span class="g">##</span>Gắn provider</h2>
+        <p><code>packages/core</code> không biết provider nào đang chạy. Nó nhận một Y.Doc đã được gắn sẵn từ <code>apps/extension</code>, nên cùng một lõi chạy được với IndexedDB hôm nay và với <mark>WebRTC</mark> khi có tính năng cộng tác.</p>
+        <figure class="code">
+          <figcaption><span class="lang">TypeScript</span><button class="copy">Sao chép</button></figcaption>
+          <span class="fence">```ts</span>
+<pre><code><span class="k">import</span> * <span class="k">as</span> Y <span class="k">from</span> <span class="s">'yjs'</span>
+<span class="k">import</span> { IndexeddbPersistence } <span class="k">from</span> <span class="s">'y-indexeddb'</span>
+<span class="k">import</span> { openDocument } <span class="k">from</span> <span class="s">'@md-reader/core'</span>
+
+<span class="k">const</span> ydoc = <span class="k">new</span> Y.Doc()
+<span class="k">const</span> store = <span class="k">new</span> IndexeddbPersistence(fileKey(url), ydoc)
+
+<span class="k">await</span> store.whenSynced
+<span class="k">const</span> doc = openDocument(ydoc)  <span class="c">// core chỉ thấy Y.Doc</span></code></pre>
+          <span class="fence">```</span>
+        </figure>
+
+        <h3 id="h-check"><span class="g">###</span>Kiểm tra nhanh</h3>
+        <ol>
+          <li>Mở một file .md, sửa một dòng rồi đóng tab.</li>
+          <li>Mở lại file. Dòng vừa sửa vẫn còn, và thanh trên cùng ghi “Chưa lưu”.</li>
+          <li>Sửa file đó bằng trình soạn thảo khác rồi quay lại tab. MD Reader báo file trên đĩa đã đổi và hỏi bạn giữ bản nào.</li>
+        </ol>
+        <p>Nếu bước 3 không có thông báo, mở <code>chrome://extensions</code> và bật “Cho phép truy cập URL tệp” cho MD Reader.</p>
+      </article>
+    </main>
+
+    <aside class="minimap" id="minimap" aria-label="Bản đồ tài liệu"></aside>
+  </div>
+
+  <div class="status">
+    <span class="cell file">dong-bo-tai-lieu.md</span>
+    <span class="cell save" aria-live="polite"><span class="dot"></span><span class="save-txt">Đã lưu 14:02</span></span>
+    <span class="cell">412 từ, khoảng 2 phút đọc</span>
+    <span class="spacer"></span>
+    <div class="seg" role="group" aria-label="Chế độ xem">
+      <button data-go="read" aria-pressed="true">Đọc</button><button data-go="write">Viết</button><button data-go="split">Song song</button>
+    </div>
+    <button class="tb" id="goto">Đi tới mục<kbd>⌘K</kbd></button>
+    <button class="tb" data-go="present">Trình chiếu</button>
+    <button class="tb">Xuất file</button>
+    <button class="ib" data-go="settings" aria-label="Cài đặt" title="Cài đặt"><svg class="i"><use href="#i-sliders"/></svg></button>
+  </div>
+
+  <div class="palette" id="palette" role="dialog" aria-label="Đi tới mục">
+    <input placeholder="Gõ tên mục…" aria-label="Tìm mục">
+    <ul>
+      <li><a href="#h-top" class="sel"><span>#</span>Đồng bộ tài liệu bằng Yjs</a></li>
+      <li><a href="#h-why"><span>##</span>Vì sao Y.Doc là nguồn sự thật</a></li>
+      <li><a href="#h-schema"><span>##</span>Lược đồ</a></li>
+      <li><a href="#h-provider"><span>##</span>Gắn provider</a></li>
+      <li><a href="#h-check"><span>###</span>Kiểm tra nhanh</a></li>
+    </ul>
+  </div>
+
+  <div class="scrim" data-go="read"></div>
+  <section class="sheet" role="dialog" aria-labelledby="sheet-title">
+    <header><h2 id="sheet-title">Cài đặt</h2><button class="ib" data-go="read" aria-label="Đóng cài đặt"><svg class="i"><use href="#i-close"/></svg></button></header>
+    <div class="sheet-body">
+      <section class="grp">
+        <h3>Chữ và màu</h3>
+        <div class="row"><span class="lbl">Giao diện</span>
+          <div class="seg" role="group" aria-label="Giao diện" id="mode-seg"><button data-mode="light">Sáng</button><button data-mode="dark">Tối</button><button data-mode="auto">Theo máy</button></div>
+        </div>
+        <div class="row col"><span class="lbl">Bảng màu</span><div class="swatches" id="swatches"></div></div>
+        <div class="row col"><span class="lbl">Kiểu chữ</span><div class="fonts" id="fonts"></div></div>
+        <div class="row"><label class="lbl" for="size">Cỡ chữ</label><div class="range"><input type="range" id="size" min="15" max="22" value="18"><output id="size-out">18 px</output></div></div>
+      </section>
+      <section class="grp">
+        <h3>Nội dung trong tài liệu</h3>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Công thức toán<small>Hiện $…$ và $$…$$ thành công thức</small></span></label>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Sơ đồ Mermaid</span></label>
+        <label class="tg"><input type="checkbox"><span class="track"></span><span class="txt">Sơ đồ PlantUML và Graphviz<small>Gửi mã sơ đồ tới máy chủ dựng hình</small></span></label>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Hộp ghi chú và cảnh báo<small>Cú pháp &gt; [!NOTE] của GitHub</small></span></label>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Dấu ngoặc kép cong và ký hiệu<small>"..." thành “...”, (c) thành ©</small></span></label>
+        <label class="tg"><input type="checkbox"><span class="track"></span><span class="txt">Đánh dấu liên kết ra trang khác</span></label>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Thông tin đầu file<small>Hiện tiêu đề, tác giả, ngày từ khối --- ở đầu file</small></span></label>
+      </section>
+      <section class="grp">
+        <h3>Khi mở file .md trong Chrome</h3>
+        <label class="rd"><input type="radio" name="open" checked><span>Hiện nút “Đọc bằng MD Reader”<small>Trang vẫn hiện nội dung thô cho tới khi bạn bấm</small></span></label>
+        <label class="rd"><input type="radio" name="open"><span>Mở thẳng trong MD Reader</span></label>
+        <label class="rd"><input type="radio" name="open"><span>Không làm gì</span></label>
+      </section>
+      <section class="grp">
+        <h3>Hỗ trợ đọc</h3>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Số từ và thời gian đọc</span></label>
+        <label class="tg"><input type="checkbox" checked><span class="track"></span><span class="txt">Thanh tiến độ đọc</span></label>
+        <label class="tg"><input type="checkbox" id="lamp-tg" checked><span class="track"></span><span class="txt">Làm mờ các đoạn khác<small>Chỉ đoạn đang đọc giữ độ sáng đầy đủ</small></span></label>
+        <label class="tg"><input type="checkbox"><span class="track"></span><span class="txt">Hiệu ứng khi đọc hết tài liệu</span></label>
+      </section>
+      <section class="grp">
+        <h3>Trình chiếu</h3>
+        <div class="row"><span>Màu, phông và ảnh nền của slide<br><small>Xem trước ngay khi đổi</small></span><button class="btn">Tuỳ chỉnh slide</button></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="present" aria-label="Bảng điều khiển trình chiếu">
+    <header class="p-head">
+      <div class="timer"><span class="t-big">12:48</span><span class="t-sub">còn 7 trong 20 phút</span></div>
+      <span class="p-count">Slide 4 trên 12</span>
+      <span class="p-clock">14:36</span>
+      <div class="p-actions"><button class="btn">Tạm dừng</button><button class="btn">Trước</button><button class="btn primary">Tiếp</button><button class="btn quiet" data-go="read">Kết thúc</button></div>
+    </header>
+    <div class="stage-wrap">
+      <div class="stage"><div class="slide">
+        <h2>Gắn provider</h2>
+        <ul><li>core nhận một Y.Doc đã gắn sẵn</li><li>extension chọn IndexedDB hoặc WebRTC</li><li>đổi provider không phải sửa core</li></ul>
+      </div></div>
+    </div>
+    <aside class="p-side">
+      <span class="lab">Tiếp theo</span>
+      <div class="stage"><div class="slide">
+        <h2>Kiểm tra nhanh</h2>
+        <ol><li>Sửa một dòng, đóng tab</li><li>Mở lại, thấy “Chưa lưu”</li><li>Sửa ngoài, thấy cảnh báo</li></ol>
+      </div></div>
+      <span class="lab">Ghi chú của bạn</span>
+      <div class="p-notes">
+        <p>Nhấn mạnh: core không import y&#8209;indexeddb.</p>
+        <p>Hỏi khán giả ai từng mất dữ liệu khi hai tab cùng sửa một file.</p>
+      </div>
+    </aside>
+  </section>
+
+  <section class="raw" aria-label="Trang .md thô trong Chrome">
+<pre># Đồng bộ tài liệu bằng Yjs
+
+Mỗi file Markdown bạn mở được nạp vào một Y.Doc. Từ lúc đó, mọi thay đổi như gõ phím, dán hay định dạng đều đi vào Y.Doc trước, rồi mới được ghi xuống đĩa khi bạn lưu.
+
+## Vì sao Y.Doc là nguồn sự thật
+
+&gt; [!NOTE]
+&gt; File .md chỉ là cổng nhập và xuất. Đừng đọc lại file để lấy state giữa phiên làm việc.
+
+File .md trên đĩa có thể bị sửa bởi trình soạn thảo khác, bởi `git pull`, hoặc bởi đồng nghiệp. Nếu coi file là state, mỗi lần như vậy app phải đoán bản nào đúng. Giữ state trong Y.Doc cho phép gộp thay đổi từ nhiều nguồn mà không mất chữ nào.
+
+## Lược đồ
+
+| Khoá | Kiểu | Chứa gì |
+|---|---|---|
+| `source` | Y.Text | Toàn bộ nội dung Markdown |
+| `meta` | Y.Map | Tên file, mã băm bản gốc, formatVersion |
+| `history` | Y.Array | Các mốc lưu, mỗi mốc một ảnh chụp |
+
+## Gắn provider
+
+```ts
+import * as Y from 'yjs'
+import { IndexeddbPersistence } from 'y-indexeddb'
+```</pre>
+    <div class="raw-tab">
+      <button class="raw-open" data-go="read"><svg class="i"><use href="#i-open"/></svg>Đọc bằng MD Reader</button>
+      <button class="raw-hide">Ẩn trên trang này</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const OPTS={
+  a:{name:'A · Lề sách',idea:'Cấu trúc nằm ở lề: mục lục bên trái đánh dấu mục đang đọc bằng nét dạ quang, hộp ghi chú của tài liệu chuyển thành ghi chú bên lề phải. Màu dạ quang chỉ xuất hiện ở “bạn đang ở đây” và kết quả tìm kiếm.',
+     tokens:[['Giấy','#F1F3F2'],['Mặt','#E5EAE7'],['Mực','#1B2422'],['Chì','#5E6A67'],['Kẻ','#D3DAD7'],['Dạ quang','#F3DE4A'],['Xanh mực','#23568C']],
+     fonts:'Literata (thân bài) · IBM Plex Sans (giao diện) · IBM Plex Mono (mã)',
+     palettes:[['Giấy','#F1F3F2','#1B2422','#F3DE4A'],['Than chì','#1E2422','#D9DFDC','#C9B53A'],['Tương phản cao','#FFFFFF','#000000','#FFE500']]},
+  b:{name:'B · Mã nguồn',idea:'Không giấu Markdown: ##, danh sách, > và ``` hiện mờ ở lề trái nên bản đọc và bản viết là một. Không có thanh công cụ trên cùng, chỉ một thanh trạng thái như trình soạn thảo, và ⌘K để đi tới mục (bấm “Đi tới mục” ở dưới).',
+     tokens:[['Nền','#FFFFFF'],['Nền dòng','#F3F5F6'],['Chữ','#2A2E33'],['Mờ','#767D85'],['Kẻ','#E3E6E9'],['Con trỏ','#0E7470']],
+     fonts:'Source Serif 4 (thân bài) · Source Sans 3 (giao diện) · Source Code Pro (mã và ký hiệu Markdown)',
+     palettes:[['Trắng','#FFFFFF','#2A2E33','#0E7470'],['Đêm','#1B1F23','#D5DADF','#4FB8B2'],['Tương phản cao','#FFFFFF','#000000','#005A57']]},
+  c:{name:'C · Đèn bàn',idea:'Đọc ban đêm: đoạn đang đọc sáng như dưới đèn, các đoạn khác lùi lại (cuộn để thấy). Mép phải là bản đồ tài liệu, mỗi vạch là một tiêu đề, dài ngắn theo cấp; vạch màu đèn là chỗ bạn đang đọc.',
+     tokens:[['Đêm','#161F2B'],['Mặt','#1D2734'],['Chữ','#DDE2E9'],['Mờ','#8D98A7'],['Kẻ','#2B3747'],['Đèn','#EDB35A']],
+     fonts:'Newsreader (thân bài) · Be Vietnam Pro (giao diện) · Source Code Pro (mã)',
+     palettes:[['Đèn bàn','#161F2B','#DDE2E9','#EDB35A'],['Ban ngày','#F4F6F8','#1D2734','#A86A12'],['Tương phản cao','#000000','#FFFFFF','#FFC861']]}
+};
+const FONTS=[['Có chân','var(--font-body)'],['Không chân','var(--font-ui)'],['Đơn cách','var(--font-code)']];
+const app=document.getElementById('app'),page=document.getElementById('page'),doc=document.getElementById('doc'),mock=document.getElementById('mock');
+
+function setMockH(){app.style.setProperty('--mock-h',mock.offsetHeight+'px');document.documentElement.style.setProperty('--mock-h',mock.offsetHeight+'px')}
+function pressed(sel,attr,val){document.querySelectorAll(sel).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[attr]===val)))}
+
+function render(){
+  const o=OPTS[app.dataset.opt];
+  document.getElementById('idea').textContent=o.idea;
+  document.getElementById('tokens').innerHTML=o.tokens.map(([n,h])=>`<span class="sw"><i style="background:${h}"></i>${n} ${h}</span>`).join('')+`<span>${o.fonts}</span>`;
+  document.getElementById('swatches').innerHTML=o.palettes.map(([n,bg,fg,ac],i)=>`<button class="swatch" aria-pressed="${i===0}"><span class="chip" style="background:${bg};color:${fg}">Aa<i style="background:${ac}"></i></span><span class="nm">${n}</span></button>`).join('');
+  document.getElementById('fonts').innerHTML=FONTS.map(([n,f],i)=>`<button class="fontopt" aria-pressed="${i===0}"><span class="nm">${n}</span><span class="smp" style="font-family:${f}">Chữ Việt đọc lâu không mỏi mắt</span></button>`).join('');
+  pressed('#mode-seg [data-mode]','mode',app.dataset.opt==='c'?'dark':'light');
+  pressed('.mock [data-opt]','opt',app.dataset.opt);
+  pressed('.mock [data-screen]','screen',app.dataset.screen);
+  const view=['write','split'].includes(app.dataset.screen)?app.dataset.screen:'read';
+  document.querySelectorAll('#app .seg [data-go]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.go===view)));
+  const dirty=['write','split'].includes(app.dataset.screen);
+  app.dataset.dirty=dirty;
+  document.querySelectorAll('.save-txt').forEach(s=>s.textContent=dirty?'Chưa lưu':'Đã lưu 14:02');
+  location.hash=app.dataset.opt+'-'+app.dataset.screen;
+  setMockH();
+  requestAnimationFrame(()=>{buildMinimap();spy()});
+}
+function set(k,v){app.dataset[k]=v;document.getElementById('palette').classList.remove('open');render()}
+
+document.querySelectorAll('.mock [data-opt]').forEach(b=>b.onclick=()=>set('opt',b.dataset.opt));
+document.querySelectorAll('.mock [data-screen]').forEach(b=>b.onclick=()=>set('screen',b.dataset.screen));
+document.getElementById('tok-btn').onclick=e=>{const on=mock.classList.toggle('show-tokens');e.currentTarget.setAttribute('aria-pressed',on);setMockH()};
+app.addEventListener('click',e=>{const t=e.target.closest('[data-go]');if(t)set('screen',t.dataset.go)});
+document.getElementById('goto').onclick=()=>{const p=document.getElementById('palette');p.classList.toggle('open');if(p.classList.contains('open'))p.querySelector('input').focus()};
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'&&app.dataset.opt==='b'){e.preventDefault();document.getElementById('goto').click()}
+  if(e.key==='Escape'){document.getElementById('palette').classList.remove('open');if(['settings','present','raw'].includes(app.dataset.screen))set('screen','read')}
+});
+document.querySelectorAll('.toc a,.palette a').forEach(a=>a.onclick=e=>{e.preventDefault();const h=document.querySelector(a.getAttribute('href'));page.scrollTo({top:h.offsetTop-24});document.getElementById('palette').classList.remove('open')});
+const size=document.getElementById('size');size.oninput=()=>{document.getElementById('size-out').textContent=size.value+' px';doc.style.fontSize=size.value+'px'};
+document.getElementById('lamp-tg').onchange=e=>{app.dataset.lamp=e.target.checked?'on':'off'};
+
+const heads=[...doc.querySelectorAll('h1,h2,h3')];
+function buildMinimap(){
+  const mm=document.getElementById('minimap');
+  if(app.dataset.opt!=='c'||!mm.offsetHeight){mm.innerHTML='';return}
+  const H=doc.offsetHeight,h=mm.offsetHeight-40;
+  mm.innerHTML=heads.map(el=>{const w={H1:30,H2:22,H3:13}[el.tagName];const top=20+el.offsetTop/H*h;
+    return `<button style="top:${top}px;width:${w}px" data-id="${el.id}" aria-label="${el.textContent.replace(/^#+/,'')}"><i></i><span>${el.textContent.replace(/^#+/,'')}</span></button>`}).join('');
+  mm.querySelectorAll('button').forEach(b=>b.onclick=()=>page.scrollTo({top:document.getElementById(b.dataset.id).offsetTop-24}));
+}
+function spy(){
+  const y=page.scrollTop+page.clientHeight*.38;
+  let cur=heads[0];heads.forEach(h=>{if(h.offsetTop<=y)cur=h});
+  document.querySelectorAll('.toc a').forEach(a=>a.setAttribute('aria-current',String(a.getAttribute('href')==='#'+cur.id)));
+  document.querySelectorAll('.minimap button').forEach(b=>b.setAttribute('aria-current',String(b.dataset.id===cur.id)));
+  const blocks=[...doc.children];let lit=blocks[0];
+  blocks.forEach(b=>{if(b.offsetTop<=y)lit=b});
+  if(lit.matches('h1,h2,h3')){const n=lit.nextElementSibling;if(n)lit=n}
+  blocks.forEach(b=>b.classList.toggle('dim',b!==lit&&!(b.matches('h1,h2,h3')&&b.nextElementSibling===lit)));
+}
+page.addEventListener('scroll',spy,{passive:true});
+addEventListener('resize',()=>{setMockH();buildMinimap()});
+
+const [ho,hs]=(location.hash.slice(1)||'a-read').split('-');
+if(OPTS[ho])app.dataset.opt=ho;
+if(hs&&document.querySelector(`.mock [data-screen="${hs}"]`))app.dataset.screen=hs;
+render();
+document.fonts&&document.fonts.ready.then(()=>{buildMinimap();spy()});
+</script>
+</body>
+</html>

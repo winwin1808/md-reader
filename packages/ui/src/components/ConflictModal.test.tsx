@@ -88,4 +88,24 @@ describe('ConflictModal', () => {
     expect(container.querySelectorAll('.conflict-diff-line.removed').length).toBe(1)
     expect(container.querySelectorAll('.conflict-diff-line.added').length).toBe(0)
   })
+
+  it('three-way: shows disk and local changes against base with counts', () => {
+    const { container } = render(
+      <ConflictModal {...defaultProps} baseContent={'a\nb\nc'} diskContent={'a\nB\nc'} localContent={'a\nb\nc\nd'} />
+    )
+    const headers = Array.from(container.querySelectorAll('.conflict-pane-header')).map((h) => h.textContent ?? '')
+    expect(headers[0]).toContain('Thay đổi trên đĩa')
+    expect(headers[0]).toContain('+1 −1')
+    expect(headers[1]).toContain('Thay đổi của bạn')
+    expect(headers[1]).toContain('+1 −0')
+    const diskPane = container.querySelectorAll('.conflict-pane')[0]
+    const added = Array.from(diskPane!.querySelectorAll('.conflict-diff-line.added')).map((l) => l.textContent)
+    expect(added.some((t) => t?.includes('B'))).toBe(true)
+  })
+
+  it('without baseContent keeps the old pane titles', () => {
+    render(<ConflictModal {...defaultProps} />)
+    expect(screen.getByText('Bản sửa cục bộ')).toBeDefined()
+    expect(screen.getByText('Bản trên đĩa')).toBeDefined()
+  })
 })

@@ -1,10 +1,4 @@
-import {
-  storeFileHandle,
-  getStoredFileHandle,
-  clearStoredFileHandle,
-} from './idb-handle'
-
-export { storeFileHandle, getStoredFileHandle, clearStoredFileHandle }
+import { listRecent, getHandle, createRecord, writeDocText, storeHandle } from '../doc-registry'
 
 export interface StoredFileEntry {
   id: string
@@ -117,4 +111,29 @@ export async function verifyHandlePermission(
   } catch {
     return false
   }
+}
+
+export async function openLocalFileAsDoc(): Promise<{ docId: string; kept: boolean } | null> {
+  const opened = await openLocalFile()
+  if (!opened) return null
+  const { handle, content } = opened
+  let record = null as Awaited<ReturnType<typeof createRecord>> | null
+  for (const r of await listRecent(100_000)) {
+    if (!r.hasHandle) continue
+    try {
+      const h = await getHandle(r.docId)
+      if (h && (await h.isSameEntry(handle))) {
+        record = r
+        break
+      }
+    } catch (err) {
+      console.warn('Skipping unreadable handle for', r.docId, err)
+    }
+  }
+  if (!record) {
+    record = await createRecord({ title: handle.name, originKind: 'file', originPath: `file:${handle.name}` })
+  }
+  const result = await writeDocText(record, content, 'if-clean')
+  await storeHandle(record.docId, handle)
+  return { docId: record.docId, kept: result === 'kept' }
 }

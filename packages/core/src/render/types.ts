@@ -12,6 +12,8 @@ export interface RenderResult {
 
 export interface RenderOptions {
   highlight?: boolean
+  /** Render math with KaTeX. Default: true */
+  math?: boolean
   allowRawHtml?: boolean
   stripFrontmatter?: boolean
   displayMetadata?: boolean

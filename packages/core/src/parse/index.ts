@@ -1,6 +1,7 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import remarkFrontmatter from 'remark-frontmatter'
 import yaml from 'yaml'
 import type { Root } from 'mdast'
@@ -8,6 +9,8 @@ import type { Root } from 'mdast'
 export interface ParseOptions {
   /** GFM: table, task list, strikethrough, autolink. Default: true */
   gfm?: boolean
+  /** Math ($..$, $$..$$) via remark-math. Default: true */
+  math?: boolean
 }
 
 export interface ParseResult {
@@ -19,6 +22,34 @@ export interface ParseResult {
   raw: string
 }
 
+function remarkMathGuard(tree: Root, source: string): void {
+  const walk = (node: any): void => {
+    const kids = node.children
+    if (!Array.isArray(kids)) return
+    for (let i = 0; i < kids.length; i++) {
+      const k = kids[i]
+      if (k.type === 'inlineMath') {
+        const start = k.position?.start.offset
+        const end = k.position?.end.offset
+        if (typeof start !== 'number' || typeof end !== 'number') continue
+        const slice = source.slice(start, end)
+        const m = /^(\$+)([\s\S]*?)(\$+)$/.exec(slice)
+        const inner = (m ? m[2] : '') ?? ''
+        const keep =
+          !!m &&
+          inner.length > 0 &&
+          !/\s/.test(inner[0]!) &&
+          !/\s/.test(inner[inner.length - 1]!) &&
+          !/[0-9]/.test(source[end] ?? '')
+        if (!keep) kids[i] = { type: 'text', value: slice, position: k.position }
+      } else {
+        walk(k)
+      }
+    }
+  }
+  walk(tree)
+}
+
 export function parseMarkdown(source: string, options?: ParseOptions): ParseResult {
   const processor = unified().use(remarkParse)
   
@@ -26,9 +57,14 @@ export function parseMarkdown(source: string, options?: ParseOptions): ParseResu
     processor.use(remarkGfm)
   }
   
+  if (options?.math !== false) {
+    processor.use(remarkMath)
+  }
+
   processor.use(remarkFrontmatter, ['yaml'])
   
   const tree = processor.parse(source) as Root
+  if (options?.math !== false) remarkMathGuard(tree, source)
   let frontmatter: Record<string, unknown> = {}
 
   if (tree.children[0]?.type === 'yaml') {

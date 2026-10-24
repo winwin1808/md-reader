@@ -1,20 +1,16 @@
+import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { App } from '../src/app/App'
-import { IndexeddbPersistence } from 'y-indexeddb'
+import { App } from '../app/App'
+import { createRecord, writeDocText } from '../app/doc-registry'
 
-vi.mock('y-indexeddb', () => ({
-  IndexeddbPersistence: vi.fn().mockImplementation(function () {
-    return {
-      destroy: vi.fn(),
-      once: vi.fn().mockImplementation((event: string, cb: () => void) => {
-        if (event === 'synced') cb()
-      }),
-      on: vi.fn(),
-    }
-  }),
-}))
+
+async function openDroppedDoc(title: string, text: string): Promise<void> {
+  const rec = await createRecord({ title, originKind: 'drop', originPath: null })
+  await writeDocText(rec, text, 'replace')
+  window.history.replaceState(null, '', '/?doc=' + rec.docId)
+}
 
 describe('E2E integration test for A4 layout, toolbar, search, code copy, ToC, and font family', () => {
   beforeEach(() => {
@@ -41,15 +37,12 @@ describe('E2E integration test for A4 layout, toolbar, search, code copy, ToC, a
   })
 
   afterEach(() => {
+    window.history.replaceState(null, '', '/')
     vi.useRealTimers()
   })
 
   it('verifies A4 layout, toolbar, reading mode, search, code copy, ToC collapse, and font family', async () => {
-    render(React.createElement(App))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).toBeNull()
-    })
 
     const fileContent = `# Main Guide
 
@@ -69,10 +62,9 @@ const greeting = "Hello World";
 - [ ] Pending task`
 
     const file = new File([fileContent], 'ux-doc.md', { type: 'text/markdown' })
-    file.text = async () => fileContent
 
-    const placeholder = screen.getByTestId('app-placeholder')
-    fireEvent.drop(placeholder.parentElement!, { dataTransfer: { files: [file] } })
+    await openDroppedDoc(file.name, fileContent)
+    render(React.createElement(App))
 
     // 1. Wait for document to render.
     await waitFor(() => {

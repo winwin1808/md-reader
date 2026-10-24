@@ -1,22 +1,20 @@
+import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { App } from '../src/app/App'
+import { App } from '../app/App'
+import { createRecord, writeDocText } from '../app/doc-registry'
 import * as core from '@md-reader/core'
 import * as ui from '@md-reader/ui'
-import { IndexeddbPersistence } from 'y-indexeddb'
+import * as deckMod from '@md-reader/ui/deck'
+import * as docxMod from '@md-reader/core/docx'
 
-vi.mock('y-indexeddb', () => ({
-  IndexeddbPersistence: vi.fn().mockImplementation(function () {
-    return {
-      destroy: vi.fn(),
-      once: vi.fn().mockImplementation((event: string, cb: () => void) => {
-        if (event === 'synced') cb()
-      }),
-      on: vi.fn(),
-    }
-  }),
-}))
+
+async function openDroppedDoc(title: string, text: string): Promise<void> {
+  const rec = await createRecord({ title, originKind: 'drop', originPath: null })
+  await writeDocText(rec, text, 'replace')
+  window.history.replaceState(null, '', '/?doc=' + rec.docId)
+}
 
 describe('E2E smoke test for themes and export formats', () => {
   beforeEach(() => {
@@ -38,6 +36,7 @@ describe('E2E smoke test for themes and export formats', () => {
   })
 
   afterEach(() => {
+    window.history.replaceState(null, '', '/')
     vi.useRealTimers()
   })
 
@@ -49,20 +48,15 @@ describe('E2E smoke test for themes and export formats', () => {
 
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const htmlSpy = vi.spyOn(core, 'exportToHtml').mockResolvedValue('<html><body>Exported</body></html>')
-    const docxSpy = vi.spyOn(core, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
+    const docxSpy = vi.spyOn(docxMod, 'mdastToDocx').mockResolvedValue(new Blob(['docx-content']))
 
-    render(React.createElement(App))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).toBeNull()
-    })
 
     const fileContent = '# Title\n\n## Subtitle\n\nParagraph text.'
     const file = new File([fileContent], 'my-doc.md', { type: 'text/markdown' })
-    file.text = async () => fileContent
 
-    const placeholder = screen.getByTestId('app-placeholder')
-    fireEvent.drop(placeholder.parentElement!, { dataTransfer: { files: [file] } })
+    await openDroppedDoc(file.name, fileContent)
+    render(React.createElement(App))
 
     // Verify Table of Contents renders links and Viewer renders document
     await waitFor(() => {
@@ -72,8 +66,8 @@ describe('E2E smoke test for themes and export formats', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Title' })).toBeDefined()
     expect(screen.getByRole('heading', { level: 2, name: 'Subtitle' })).toBeDefined()
     expect(screen.getByText('Paragraph text.')).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Title' }).getAttribute('href')).toBe('#title')
-    expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#subtitle')
+    expect(screen.getByRole('link', { name: 'Title' }).getAttribute('href')).toBe('#user-content-title')
+    expect(screen.getByRole('link', { name: 'Subtitle' }).getAttribute('href')).toBe('#user-content-subtitle')
 
     // Click Settings button, select a new theme ('navy'), verify chrome.storage.sync.set called
     const settingsBtn = screen.getByRole('button', { name: 'Settings' })
@@ -131,9 +125,8 @@ describe('E2E smoke test for themes and export formats', () => {
     const wordOptionBtn = screen.getByText('Microsoft Word (.docx)').closest('button')!
     fireEvent.click(wordOptionBtn)
 
-    // Allow promise microtasks to run
-    await Promise.resolve()
-    await Promise.resolve()
+    // docx is loaded on demand via dynamic import
+    await vi.waitFor(() => expect(docxSpy).toHaveBeenCalled())
 
     expect(docxSpy).toHaveBeenCalledWith(
       expect.objectContaining({
