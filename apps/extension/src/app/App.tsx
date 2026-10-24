@@ -1,5 +1,5 @@
 import { docQuery } from './doc-registry'
-import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   ThemeProvider,
   SettingsModal,
@@ -340,9 +340,9 @@ export function App(): React.JSX.Element {
     handleSettingChange('mode', mode)
   }
 
-  const renderHtmlFor = (text: string): string => {
+  const renderHtmlFor = useCallback((text: string) => {
     const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false })
-    return renderToHtml(parsed, {
+    const rendered = renderToHtml(parsed, {
       math: readerSettings?.enableMath !== false,
       stripFrontmatter: readerSettings?.stripFrontmatter,
       displayMetadata: readerSettings?.displayMetadata,
@@ -350,12 +350,12 @@ export function App(): React.JSX.Element {
       externalLinks: readerSettings?.externalLinks,
       githubAlerts: readerSettings?.githubAlerts,
       localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
-    }).html
-  }
+    })
+    return { parsed, rendered }
+  }, [readerSettings])
   const previewHtml = useMemo(
-    () => (history.previewText === null ? null : renderHtmlFor(history.previewText)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [history.previewText, readerSettings],
+    () => (history.previewText === null ? null : renderHtmlFor(history.previewText).rendered.html),
+    [history.previewText, renderHtmlFor],
   )
   const previewEntry = history.previewId ? history.entries.find((e) => e.id === history.previewId) : undefined
   const previewBanner = previewHtml !== null && previewEntry ? (
@@ -376,23 +376,14 @@ export function App(): React.JSX.Element {
         parsedDoc: { tree: emptyTree },
       }
     }
-    const parsed = parseMarkdown(content, { math: readerSettings?.enableMath !== false })
-    const rendered = renderToHtml(parsed, {
-      math: readerSettings?.enableMath !== false,
-      stripFrontmatter: readerSettings?.stripFrontmatter,
-      displayMetadata: readerSettings?.displayMetadata,
-      typographer: readerSettings?.typographer,
-      externalLinks: readerSettings?.externalLinks,
-      githubAlerts: readerSettings?.githubAlerts,
-      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
-    })
+    const { parsed, rendered } = renderHtmlFor(content)
     return {
       html: rendered.html,
       toc: rendered.toc,
       parseResult: parsed,
       parsedDoc: parsed,
     }
-  }, [content, readerSettings])
+  }, [content, renderHtmlFor])
 
   const mindmapRoot = useMemo(() => {
     if (!isMindmapOpen) return null
@@ -707,17 +698,6 @@ export function App(): React.JSX.Element {
                   <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
-              {historyOpen && (
-                <HistoryTimeline
-                  entries={history.entries}
-                  actors={history.actors}
-                  previewId={history.previewId}
-                  previewText={history.previewText}
-                  onPreview={history.preview}
-                  onRestore={(id) => { history.restore(id) }}
-                  onClose={closeHistory}
-                />
-              )}
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
                 <div className="sidebar-toc">
                   <Toc entries={toc} activeId={activeHeadingId} />
@@ -734,25 +714,36 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
-          {viewMode !== 'reading' && historyOpen && (
-                <HistoryTimeline
-                  entries={history.entries}
-                  actors={history.actors}
-                  previewId={history.previewId}
-                  previewText={history.previewText}
-                  onPreview={history.preview}
-                  onRestore={(id) => { history.restore(id) }}
-                  onClose={closeHistory}
-                />
-              )}
+          {historyOpen && (
+            <div className="history-drawer">
+              <HistoryTimeline
+                entries={history.entries}
+                actors={history.actors}
+                previewId={history.previewId}
+                previewText={history.previewText}
+                onPreview={history.preview}
+                onRestore={(id) => { history.restore(id) }}
+                onClose={closeHistory}
+              />
+            </div>
+          )}
 
           {viewMode === 'editor' && (
             <div className="editor-mode-container">
               <FormattingToolbar onAction={handleFormatAction} />
               <div className="editor-mode-body">
+                {previewHtml !== null ? (
+                  <div className="main-content" data-font-scale={fontScale}>
+                    {previewBanner}
+                    <div className="a4-document-container">
+                      <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                    </div>
+                  </div>
+                ) : (
                 <Suspense fallback={<LazyFallback />}>
                   <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} />
                 </Suspense>
+                )}
               </div>
             </div>
           )}
