@@ -466,7 +466,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7q2: done
 - 7r: done
 - 7s1a: done
-- 7s1b: pending
+- 7s1b: planned
 - 7s1c: pending
 - 7s2: pending
 
