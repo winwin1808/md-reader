@@ -389,7 +389,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8b1: done      (core share types — before 8a2 which consumes them)
 - 8a1: done
 - 8a2: done
-- 8a3: pending
+- 8a3: planned
 - 8b2: pending
 - 8b3: pending
 - 8b4: pending
