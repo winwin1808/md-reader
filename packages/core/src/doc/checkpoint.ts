@@ -76,8 +76,31 @@ export function createCheckpointTracker(
   }
 }
 
+const pendingActors = new WeakMap<Y.Doc, { name: string; handler: () => void }>()
+
 export function registerActor(doc: Y.Doc, name: string): void {
   const meta = getMeta(doc)
+  if (!(meta.get('actors') instanceof Y.Map) && !meta.has('formatVersion')) {
+    // Joiner doc not synced yet: wait for the owner's actors map instead of racing it.
+    const pending = pendingActors.get(doc)
+    if (pending) {
+      pending.name = name
+      return
+    }
+    const entry = {
+      name,
+      handler: () => {
+        const m = meta.get('actors')
+        if (!(m instanceof Y.Map)) return
+        meta.unobserve(entry.handler)
+        pendingActors.delete(doc)
+        m.set(String(doc.clientID), entry.name)
+      },
+    }
+    pendingActors.set(doc, entry)
+    meta.observe(entry.handler)
+    return
+  }
   doc.transact(() => {
     const raw = meta.get('actors')
     if (raw instanceof Y.Map) {
