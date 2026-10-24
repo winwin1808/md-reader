@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Viewer } from '@md-reader/ui'
+import { EditPage } from './EditPage'
 import { loadShare, renderShareHtml, type ShareState } from './share-client'
 
 const REPO = 'https://github.com/winwin1808/md-reader'
@@ -23,7 +24,7 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     if (state.kind === 'ready') document.title = state.info.title ?? 'MD Reader'
   }, [state])
 
-  const html = useMemo(() => (state.kind === 'ready' ? renderShareHtml(state.text) : ''), [state])
+  const html = useMemo(() => (state.kind === 'ready' && state.info.role !== 'edit' ? renderShareHtml(state.text) : ''), [state])
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   let body: React.JSX.Element
@@ -37,7 +38,8 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
         <button type="button" onClick={retry}>Thử lại</button>
       </div>
     )
-  } else body = <Viewer html={html} isAppPage mermaid={mermaid} />
+  } else if (state.info.role === 'edit') body = <EditPage token={token} info={state.info} />
+  else body = <Viewer html={html} isAppPage mermaid={mermaid} />
 
   return (
     <main style={{ maxWidth: 780, margin: '0 auto', padding: '32px 20px', color: 'var(--text, inherit)' }}>

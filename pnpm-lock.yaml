@@ -121,6 +121,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      y-partyserver:
+        specifier: 2.2.0
+        version: 2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.32)
       yjs:
         specifier: 13.6.32
         version: 13.6.32
