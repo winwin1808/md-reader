@@ -459,7 +459,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7n: done
 - 7o: deferred (7n: 152.9 KB gz > 50)
 - 7p1: done
-- 7p2: planned
+- 7p2: done
 - 7q1: pending
 - 7q2: pending
 - 7r: pending
