@@ -17,6 +17,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@md-reader/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       partyserver:
         specifier: 0.5.10
         version: 0.5.10(@cloudflare/workers-types@4.20260702.1)
