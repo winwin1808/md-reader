@@ -15,7 +15,7 @@ vi.mock('@md-reader/ui', async (orig) => ({
 import { SharePage } from './SharePage'
 import { loadShare, renderShareHtml, tokenFromPath } from './share-client'
 
-afterEach(() => cleanup())
+afterEach(() => { cleanup(); document.title = '' })
 
 const TOKEN = 'abcdefghijklmnop1234'
 
@@ -61,7 +61,7 @@ describe('SharePage', () => {
     render(<SharePage token={TOKEN} load={(t) => loadShare(t, fakeFetch(200))} />)
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Xin chào'))
     expect(screen.getByText('Xem bằng MD Reader')).toBeTruthy()
-    expect(document.title).toBe('Tiêu đề')
+    await waitFor(() => expect(document.title).toBe('Tiêu đề'))
   })
   it('gone', async () => {
     render(<SharePage token={TOKEN} load={vi.fn(async () => ({ kind: 'gone' as const }))} />)
