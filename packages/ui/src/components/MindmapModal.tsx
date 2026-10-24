@@ -22,6 +22,7 @@ interface LayoutNode {
   width: number
   height: number
   color: string
+  lines: string[]
   depth: number
   children: LayoutNode[]
 }
@@ -39,24 +40,77 @@ interface Bounds {
   maxY: number
 }
 
-const BRANCH_COLORS = [
-  '#2563eb',
-  '#10b981',
-  '#8b5cf6',
-  '#f59e0b',
-  '#ec4899',
-  '#06b6d4',
-  '#f97316',
-]
+const TONES = ['--accent', '--ok', '--danger', '--pencil']
+const ROOT_TONE = 'var(--ink)'
+const toneVar = (i: number): string => `var(${TONES[i % TONES.length]})`
 
 const DY = 42
 const NODE_HEIGHT = 32
+const NODE_HEIGHT_2 = 48
+const MAX_LABEL_W = 220
+const PAD_X = 24
+const FALLBACK_CHAR_W = 8.2
+const LABEL_FONT = '500 14px "IBM Plex Sans", system-ui, sans-serif'
 
-function estimateWidth(text: string, isRoot: boolean): number {
-  const charWidth = 7.5
-  const padding = 28
-  const estimated = Math.round((text || '').length * charWidth + padding)
-  return Math.max(isRoot ? 110 : 80, Math.min(260, estimated))
+let measureCtx: CanvasRenderingContext2D | null = null
+
+function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (measureCtx) return measureCtx
+  try {
+    if (typeof document === 'undefined') return null
+    const ctx = document.createElement('canvas').getContext('2d')
+    if (ctx && typeof ctx.measureText === 'function') {
+      ctx.font = LABEL_FONT
+      measureCtx = ctx
+      return ctx
+    }
+  } catch {
+    /* canvas unavailable (jsdom) */
+  }
+  return null
+}
+
+function measure(text: string): number {
+  const ctx = getMeasureCtx()
+  if (ctx) return ctx.measureText(text).width
+  return text.length * FALLBACK_CHAR_W
+}
+
+function fitChars(text: string, ellipsis: boolean): string {
+  if (measure(text) <= MAX_LABEL_W) return text
+  let end = text.length
+  while (end > 1 && measure(text.slice(0, end) + (ellipsis ? '\u2026' : '')) > MAX_LABEL_W) end--
+  return text.slice(0, end) + (ellipsis ? '\u2026' : '')
+}
+
+export function layoutLabel(text: string): { lines: string[]; width: number } {
+  const clean = (text || '').replace(/\s+/g, ' ').trim()
+  const words = clean.split(' ').filter(Boolean)
+  let line1 = ''
+  let i = 0
+  for (; i < words.length; i++) {
+    const w = words[i] as string
+    const next = line1 ? `${line1} ${w}` : w
+    if (measure(next) <= MAX_LABEL_W) {
+      line1 = next
+    } else {
+      break
+    }
+  }
+  let lines: string[]
+  if (i >= words.length) {
+    lines = [line1]
+  } else if (!line1) {
+    // first word alone is too long: cut it, continue on line 2
+    const first = words[0] as string
+    const cut = fitChars(first, false)
+    const rest = (first.slice(cut.length) + ' ' + words.slice(1).join(' ')).trim()
+    lines = [cut, fitChars(rest, true)]
+  } else {
+    lines = [line1, fitChars(words.slice(i).join(' '), true)]
+  }
+  const width = Math.max(...lines.map(measure)) + PAD_X
+  return { lines, width: Math.round(width) }
 }
 
 function computeTreeLayout(
@@ -67,21 +121,28 @@ function computeTreeLayout(
   edges: Edge[]
   bounds: Bounds
 } {
-  let leafY = 40
+  let lastBottom = 14
   const nodes: LayoutNode[] = []
   const edges: Edge[] = []
 
-  function assignY(node: MindNode, depth: number, branchColor: string): LayoutNode {
+  function assignY(
+    node: MindNode,
+    depth: number,
+    branchColor: string,
+    toned = false
+  ): LayoutNode {
     const isRoot = depth === 0
-    const width = estimateWidth(node.text, isRoot)
-    const height = NODE_HEIGHT
+    const label = layoutLabel(node.text)
+    const width = label.width
+    const lines = label.lines
+    const height = lines.length > 1 ? NODE_HEIGHT_2 : NODE_HEIGHT
     const layoutChildren: LayoutNode[] = []
 
     const isCollapsed = collapsedIds.has(node.id)
     const rawChildren = isCollapsed ? [] : node.children || []
     if (rawChildren.length === 0) {
-      const y = leafY
-      leafY += DY
+      const y = lastBottom + (DY - NODE_HEIGHT) + height / 2
+      lastBottom = y + height / 2
       return {
         node,
         x: 0,
@@ -89,6 +150,7 @@ function computeTreeLayout(
         width,
         height,
         color: branchColor,
+        lines,
         depth,
         children: [],
       }
@@ -97,10 +159,9 @@ function computeTreeLayout(
     for (let i = 0; i < rawChildren.length; i++) {
       const child = rawChildren[i]
       if (!child) continue
-      const childColor = isRoot
-        ? BRANCH_COLORS[i % BRANCH_COLORS.length] ?? '#2563eb'
-        : branchColor
-      layoutChildren.push(assignY(child, depth + 1, childColor))
+      const fork = !toned && rawChildren.length > 1
+      const childColor = fork ? toneVar(i) : branchColor
+      layoutChildren.push(assignY(child, depth + 1, childColor, toned || fork))
     }
 
     const firstChild = layoutChildren[0]
@@ -108,7 +169,7 @@ function computeTreeLayout(
     const y =
       firstChild && lastChild
         ? (firstChild.y + lastChild.y) / 2
-        : leafY
+        : lastBottom
 
     return {
       node,
@@ -117,12 +178,13 @@ function computeTreeLayout(
       width,
       height,
       color: branchColor,
+      lines,
       depth,
       children: layoutChildren,
     }
   }
 
-  const rootLayout = assignY(root, 0, '#2563eb')
+  const rootLayout = assignY(root, 0, ROOT_TONE)
 
   const maxLevelWidth: Record<number, number> = {}
   function measureLevels(item: LayoutNode) {
@@ -194,6 +256,8 @@ export function MindmapModal({
   const svgRef = useRef<SVGSVGElement | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
+  const downPosRef = useRef({ x: 0, y: 0 })
+  const movedRef = useRef(false)
 
   const { nodes, edges, bounds } = useMemo(() => {
     if (!root) {
@@ -313,17 +377,31 @@ export function MindmapModal({
     return null
   }
 
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return
     isDraggingRef.current = true
+    movedRef.current = false
+    downPosRef.current = { x: e.clientX, y: e.clientY }
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    } catch {
+      /* synthetic pointer */
+    }
     dragStartRef.current = {
       x: e.clientX - transform.x,
       y: e.clientY - transform.y,
     }
   }
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!isDraggingRef.current) return
+    if (
+      !movedRef.current &&
+      Math.hypot(e.clientX - downPosRef.current.x, e.clientY - downPosRef.current.y) > 4
+    ) {
+      movedRef.current = true
+    }
+    if (!movedRef.current) return
     setTransform((prev) => ({
       ...prev,
       x: e.clientX - dragStartRef.current.x,
@@ -331,7 +409,7 @@ export function MindmapModal({
     }))
   }
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     isDraggingRef.current = false
   }
 
@@ -401,7 +479,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-close-btn"
           onClick={onClose}
-          aria-label="Đóng sơ đồ tư duy" title="Đóng sơ đồ tư duy"
+          aria-label="Đóng"
+          title="Đóng"
         >
           <Icon name="close" size={20} />
         </button>
@@ -410,10 +489,10 @@ export function MindmapModal({
       <svg
         className="mindmap-svg"
         ref={svgRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onWheel={handleWheel}
       >
         <g
@@ -452,6 +531,7 @@ export function MindmapModal({
                 transform={`translate(${n.x}, ${n.y - n.height / 2})`}
                 onClick={(e) => {
                   e.stopPropagation()
+                  if (movedRef.current) return
                   onNodeClick?.(n.node)
                 }}
               >
@@ -462,7 +542,7 @@ export function MindmapModal({
                   width={n.width}
                   height={n.height}
                   rx={isRoot ? 8 : 6}
-                  fill="var(--md-bg-card, #ffffff)"
+                  fill={`color-mix(in srgb, ${n.color} 12%, var(--paper))`}
                   stroke={n.color}
                   strokeWidth={isRoot ? 2.5 : 1.5}
                 />
@@ -472,9 +552,17 @@ export function MindmapModal({
                   y={n.height / 2}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  fill="var(--md-fg, #0f172a)"
+                  fill="var(--ink)"
                 >
-                  {n.node.text}
+                  {n.lines.map((ln, li) => (
+                    <tspan
+                      key={li}
+                      x={n.width / 2}
+                      y={n.height / 2 + (li - (n.lines.length - 1) / 2) * 18}
+                    >
+                      {ln}
+                    </tspan>
+                  ))}
                 </text>
 
                 {hasChildren && (
@@ -482,15 +570,16 @@ export function MindmapModal({
                     className="mindmap-collapse-handle"
                     role="button"
                     aria-label={isCollapsed ? `Expand ${n.node.text}` : `Collapse ${n.node.text}`}
-                    transform={`translate(${n.width}, ${n.height / 2})`}
+                    transform={`translate(${n.width + 14}, ${n.height / 2})`}
                     onClick={(e) => {
                       e.stopPropagation()
+                      if (movedRef.current) return
                       toggleCollapse(n.node.id)
                     }}
                   >
                     <circle
                       r={isCollapsed ? (n.node.children.length > 9 ? 11 : 9) : 8}
-                      fill={isCollapsed ? n.color : 'var(--md-bg-card, #ffffff)'}
+                      fill={isCollapsed ? n.color : 'var(--paper)'}
                       stroke={n.color}
                       strokeWidth={1.5}
                     />
@@ -499,7 +588,7 @@ export function MindmapModal({
                         className="mindmap-collapsed-badge"
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fill="#ffffff"
+                        fill="var(--paper)"
                         fontSize={9}
                         fontWeight="bold"
                       >
@@ -511,10 +600,9 @@ export function MindmapModal({
                         x2={4}
                         y1={0}
                         y2={0}
-                        stroke="currentColor"
+                        stroke={n.color}
                         strokeWidth={2}
                         strokeLinecap="round"
-                        style={{ color: n.color }}
                       />
                     )}
                   </g>
@@ -588,15 +676,6 @@ export function MindmapModal({
           title="Mở tất cả nhánh"
         >
           <Icon name="expand-all" size={20} />
-        </button>
-        <button
-          type="button"
-          className="mindmap-btn"
-          onClick={onClose}
-          aria-label="Đóng"
-          title="Đóng"
-        >
-          <Icon name="close" size={20} />
         </button>
       </div>
     </div>
