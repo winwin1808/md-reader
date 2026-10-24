@@ -384,7 +384,7 @@ device only when the user turns on sharing for a document; what is stored on the
 off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 
 ## Sub-phase queue
-- 8a0: planned   (spike; stop-and-ask if Free plan rejects SQLite DO)
+- 8a0: done      (spike; stop-and-ask if Free plan rejects SQLite DO)
 - 8b1: pending   (core share types — before 8a2 which consumes them)
 - 8a1: pending
 - 8a2: pending
