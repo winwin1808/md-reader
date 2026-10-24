@@ -116,7 +116,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
         onClick={(e) => e.stopPropagation()}
         style={{
           borderRadius: '16px',
-          border: '1px solid var(--md-border, #d0d7de)',
+          border: '1px solid var(--rule)',
           boxShadow: '0 24px 48px -12px rgba(0,0,0,0.35)',
           padding: '24px 28px',
           minWidth: '340px',
@@ -124,8 +124,8 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           width: '100%',
           maxHeight: 'calc(100vh - 48px)',
           overflowY: 'auto',
-          background: 'var(--md-bg, #ffffff)',
-          color: 'var(--md-fg, #24292f)',
+          background: 'var(--paper)',
+          color: 'var(--ink)',
           boxSizing: 'border-box',
           margin: 'auto',
           position: 'relative',
@@ -144,7 +144,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                   margin: 0,
                   fontSize: '18px',
                   fontWeight: 600,
-                  color: 'var(--md-fg)',
+                  color: 'var(--ink)',
                 }}
               >
                 Xuất tài liệu
@@ -159,7 +159,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                   border: 'none',
                   display: 'inline-flex',
                   cursor: working ? 'not-allowed' : 'pointer',
-                  color: 'var(--md-fg)',
+                  color: 'var(--ink)',
                   padding: '4px 8px',
                   borderRadius: '6px',
                 }}
@@ -191,9 +191,9 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                       width: '100%',
                       padding: '12px 14px',
                       borderRadius: '10px',
-                      border: '1px solid var(--md-border, #d0d7de)',
-                      background: 'var(--md-bg-secondary, rgba(125, 125, 125, 0.08))',
-                      color: 'var(--md-fg, #24292f)',
+                      border: '1px solid var(--rule)',
+                      background: 'var(--surface)',
+                      color: 'var(--ink)',
                       cursor: working ? 'not-allowed' : 'pointer',
                       opacity: working && !isWorking ? 0.6 : 1,
                       transition: 'all 0.15s ease',
@@ -215,7 +215,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
             </div>
 
             {error && (
-              <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--md-fg)' }}>
+              <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--ink)' }}>
                 <span>{error.message}</span>{' '}
                 <button type="button" onClick={() => { void run(error.format) }}>
                   Thử lại
@@ -237,8 +237,8 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           width: '38px',
           height: '38px',
           borderRadius: '10px',
-          background: 'var(--md-bg)',
-          border: '1px solid var(--md-border)',
+          background: 'var(--paper)',
+          border: '1px solid var(--rule)',
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
@@ -246,7 +246,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          color: 'var(--md-fg)',
+          color: 'var(--ink)',
           padding: 0,
         }}
       >

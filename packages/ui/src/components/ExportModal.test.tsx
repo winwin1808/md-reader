@@ -78,6 +78,6 @@ describe('ExportModal', () => {
   it('renders dialog card with token background', () => {
     open()
     const card = screen.getByRole('dialog').firstChild as HTMLElement
-    expect(card.style.background).toContain('var(--md-bg')
+    expect(card.style.background).toContain('var(--paper)')
   })
 })
