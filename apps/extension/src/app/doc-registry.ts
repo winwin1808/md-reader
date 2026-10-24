@@ -215,7 +215,6 @@ async function runMigration(): Promise<number> {
   const flag = await req(db.transaction('meta').objectStore('meta').get('migratedV1'))
   if (flag) return 0
 
-  let created = 0
   let entries: Array<{ id: string; name: string; lastOpened: number }> = []
   try {
     const res = await (globalThis as any).chrome.storage.local.get('recentFiles')
@@ -223,42 +222,66 @@ async function runMigration(): Promise<number> {
   } catch {
     entries = []
   }
-  for (const e of entries) {
-    try {
-      new URL(e.id)
-    } catch {
-      continue
-    }
-    if (await findByOrigin(e.id)) continue
-    await findOrCreateByOrigin({
-      title: e.name,
-      originKind: 'url',
-      originPath: e.id,
-      persistenceName: `md-reader-${encodeURIComponent(e.id)}`,
-      ...(typeof e.lastOpened === 'number' ? { lastOpenedAt: e.lastOpened } : {}),
-    })
-    created++
-  }
-
+  entries = entries.filter((e) => {
+    try { new URL(e.id); return true } catch { return false }
+  })
+  let hasLegacyDb = false
   try {
     const dbs = await indexedDB.databases?.()
-    const all = (await req(db.transaction('docs').objectStore('docs').getAll())) as DocRecord[]
-    if (dbs?.some((d) => d.name === 'md-reader') && !all.some((r) => r.persistenceName === 'md-reader')) {
-      await createRecord({
-        title: 'Tài liệu đã kéo thả',
-        originKind: 'drop',
-        originPath: null,
-        persistenceName: 'md-reader',
-      })
-      created++
-    }
+    hasLegacyDb = !!dbs?.some((d) => d.name === 'md-reader')
   } catch {
     /* ignore */
   }
 
-  const tx = db.transaction('meta', 'readwrite')
-  tx.objectStore('meta').put(true, 'migratedV1')
-  await done(tx)
+  // One readwrite transaction: marker check, record creation and marker write are atomic,
+  // so a second tab running concurrently sees the marker (or waits) and no-ops.
+  const tx = db.transaction(['docs', 'meta'], 'readwrite')
+  const docs = tx.objectStore('docs')
+  const meta = tx.objectStore('meta')
+  const finished = done(tx)
+  let created = 0
+  try {
+    const marker = (await req(meta.get('migratedAt'))) ?? (await req(meta.get('migratedV1')))
+    if (marker) {
+      await finished
+      return 0
+    }
+    for (const e of entries) {
+      if (await req(docs.index('originPath').get(e.id))) continue
+      const docId = crypto.randomUUID()
+      docs.put({
+        docId,
+        title: e.name,
+        originKind: 'url',
+        originPath: e.id,
+        persistenceName: `md-reader-${encodeURIComponent(e.id)}`,
+        lastOpenedAt: typeof e.lastOpened === 'number' ? e.lastOpened : Date.now(),
+        hasHandle: false,
+      } satisfies DocRecord)
+      created++
+    }
+    const all = (await req(docs.getAll())) as DocRecord[]
+    if (hasLegacyDb && !all.some((r) => r.persistenceName === 'md-reader')) {
+      const docId = crypto.randomUUID()
+      docs.put({
+        docId,
+        title: 'Tài liệu đã kéo thả',
+        originKind: 'drop',
+        originPath: null,
+        persistenceName: 'md-reader',
+        lastOpenedAt: Date.now(),
+        hasHandle: false,
+      } satisfies DocRecord)
+      created++
+    }
+    meta.put(true, 'migratedV1')
+    meta.put(Date.now(), 'migratedAt')
+  } catch (err) {
+    try { tx.abort() } catch { /* ignore */ }
+    finished.catch(() => {})
+    throw err
+  }
+  await finished
   return created
 }
 
