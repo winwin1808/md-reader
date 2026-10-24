@@ -100,6 +100,28 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
     }
   }
 
+  const onArticleClick = (e: React.MouseEvent<HTMLElement>) => {
+    const a = (e.target as Element | null)?.closest?.('a')
+    const href = a?.getAttribute('href')
+    if (!a || !href || !href.startsWith('#')) return
+    e.preventDefault()
+    let id = href.slice(1)
+    try {
+      id = decodeURIComponent(id)
+    } catch {
+      /* keep raw */
+    }
+    const scope = e.currentTarget.getRootNode() as ShadowRoot | Document
+    const target = scope.getElementById(id) ?? scope.getElementById(id.replace(/^user-content-/, ''))
+    if (!target) return
+    target.scrollIntoView({ block: 'start' })
+    try {
+      history.replaceState(null, '', href)
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (render) {
     const flip = () => {
       const next = !raw
@@ -117,7 +139,7 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
           <button type="button" className="toggle" onClick={flip}>{raw ? 'Xem bản đọc' : 'Xem bản thô'}</button>
           {errorMsg ? <span className="err" role="alert">{errorMsg}</span> : null}
         </header>
-        {raw ? null : <article className="doc" dangerouslySetInnerHTML={{ __html: render.html }} />}
+        {raw ? null : <article className="doc" onClick={onArticleClick} dangerouslySetInnerHTML={{ __html: render.html }} />}
       </>
     )
   }

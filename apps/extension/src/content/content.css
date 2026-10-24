@@ -107,9 +107,13 @@ button:disabled {
   background: var(--paper);
 }
 :host([data-mode="raw"]) {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  width: max-content;
+  max-width: 100vw;
   z-index: 2147483647;
+  background: var(--paper);
 }
 .bar {
   display: flex;
@@ -122,8 +126,7 @@ button:disabled {
   border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
-:host([data-mode="read"]) .bar,
-:host([data-mode="raw"]) .bar {
+:host([data-mode="read"]) .bar {
   position: sticky;
   top: 0;
   z-index: 2;
