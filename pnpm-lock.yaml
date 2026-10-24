@@ -69,6 +69,9 @@ importers:
       y-indexeddb:
         specifier: 9.0.12
         version: 9.0.12(yjs@13.6.32)
+      y-partyserver:
+        specifier: 2.2.0
+        version: 2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.32)
       yjs:
         specifier: 13.6.32
         version: 13.6.32
@@ -4978,6 +4981,16 @@ snapshots:
       lib0: 0.2.117
       yjs: 13.6.32
 
+  y-partyserver@2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.32):
+    dependencies:
+      '@cloudflare/workers-types': 4.20260702.1
+      lib0: 0.2.117
+      lodash.debounce: 4.0.8
+      nanoid: 5.1.16
+      partyserver: 0.5.10(@cloudflare/workers-types@4.20260702.1)
+      y-protocols: 1.0.7(yjs@13.6.32)
+      yjs: 13.6.32
+
   y-partyserver@2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.33):
     dependencies:
       '@cloudflare/workers-types': 4.20260702.1
@@ -4987,6 +5000,11 @@ snapshots:
       partyserver: 0.5.10(@cloudflare/workers-types@4.20260702.1)
       y-protocols: 1.0.7(yjs@13.6.33)
       yjs: 13.6.33
+
+  y-protocols@1.0.7(yjs@13.6.32):
+    dependencies:
+      lib0: 0.2.117
+      yjs: 13.6.32
 
   y-protocols@1.0.7(yjs@13.6.33):
     dependencies:
