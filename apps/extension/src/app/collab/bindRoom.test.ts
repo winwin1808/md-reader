@@ -11,6 +11,7 @@ class FakeProvider {
   handlers = new Map<string, Set<Handler>>()
   state: Record<string, unknown> = {}
   awareness = {
+    clientID: 7,
     setLocalStateField: (k: string, v: unknown) => {
       this.state[k] = v
     },
@@ -67,7 +68,11 @@ describe('bindRoom', () => {
     expect(p.args[3]).toMatchObject({ party: 'doc-room', params: { token: 'tok' }, connect: false })
     expect(p.connect).toHaveBeenCalledTimes(1)
     expect(p.args[3].protocol).toBeUndefined()
-    expect(p.state.user).toEqual({ name: 'Hao' })
+    const u = p.state.user as any
+    expect(u.name).toBe('Hao')
+    expect(u.color).toMatch(/^var\(--peer-/)
+    expect(u.colorLight).toContain('color-mix')
+    expect(JSON.stringify(p.state)).not.toContain('tok')
   })
   it('uses ws for http', () => {
     const { p } = mk('http://localhost:8787')
