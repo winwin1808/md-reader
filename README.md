@@ -78,7 +78,8 @@ HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ n
 ### Chia sẻ & cộng tác
 
 - Tạo link xem hoặc link sửa, cùng sửa một tài liệu theo thời gian thực, thấy ai đang mở và xem dòng nào do ai viết.
-- Tính năng này là tuỳ chọn và tắt theo mặc định. Khi chưa bật, không có gì rời khỏi trình duyệt.
+- Tính năng này là tuỳ chọn và tắt theo mặc định. Khi chưa bật, không có gì rời khỏi trình duyệt. Khi bật, tài liệu đi tới máy chủ mặc định của tác giả (Cloudflare Workers), trừ khi bạn nhập máy chủ riêng; với máy chủ mặc định, tác giả vận hành nơi lưu trữ.
+- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, không xoá nội dung và siêu dữ liệu đã lưu trên máy chủ; muốn xoá, liên hệ người vận hành máy chủ hoặc tự xoá dữ liệu Worker/D1 nếu dùng máy chủ riêng.
 - Tự host: `pnpm deploy:api` triển khai `apps/api` lên tài khoản Cloudflare của bạn (gói Workers Free), dùng Durable Objects (SQLite) và D1, không cần R2 hay KV. Cần đặt biến môi trường `CLOUDFLARE_API_TOKEN` (token của bạn, đừng commit vào repo).
 - Sau khi triển khai, nhập địa chỉ máy chủ (ví dụ `https://<ten-worker>.<tai-khoan>.workers.dev`) tại Cài đặt → Cộng tác.
 - Chạy thử cục bộ: `pnpm --filter @md-reader/extension e2e:collab` (dùng `wrangler dev` chạy cục bộ).
@@ -86,7 +87,7 @@ HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ n
 
 ### Riêng tư
 
-Không tài khoản, không theo dõi. Mặc định tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ thì nội dung tài liệu được chia sẻ mới đi qua máy chủ do bạn chọn. Font được đóng gói sẵn, không gọi ra ngoài khi đọc. Xem [chính sách riêng tư](docs/store/privacy-policy.md).
+Không tài khoản, không theo dõi. Mặc định tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ thì nội dung tài liệu được chia sẻ mới đi qua máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng nếu bạn nhập. Font được đóng gói sẵn, không gọi ra ngoài khi đọc. Xem [chính sách riêng tư](docs/store/privacy-policy.md).
 
 ## 🚀 Cài đặt
 
