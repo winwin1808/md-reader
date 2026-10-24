@@ -34,7 +34,6 @@
   border-right: 0;
   border-radius: 8px 0 0 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-  transition: width 0.15s ease, padding 0.15s ease;
 }
 .tab.strip {
   width: 28px;
@@ -92,6 +91,4 @@ button:disabled {
   max-width: 220px;
   color: var(--ink);
 }
-@media (prefers-reduced-motion: reduce) {
-  .tab { transition: none; }
-}
+
