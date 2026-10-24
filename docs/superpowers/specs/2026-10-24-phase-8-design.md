@@ -426,7 +426,7 @@ off), no analytics. Listing gains the "Chia sẻ" paragraph in VI + EN.
 - 8h2: done
 - 8i: done
 - 8j: done
-- 8j2: planned     (gia cố: actors race, awareness cap, lineAuthors tuyến tính, anchor content, test infra)
+- 8j2: done        (gia cố: actors race, awareness cap, lineAuthors tuyến tính, anchor content, test infra)
 - 8k: pending
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
