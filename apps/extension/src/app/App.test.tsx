@@ -828,6 +828,15 @@ describe('App', () => {
     expect(channelInstance?.postMessage).toHaveBeenCalledWith({ type: 'NAVIGATE', index: 1 })
   })
 
+  it('speaker route applies stored themeMode to data-theme', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# S') } as any)
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ mode: 'dark', settingsVersion: 2 })
+    await act(async () => { render(<App />) })
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
   it('loads extended settings initially from chrome.storage.sync', async () => {
     ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({
       showReadingProgress: false,

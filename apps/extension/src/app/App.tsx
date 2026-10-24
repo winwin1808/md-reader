@@ -349,7 +349,15 @@ export function App(): React.JSX.Element {
     if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
       setPreparingSlides(true)
       try {
-        const list = splitIntoSlides(content, { math: readerSettings.enableMath !== false })
+        const list = splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          })
         const out = await Promise.all(
           list.map(async (sl) => ({ id: sl.id, html: await inlineMermaid(sl.html, 'default') })),
         )
@@ -369,13 +377,29 @@ export function App(): React.JSX.Element {
   }, [isPrintingSlides])
 
   const hasSlides = useMemo(
-    () => (exportOpen ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }).length > 1 : false),
+    () => (exportOpen ? splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          }).length > 1 : false),
     [exportOpen, content, readerSettings.enableMath],
   )
 
   const slides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }) : []),
-    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath],
+    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          }) : []),
+    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
 
   useShortcuts({
@@ -389,6 +413,7 @@ export function App(): React.JSX.Element {
 
   if (isSpeakerMode) {
     return (
+      <ThemeProvider mode={readerSettings.mode || 'system'} contrast={readerSettings.contrast}>
       <SpeakerView
         slides={slides}
         currentSlideIndex={currentSlideIndex}
@@ -398,6 +423,7 @@ export function App(): React.JSX.Element {
         }}
         mermaid={readerSettings.enableMermaid !== false}
       />
+      </ThemeProvider>
     )
   }
 
