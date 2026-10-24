@@ -205,7 +205,7 @@ describe('injected plugins (8h1)', () => {
   it('uses injected highlight plugin', () => {
     const fake = () => (tree: any) => {
       const walk = (n: any) => {
-        if (n.tagName === 'code') n.properties = { ...(n.properties ?? {}), 'data-fake': '1' }
+        if (n.tagName === 'code') n.properties = { ...(n.properties ?? {}), className: ['language-data-fake'] }
         for (const c of n.children ?? []) walk(c)
       }
       walk(tree)
