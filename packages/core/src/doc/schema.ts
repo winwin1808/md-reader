@@ -1,6 +1,6 @@
 import * as Y from 'yjs'
 
-export const FORMAT_VERSION = 1
+export const FORMAT_VERSION = 2
 
 export const DOC_KEYS = {
   source: 'source',
@@ -23,8 +23,11 @@ export interface HistoryEntry {
   id: string
   actor: string
   ts: number
+  /** 'save' | 'auto' | 'import' */
   label: string
   clientIds: number[]
+  /** Y.encodeStateAsUpdate tại thời điểm checkpoint. */
+  snapshot?: Uint8Array
 }
 
 export class UnsupportedFormatVersionError extends Error {

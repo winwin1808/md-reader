@@ -10,4 +10,5 @@ export interface Slide {
 export interface SlideSplitOptions {
   strategy?: 'hr' | 'heading' | 'auto' // default 'auto'
   headingDepth?: number // default 2
+  math?: boolean // default true
 }

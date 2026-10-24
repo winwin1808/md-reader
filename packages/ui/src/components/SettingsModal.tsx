@@ -11,19 +11,16 @@ export interface ReaderSettings {
   colorTheme?: ColorTheme;
   fontFamily?: FontFamily;
   autoFormatMd?: boolean;
+  formatOnSave?: boolean;
   alwaysOpenApp?: boolean;
 
   // Core Rendering
   stripFrontmatter?: boolean;
   displayMetadata?: boolean;
-  advancedTables?: boolean;
-  taskLists?: boolean;
 
   // Content & Media
   enableMath?: boolean;
   enableMermaid?: boolean;
-  enablePlantUml?: boolean;
-  enableGraphviz?: boolean;
   githubAlerts?: boolean;
   localizeAlerts?: boolean;
 
@@ -724,6 +721,14 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                   />
 
                   <ToggleRow
+                    id="settings-formatOnSave"
+                    title="Định dạng Markdown khi lưu (Cmd+S)"
+                    description="Tự động định dạng lại Markdown mỗi khi lưu file"
+                    checked={settings?.formatOnSave ?? currentAutoFormat}
+                    onChange={(val) => handleSettingChange('formatOnSave', val)}
+                  />
+
+                  <ToggleRow
                     id="settings-alwaysOpenApp"
                     title="Tự động chuyển hướng vào app (Always open app)"
                     description="Bật: Mở thẳng vào ứng dụng MD Reader. Tắt: Giữ trang văn bản thô và hiện nút widget nổi 📖 để bấm khi cần"
@@ -749,20 +754,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     checked={settings?.displayMetadata}
                     onChange={(val) => handleSettingChange('displayMetadata', val)}
                   />
-                  <ToggleRow
-                    id="settings-advancedTables"
-                    title="Advanced Tables"
-                    description="Extended table features: multiline cells, rowspan, headerless tables"
-                    checked={settings?.advancedTables}
-                    onChange={(val) => handleSettingChange('advancedTables', val)}
-                  />
-                  <ToggleRow
-                    id="settings-taskLists"
-                    title="Task Lists"
-                    description="Render GitHub-style task lists with checkboxes"
-                    checked={settings?.taskLists}
-                    onChange={(val) => handleSettingChange('taskLists', val)}
-                  />
                 </div>
               )}
 
@@ -781,20 +772,6 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     description="Render flowcharts, sequence diagrams, class diagrams, and more"
                     checked={settings?.enableMermaid}
                     onChange={(val) => handleSettingChange('enableMermaid', val)}
-                  />
-                  <ToggleRow
-                    id="settings-enablePlantUml"
-                    title="PlantUML Diagrams"
-                    description="Render PlantUML sequence, class, activity, state, and use-case diagrams via a public diagram server (consent required)"
-                    checked={settings?.enablePlantUml}
-                    onChange={(val) => handleSettingChange('enablePlantUml', val)}
-                  />
-                  <ToggleRow
-                    id="settings-enableGraphviz"
-                    title="Graphviz Diagrams"
-                    description="Render DOT-language graphs locally via WebAssembly"
-                    checked={settings?.enableGraphviz}
-                    onChange={(val) => handleSettingChange('enableGraphviz', val)}
                   />
                   <ToggleRow
                     id="settings-githubAlerts"

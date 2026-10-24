@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { MermaidBlock } from './MermaidBlock'
+import { MermaidBlock, __clearMermaidCache } from './MermaidBlock'
 
 vi.mock('mermaid', () => {
   return {
@@ -44,5 +44,39 @@ describe('MermaidBlock', () => {
     })
     
     expect(screen.getByText('error')).toBeDefined() // raw code should be rendered
+  })
+})
+
+describe('MermaidBlock cache', () => {
+  it('caches svg, uses strict, and evicts oldest over 50', async () => {
+    const m = (await import('mermaid')).default as any
+    __clearMermaidCache()
+    m.render.mockClear()
+    m.initialize.mockClear()
+    const first = render(<MermaidBlock code="X" />)
+    await waitFor(() => expect(screen.getByTestId('mermaid-svg')).toBeDefined())
+    first.unmount()
+    expect(m.render).toHaveBeenCalledTimes(1)
+    expect(m.initialize).toHaveBeenCalledWith({ startOnLoad: false, securityLevel: 'strict' })
+    const second = render(<MermaidBlock code="X" />)
+    expect(second.container.querySelector('[data-testid="mermaid-svg"]')).not.toBeNull()
+    expect(m.render).toHaveBeenCalledTimes(1)
+    second.unmount()
+
+    __clearMermaidCache()
+    m.render.mockClear()
+    for (let i = 0; i < 51; i++) {
+      const r = render(<MermaidBlock code={`c${i}`} />)
+      await waitFor(() => expect(r.container.querySelector('[data-testid="mermaid-svg"]')).not.toBeNull())
+      r.unmount()
+    }
+    expect(m.render).toHaveBeenCalledTimes(51)
+    const again = render(<MermaidBlock code="c50" />)
+    expect(again.container.querySelector('[data-testid="mermaid-svg"]')).not.toBeNull()
+    again.unmount()
+    expect(m.render).toHaveBeenCalledTimes(51)
+    const evicted = render(<MermaidBlock code="c0" />)
+    expect(evicted.container.querySelector('pre')).not.toBeNull()
+    await waitFor(() => expect(m.render).toHaveBeenCalledTimes(52))
   })
 })

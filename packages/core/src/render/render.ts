@@ -1,7 +1,9 @@
 import type { Root } from 'mdast'
 import { Slugger } from './slug.js'
 import type { TocEntry, RenderOptions, RenderResult } from './types.js'
-import { applyTypographer, applyExternalLinks, applyGitHubAlerts, processFrontmatter, escapeHtml } from './options.js'
+import { rehypeGithubAlerts, rehypeExternalLinks, rehypeTypographer, rehypeMetadataCard, rehypeSafeLinkTargets, rehypePrefixFragmentLinks } from './plugins.js'
+
+export const HEADING_ID_PREFIX = 'user-content-'
 
 function getHeadingText(node: any): string {
   if (node.type === 'text' || node.type === 'inlineCode') {
@@ -22,7 +24,7 @@ export function extractToc(tree: Root): TocEntry[] {
     if (node.type === 'heading') {
       const depth = node.depth as 1 | 2 | 3 | 4 | 5 | 6
       const text = getHeadingText(node)
-      const id = slugger.slug(text)
+      const id = HEADING_ID_PREFIX + slugger.slug(text)
 
       const entry: TocEntry = { id, depth, text, children: [] }
 
@@ -54,6 +56,7 @@ import { unified } from 'unified'
 import remarkRehype from 'remark-rehype'
 import rehypeSlug from 'rehype-slug'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeStringify from 'rehype-stringify'
 import type { ParseResult } from '../parse/index.js'
@@ -67,7 +70,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
 
   const processor = unified()
   
-  processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml })
+  processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml, clobberPrefix: '' })
   processor.use(rehypeSlug)
   
   if (allowRawHtml) {
@@ -91,50 +94,73 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
       ...sanitizeSchema.attributes,
       code: [
         ...codeAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/],
+        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
       ],
       span: [
         ...spanAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/],
+        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
       ],
     },
   }
 
+  const attrs: Record<string, any[]> = (baseSchema.attributes ?? {}) as any
+  const ext = (tag: string, ...more: any[]) => {
+    const base = attrs[tag] ?? []
+    const out = [...base]
+    for (const m of more) {
+      const i = Array.isArray(m) ? out.findIndex((x: any) => Array.isArray(x) && x[0] === m[0]) : -1
+      if (i >= 0) out[i] = [...out[i], ...m.slice(1)]
+      else out.push(m)
+    }
+    return out
+  }
+  const svgClass = ['className', 'markdown-alert-icon', 'external-link-icon']
+  const widened: typeof sanitizeSchema = {
+    ...baseSchema,
+    attributes: {
+      ...baseSchema.attributes,
+      div: ext('div', ['className', 'math', 'math-display', /^math-/, 'markdown-metadata-card', /^markdown-alert(-[a-z]+)?$/], 'role', 'ariaLabel'),
+      p: ext('p', ['className', 'markdown-alert-title']),
+      span: ext('span'),
+      a: ext('a', ['className', 'external-link'], 'target', 'rel'),
+      svg: ext('svg', svgClass, 'ariaHidden'),
+    } as any,
+  }
+
   const schema = allowRawHtml
     ? {
-        ...baseSchema,
+        ...widened,
         attributes: {
-          ...baseSchema.attributes,
-          '*': [...((baseSchema.attributes as any)['*'] ?? []), 'style', 'className', 'data-info'],
+          ...widened.attributes,
+          '*': [...((widened.attributes as any)['*'] ?? []), 'style', 'className', 'data-info'],
         }
       }
-    : baseSchema
+    : widened
 
+  if (options?.githubAlerts === true) {
+    processor.use(rehypeGithubAlerts, { locale: options?.localizeAlerts === 'vi' ? 'vi' : 'en' })
+  }
+  if (options?.externalLinks === true) {
+    processor.use(rehypeExternalLinks)
+  }
+  if (options?.typographer === true) {
+    processor.use(rehypeTypographer)
+  }
+  if (options?.displayMetadata === true && parsed.frontmatter && Object.keys(parsed.frontmatter).length > 0) {
+    processor.use(rehypeMetadataCard, parsed.frontmatter as Record<string, unknown>)
+  }
+
+  processor.use(rehypePrefixFragmentLinks, HEADING_ID_PREFIX)
+  processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
+  if (options?.math !== false) {
+    processor.use(rehypeKatex, { throwOnError: false, strict: 'ignore' } as any)
+  }
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
   try {
     const hast = processor.runSync(parsed.tree)
-    let html = String(processor.stringify(hast))
-
-    if (options?.githubAlerts === true) {
-      html = applyGitHubAlerts(html, options?.localizeAlerts)
-    }
-    if (options?.externalLinks === true) {
-      html = applyExternalLinks(html)
-    }
-    if (options?.typographer === true) {
-      html = applyTypographer(html)
-    }
-    if (options?.displayMetadata === true && parsed.frontmatter && Object.keys(parsed.frontmatter).length > 0) {
-      const metadata = Object.entries(parsed.frontmatter)
-        .map(([key, val]) => {
-          const valStr = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '')
-          return `<div><strong>${escapeHtml(key)}</strong>: ${escapeHtml(valStr)}</div>`
-        })
-        .join('')
-      html = `<div class="markdown-metadata-card">${metadata}</div>` + html
-    }
+    const html = String(processor.stringify(hast))
 
     return { html, toc }
   } catch (error) {

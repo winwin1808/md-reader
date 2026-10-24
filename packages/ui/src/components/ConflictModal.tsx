@@ -51,6 +51,7 @@ export function ConflictModal({
   fileName,
   localContent,
   diskContent,
+  baseContent,
   onKeepLocal,
   onRevertToDisk,
   onClose,
@@ -73,7 +74,35 @@ export function ConflictModal({
     [diskContent, localContent]
   )
 
+  const threeWay = useMemo(() => {
+    if (baseContent === undefined) return null
+    return {
+      disk: computeLineDiff(baseContent, diskContent),
+      mine: computeLineDiff(baseContent, localContent),
+    }
+  }, [baseContent, diskContent, localContent])
+
   if (!isOpen) return null
+
+  const renderUnified = (title: string, diff: ReturnType<typeof computeLineDiff>) => {
+    const added = diff.filter((d) => d.type === 'added').length
+    const removed = diff.filter((d) => d.type === 'removed').length
+    return (
+      <div className="conflict-pane">
+        <div className="conflict-pane-header">
+          {title}{' '}
+          <span className="conflict-diff-counts">{`+${added} −${removed}`}</span>
+        </div>
+        <div className="conflict-diff-content">
+          {diff.map((line, idx) => (
+            <div key={idx} className={`conflict-diff-line ${line.type}`}>
+              <span className="conflict-diff-line-text">{line.text || ' '}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="conflict-modal-overlay" role="dialog" aria-modal="true">
@@ -87,6 +116,13 @@ export function ConflictModal({
         </div>
 
         <div className="conflict-modal-body">
+          {threeWay ? (
+            <>
+              {renderUnified('Thay đổi trên đĩa', threeWay.disk)}
+              {renderUnified('Thay đổi của bạn', threeWay.mine)}
+            </>
+          ) : (
+            <>
           <div className="conflict-pane">
             <div className="conflict-pane-header">Bản sửa cục bộ</div>
             <div className="conflict-diff-content">
@@ -114,6 +150,8 @@ export function ConflictModal({
               ))}
             </div>
           </div>
+            </>
+          )}
         </div>
 
         <div className="conflict-modal-footer">

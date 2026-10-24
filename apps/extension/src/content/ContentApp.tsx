@@ -1,63 +1,59 @@
 import React, { useState } from 'react'
+import { makeCacheEntry } from '../shared/md-url'
+
+export const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
+
+/** Cache page text only while an open is in flight; a failed open removes it. */
+export async function openInApp(markdown: string, replace = true): Promise<boolean> {
+  const fileUrl = window.location.href
+  const key = 'file_content_' + fileUrl
+  const fail = (): false => {
+    try {
+      Promise.resolve(chrome.storage?.local?.remove?.(key)).catch(() => {})
+    } catch {
+      /* ignore */
+    }
+    return false
+  }
+  try {
+    await chrome.storage?.local?.set?.({ [key]: makeCacheEntry(markdown) })
+    if (!chrome.runtime?.sendMessage) return fail()
+    const ok = await new Promise<boolean>((resolve) => {
+      try {
+        const r: any = chrome.runtime.sendMessage(
+          { action: 'openApp', fileUrl, content: markdown, replace },
+          (response: any) => {
+            resolve(!chrome.runtime.lastError && !(response && response.success === false))
+          }
+        )
+        if (r && typeof r.then === 'function') r.catch(() => resolve(false))
+      } catch {
+        resolve(false)
+      }
+    })
+    return ok ? true : fail()
+  } catch (e) {
+    console.warn('MD Reader open failed:', e)
+    return fail()
+  }
+}
 
 export interface ContentAppProps {
   markdown: string
+  initialError?: string | null
 }
 
-export function ContentApp({ markdown }: ContentAppProps) {
+export function ContentApp({ markdown, initialError = null }: ContentAppProps) {
   const [isOpening, setIsOpening] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError)
 
-  const handleOpen = (replace = true) => {
+  const handleOpen = async (replace = true) => {
     setIsOpening(true)
     setErrorMsg(null)
-
-    const fileUrl = window.location.href
-
-    // Pre-cache markdown content into chrome.storage.local
-    try {
-      chrome.storage?.local?.set?.({
-        ['file_content_' + fileUrl]: markdown,
-      })
-    } catch (e) {
-      console.warn('Failed to cache file content:', e)
-    }
-
-    // Try sending message to background worker
-    try {
-      if (chrome.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(
-          {
-            action: 'openApp',
-            fileUrl,
-            content: markdown,
-            replace,
-          },
-          (response) => {
-            if (chrome.runtime.lastError || (response && !response.success)) {
-              console.warn('Worker navigation failed, fallback to direct open', chrome.runtime.lastError)
-              fallbackOpen(replace)
-            }
-          }
-        )
-        return
-      }
-    } catch (e) {
-      console.warn('sendMessage failed, fallback to direct open', e)
-    }
-
-    fallbackOpen(replace)
-  }
-
-  const fallbackOpen = (_replace?: boolean) => {
-    try {
-      const targetUrl = chrome.runtime.getURL('app.html?file=' + encodeURIComponent(window.location.href))
-      window.open(targetUrl)
-    } catch (err) {
-      console.error('Failed to open MD Reader:', err)
-      setErrorMsg('Vui lòng bật "Cho phép truy cập vào URL tệp" trong chrome://extensions')
-    } finally {
+    const ok = await openInApp(markdown, replace)
+    if (!ok) {
+      setErrorMsg(FAIL_TEXT)
       setIsOpening(false)
     }
   }

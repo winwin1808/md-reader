@@ -20,7 +20,7 @@ import * as CoreExports from '../index.js'
 
 describe('doc schema & constants', () => {
   it('defines FORMAT_VERSION and DOC_KEYS correctly', () => {
-    expect(FORMAT_VERSION).toBe(1)
+    expect(FORMAT_VERSION).toBe(2)
     expect(DOC_KEYS).toEqual({
       source: 'source',
       meta: 'meta',
@@ -58,12 +58,13 @@ describe('hashText', () => {
 })
 
 describe('createDoc & accessors', () => {
-  it('initializes exactly 3 keys (source, meta, history) and formatVersion === 1', () => {
+  it('initializes exactly 3 keys (source, meta, history) and formatVersion === 2', () => {
     const doc = createDoc()
+    expect(doc.gc).toBe(false)
     expect(Array.from(doc.share.keys()).sort()).toEqual(['history', 'meta', 'source'])
     expect(doc.share.size).toBe(3)
     const meta = readMeta(doc)
-    expect(meta.formatVersion).toBe(1)
+    expect(meta.formatVersion).toBe(2)
   })
 
   it('creates doc with defaults when no options provided', () => {
@@ -78,7 +79,7 @@ describe('createDoc & accessors', () => {
 
     const meta = readMeta(doc)
     expect(meta.title).toBe('Untitled')
-    expect(meta.formatVersion).toBe(1)
+    expect(meta.formatVersion).toBe(2)
     expect(meta.originPath).toBeNull()
     expect(meta.originHash).toBeNull()
     expect(typeof meta.createdAt).toBe('number')
@@ -98,7 +99,7 @@ describe('createDoc & accessors', () => {
 
     const meta = readMeta(doc)
     expect(meta.title).toBe('Test Note')
-    expect(meta.formatVersion).toBe(1)
+    expect(meta.formatVersion).toBe(2)
     expect(meta.originPath).toBe('/path/to/test.md')
     expect(meta.originHash).toBe('abc123hash')
   })
@@ -120,7 +121,7 @@ describe('readMeta resilience', () => {
     }).not.toThrow()
     expect(meta).toEqual({
       title: 'Untitled',
-      formatVersion: FORMAT_VERSION,
+      formatVersion: 1,
       originPath: null,
       originHash: null,
       createdAt: 0,
@@ -141,7 +142,7 @@ describe('readMeta resilience', () => {
     const meta = readMeta(doc)
     expect(meta).toEqual({
       title: 'Untitled',
-      formatVersion: FORMAT_VERSION,
+      formatVersion: 1,
       originPath: null,
       originHash: null,
       createdAt: 0,
@@ -182,16 +183,62 @@ describe('importText and exportText', () => {
   })
 })
 
-describe('migrateDoc', () => {
-  it('returns { from: 1, to: 1 } for normal v1 doc', () => {
-    const doc = createDoc()
-    const result = migrateDoc(doc)
-    expect(result).toEqual({ from: 1, to: 1 })
+describe('importText minimal delta', () => {
+  it('changes only the differing word, keeping untouched chars original clientID', () => {
+    const doc = createDoc({ source: 'alpha beta gamma' })
+    const source = getSource(doc)
+    const origId = doc.clientID
+    const other = new Y.Doc()
+    other.clientID = origId + 1
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc))
+    // run import on the other replica so new chars get a different clientID
+    importText(other, 'alpha delta gamma', { originHash: 'h2' })
+    expect(exportText(other)).toBe('alpha delta gamma')
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(other))
+    expect(source.toString()).toBe('alpha delta gamma')
+    const chars: string[] = []
+    const ownerOf: number[] = []
+    const t = getSource(other)
+    for (let item = t._start; item; item = item.right) {
+      if (item.deleted) continue
+      const s = (item.content as { str?: string }).str ?? ''
+      for (const ch of s) {
+        chars.push(ch)
+        ownerOf.push(item.id.client)
+      }
+    }
+    const text = chars.join('')
+    const idx = text.indexOf('delta')
+    for (let i = 0; i < text.length; i++) {
+      const inWord = i >= idx && i < idx + 5
+      if (!inWord) expect(ownerOf[i]).toBe(origId)
+    }
+    expect(ownerOf.slice(idx, idx + 5).some((c) => c === other.clientID)).toBe(true)
+    // convergence
+    expect(exportText(doc)).toBe(exportText(other))
   })
 
-  it('throws UnsupportedFormatVersionError when formatVersion is 2', () => {
+  it('uses origin md:load for the transaction', () => {
+    const doc = createDoc({ source: 'one two' })
+    const origins: unknown[] = []
+    doc.on('afterTransaction', (tr: Y.Transaction) => {
+      origins.push(tr.origin)
+    })
+    importText(doc, 'one three', { originHash: 'h' })
+    expect(origins).toEqual(['md:load'])
+  })
+})
+
+describe('migrateDoc', () => {
+  it('returns { from: 2, to: 2 } for current doc', () => {
     const doc = createDoc()
-    getMeta(doc).set('formatVersion', 2)
+    const result = migrateDoc(doc)
+    expect(result).toEqual({ from: 2, to: 2 })
+  })
+
+  it('throws UnsupportedFormatVersionError when formatVersion is 3', () => {
+    const doc = createDoc()
+    getMeta(doc).set('formatVersion', 3)
     expect(() => migrateDoc(doc)).toThrow(UnsupportedFormatVersionError)
     try {
       migrateDoc(doc)
@@ -199,15 +246,15 @@ describe('migrateDoc', () => {
     } catch (e) {
       expect(e).toBeInstanceOf(UnsupportedFormatVersionError)
       const err = e as UnsupportedFormatVersionError
-      expect(err.foundVersion).toBe(2)
-      expect(err.maxSupportedVersion).toBe(1)
+      expect(err.foundVersion).toBe(3)
+      expect(err.maxSupportedVersion).toBe(2)
     }
   })
 })
 
 describe('re-exports from @md-reader/core', () => {
   it('exports all schema, hash, and doc functions', () => {
-    expect(CoreExports.FORMAT_VERSION).toBe(1)
+    expect(CoreExports.FORMAT_VERSION).toBe(2)
     expect(CoreExports.DOC_KEYS).toBeDefined()
     expect(CoreExports.UnsupportedFormatVersionError).toBeDefined()
     expect(CoreExports.hashText).toBeDefined()
