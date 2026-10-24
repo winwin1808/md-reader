@@ -467,7 +467,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7r: done
 - 7s1a: done
 - 7s1b: done
-- 7s1c: planned
+- 7s1c: done
 - 7s2: pending
 
 ## Invariants copied into every envelope (pick the relevant 3-6)
