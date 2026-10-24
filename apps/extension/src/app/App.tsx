@@ -37,7 +37,7 @@ import {
   computeTextChanges,
   buildShareUrl,
 } from '@md-reader/core'
-import type { MindNode } from '@md-reader/core'
+import type { MindNode, RoomBinding } from '@md-reader/core'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { openLocalFileAsDoc } from './fs/file-system'
@@ -138,7 +138,8 @@ export function App(): React.JSX.Element {
   })
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
-  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl })
+  const [room, setRoom] = useState<RoomBinding | null>(null)
+  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName: 'Bạn' })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
@@ -155,6 +156,7 @@ export function App(): React.JSX.Element {
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: DEFAULT_SERVER_URL })
+  useEffect(() => { setRoom(share.binding) }, [share.binding])
   const shareRoomId = share.binding?.roomId
   const shareRefresh = share.refresh
   useEffect(() => {

@@ -50,6 +50,7 @@ function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
     isDirty: false, setDirty: () => {}, error: null, setError: () => {}, synced: true,
     externalChange: null, acceptExternal: () => {}, dismissExternal: () => {},
     checkpoints: tracker,
+    syncStatus: 'off', awareness: null,
     ...over,
   }
 }
