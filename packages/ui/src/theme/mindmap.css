@@ -113,3 +113,7 @@
   box-shadow: var(--elev-2);
   z-index: 10;
 }
+
+.mindmap-node:focus {
+  outline: none;
+}

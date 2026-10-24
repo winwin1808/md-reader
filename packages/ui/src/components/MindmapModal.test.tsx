@@ -358,4 +358,119 @@ describe('MindmapModal', () => {
     fireEvent.click(handle)
     expect(container.querySelector('.mindmap-collapse-handle')?.getAttribute('aria-label')).toBe(label)
   })
+
+  describe('keyboard and touch', () => {
+    const sel = () =>
+      Array.from(document.querySelectorAll('[role="treeitem"]')).find(
+        (n) => n.getAttribute('aria-selected') === 'true'
+      )!
+    const tree = () => document.querySelector('[role="tree"]') as Element
+
+    it('exposes tree semantics', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      expect(tree().getAttribute('aria-label')).toBe('Sơ đồ tư duy')
+      const items = document.querySelectorAll('[role="treeitem"]')
+      expect(items.length).toBe(4)
+      expect(sel().getAttribute('aria-label')).toBe('Root Document')
+      expect(sel().getAttribute('aria-level')).toBe('1')
+      expect(sel().getAttribute('aria-expanded')).toBe('true')
+      expect(sel().getAttribute('tabindex')).toBe('0')
+      expect(items[3]!.getAttribute('aria-expanded')).toBeNull()
+      expect(items[3]!.getAttribute('tabindex')).toBe('-1')
+    })
+
+    it('navigates with arrows, Enter and Space', () => {
+      const onNodeClick = vi.fn()
+      render(
+        <MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />
+      )
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(sel().getAttribute('aria-label')).toBe('Section 1')
+      fireEvent.keyDown(tree(), { key: 'ArrowDown' })
+      expect(sel().getAttribute('aria-label')).toBe('Section 2')
+      fireEvent.keyDown(tree(), { key: 'ArrowLeft' })
+      expect(sel().getAttribute('aria-label')).toBe('Root Document')
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      fireEvent.keyDown(tree(), { key: 'Enter' })
+      expect(onNodeClick).toHaveBeenCalledWith(sampleTree.children[0])
+      fireEvent.keyDown(tree(), { key: ' ' })
+      expect(screen.queryByText('Subsection 1.1')).toBeNull()
+      expect(sel().getAttribute('aria-expanded')).toBe('false')
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(screen.getByText('Subsection 1.1')).toBeDefined()
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      expect(sel().getAttribute('aria-label')).toBe('Subsection 1.1')
+    })
+
+    it('0 fits to view', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      const g = document.querySelector('g.mindmap-viewport')!
+      const initial = g.getAttribute('transform')
+      fireEvent.keyDown(tree(), { key: '+' })
+      expect(g.getAttribute('transform')).not.toEqual(initial)
+      fireEvent.keyDown(tree(), { key: '0' })
+      expect(g.getAttribute('transform')).toEqual(initial)
+    })
+
+    it('two-pointer pinch changes the scale', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      const svg = document.querySelector('svg.mindmap-svg')!
+      const g = document.querySelector('g.mindmap-viewport')!
+      const initial = g.getAttribute('transform')
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 2, clientX: 200, clientY: 100 })
+      fireEvent.pointerMove(svg, { pointerId: 2, clientX: 400, clientY: 100 })
+      expect(g.getAttribute('transform')).not.toEqual(initial)
+      fireEvent.pointerUp(svg, { pointerId: 2 })
+      fireEvent.pointerUp(svg, { pointerId: 1 })
+    })
+
+    const deep: MindNode = {
+      id: 'r', text: 'R', depth: 0,
+      children: [
+        { id: 'a', text: 'A', depth: 1, children: [
+          { id: 'b', text: 'B', depth: 2, children: [{ id: 'c', text: 'C', depth: 3, children: [] }] },
+        ] },
+      ],
+    }
+    const item = (label: string) =>
+      document.querySelector(`[role="treeitem"][aria-label="${label}"]`) as Element
+
+    it('selection moves to the collapsing ancestor', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      expect(sel().getAttribute('aria-label')).toBe('C')
+      fireEvent.click(item('A').querySelector('.mindmap-collapse-handle')!)
+      expect(item('A').getAttribute('aria-selected')).toBe('true')
+      expect(item('A').getAttribute('tabindex')).toBe('0')
+    })
+
+    it('Collapse All selects the root', () => {
+      render(<MindmapModal root={deep} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.focus(item('C'))
+      fireEvent.click(screen.getByRole('button', { name: 'Gập tất cả nhánh' }))
+      expect(sel().getAttribute('aria-label')).toBe('R')
+    })
+
+    it('ArrowDown moves focus and posinset is exposed', () => {
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
+      fireEvent.keyDown(tree(), { key: 'ArrowRight' })
+      fireEvent.keyDown(tree(), { key: 'ArrowDown' })
+      expect(document.activeElement).toBe(item('Section 2'))
+      expect(item('Section 2').getAttribute('aria-posinset')).toBe('2')
+      expect(item('Section 2').getAttribute('aria-setsize')).toBe('2')
+    })
+
+    it('pinch then pointerup on a node does not click it', () => {
+      const onNodeClick = vi.fn()
+      render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />)
+      const svg = document.querySelector('svg.mindmap-svg')!
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 1, clientX: 100, clientY: 100 })
+      fireEvent.pointerDown(svg, { button: 0, pointerId: 2, clientX: 200, clientY: 100 })
+      fireEvent.pointerUp(svg, { pointerId: 2 })
+      fireEvent.pointerUp(svg, { pointerId: 1 })
+      fireEvent.click(item('Section 1'))
+      expect(onNodeClick).not.toHaveBeenCalled()
+    })
+  })
 })
