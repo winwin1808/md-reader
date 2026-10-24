@@ -323,4 +323,25 @@ describe('TopToolbar sync status', () => {
     rerender(mk('online'))
     expect(screen.queryByText('Đã đồng bộ')).not.toBeNull()
   })
+
+  it('renders presence bar before sync status when peers present', () => {
+    const peers = [
+      { clientId: 1, name: 'An', color: 'var(--peer-1)', isSelf: true },
+      { clientId: 2, name: 'Binh', color: 'var(--peer-2)', isSelf: false },
+    ]
+    const { container } = render(<TopToolbar {...base} presence={peers} syncStatus="online" />)
+    const bar = container.querySelector('.presence-bar')
+    expect(bar).not.toBeNull()
+    expect(bar!.querySelectorAll('.presence-avatar').length).toBe(2)
+    const next = bar!.nextElementSibling
+    expect(next).not.toBeNull()
+    expect(next!.classList.contains('presence-bar')).toBe(false)
+  })
+
+  it('renders no presence bar without peers', () => {
+    const a = render(<TopToolbar {...base} />)
+    expect(a.container.querySelector('.presence-bar')).toBeNull()
+    const b = render(<TopToolbar {...base} presence={[]} />)
+    expect(b.container.querySelector('.presence-bar')).toBeNull()
+  })
 })

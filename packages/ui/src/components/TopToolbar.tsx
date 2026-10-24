@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './Icon'
 import { Logo } from './Logo'
+import { PresenceBar, type Peer } from './PresenceBar'
 import type { ViewMode } from './SplitViewContainer'
 import '../theme/toolbar.css'
 
@@ -15,6 +16,7 @@ export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
 export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
 
 export interface TopToolbarProps {
+  presence?: Peer[]
   title: string
   tocOpen: boolean
   onToggleToc: () => void
@@ -265,6 +267,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
         <Logo size={20} />
         <span className="tb-title">{props.title || 'Untitled'}</span>
         <StatusView status={status} />
+        {props.presence !== undefined && props.presence.length > 0 && <PresenceBar peers={props.presence} />}
         <SyncStatusView status={props.syncStatus ?? 'off'} />
       </div>
 
