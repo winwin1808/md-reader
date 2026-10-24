@@ -179,3 +179,14 @@
 
 .cm-blame-gutter { width: 6px; }
 .cm-blame-mark { display: block; width: 3px; height: 100%; min-height: 1em; border-radius: 1px; background: var(--peer, var(--pencil)); }
+
+.history-panel {
+  width: 320px;
+  overflow-y: auto;
+  border-left: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+}
+.history-panel ul { list-style: none; margin: 0; padding: 0; }
+.history-panel .history-row { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.history-panel .history-row[aria-selected='true'] { background: var(--hl); color: var(--hl-ink); }

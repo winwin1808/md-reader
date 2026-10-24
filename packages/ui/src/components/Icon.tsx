@@ -2,7 +2,7 @@ export type IconName =
   | 'book' | 'edit' | 'split' | 'present' | 'mindmap' | 'export' | 'settings' | 'search' | 'close'
   | 'chevron-left' | 'chevron-right' | 'chevron-down' | 'more' | 'open-file' | 'save' | 'check' | 'alert' | 'fullscreen'
   | 'zoom-in' | 'zoom-out' | 'expand-all' | 'collapse-all' | 'copy' | 'speaker' | 'toc' | 'font-smaller' | 'font-larger'
-  | 'undo' | 'redo' | 'menu' | 'share' | 'person'
+  | 'undo' | 'redo' | 'menu' | 'share' | 'person' | 'history'
 
 // 24-grid line icons, 2px padding, stroke only. Circles are expressed as path arcs.
 const PATHS: Record<IconName, string[]> = {
@@ -37,6 +37,7 @@ const PATHS: Record<IconName, string[]> = {
   redo: ['M15 5l5 5-5 5', 'M20 10H10a6 6 0 0 0 0 12h3'],
   menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
   person: ['M12 8m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0', 'M5 20a7 6 0 0 1 14 0'],
+  history: ['M3.5 12a8.5 8.5 0 1 0 2.6-6.1', 'M3.5 4v4.5H8', 'M12 7.5V12l3 2'],
   share: ['M18 5m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M6 12m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M18 19m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M8.2 10.8l7.6-4.6', 'M8.2 13.2l7.6 4.6'],
 }
 
