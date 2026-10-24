@@ -7,7 +7,7 @@
     "bindings": [{ "name": "DOC_ROOM", "class_name": "DocRoom" }]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "md-reader", "database_id": "REPLACE_IN_8a2_4", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "md-reader", "database_id": "fa46f112-5484-45bf-ad28-cef5efc0e734", "migrations_dir": "migrations" }
   ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DocRoom"] }],
   "observability": { "enabled": true }
