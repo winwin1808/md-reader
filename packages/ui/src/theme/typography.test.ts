@@ -85,10 +85,10 @@ describe('tokens.css Lề sách token layer', () => {
     }
   });
 
-  it('declares each legacy alias exactly once', () => {
+  it('declares no legacy alias', () => {
     for (const n of alias) {
       const count = tokens.match(new RegExp(`^\\s*--${n}:`, 'gm'))?.length ?? 0;
-      expect(count, n).toBe(1);
+      expect(count, n).toBe(0);
     }
   });
 
