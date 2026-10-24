@@ -20,12 +20,18 @@ importers:
       '@md-reader/core':
         specifier: workspace:*
         version: link:../../packages/core
+      lib0:
+        specifier: 0.2.117
+        version: 0.2.117
       partyserver:
         specifier: 0.5.10
         version: 0.5.10(@cloudflare/workers-types@4.20260702.1)
       y-partyserver:
         specifier: 2.2.0
         version: 2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.33)
+      y-protocols:
+        specifier: 1.0.7
+        version: 1.0.7(yjs@13.6.33)
       yjs:
         specifier: 13.6.33
         version: 13.6.33
