@@ -9,13 +9,55 @@
 .split-view-pane {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  background: var(--paper);
+}
+
+.split-view-pane-editor {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* The pane is the scroller SplitViewContainer listens to (scroll events do not
+   bubble), so the editor grows with its content and the pane scrolls. */
+.split-view-pane-editor .cm-editor {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.split-view-pane-editor .cm-editor .cm-scroller {
+  height: auto;
+  overflow: visible;
+}
+
+.split-view-pane-editor > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.mode-split .split-view-pane-preview {
+  background: var(--surface);
 }
 
 .mode-split .split-view-pane-editor {
-  border-right: 1px solid var(--md-border, #e2e8f0);
+  position: relative;
+  border-right: 1px solid var(--rule);
+}
+
+/* 8px transparent hit area around the 1px divider */
+.mode-split .split-view-pane-editor::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  background: transparent;
 }
 
 @media (max-width: 768px) {
@@ -25,24 +67,29 @@
 
   .mode-split .split-view-pane-editor {
     border-right: none;
-    border-bottom: 1px solid var(--md-border, #e2e8f0);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .mode-split .split-view-pane-editor::after {
+    display: none;
   }
 }
 
 .view-mode-group {
   display: flex;
   align-items: center;
-  border: 1px solid var(--md-border, #e2e8f0);
-  border-radius: 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-m);
   overflow: hidden;
 }
 
 .view-mode-group button {
   background: transparent;
   border: none;
-  color: var(--md-fg);
+  color: var(--ink);
   cursor: pointer;
   padding: 4px 8px;
+  font-family: var(--font-ui);
   font-size: 12px;
   display: inline-flex;
   align-items: center;
@@ -50,6 +97,6 @@
 }
 
 .view-mode-group button.active {
-  background: var(--md-border, #e2e8f0);
+  background: var(--active);
   font-weight: 600;
 }

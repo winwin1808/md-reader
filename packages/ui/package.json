@@ -8,9 +8,12 @@
     ".": "./src/index.ts",
     "./editor": "./src/components/Editor.tsx",
     "./split-view": "./src/components/SplitViewContainer.tsx",
-    "./deck": "./src/components/Deck.tsx"
+    "./deck": "./src/components/Deck.tsx",
+    "./fonts.css": "./src/theme/fonts.css"
   },
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -21,6 +24,10 @@
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.4",
     "@codemirror/view": "^6.43.11",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/literata": "5.3.0",
+    "@lezer/highlight": "1.2.3",
     "@md-reader/core": "workspace:*",
     "mermaid": "^12.0.0",
     "react": "19.3.0",

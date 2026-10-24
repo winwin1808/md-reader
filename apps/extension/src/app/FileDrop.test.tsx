@@ -4,7 +4,7 @@ import React from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { FileDrop } from './FileDrop';
-import { listRecent, __resetForTests } from './doc-registry';
+import { listRecent, __resetForTests, docParam } from './doc-registry';
 import * as registry from './doc-registry';
 import { RecentFiles } from './RecentFiles';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
@@ -52,12 +52,12 @@ describe('FileDrop', () => {
     const zone = container.firstChild as Element;
 
     const r1 = stubReader();
-    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'a.md')] } });
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'a.md')], types: ['Files'] } });
     await r1.fire('# One');
     await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(container.textContent).not.toContain('Đang mở tệp…'));
     const r2 = stubReader();
-    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'b.md')] } });
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'b.md')], types: ['Files'] } });
     await r2.fire('# Two');
 
     const recs = await listRecent();
@@ -67,7 +67,7 @@ describe('FileDrop', () => {
 
     const a = recs.find((r) => r.title === 'a.md')!;
     const b = recs.find((r) => r.title === 'b.md')!;
-    expect(navigate).toHaveBeenCalledWith('?doc=' + a.docId);
+    expect(navigate).toHaveBeenCalledWith('?d=' + docParam(a));
     const da = await readPersisted(a.persistenceName);
     const db = await readPersisted(b.persistenceName);
     expect(da.getText('source').toString()).toBe('# One');
@@ -85,9 +85,9 @@ describe('FileDrop', () => {
       </FileDrop>
     );
     fireEvent.drop(container.firstChild as Element, {
-      dataTransfer: { files: [new File(['bad'], 'test.bad')] },
+      dataTransfer: { files: [new File(['bad'], 'test.bad')], types: ['Files'] },
     });
-    await findByText('Chỉ hỗ trợ tệp .md, .markdown, .mdown, .mkd, .mdx.');
+    await findByText('Chỉ mở được file Markdown (.md, .markdown, .mdown, .mkd, .mdx) hoặc .txt.');
     expect(alertMock).not.toHaveBeenCalled();
     expect(await listRecent()).toHaveLength(0);
     expect(navigate).not.toHaveBeenCalled();
@@ -102,7 +102,7 @@ describe('FileDrop', () => {
       </FileDrop>
     );
     const r = stubReader();
-    fireEvent.drop(container.firstChild as Element, { dataTransfer: { files: [new File(['x'], 'a.md')] } });
+    fireEvent.drop(container.firstChild as Element, { dataTransfer: { files: [new File(['x'], 'a.md')], types: ['Files'] } });
     await r.fire('# One');
     await findByText('Không mở được tệp: boom');
     expect(await listRecent()).toHaveLength(0);
@@ -118,9 +118,9 @@ describe('FileDrop', () => {
     );
     const zone = container.firstChild as Element;
     const r1 = stubReader();
-    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'a.md')] } });
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'a.md')], types: ['Files'] } });
     await findByText('Đang mở tệp…');
-    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'b.md')] } });
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['x'], 'b.md')], types: ['Files'] } });
     await r1.fire('# One');
     await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
     expect(await listRecent()).toHaveLength(1);
@@ -132,5 +132,102 @@ describe('FileDrop', () => {
     });
     const { findByText } = render(<RecentFiles />);
     await findByText('legacy.md');
+  });
+
+  it('dropping a .png on window shows the notice, no import, no alert', async () => {
+    const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const createSpy = vi.spyOn(registry, 'createRecord');
+    const { findByRole, getByText } = render(<FileDrop><div /></FileDrop>);
+    fireEvent.drop(window, { dataTransfer: { files: [new File(['x'], 'p.PNG')], types: ['Files'] } });
+    const n = await findByRole('alert');
+    expect(n.className).toContain('notice--danger');
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(alertMock).not.toHaveBeenCalled();
+    fireEvent.click(getByText('Đóng'));
+    expect(document.body.textContent).not.toContain('Chỉ mở được file');
+  });
+
+  it('dragenter shows overlay; dragleave and drop hide it', async () => {
+    const { queryByText } = render(<FileDrop><div /></FileDrop>);
+    const dt = { files: [], types: ['Files'] };
+    fireEvent.dragEnter(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).not.toBeNull();
+    fireEvent.dragLeave(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).toBeNull();
+    fireEvent.dragEnter(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).not.toBeNull();
+    fireEvent.drop(window, { dataTransfer: dt });
+    expect(queryByText('Thả để mở')).toBeNull();
+  });
+
+  it('RecentFiles rows show origin and relative time', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(10_000_000_000);
+    const base = { persistenceName: 'p', hasHandle: false };
+    vi.spyOn(registry, 'migrateLegacyRegistry').mockResolvedValue(0);
+    vi.spyOn(registry, 'listRecent').mockResolvedValue([
+      { ...base, docId: '1', title: 'A.md', originKind: 'file', originPath: null, lastOpenedAt: 10_000_000_000 - 5 * 60000 },
+      { ...base, docId: '2', title: 'B.md', originKind: 'url', originPath: 'https://ex.test/docs/b.md', lastOpenedAt: 10_000_000_000 - 2 * 3600000 },
+      { ...base, docId: '3', title: 'C.md', originKind: 'drop', originPath: null, lastOpenedAt: 10_000_000_000 - 86400000 },
+    ]);
+    const { findByText } = render(<RecentFiles />);
+    await findByText('Mở gần đây');
+    await findByText('Trên máy · 5 phút trước');
+    await findByText('ex.test/docs/b.md · 2 giờ trước');
+    await findByText('Kéo thả · hôm qua');
+  });
+
+  it('drop of notes.mkd is imported', async () => {
+    const navigate = vi.fn();
+    render(<FileDrop navigate={navigate}><div /></FileDrop>);
+    const r = stubReader();
+    fireEvent.drop(window, { dataTransfer: { files: [new File(['x'], 'notes.MKD')], types: ['Files'] } });
+    await r.fire('# K');
+    await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not import when defaultPrevented', async () => {
+    const createSpy = vi.spyOn(registry, 'createRecord');
+    render(<FileDrop><div /></FileDrop>);
+    const ev = new Event('drop', { cancelable: true, bubbles: true }) as any;
+    ev.dataTransfer = { files: [new File(['x'], 'a.md')], types: ['Files'] };
+    ev.preventDefault();
+    window.dispatchEvent(ev);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not import when target is inside .cm-editor', async () => {
+    const createSpy = vi.spyOn(registry, 'createRecord');
+    render(<FileDrop><div /></FileDrop>);
+    const ed = document.createElement('div');
+    ed.className = 'cm-editor';
+    const inner = document.createElement('div');
+    ed.appendChild(inner);
+    document.body.appendChild(ed);
+    fireEvent.drop(inner, { dataTransfer: { files: [new File(['x'], 'a.md')], types: ['Files'] } });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(createSpy).not.toHaveBeenCalled();
+    ed.remove();
+  });
+
+  it('text-only drop onto an input is not prevented', () => {
+    render(<FileDrop><input data-testid="i" /></FileDrop>);
+    const input = document.querySelector('input')!;
+    const notPrevented = fireEvent.drop(input, { dataTransfer: { files: [], types: ['text/plain'] } });
+    expect(notPrevented).toBe(true);
+  });
+
+  it('RecentFiles with NaN lastOpenedAt shows no NaN and no leading separator', async () => {
+    vi.spyOn(registry, 'migrateLegacyRegistry').mockResolvedValue(0);
+    vi.spyOn(registry, 'listRecent').mockResolvedValue([
+      { persistenceName: 'p', hasHandle: false, docId: '1', title: 'A.md', originKind: 'drop', originPath: null, lastOpenedAt: NaN },
+      { persistenceName: 'p', hasHandle: false, docId: '2', title: 'B.md', originKind: 'url', originPath: '', lastOpenedAt: undefined as any },
+    ]);
+    const { findByText, container } = render(<RecentFiles />);
+    await findByText('A.md');
+    expect(container.textContent).not.toContain('NaN');
+    const metas = Array.from(container.querySelectorAll('.recent__meta')).map((m) => m.textContent);
+    expect(metas[0]).toBe('Kéo thả');
+    expect(metas[1]).toBe('');
   });
 });

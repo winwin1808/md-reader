@@ -7,6 +7,14 @@ describe('exportToHtml', () => {
   const sampleHtml = '<h1>Hello World</h1><p>This is markdown content.</p>'
   const sampleTitle = 'My Document'
 
+  it('sets html lang (default vi, override respected) and has no var(--', async () => {
+    const base = { html: sampleHtml, cssContent: sampleCss, title: sampleTitle }
+    const d = await exportToHtml(base)
+    expect(d).toContain('<html lang="vi">')
+    expect(d).not.toContain('var(--')
+    expect(await exportToHtml({ ...base, lang: 'en' })).toContain('<html lang="en">')
+  })
+
   it('is exported properly from core index entry point', () => {
     expect(indexExportToHtml).toBe(exportToHtml)
   })

@@ -15,12 +15,11 @@ export function WordCountBar({
 }: WordCountBarProps): React.JSX.Element | null {
   const [isHidden, setIsHidden] = useState(false)
 
-  const { words, chars, readingTime } = useMemo(() => {
+  const { words, readingTime } = useMemo(() => {
     const trimmed = text ? text.trim() : ''
     const words = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0
-    const chars = text ? text.length : 0
     const readingTime = Math.max(1, Math.ceil(words / 200))
-    return { words, chars, readingTime }
+    return { words, readingTime }
   }, [text])
 
   useEffect(() => {
@@ -58,10 +57,15 @@ export function WordCountBar({
     .filter(Boolean)
     .join(' ')
 
-  const formattedText = `${words.toLocaleString()} từ · ${chars.toLocaleString()} ký tự · ~${readingTime} phút đọc`
+  const formattedText = `${new Intl.NumberFormat('vi-VN').format(words)} từ · ${readingTime} phút đọc`
 
   return (
-    <div className={classNames} role="status" aria-live="polite">
+    <div
+      className={classNames}
+      role="status"
+      aria-live="polite"
+      style={{ fontFamily: 'var(--font-ui)', color: 'var(--pencil)', fontVariantNumeric: 'tabular-nums' }}
+    >
       {formattedText}
     </div>
   )

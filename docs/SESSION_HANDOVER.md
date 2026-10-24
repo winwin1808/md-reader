@@ -1,14 +1,14 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-24. Branch: `phase-7` (xếp chồng trên `phase-6`).
+Cập nhật: 2026-10-24. Branch: `phase-7` (xếp chồng trên `phase-6`) — phase 7 đã ship.
 
 ## Đang ở đâu
 
 - **Phase 6 (Gia cố) đã ship**: MR https://github.com/winwin1808/md-reader/pull/1
   (`phase-6` → `main`), **mở, chưa merge** — chờ người duyệt. 30 phase con 6a..6l.
-- **Phase 7 (Giao diện Lề sách + logo)** đang chạy: spec
+- **Phase 7 (Giao diện Lề sách + logo) đã ship**: MR `phase-7` → `phase-6` (xếp chồng), **mở, chưa merge**. Spec spec
   `docs/superpowers/specs/2026-10-24-phase-7-design.md`, intent
-  `docs/superpowers/intent/2026-10-24-phase-7-le-sach.md`. Hàng đợi 7a1..7s2 trong spec.
+  `docs/superpowers/intent/2026-10-24-phase-7-le-sach.md`. Hàng đợi 7a1..7t trong spec, tất cả done trừ 7o (hoãn → phase 8, cần core inject plugin + yaml lazy rồi đo lại).
 - **Phase 8 (Chia sẻ & cộng tác)** chưa bắt đầu; xếp chồng trên `phase-7`.
 
 Cách chạy tiếp: mở spec phase 7, lấy phase con đầu tiên còn `pending`/`planned`, gọi
@@ -40,8 +40,8 @@ flush khi `pagehide`.
 
 ## Món nợ đang mở
 
-- Flake IDB `TransactionInactiveError` ~1/10 lượt `pnpm --filter extension test` (file test
-  khác `useFileSave`) → phase con 7s1.
+- Flake IDB `TransactionInactiveError`: không tái hiện trong 30 lượt (spike 7s1b); nếu gặp lại, chạy suite dưới tải CPU với `--pool=forks` để lấy stack.
+- Trạng thái xanh lúc ship phase 7: core 185 · ui 318 · extension 199 · e2e 4/4; content.js gz 11 863 B; app.js gz ~417 kB.
 - Tên file hoa-thường lẫn lộn (`Readme.Md`) không khớp pattern của Chrome; trang localhost
   không đuôi `.md` không có widget. Word xuất công thức dạng TeX thô.
 - Hai tab cùng mở một URL mới lần đầu có thể cùng import (race hẹp) → phase 8.

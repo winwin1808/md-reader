@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import React from 'react'
-import { render, screen, act, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { App } from './App'
 import * as Y from 'yjs'
@@ -13,6 +13,25 @@ import type { ReaderSettings } from '@md-reader/ui'
 import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
 import * as fsSystem from './fs/file-system'
 
+
+const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
+const docOverride = vi.hoisted(() => ({ external: false, accept: null as any, dismiss: null as any }))
+vi.mock('./hooks/useFileSave', async (orig) => {
+  const actual: any = await orig()
+  return { ...actual, useFileSave: (...a: any[]) => {
+    const r = actual.useFileSave(...a)
+    return saveOverride.state ? { ...r, saveState: saveOverride.state } : r
+  } }
+})
+vi.mock('./hooks/useDocSession', async (orig) => {
+  const actual: any = await orig()
+  return { ...actual, useDocSession: (...a: any[]) => {
+    const r = actual.useDocSession(...a)
+    return docOverride.external
+      ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
+      : r
+  } }
+})
 
 vi.mock('y-indexeddb', () => {
   return {
@@ -29,6 +48,9 @@ vi.mock('./doc-registry', () => {
   const recs = new Map<string, any>()
   return {
     migrateLegacyRegistry: async () => 0,
+    docQuery: async (id: string) => '?d=doc-' + id,
+    resolveDocParam: async () => null,
+    docParam: (r: any) => 'doc-' + r.docId,
     findByOrigin: async (o: string) => recs.get(o) ?? null,
     getRecord: async () => null,
     createRecord: async (i: any) => { const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
@@ -120,7 +142,7 @@ describe('App', () => {
           set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: vi.fn().mockResolvedValue({ theme: 'dark', colorTheme: 'green' }),
+          get: vi.fn().mockResolvedValue({ theme: 'dark' }),
           set: vi.fn().mockResolvedValue(undefined),
         },
       },
@@ -133,14 +155,59 @@ describe('App', () => {
   it('shows a visible, dismissible error when export fails', async () => {
     vi.spyOn(docxMod, 'mdastToDocx').mockRejectedValue(new Error('boom'))
     await act(async () => { render(<App />) })
-    await act(async () => { fireEvent.click(screen.getByTitle('Xuất tài liệu')) })
-    await act(async () => { fireEvent.click(screen.getByText('Microsoft Word (.docx)')) })
-    expect(await screen.findByText('Không xuất được tệp: boom')).toBeDefined()
-    await act(async () => { fireEvent.click(screen.getByText('Đóng')) })
-    expect(screen.queryByText('Không xuất được tệp: boom')).toBeNull()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+    await act(async () => { fireEvent.click(screen.getByText('Word (.docx)')) })
+    expect((await screen.findByRole('alert')).textContent).toContain('boom')
+    expect(screen.getByRole('button', { name: 'Thử lại' })).toBeDefined()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Đóng' })) })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('renders ExportModal and triggers export logic for pdf, slide-pdf, html, and docx', async () => {
+  describe('notices', () => {
+    afterEach(() => { saveOverride.state = null; docOverride.external = false })
+
+    it('needs-permission: no banner, toolbar carries the prompt', async () => {
+      saveOverride.state = { kind: 'needs-permission', fileName: 'a.md' }
+      await act(async () => { render(<App />) })
+      expect(document.querySelector('.error-banner')).toBeNull()
+      expect(screen.getByText('Cần cấp quyền ghi')).toBeDefined()
+      expect(screen.getAllByText('Cấp quyền').length).toBe(1)
+    })
+
+    it('externalChange: new copy, both buttons call handlers, no inline styles', async () => {
+      docOverride.external = true
+      docOverride.accept = vi.fn(); docOverride.dismiss = vi.fn()
+      await act(async () => { render(<App />) })
+      expect(screen.getByText(/Tài liệu gốc đã thay đổi từ lần mở trước/)).toBeDefined()
+      const banner = document.querySelector('.error-banner.notice') as HTMLElement
+      expect(banner).not.toBeNull()
+      expect(banner.getAttribute('role')).toBe('status')
+      expect(banner.querySelectorAll('[style]').length).toBe(0)
+      expect(banner.hasAttribute('style')).toBe(false)
+      fireEvent.click(screen.getByText('Tải bản mới'))
+      fireEvent.click(screen.getByText('Giữ bản của tôi'))
+      expect(docOverride.accept).toHaveBeenCalled()
+      expect(docOverride.dismiss).toHaveBeenCalled()
+    })
+
+    it('save error: message, Thử lại and Lưu thành file khác…', async () => {
+      saveOverride.state = { kind: 'error', message: 'disk full', canSaveAs: true }
+      await act(async () => { render(<App />) })
+      const banner = document.querySelector('.error-banner.notice') as HTMLElement
+      expect(banner.getAttribute('role')).toBe('alert')
+      expect(banner.textContent).toContain('Không lưu được: disk full')
+      expect(banner.querySelectorAll('[style]').length).toBe(0)
+      expect(Array.from(banner.querySelectorAll('button')).map(b => b.textContent)).toEqual(['Thử lại', 'Lưu thành file khác…'])
+    })
+
+    it('save error without canSaveAs hides Lưu thành file khác…', async () => {
+      saveOverride.state = { kind: 'error', message: 'x', canSaveAs: false }
+      await act(async () => { render(<App />) })
+      expect(screen.queryByText('Lưu thành file khác…')).toBeNull()
+    })
+  })
+
+  it('renders ExportModal and triggers export logic for pdf, html, and docx', async () => {
     vi.useFakeTimers()
     const printSpy = vi.spyOn(ui, 'printDocument').mockImplementation(() => {})
     const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
@@ -155,14 +222,14 @@ describe('App', () => {
       render(<App />)
     })
 
-    const exportBtn = screen.getByTitle('Xuất tài liệu')
+    const exportBtn = screen.getByRole('button', { name: 'Xuất file' })
     expect(exportBtn).toBeDefined()
 
     // 1. Trigger PDF export
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const pdfOption = screen.getByText('Tài liệu PDF (.pdf)')
+    const pdfOption = screen.getByText('PDF để in')
     await act(async () => {
       fireEvent.click(pdfOption)
     })
@@ -172,12 +239,12 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const htmlOption = screen.getByText('HTML Độc lập (.html)')
+    const htmlOption = screen.getByText('Trang web (.html)')
     await act(async () => {
       fireEvent.click(htmlOption)
     })
     expect(htmlSpy).toHaveBeenCalledWith(expect.objectContaining({
-      cssContent: expect.stringContaining('740px'),
+      cssContent: expect.stringContaining('68ch'),
       title: 'document',
     }))
     expect(clickSpy).toHaveBeenCalled()
@@ -193,7 +260,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const docxOption = screen.getByText('Microsoft Word (.docx)')
+    const docxOption = screen.getByText('Word (.docx)')
     await act(async () => {
       fireEvent.click(docxOption)
     })
@@ -207,29 +274,33 @@ describe('App', () => {
     })
     expect(window.URL.revokeObjectURL).toHaveBeenCalledTimes(2)
 
-    // 4. Trigger Slide PDF export
-    // Container should NOT be in DOM normally to save memory
-    expect(document.querySelector('.deck-print-container')).toBeNull()
-    
+    // 4. A document without slides does not offer the slides PDF
     await act(async () => {
       fireEvent.click(exportBtn)
     })
-    const slidePdfOption = screen.getByText('Slide PDF (Khổ ngang)')
-    await act(async () => {
-      fireEvent.click(slidePdfOption)
-    })
-    
-    expect(printSlidesSpy).toHaveBeenCalled()
-    // It should be rendered now
-    expect(document.querySelector('.deck-print-container')).not.toBeNull()
-    
-    // Wait for the timeout to remove it
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
+    expect(screen.queryByText('PDF trình chiếu')).toBeNull()
     expect(document.querySelector('.deck-print-container')).toBeNull()
 
     vi.useRealTimers()
+  })
+
+  it('offers slides PDF for a doc with breaks, calls printSlides with deck container, and skips slide detection while closed', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# A\n\nx\n---\n\n# B\n\ny'),
+    } as any)
+    const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => { expect(document.querySelector('.deck-print-container')).not.toBeNull() })
+    const splitSpy = vi.spyOn(core, 'splitIntoSlides')
+
+    await act(async () => { render(<App />) })
+    expect(splitSpy).not.toHaveBeenCalled()
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+    expect(splitSpy).toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+    expect(printSlidesSpy).toHaveBeenCalled()
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {
@@ -239,38 +310,15 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
-    expect(placeholder.textContent).toContain('MD Reader')
+    expect(placeholder.textContent).toContain('Mở một tài liệu Markdown')
+    expect(within(placeholder).getByRole('button', { name: /Mở file…/ })).not.toBeNull()
     
     // no ?doc / ?file -> no persistence is opened
     expect(IndexeddbPersistence).not.toHaveBeenCalled()
     expect((window as any).chrome.storage.sync.get).toHaveBeenCalledWith(null)
   })
   
-  it('loads colorTheme and renders ThemePicker', async () => {
-    await act(async () => {
-      render(<App />)
-    })
-    // open settings modal
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    })
-    
-    const navyBtn = screen.getByRole('button', { name: 'Select navy theme' })
-    expect(navyBtn).toBeDefined()
-    
-    // the green one should be selected
-    const greenBtn = screen.getByRole('button', { name: 'Select green theme' })
-    expect(greenBtn.style.border).toContain('2px solid rgb(59, 130, 246)')
-    
-    // changing color theme
-    await act(async () => {
-      fireEvent.click(navyBtn)
-    })
-    
-    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ colorTheme: 'navy' }))
-  })
-
-  it('falls back to system theme and black colorTheme when storage throws', async () => {
+  it('falls back to system theme when storage throws', async () => {
     (window as any).chrome.storage.sync.get = vi.fn().mockRejectedValue(new Error('no permission'))
     
     await act(async () => {
@@ -281,10 +329,10 @@ describe('App', () => {
     expect(placeholder).not.toBeNull()
     // open settings modal
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
-    
-    expect(document.querySelector('[data-color-theme="black"]')).not.toBeNull()
+    const sys = screen.getByRole('radio', { name: /Theo hệ thống/ })
+    expect(sys.getAttribute('aria-checked') === 'true' || (sys as HTMLInputElement).checked).toBe(true)
   })
 
   it('handles IndexeddbPersistence throwing', async () => {
@@ -298,6 +346,94 @@ describe('App', () => {
 
     const placeholder = screen.getByTestId('app-placeholder')
     expect(placeholder).not.toBeNull()
+  })
+
+  it('narrow screens: ToC is a dialog drawer closed by Esc, focus returns to toggle', async () => {
+    const orig = window.matchMedia
+    window.matchMedia = ((q: string) => ({
+      matches: true, media: q, addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+    })) as any
+    try {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=test.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# One\n\n## Two\n\ntext'),
+      } as any)
+      await act(async () => { render(<App />) })
+      expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+      const toggle = screen.getByRole('button', { name: 'Mục lục' })
+      await act(async () => { fireEvent.click(toggle) })
+      expect(screen.getByRole('dialog', { name: 'Mục lục' })).toBeDefined()
+      await act(async () => { fireEvent.keyDown(document, { key: 'Escape' }) })
+      expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mục lục' }))
+    } finally {
+      window.matchMedia = orig
+    }
+  })
+
+  describe('ToC rail/drawer state separation', () => {
+    function mockMq(initial: boolean) {
+      let matches = initial
+      const ls = new Set<() => void>()
+      const orig = window.matchMedia
+      window.matchMedia = ((q: string) => ({
+        get matches() { return matches }, media: q,
+        addEventListener: (_: string, l: () => void) => { ls.add(l) },
+        removeEventListener: (_: string, l: () => void) => { ls.delete(l) },
+        addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false,
+      })) as any
+      return {
+        set: (m: boolean) => { matches = m; ls.forEach(l => l()) },
+        restore: () => { window.matchMedia = orig },
+      }
+    }
+    async function load() {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=test.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue('# One\n\n## Two\n\ntext'),
+      } as any)
+      await act(async () => { render(<App />) })
+    }
+
+    it('narrow -> open drawer -> widen: rail visible, drawer gone', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mục lục' })) })
+        expect(screen.getByRole('dialog', { name: 'Mục lục' })).toBeDefined()
+        await act(async () => { mq.set(false) })
+        expect(screen.queryByRole('dialog', { name: 'Mục lục' })).toBeNull()
+        expect(document.querySelector('.sidebar-toc')).not.toBeNull()
+      } finally { mq.restore() }
+    })
+
+    it('narrow load does not hide the rail after widening', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        expect(document.querySelector('.sidebar-toc')).toBeNull()
+        await act(async () => { mq.set(false) })
+        expect(document.querySelector('.sidebar-toc')).not.toBeNull()
+      } finally { mq.restore() }
+    })
+
+    it('Tab from the last drawer link wraps to the first', async () => {
+      const mq = mockMq(true)
+      try {
+        await load()
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mục lục' })) })
+        const links = Array.from(screen.getByRole('dialog', { name: 'Mục lục' }).querySelectorAll<HTMLElement>('a[href], button'))
+        expect(links.length).toBeGreaterThan(1)
+        links[links.length - 1]!.focus()
+        await act(async () => { fireEvent.keyDown(document, { key: 'Tab' }) })
+        expect(document.activeElement).toBe(links[0])
+      } finally { mq.restore() }
+    })
   })
 
   it('renders ReadingProgress and .a4-document-container when content is loaded', async () => {
@@ -344,6 +480,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Font scale increase: click "Tăng cỡ chữ"
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
     const incBtn = screen.getByTitle('Tăng cỡ chữ')
     await act(async () => {
       fireEvent.click(incBtn)
@@ -365,7 +502,7 @@ describe('App', () => {
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
 
     // Reading mode button in TopToolbar
-    const readingModeBtn = screen.getByTitle('Chế độ tập trung')
+    const readingModeBtn = screen.getByRole('menuitem', { name: 'Chế độ đọc' })
     expect(readingModeBtn).toBeDefined()
 
     await act(async () => {
@@ -376,7 +513,7 @@ describe('App', () => {
     expect(container.querySelector('.reading-mode')).not.toBeNull()
 
     // Floating exit reading mode button should appear
-    const exitBtn = screen.getByText('Thoát đọc tập trung ✕')
+    const exitBtn = screen.getByText('Thoát chế độ đọc')
     expect(exitBtn).toBeDefined()
     expect(exitBtn.className).toContain('exit-reading-mode-btn')
     expect(exitBtn.className).toContain('md-no-print')
@@ -391,7 +528,7 @@ describe('App', () => {
 
     // reading-mode class removed and sidebar-toc restored
     expect(container.querySelector('.reading-mode')).toBeNull()
-    expect(screen.queryByText('Thoát đọc tập trung ✕')).toBeNull()
+    expect(screen.queryByText('Thoát chế độ đọc')).toBeNull()
     expect(container.querySelector('.sidebar-toc')).not.toBeNull()
   })
 
@@ -408,7 +545,7 @@ describe('App', () => {
     })
 
     // Search input should not be visible initially
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
 
     // Click search button on TopToolbar
     const searchBtn = screen.getByTitle(/tìm kiếm/i)
@@ -417,26 +554,26 @@ describe('App', () => {
     })
 
     // DocumentSearch input should be rendered
-    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu')).toBeDefined()
 
     // Press Escape to close
     await act(async () => {
       fireEvent.keyDown(window, { key: 'Escape' })
     })
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
 
     // Re-open via Cmd+F shortcut
     await act(async () => {
       fireEvent.keyDown(window, { key: 'f', metaKey: true })
     })
-    expect(screen.getByPlaceholderText('Tìm trong tài liệu...')).toBeDefined()
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu')).toBeDefined()
 
     // Click close button to close
     const closeBtn = screen.getByTitle(/đóng/i)
     await act(async () => {
       fireEvent.click(closeBtn)
     })
-    expect(screen.queryByPlaceholderText('Tìm trong tài liệu...')).toBeNull()
+    expect(screen.queryByPlaceholderText('Tìm trong tài liệu')).toBeNull()
   })
 
   it('loads fontFamily, shows options in SettingsModal, and selecting font family updates storage and data-font-family', async () => {
@@ -446,31 +583,86 @@ describe('App', () => {
     })
     const { container } = renderResult
 
-    // Initial data-font-family attribute should be 'sans'
-    expect(container.querySelector('[data-font-family="sans"]')).not.toBeNull()
+    // Initial data-font-family attribute is migrated to 'serif'
+    expect(container.querySelector('[data-font-family="serif"]')).not.toBeNull()
 
     // Open settings modal
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
     })
 
     // Font family options should be shown (e.g., serif button or option)
-    const serifOption = screen.getByRole('button', { name: 'Serif' })
-    expect(serifOption).toBeDefined()
+    const monoOption = screen.getByRole('button', { name: 'Đơn cách (IBM Plex Mono)' })
+    expect(monoOption).toBeDefined()
 
-    // Select serif font family
     await act(async () => {
-      fireEvent.click(serifOption)
+      fireEvent.click(monoOption)
     })
 
-    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ fontFamily: 'serif' }))
-    expect(container.querySelector('[data-font-family="serif"]')).not.toBeNull()
+    expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ fontFamily: 'mono' }))
+    expect(container.querySelector('[data-font-family="mono"]')).not.toBeNull()
+  })
+
+  describe('settings v2', () => {
+    const load = async (stored: any) => {
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue(stored)
+      let r: any
+      await act(async () => { r = render(<App />) })
+      return r.container as HTMLElement
+    }
+    it('migrates sans to serif when settingsVersion is absent', async () => {
+      const c = await load({ fontFamily: 'sans' })
+      expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('serif')
+    })
+    it('keeps sans when settingsVersion is 2', async () => {
+      const c = await load({ fontFamily: 'sans', settingsVersion: 2 })
+      expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
+    })
+    it('defaults confetti off', async () => {
+      const spy = vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { return <div data-active={String(p.active)} /> })
+      await load({ settingsVersion: 2 })
+      Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
+      Object.defineProperty(window, 'scrollY', { value: 1000, writable: true, configurable: true })
+      Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1800, writable: true, configurable: true })
+      await act(async () => { fireEvent.scroll(window) })
+      expect(spy.mock.calls.length).toBeGreaterThanOrEqual(1)
+      expect(spy.mock.calls.every((c: any[]) => c[0].active === false)).toBe(true)
+    })
+    it('persists migration once so a later sans choice survives remount', async () => {
+      const store: any = { fontFamily: 'sans' }
+      const chromeMock = (window as any).chrome.storage
+      chromeMock.sync.get = vi.fn(async () => ({ ...store }))
+      chromeMock.sync.set = vi.fn(async (o: any) => { Object.assign(store, o) })
+      let r: any
+      await act(async () => { r = render(<App />) })
+      expect(chromeMock.sync.set).toHaveBeenCalledWith(expect.objectContaining({ settingsVersion: 2, fontFamily: 'serif' }))
+      expect(store.settingsVersion).toBe(2)
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Không chân (IBM Plex Sans)' })) })
+      expect(store.fontFamily).toBe('sans')
+      r.unmount()
+      let r2: any
+      await act(async () => { r2 = render(<App />) })
+      expect(r2.container.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
+    })
+    it('writes nothing on load when stored v2', async () => {
+      await load({ fontFamily: 'sans', settingsVersion: 2 })
+      expect((window as any).chrome.storage.sync.set).not.toHaveBeenCalled()
+      expect((window as any).chrome.storage.local.set).not.toHaveBeenCalled()
+    })
+    it('falls back to standard for junk contrast', async () => {
+      await load({ contrast: 'neon', settingsVersion: 2 })
+      expect(document.documentElement.getAttribute('data-contrast')).toBe('standard')
+    })
+    it('applies stored contrast high to html', async () => {
+      await load({ contrast: 'high', settingsVersion: 2 })
+      expect(document.documentElement.getAttribute('data-contrast')).toBe('high')
+    })
   })
 
   it('loads fontFamily from chrome.storage if already stored', async () => {
     ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({
       theme: 'dark',
-      colorTheme: 'green',
       fontFamily: 'mono',
     })
 
@@ -509,7 +701,6 @@ describe('App', () => {
       expect.objectContaining({
         initialSlide: 0,
         slides: expect.any(Array),
-        colorTheme: 'green',
         mode: 'dark',
       })
     )
@@ -594,11 +785,11 @@ describe('App', () => {
     await act(async () => {
       capturedDeckProps.onOpenSpeakerView()
     })
-    expect(window.open).toHaveBeenCalledWith(
+    await waitFor(() => expect(window.open).toHaveBeenCalledWith(
       expect.stringContaining('speaker=true'),
       'md-speaker',
       'width=1080,height=680'
-    )
+    ))
 
     // Test closing deck
     await act(async () => {
@@ -638,6 +829,15 @@ describe('App', () => {
       capturedSpeakerProps.onSlideChange(1)
     })
     expect(channelInstance?.postMessage).toHaveBeenCalledWith({ type: 'NAVIGATE', index: 1 })
+  })
+
+  it('speaker route applies stored themeMode to data-theme', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# S') } as any)
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ mode: 'dark', settingsVersion: 2 })
+    await act(async () => { render(<App />) })
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
   })
 
   it('loads extended settings initially from chrome.storage.sync', async () => {
@@ -725,6 +925,7 @@ describe('App', () => {
       return <div data-testid="mock-deck" />
     })
 
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ theme: 'dark', celebrationConfetti: true, settingsVersion: 2 })
     await act(async () => {
       render(<App />)
     })
@@ -838,7 +1039,7 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     // 1. Open via Toolbar button
-    const mindmapBtn = screen.getByRole('button', { name: /mindmap/i })
+    const mindmapBtn = screen.getByRole('button', { name: 'Sơ đồ' })
     await act(async () => {
       fireEvent.click(mindmapBtn)
     })
@@ -1059,7 +1260,7 @@ describe('App', () => {
     })
 
     // User chooses to keep local
-    const keepLocalBtn = screen.getByText(/giữ bản sửa|keep local/i)
+    const keepLocalBtn = screen.getByText(/giữ bản của tôi|keep local/i)
     await act(async () => {
       fireEvent.click(keepLocalBtn)
       await Promise.resolve()
@@ -1351,7 +1552,7 @@ describe('App', () => {
     expect(view!.state.selection.main.to).toBe(11)
 
     // Find Bold button in FormattingToolbar and click it
-    const boldBtn = screen.getByTitle('Bold')
+    const boldBtn = screen.getByTitle('Đậm (⌘B)')
     expect(boldBtn).not.toBeNull()
     await act(async () => {
       fireEvent.click(boldBtn)

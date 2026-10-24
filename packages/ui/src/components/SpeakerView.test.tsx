@@ -3,6 +3,10 @@ import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import type { Slide } from '@md-reader/core'
 import { SpeakerView } from './SpeakerView'
 
+vi.mock('mermaid', () => ({
+  default: { initialize: vi.fn(), render: vi.fn(async () => ({ svg: '<svg data-testid="mm"></svg>' })) },
+}))
+
 describe('SpeakerView', () => {
   const slides: Slide[] = [
     {
@@ -55,9 +59,9 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText(/Slide 1 \/ 3/)).not.toBeNull()
-    const prevBtn = screen.getByRole('button', { name: /← Trước/i }) as HTMLButtonElement
-    const nextBtn = screen.getByRole('button', { name: /Tiếp →/i }) as HTMLButtonElement
+    expect(screen.getByText(/Trang 1 \/ 3/)).not.toBeNull()
+    const prevBtn = screen.getByRole('button', { name: /Trước/i }) as HTMLButtonElement
+    const nextBtn = screen.getByRole('button', { name: /Tiếp/i }) as HTMLButtonElement
 
     expect(prevBtn.disabled).toBe(true)
     expect(nextBtn.disabled).toBe(false)
@@ -70,9 +74,9 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={2} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText(/Slide 3 \/ 3/)).not.toBeNull()
-    const prevBtn = screen.getByRole('button', { name: /← Trước/i }) as HTMLButtonElement
-    const nextBtn = screen.getByRole('button', { name: /Tiếp →/i }) as HTMLButtonElement
+    expect(screen.getByText(/Trang 3 \/ 3/)).not.toBeNull()
+    const prevBtn = screen.getByRole('button', { name: /Trước/i }) as HTMLButtonElement
+    const nextBtn = screen.getByRole('button', { name: /Tiếp/i }) as HTMLButtonElement
 
     expect(prevBtn.disabled).toBe(false)
     expect(nextBtn.disabled).toBe(true)
@@ -85,11 +89,11 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText('SLIDE HIỆN TẠI')).not.toBeNull()
+    expect(screen.getByText('Trang hiện tại')).not.toBeNull()
     expect(screen.getByText('Slide 1 Title')).not.toBeNull()
     expect(screen.getByText('First slide body')).not.toBeNull()
 
-    expect(screen.getByText('SLIDE KẾ TIẾP')).not.toBeNull()
+    expect(screen.getByText('Trang tiếp theo')).not.toBeNull()
     expect(screen.getByText('Slide 2 Title')).not.toBeNull()
   })
 
@@ -104,7 +108,7 @@ describe('SpeakerView', () => {
     const onSlideChange = vi.fn()
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
-    expect(screen.getByText('GHI CHÚ DIỄN GIẢ (SPEAKER NOTES)')).not.toBeNull()
+    expect(screen.getByText('Ghi chú')).not.toBeNull()
     expect(screen.getByText('Note 1A: intro')).not.toBeNull()
     expect(screen.getByText('Note 1B: details')).not.toBeNull()
   })
@@ -164,7 +168,7 @@ describe('SpeakerView', () => {
     fireEvent.keyDown(input, { key: 'ArrowRight' })
     expect(onSlideChange).not.toHaveBeenCalled()
 
-    const btn = screen.getByRole('button', { name: /← Trước/i })
+    const btn = screen.getByRole('button', { name: /Trước/i })
     btn.focus()
     fireEvent.keyDown(btn, { key: 'ArrowRight' })
     expect(onSlideChange).not.toHaveBeenCalled()
@@ -230,5 +234,23 @@ describe('SpeakerView', () => {
     render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={onSlideChange} />)
 
     expect(screen.getByTestId('speaker-clock')).not.toBeNull()
+  })
+
+  it('labels are sentence case, not uppercase', () => {
+    const { container } = render(<SpeakerView slides={slides} currentSlideIndex={0} onSlideChange={vi.fn()} />)
+    const labels = Array.from(container.querySelectorAll('.speaker-section-label, .speaker-timer-label'))
+    expect(labels.length).toBeGreaterThanOrEqual(4)
+    for (const l of labels) {
+      const t = l.textContent ?? ''
+      expect(t).not.toBe(t.toUpperCase())
+    }
+    expect(screen.getByText('Đã trình bày')).not.toBeNull()
+  })
+
+  it('mounts a diagram for mermaid blocks when mermaid is on', async () => {
+    vi.useRealTimers()
+    const ms: Slide[] = [{ id: 's', index: 0, rawMarkdown: '', html: '<pre><code class="language-mermaid">graph TD;A-->B</code></pre>', notes: [] }]
+    const { container } = render(<SpeakerView slides={ms} currentSlideIndex={0} onSlideChange={() => {}} mermaid />)
+    await vi.waitFor(() => expect(container.querySelector('svg')).not.toBeNull())
   })
 })

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Root } from 'mdast'
+import { createRequire } from 'node:module'
 import { mdastToDocx } from './docx.js'
 
 describe('mdastToDocx', () => {
@@ -252,5 +253,33 @@ describe('mdastToDocx', () => {
     const blob = await mdastToDocx({ mdast })
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.size).toBeGreaterThan(0)
+  })
+})
+
+describe('mdastToDocx styles (Lề sách)', () => {
+  it('emits Literata / Plex Mono styles, quiet quote, heading colour', async () => {
+    const mdast: Root = {
+      type: 'root',
+      children: [
+        { type: 'heading', depth: 1, children: [{ type: 'text', value: 'H' }] },
+        { type: 'blockquote', children: [{ type: 'paragraph', children: [{ type: 'text', value: 'q' }] }] },
+        { type: 'paragraph', children: [{ type: 'inlineCode', value: 'c' }] },
+        { type: 'code', value: 'x' },
+      ],
+    }
+    const blob = await mdastToDocx({ mdast })
+    const req = createRequire(createRequire(import.meta.url).resolve('docx'))
+    const JSZip = req('jszip')
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
+    const styles: string = await zip.file('word/styles.xml').async('string')
+    const doc: string = await zip.file('word/document.xml').async('string')
+    expect(styles).toContain('Literata')
+    expect(styles).toContain('IBM Plex Mono')
+    expect(styles).toContain('1B2422')
+    expect(styles).toContain('23568C')
+    const quote = /<w:style[^>]*w:styleId="Quote"[\s\S]*?<\/w:style>/.exec(styles)?.[0] ?? ''
+    expect(quote).not.toBe('')
+    expect(quote).not.toContain('<w:i/>')
+    expect(doc).toContain('w:val="Code"')
   })
 })

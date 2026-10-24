@@ -1,20 +1,65 @@
 import React, { useEffect, useRef } from 'react'
 import type * as Y from 'yjs'
-import { EditorState, Compartment } from '@codemirror/state'
+import { EditorState, Compartment, Prec } from '@codemirror/state'
 import {
   EditorView,
   lineNumbers,
   highlightActiveLine,
   placeholder as cmPlaceholder,
+  keymap,
 } from '@codemirror/view'
 import { markdown } from '@codemirror/lang-markdown'
 import {
   bracketMatching,
   syntaxHighlighting,
-  defaultHighlightStyle,
+  HighlightStyle,
 } from '@codemirror/language'
-import { yCollab } from 'y-codemirror.next'
+import { tags as t } from '@lezer/highlight'
+import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
+import { applyFormat } from './markdown-commands'
+import type { FormatAction } from './FormattingToolbar'
 import '../theme/editor.css'
+
+export const lereSachHighlight = HighlightStyle.define([
+  { tag: t.heading, color: 'var(--ink)', fontWeight: '600' },
+  { tag: t.emphasis, fontStyle: 'italic' },
+  { tag: t.strong, fontWeight: '600' },
+  { tag: [t.link, t.url], color: 'var(--accent)' },
+  { tag: t.monospace, color: 'var(--code-string)' },
+  { tag: t.quote, color: 'var(--pencil)', fontStyle: 'italic', textDecoration: 'none' },
+  { tag: [t.list, t.processingInstruction, t.punctuation], color: 'var(--pencil)' },
+  { tag: t.keyword, color: 'var(--code-keyword)' },
+  { tag: t.string, color: 'var(--code-string)' },
+  { tag: t.comment, color: 'var(--code-comment)' },
+  { tag: t.number, color: 'var(--code-number)' },
+  { tag: t.meta, color: 'var(--code-meta)' },
+])
+
+// Wraps the pure applyFormat helper; dispatches only the changed range (Yjs-safe).
+function formatCommand(action: FormatAction) {
+  return (view: EditorView): boolean => {
+    if (view.state.readOnly) return false
+    const text = view.state.doc.toString()
+    const { from, to } = view.state.selection.main
+    const r = applyFormat(text, from, to, action)
+    const a = text
+    const b = r.newText
+    let start = 0
+    const max = Math.min(a.length, b.length)
+    while (start < max && a[start] === b[start]) start++
+    let endA = a.length
+    let endB = b.length
+    while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+      endA--
+      endB--
+    }
+    view.dispatch({
+      changes: { from: start, to: endA, insert: b.slice(start, endB) },
+      selection: { anchor: r.newSelectionStart, head: r.newSelectionEnd },
+    })
+    return true
+  }
+}
 
 export interface EditorProps {
   yText: Y.Text
@@ -61,7 +106,15 @@ export function Editor({
       lineNumbers(),
       highlightActiveLine(),
       bracketMatching(),
-      syntaxHighlighting(defaultHighlightStyle),
+      syntaxHighlighting(lereSachHighlight),
+      Prec.high(
+        keymap.of([
+          { key: 'Mod-b', run: formatCommand('bold') },
+          { key: 'Mod-i', run: formatCommand('italic') },
+          { key: 'Mod-k', run: formatCommand('link') },
+          ...yUndoManagerKeymap,
+        ])
+      ),
       yCollab(yText, null, undoManager !== undefined ? { undoManager } : undefined),
       readOnlyCompartmentRef.current.of(EditorState.readOnly.of(Boolean(readOnly))),
       EditorView.domEventHandlers({
@@ -100,5 +153,5 @@ export function Editor({
     }
   }, [yText, undoManager])
 
-  return <div ref={containerRef} className={className} />
+  return <div ref={containerRef} className={className} style={{ height: '100%', minHeight: 0 }} />
 }

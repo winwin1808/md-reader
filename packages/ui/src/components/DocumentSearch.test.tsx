@@ -1,6 +1,8 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { DocumentSearch } from './DocumentSearch'
 
 describe('DocumentSearch', () => {
@@ -29,7 +31,7 @@ describe('DocumentSearch', () => {
     const input = screen.getByLabelText('Tìm trong tài liệu')
     expect(input).toBeDefined()
     expect(document.activeElement).toBe(input)
-    expect(screen.getByRole('button', { name: 'Kế tiếp' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Sau' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Trước' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Đóng' })).toBeDefined()
   })
@@ -54,7 +56,7 @@ describe('DocumentSearch', () => {
     document.body.removeChild(container)
   })
 
-  it('shows 0 / 0 when query is not found', () => {
+  it('shows Không thấy when query is not found', () => {
     const container = document.createElement('div')
     container.innerHTML = '<p>Hello world!</p>'
     const ref = { current: container }
@@ -64,7 +66,7 @@ describe('DocumentSearch', () => {
 
     fireEvent.change(input, { target: { value: 'xyz' } })
 
-    expect(screen.getByText('0 / 0')).toBeDefined()
+    expect(screen.getByText('Không thấy')).toBeDefined()
     expect(container.querySelectorAll('mark').length).toBe(0)
   })
 
@@ -82,7 +84,7 @@ describe('DocumentSearch', () => {
     expect(marks.length).toBe(3)
     expect(marks[0]!.classList.contains('md-search-active')).toBe(true)
 
-    const nextBtn = screen.getByRole('button', { name: 'Kế tiếp' })
+    const nextBtn = screen.getByRole('button', { name: 'Sau' })
     const prevBtn = screen.getByRole('button', { name: 'Trước' })
 
     fireEvent.click(nextBtn)
@@ -201,5 +203,16 @@ describe('DocumentSearch', () => {
     const marks = container.querySelectorAll('mark.md-search-highlight')
     expect(marks.length).toBe(1)
     expect(marks[0]!.parentElement?.tagName.toLowerCase()).toBe('p')
+  })
+
+  it('has placeholder text and search.css has no colour literals', () => {
+    const container = document.createElement('div')
+    render(<DocumentSearch isOpen={true} onClose={vi.fn()} containerRef={{ current: container }} />)
+    expect(screen.getByPlaceholderText('Tìm trong tài liệu')).toBeDefined()
+    const css = readFileSync(resolve(__dirname, '../theme/search.css'), 'utf8')
+    expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    expect(css).not.toMatch(/rgba?\(/)
+    expect(css).toContain('var(--hl)')
+    expect(css).toContain('var(--hl-ink)')
   })
 })

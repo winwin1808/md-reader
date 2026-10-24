@@ -318,7 +318,7 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
     const { notes, cleanMarkdown } = extractNotes(rawMarkdown)
     const math = options?.math !== false
     const parsed = parseMarkdown(cleanMarkdown, { math })
-    const html = cleanMarkdown.trim() ? renderToHtml(parsed, { math }).html : ''
+    const html = cleanMarkdown.trim() ? renderToHtml(parsed, { ...options?.render, math }).html : ''
     const title = extractTitle(cleanMarkdown)
 
     const slide: Slide = {

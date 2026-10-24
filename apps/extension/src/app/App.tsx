@@ -1,3 +1,4 @@
+import { docQuery } from './doc-registry'
 import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import {
   ThemeProvider,
@@ -15,12 +16,17 @@ import {
   ConflictModal,
   FormattingToolbar,
   applyFormat,
+  Icon,
+  Logo,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import type { ThemeMode, ColorTheme, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView } from '@md-reader/ui'
+import { inlineMermaid } from '@md-reader/ui'
+import type { ExportFormat } from '@md-reader/ui'
+import { flushSync } from 'react-dom'
+import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
 import {
   parseMarkdown,
   renderToHtml,
@@ -37,12 +43,24 @@ import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useExport } from './hooks/useExport'
 import { useShortcuts } from './hooks/useShortcuts'
+import { FileAccessHint } from './FileAccessHint'
 import './app.css'
+
+const persistSettings = (patch: Record<string, any>) => {
+  try {
+    chrome.storage?.sync?.set?.(patch)
+    chrome.storage?.local?.set?.(patch)
+  } catch (err) {
+    // ignore
+  }
+}
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
   mode: 'system',
-  colorTheme: 'black',
-  fontFamily: 'sans',
+  contrast: 'standard',
+  settingsVersion: 2,
+  fontFamily: 'serif',
+  pageWidth: 'medium',
   autoFormatMd: true,
   alwaysOpenApp: false,
   stripFrontmatter: true,
@@ -56,23 +74,67 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   showWordCount: true,
   autoHideWordCount: true,
   showReadingProgress: true,
-  celebrationConfetti: true,
+  celebrationConfetti: false,
 }
 
 export function App(): React.JSX.Element {
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
-  const [tocOpen, setTocOpen] = useState<boolean>(true)
+  const [tocRailOpen, setTocRailOpen] = useState<boolean>(true)
+  const [tocDrawerOpen, setTocDrawerOpen] = useState<boolean>(false)
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null)
+  const [narrow, setNarrow] = useState<boolean>(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1080px)').matches)
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const tocWasOpenRef = useRef(false)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(max-width: 1080px)')
+    const onChange = () => { setNarrow(mq.matches); if (!mq.matches) setTocDrawerOpen(false) }
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+
+  const drawerOpen = narrow && tocDrawerOpen
+  const tocOpen = narrow ? tocDrawerOpen : tocRailOpen
+  useEffect(() => {
+    if (drawerOpen) {
+      tocWasOpenRef.current = true
+      const d = drawerRef.current
+      const target = d?.querySelector<HTMLElement>('a[aria-current="location"]') ?? d?.querySelector<HTMLElement>('a')
+      target?.focus()
+    } else if (tocWasOpenRef.current) {
+      tocWasOpenRef.current = false
+      document.querySelector<HTMLElement>('button[aria-label="Mục lục"][aria-pressed]')?.focus()
+    }
+  }, [drawerOpen])
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTocDrawerOpen(false)
+      if (e.key === 'Tab') {
+        const f = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button') ?? [])
+        if (f.length === 0) return
+        const first = f[0]!, last = f[f.length - 1]!
+        const act = document.activeElement
+        if (!drawerRef.current?.contains(act)) { e.preventDefault(); first.focus() }
+        else if (e.shiftKey && act === first) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && act === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
   const [isMindmapOpen, setIsMindmapOpen] = useState<boolean>(false)
   const [urlParams] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
-    return { docId: sp.get('doc'), fileUrl: sp.get('file'), kept: sp.get('kept') === '1' }
+    return { docId: sp.get('doc'), shortParam: sp.get('d'), fileUrl: sp.get('file'), kept: sp.get('kept') === '1' }
   })
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
-  const session = useDocSession({ docId: urlParams.docId, fileUrl: urlParams.fileUrl })
+  const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
@@ -86,6 +148,8 @@ export function App(): React.JSX.Element {
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
+  const [exportOpen, setExportOpen] = useState<boolean>(false)
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
 
 
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -157,16 +221,17 @@ export function App(): React.JSX.Element {
           (syncRes?.mode as ThemeMode) ||
           (syncRes?.theme as ThemeMode) ||
           DEFAULT_READER_SETTINGS.mode
-        const colorTheme =
-          (localRes?.colorTheme as ColorTheme) ||
-          (syncRes?.colorTheme as ColorTheme) ||
-          DEFAULT_READER_SETTINGS.colorTheme
+        const stored: any = { ...syncRes, ...localRes }
+        if ((stored.settingsVersion ?? 1) < 2) {
+          if (!stored.fontFamily || stored.fontFamily === 'sans') stored.fontFamily = 'serif'
+          stored.settingsVersion = 2
+          persistSettings({ settingsVersion: 2, fontFamily: stored.fontFamily })
+        }
+        if (stored.contrast !== 'standard' && stored.contrast !== 'high') stored.contrast = 'standard'
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
-          ...syncRes,
-          ...localRes,
+          ...stored,
           mode,
-          colorTheme,
         })
         setFontScale((localRes?.fontScale as FontScale) || (syncRes?.fontScale as FontScale) || 'md')
       } catch (err) {
@@ -180,7 +245,7 @@ export function App(): React.JSX.Element {
   const handleOpenFile = async () => {
     try {
       const res = await openLocalFileAsDoc()
-      if (res) window.location.assign('?doc=' + res.docId + (res.kept ? '&kept=1' : ''))
+      if (res) window.location.assign((await docQuery(res.docId)) + (res.kept ? '&kept=1' : ''))
     } catch (err) {
       setError((err as Error)?.message || 'Không mở được file.')
     }
@@ -224,20 +289,11 @@ export function App(): React.JSX.Element {
 
   const handleSettingChange = (key: string, value: any) => {
     setReaderSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
-    try {
-      chrome.storage?.sync?.set?.({ [key]: value })
-      chrome.storage?.local?.set?.({ [key]: value })
-    } catch (err) {
-      // ignore
-    }
+    persistSettings({ [key]: value })
   }
 
   const handleModeChange = (mode: ThemeMode) => {
     handleSettingChange('mode', mode)
-  }
-
-  const handleColorThemeChange = (color: ColorTheme) => {
-    handleSettingChange('colorTheme', color)
   }
 
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
@@ -283,15 +339,70 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
-  const { exportAs, isExporting, isPrintingSlides, exportError, clearExportError } = useExport({
+  const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
   })
 
+  const [printHtml, setPrintHtml] = useState<{ id: string; html: string }[] | null>(null)
+  const [preparingSlides, setPreparingSlides] = useState(false)
+  const exportAs = async (format: ExportFormat): Promise<void> => {
+    if (preparingSlides) return
+    if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
+      setPreparingSlides(true)
+      try {
+        const list = splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          })
+        const out = await Promise.all(
+          list.map(async (sl) => ({ id: sl.id, html: await inlineMermaid(sl.html, 'default') })),
+        )
+        flushSync(() => setPrintHtml(out))
+      } catch {
+        setPrintHtml(null)
+      } finally {
+        setPreparingSlides(false)
+      }
+    } else {
+      setPrintHtml(null)
+    }
+    await baseExportAs(format)
+  }
+  useEffect(() => {
+    if (!isPrintingSlides) setPrintHtml(null)
+  }, [isPrintingSlides])
+
+  const hasSlides = useMemo(
+    () => (exportOpen ? splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          }).length > 1 : false),
+    [exportOpen, content, readerSettings.enableMath],
+  )
+
   const slides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, { math: readerSettings.enableMath !== false }) : []),
-    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath],
+    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, {
+            math: readerSettings.enableMath !== false,
+            render: {
+              typographer: readerSettings.typographer,
+              externalLinks: readerSettings.externalLinks,
+              githubAlerts: readerSettings.githubAlerts,
+              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+            },
+          }) : []),
+    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
 
   useShortcuts({
@@ -305,6 +416,7 @@ export function App(): React.JSX.Element {
 
   if (isSpeakerMode) {
     return (
+      <ThemeProvider mode={readerSettings.mode || 'system'} contrast={readerSettings.contrast}>
       <SpeakerView
         slides={slides}
         currentSlideIndex={currentSlideIndex}
@@ -312,18 +424,40 @@ export function App(): React.JSX.Element {
           setCurrentSlideIndex(idx)
           channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
         }}
+        mermaid={readerSettings.enableMermaid !== false}
       />
+      </ThemeProvider>
     )
   }
 
   const themeMode = readerSettings.mode || 'system'
-  const colorTheme = readerSettings.colorTheme
+
+  const ss = fileSave.saveState
+  const saveStatus: SaveStatus =
+    ss.kind === 'saving'
+      ? { kind: 'saving' }
+      : ss.kind === 'error'
+        ? { kind: 'error', message: ss.message, onRetry: () => { void fileSave.save({ explicit: true }) } }
+        : ss.kind === 'needs-permission'
+          ? { kind: 'needs-permission', onGrant: () => { void fileSave.grantPermission() } }
+          : isDirty || ss.kind === 'conflict'
+            ? { kind: 'dirty' }
+            : ss.kind === 'saved'
+              ? { kind: 'saved', at: ss.at }
+              : { kind: 'none' }
+
+  const toolbarActions: ToolbarAction[] = [
+    { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
+    { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
+    { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
+  ]
 
   return (
-    <ThemeProvider mode={themeMode} colorTheme={colorTheme} onModeChange={handleModeChange} onColorThemeChange={handleColorThemeChange}>
+    <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
+      {preparingSlides && <div role="status" className="deck-print-busy">Đang chuẩn bị sơ đồ…</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
-          {slides.map((slide, idx) => (
+          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html }))).map((slide, idx) => (
             <div key={slide.id || idx} className="deck-print-slide md-viewer">
               <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
             </div>
@@ -334,23 +468,20 @@ export function App(): React.JSX.Element {
         <Suspense fallback={<LazyFallback />}>
         <Deck
           slides={slides}
+          mermaid={readerSettings.enableMermaid !== false}
           initialSlide={currentSlideIndex}
           onClose={() => setIsPresenting(false)}
           onSlideChange={(idx) => {
             setCurrentSlideIndex(idx)
             channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
           }}
-          onOpenSpeakerView={() =>
-            window.open(
-              window.location.pathname +
-                (session.docId
-                  ? '?doc=' + encodeURIComponent(session.docId) + '&speaker=true'
-                  : '?speaker=true' + (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : '')),
-              'md-speaker',
-              'width=1080,height=680'
-            )
+          onOpenSpeakerView={async () => {
+            const q = session.docId
+              ? (await docQuery(session.docId)) + '&speaker=true'
+              : '?speaker=true' + (fileUrlParam ? '&file=' + encodeURIComponent(fileUrlParam) : '')
+            window.open(window.location.pathname + q, 'md-speaker', 'width=1080,height=680')
           }
-          colorTheme={colorTheme}
+          }
           mode={themeMode}
           presentationSettings={{
             slideBgColor: readerSettings.slideBgColor,
@@ -384,7 +515,7 @@ export function App(): React.JSX.Element {
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
       />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily}>
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily} data-width={readerSettings.pageWidth ?? 'medium'}>
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
           text={content}
@@ -398,7 +529,7 @@ export function App(): React.JSX.Element {
         <TopToolbar
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
-          onToggleToc={() => setTocOpen(!tocOpen)}
+          onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
           fontScale={fontScale}
           onFontScaleChange={(scale) => {
             setFontScale(scale)
@@ -411,76 +542,58 @@ export function App(): React.JSX.Element {
           onOpenMindmap={() => setIsMindmapOpen(true)}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          isDirty={isDirty}
+          saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
-          rightActions={
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
-              <ExportModal onExport={exportAs} isExporting={isExporting} />
-              <SettingsModal
-                settings={readerSettings}
-                onSettingChange={handleSettingChange}
-              />
-            </div>
-          }
+          actions={toolbarActions}
         />
+        <>
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} />
+        </>
         {isReadingMode && (
           <button
             className="exit-reading-mode-btn md-no-print"
             onClick={() => setIsReadingMode(false)}
           >
-            Thoát đọc tập trung ✕
+            <Icon name="close" size={16} />
+            Thoát chế độ đọc
           </button>
         )}
         <FileDrop>
-          {exportError && (
-            <div className="error-banner" role="alert" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{exportError}</div>
-              <div>
-                <button type="button" onClick={clearExportError}>Đóng</button>
-              </div>
-            </div>
-          )}
           {session.externalChange && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>File gốc đã thay đổi kể từ lần mở trước.</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="error-banner notice" role="status">
+              <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
+              <div className="notice__actions">
                 <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
-                <button type="button" onClick={session.dismissExternal}>Giữ bản đang sửa</button>
+                <button type="button" onClick={session.dismissExternal}>Giữ bản của tôi</button>
               </div>
             </div>
           )}
           {keptNoticeOpen && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</div>
-              <div>
+            <div className="error-banner notice" role="status">
+              <span>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</span>
+              <div className="notice__actions">
                 <button type="button" onClick={() => setKeptNoticeOpen(false)}>Đã hiểu</button>
               </div>
             </div>
           )}
-          {fileSave.saveState.kind === 'needs-permission' && (
-            <div className="error-banner" style={{ color: '#b45309', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>Cần cấp lại quyền ghi cho {fileSave.saveState.fileName}.</div>
-              <div>
-                <button type="button" onClick={() => { void fileSave.grantPermission() }}>Cấp quyền</button>
+          {fileSave.saveState.kind === 'error' && (
+            <div className="error-banner notice notice--danger" role="alert">
+              <span>Không lưu được: {fileSave.saveState.message}</span>
+              <div className="notice__actions">
+                <button type="button" onClick={() => { void fileSave.save({ explicit: true }) }}>Thử lại</button>
+                {fileSave.saveState.canSaveAs && (
+                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành file khác…</button>
+                )}
               </div>
             </div>
           )}
-          {fileSave.saveState.kind === 'error' && (
-            <div className="error-banner" style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{fileSave.saveState.message}</div>
-              {fileSave.saveState.canSaveAs && (
-                <div>
-                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành…</button>
-                </div>
-              )}
-            </div>
-          )}
+          <FileAccessHint fileUrl={fileUrlParam} failed={!!error} />
           {error && (
-            <div style={{ color: '#dc2626', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '16px 20px', margin: '20px auto', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontWeight: 600 }}>{error}</div>
+            <div className="notice notice--danger" role="alert">
+              <span>{error}</span>
               {fileUrlParam?.startsWith('file:') && (
-                <div>
+                <div className="notice__actions">
                   <button
                     type="button"
                     onClick={() => {
@@ -490,16 +603,6 @@ export function App(): React.JSX.Element {
                         window.open('chrome://extensions')
                       }
                     }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#0070f3',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                    }}
                   >
                     Mở Cài đặt Tiện ích để Bật "Cho phép truy cập vào các URL tệp"
                   </button>
@@ -507,26 +610,34 @@ export function App(): React.JSX.Element {
               )}
             </div>
           )}
-          
+
           {viewMode === 'reading' && hasContent && (
-            <div className={`app-layout ${(!tocOpen || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
+            <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
+                  <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
-              {toc && toc.length > 0 && tocOpen && !isReadingMode && (
+              {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
                 <div className="sidebar-toc">
-                  <Toc entries={toc} />
+                  <Toc entries={toc} activeId={activeHeadingId} />
                 </div>
+              )}
+              {toc && toc.length > 0 && drawerOpen && !isReadingMode && (
+                <>
+                  <div className="toc-backdrop" data-testid="toc-backdrop" onClick={() => setTocDrawerOpen(false)} />
+                  <div className="toc-drawer" role="dialog" aria-modal="true" aria-label="Mục lục" ref={drawerRef}>
+                    <Toc entries={toc} activeId={activeHeadingId} onNavigate={() => setTocDrawerOpen(false)} />
+                  </div>
+                </>
               )}
             </div>
           )}
 
           {viewMode === 'editor' && (
-            <div className="editor-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+            <div className="editor-mode-container">
               <FormattingToolbar onAction={handleFormatAction} />
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div className="editor-mode-body">
                 <Suspense fallback={<LazyFallback />}>
                   <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
                 </Suspense>
@@ -535,15 +646,15 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'split' && (
-            <div className="split-mode-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 48px)' }}>
+            <div className="split-mode-container">
               <FormattingToolbar onAction={handleFormatAction} />
-              <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div className="split-mode-body">
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
                   editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
                   preview={
-                    <div ref={docContainerRef} className="a4-document-container" style={{ height: '100%', overflow: 'auto' }}>
+                    <div ref={docContainerRef} className="a4-document-container">
                       <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />
                     </div>
                   }
@@ -554,10 +665,13 @@ export function App(): React.JSX.Element {
           )}
 
           {viewMode === 'reading' && !hasContent && !error && (
-            <div data-testid="app-placeholder" style={{ padding: '40px', textAlign: 'center' }}>
-              <h2>MD Reader</h2>
-              <p>Drag and drop a Markdown file here, or click "Open in MD Reader" from any Markdown file in Chrome.</p>
-              <button type="button" onClick={() => { void handleOpenFile() }}>Mở file…</button>
+            <div data-testid="app-placeholder" className="first-screen">
+              <Logo size={56} />
+              <h1>Mở một tài liệu Markdown</h1>
+              <p>Kéo file .md vào cửa sổ này, hoặc chọn từ máy.</p>
+              <button type="button" className="first-screen__open" onClick={() => { void handleOpenFile() }}>
+                <Icon name="open-file" size={16} /> Mở file…
+              </button>
               <RecentFiles />
             </div>
           )}

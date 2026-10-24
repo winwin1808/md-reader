@@ -14,6 +14,8 @@ import {
   ShadingType,
   AlignmentType,
   LevelFormat,
+  LineRuleType,
+  UnderlineType,
 } from 'docx'
 import type {
   Root,
@@ -119,11 +121,7 @@ function convertPhrasingNode(
       return [
         new TextRun({
           text: n.value ?? '',
-          font: 'Courier New',
-          shading: {
-            type: ShadingType.CLEAR,
-            fill: 'F0F0F0',
-          },
+          style: 'Code',
           bold: style.bold,
           italics: style.italics,
           strike: style.strike,
@@ -213,7 +211,7 @@ function convertCode(node: Code): Paragraph {
     runs.push(
       new TextRun({
         text: line,
-        font: 'Courier New',
+        style: 'Code',
         break: index > 0 ? 1 : 0,
       })
     )
@@ -222,13 +220,7 @@ function convertCode(node: Code): Paragraph {
   return new Paragraph({
     shading: {
       type: ShadingType.CLEAR,
-      fill: 'F5F5F5',
-    },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' },
-      top: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' },
-      right: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' },
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' },
+      fill: 'E5EAE7',
     },
     children: runs,
   })
@@ -370,18 +362,11 @@ function convertBlockquote(
   for (const child of node.children ?? []) {
     if (child.type === 'paragraph') {
       const runs = (child.children ?? []).flatMap((pChild) =>
-        convertPhrasingNode(pChild, options, { italics: true })
+        convertPhrasingNode(pChild, options)
       )
       children.push(
         new Paragraph({
-          indent: { left: 720 },
-          border: {
-            left: {
-              style: BorderStyle.SINGLE,
-              size: 24,
-              color: 'CCCCCC',
-            },
-          },
+          style: 'Quote',
           children: runs,
         })
       )
@@ -489,6 +474,52 @@ export async function mdastToDocx(options: ExportDocxOptions): Promise<Blob> {
     ...(numberingConfigs.length > 0
       ? { numbering: { config: numberingConfigs } }
       : {}),
+    styles: {
+      default: {
+        document: {
+          run: { font: 'Literata', size: 22 },
+          paragraph: { spacing: { line: 336, lineRule: LineRuleType.AUTO, after: 160 } },
+        },
+        hyperlink: { run: { color: '23568C', underline: { type: UnderlineType.SINGLE } } },
+      },
+      paragraphStyles: [
+        ...([
+          [1, 40, 360],
+          [2, 32, 280],
+          [3, 26, 200],
+        ] as const).map(([lvl, size, before]) => ({
+          id: `Heading${lvl}`,
+          name: `heading ${lvl}`,
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { font: 'Literata', bold: true, size, color: '1B2422' },
+          paragraph: { spacing: { before } },
+        })),
+        {
+          id: 'Quote',
+          name: 'Quote',
+          basedOn: 'Normal',
+          quickFormat: true,
+          run: { italics: false },
+          paragraph: {
+            indent: { left: 360 },
+            border: { left: { style: BorderStyle.SINGLE, size: 24, color: '23568C', space: 8 } },
+          },
+        },
+      ],
+      characterStyles: [
+        {
+          id: 'Code',
+          name: 'Code',
+          run: {
+            font: 'IBM Plex Mono',
+            size: 19,
+            shading: { type: ShadingType.CLEAR, fill: 'E5EAE7' },
+          },
+        },
+      ],
+    },
     sections: [
       {
         children,

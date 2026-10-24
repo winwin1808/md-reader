@@ -6,6 +6,7 @@ import { getMeta, getSource, hashText } from '@md-reader/core'
 import {
   __resetForTests, createRecord, findByOrigin, getRecord, touchRecord, listRecent,
   storeHandle, getHandle, storeBase, getBase, migrateLegacyRegistry, writeDocText, findOrCreateByOrigin,
+  docSlug, docParam, resolveDocParam, ensureShortKey,
 } from './doc-registry'
 
 let legacy: unknown[] = []
@@ -143,6 +144,28 @@ describe('doc-registry', () => {
     expect(new Set(all.map((r) => r.originPath)).size).toBe(2)
   })
 
+  it('two module instances (tabs) migrate once and leave a migratedAt marker', async () => {
+    legacy = [
+      { id: 'file:///a.md', name: 'a', lastOpened: 100 },
+      { id: 'https://x.com/b.md', name: 'b', lastOpened: 200 },
+    ]
+    vi.resetModules()
+    const other = await import('./doc-registry')
+    const [x, y] = await Promise.all([migrateLegacyRegistry(), other.migrateLegacyRegistry()])
+    expect(x + y).toBe(2)
+    expect((await listRecent(100)).length).toBe(2)
+    const marker = await new Promise<unknown>((res, rej) => {
+      const q = indexedDB.open('md_reader_registry', 1)
+      q.onsuccess = () => {
+        const g = q.result.transaction('meta').objectStore('meta').get('migratedAt')
+        g.onsuccess = () => { q.result.close(); res(g.result) }
+        g.onerror = () => rej(g.error)
+      }
+      q.onerror = () => rej(q.error)
+    })
+    expect(typeof marker).toBe('number')
+  })
+
   it('retry after deleting only the flag creates no duplicate drop record', async () => {
     await new Promise<void>((res, rej) => {
       const q = indexedDB.open('md-reader', 1)
@@ -214,5 +237,27 @@ describe('doc-registry', () => {
     await p.destroy()
     expect(await writeDocText(r, 'other', 'if-clean')).toBe('kept')
     expect(await getBase(r.docId)).toBe('hello')
+  })
+})
+
+describe('short links', () => {
+  it('docSlug', () => {
+    expect(docSlug('Báo cáo Tháng 9.md')).toBe('bao-cao-thang-9')
+    expect(docSlug('')).toBe('doc')
+    expect(docSlug('Đường.md')).toBe('duong')
+  })
+  it('resolveDocParam: d, renamed d, legacy doc all agree; keys unique', async () => {
+    const r = await createRecord({ title: 'README.md', originKind: 'drop', originPath: null })
+    expect(r.shortKey).toMatch(/^[0-9A-Za-z]{4}$/)
+    const p = docParam(r)
+    expect(p).toBe(`readme-${r.shortKey}`)
+    expect(await resolveDocParam(new URLSearchParams({ d: p }))).toBe(r.docId)
+    expect(await resolveDocParam(new URLSearchParams({ d: `other-name-${r.shortKey}` }))).toBe(r.docId)
+    expect(await resolveDocParam(new URLSearchParams({ doc: r.docId }))).toBe(r.docId)
+    expect(await resolveDocParam(new URLSearchParams({ d: 'x-zzzz' }))).toBeNull()
+    const keys = new Set<string | undefined>([r.shortKey])
+    for (let i = 0; i < 30; i++) keys.add((await createRecord({ title: 'n', originKind: 'drop', originPath: null })).shortKey)
+    expect(keys.size).toBe(31)
+    expect((await ensureShortKey(r.docId)).shortKey).toBe(r.shortKey)
   })
 })
