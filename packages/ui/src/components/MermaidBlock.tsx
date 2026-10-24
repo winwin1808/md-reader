@@ -51,6 +51,36 @@ function renderSerialized(code: string, theme: 'default' | 'dark'): Promise<stri
   return p
 }
 
+export async function renderMermaidToSvg(code: string, theme: 'default' | 'dark'): Promise<string> {
+  const key = `${theme}\u0000${code}`
+  const hit = cacheGet(key)
+  if (hit !== undefined) return hit
+  const svg = await renderSerialized(code, theme)
+  cacheSet(key, svg)
+  return svg
+}
+
+export async function inlineMermaid(html: string, theme: 'default' | 'dark'): Promise<string> {
+  const tpl = document.createElement('template')
+  tpl.innerHTML = html
+  const codes = Array.from(tpl.content.querySelectorAll('pre > code.language-mermaid'))
+  if (codes.length === 0) return html
+  for (const codeEl of codes) {
+    const pre = codeEl.parentElement
+    if (!pre) continue
+    try {
+      const svg = await renderMermaidToSvg(codeEl.textContent || '', theme)
+      const div = document.createElement('div')
+      div.className = 'mermaid-inline'
+      div.innerHTML = svg
+      pre.replaceWith(div)
+    } catch {
+      // leave the code block
+    }
+  }
+  return tpl.innerHTML
+}
+
 export function MermaidBlock({ code, theme = 'default' }: MermaidBlockProps): React.JSX.Element {
   const key = `${theme}\u0000${code}`
   const [cached] = useState(() => cacheGet(key))
