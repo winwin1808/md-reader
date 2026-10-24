@@ -24,7 +24,7 @@ const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ defa
 const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid } from '@md-reader/ui'
+import { inlineMermaid, usePeers } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
 import type { ThemeMode, FontScale, FontFamily, ReaderSettings, ViewMode, FormatAction, EditorView, SaveStatus, ToolbarAction } from '@md-reader/ui'
@@ -152,6 +152,7 @@ export function App(): React.JSX.Element {
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
   const hasCelebratedRef = useRef<boolean>(false)
   const editorViewRef = useRef<EditorView | null>(null)
+  const peers = usePeers(session.awareness)
 
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
@@ -544,6 +545,7 @@ export function App(): React.JSX.Element {
         />
         <TopToolbar
           syncStatus={session.syncStatus}
+          presence={session.syncStatus !== 'off' ? peers : undefined}
           title={docTitle || 'Tài liệu không tên'}
           tocOpen={tocOpen}
           onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
@@ -669,7 +671,7 @@ export function App(): React.JSX.Element {
               <FormattingToolbar onAction={handleFormatAction} />
               <div className="editor-mode-body">
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} />
                 </Suspense>
               </div>
             </div>
@@ -682,7 +684,7 @@ export function App(): React.JSX.Element {
                 <Suspense fallback={<LazyFallback />}>
                 <SplitViewContainer
                   mode="split"
-                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
+                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} /></Suspense>}
                   preview={
                     <div ref={docContainerRef} className="a4-document-container">
                       <Viewer html={html} mermaid={readerSettings.enableMermaid !== false} />

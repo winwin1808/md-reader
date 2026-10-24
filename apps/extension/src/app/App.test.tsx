@@ -16,7 +16,7 @@ import * as fsSystem from './fs/file-system'
 
 
 const saveOverride = vi.hoisted(() => ({ state: null as any, canSaveAs: false }))
-const docOverride = vi.hoisted(() => ({ syncStatus: null as any, shareDoc: false, external: false, accept: null as any, dismiss: null as any }))
+const docOverride = vi.hoisted(() => ({ syncStatus: null as any, shareDoc: false, external: false, accept: null as any, dismiss: null as any, awareness: null as any }))
 vi.mock('./hooks/useFileSave', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useFileSave: (...a: any[]) => {
@@ -31,7 +31,8 @@ vi.mock('./hooks/useDocSession', async (orig) => {
     useSessionCalls.push(a[0])
     const r0 = actual.useDocSession(...a)
     const r1 = docOverride.shareDoc ? { ...r0, docId: 'd-share', hasContent: true, content: '# Hi' } : r0
-    const r = docOverride.syncStatus ? { ...r1, syncStatus: docOverride.syncStatus } : r1
+    const r2 = docOverride.syncStatus ? { ...r1, syncStatus: docOverride.syncStatus } : r1
+    const r = docOverride.awareness ? { ...r2, awareness: docOverride.awareness } : r2
     return docOverride.external
       ? { ...r, externalChange: { remoteText: 'x', remoteHash: 'h' }, acceptExternal: docOverride.accept, dismissExternal: docOverride.dismiss }
       : r
@@ -1600,7 +1601,7 @@ describe('App', () => {
       await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
       return fetchMock
     }
-    afterEach(() => { docOverride.shareDoc = false; docOverride.syncStatus = null; vi.unstubAllGlobals() })
+    afterEach(() => { docOverride.shareDoc = false; docOverride.syncStatus = null; docOverride.awareness = null; vi.unstubAllGlobals() })
     it('dùng serverUrl từ Cài đặt', async () => {
       const f = await enableShare({ serverUrl: 'https://own.example' })
       expect(f.mock.calls[0]![0]).toBe('https://own.example/api/rooms')
@@ -1618,6 +1619,25 @@ describe('App', () => {
       docOverride.syncStatus = 'online'
       await act(async () => { render(<App />) })
       expect(screen.getByRole('status').textContent).toContain('Đã đồng bộ')
+    })
+    it('hiện presence khi đã bind và awareness đổi; không bind thì không có', async () => {
+      const handlers = new Set<() => void>()
+      const states = new Map<number, any>([[1, { user: { name: 'Hao', color: 'var(--peer-1)', colorLight: 'x' } }]])
+      docOverride.awareness = {
+        clientID: 1, getStates: () => states,
+        on: (_e: string, h: () => void) => { handlers.add(h) }, off: (_e: string, h: () => void) => { handlers.delete(h) },
+      }
+      docOverride.syncStatus = 'online'
+      await act(async () => { render(<App />) })
+      await act(async () => {
+        states.set(2, { user: { name: 'Lan', color: 'var(--peer-2)', colorLight: 'y' } })
+        handlers.forEach((h) => h())
+      })
+      expect(document.querySelectorAll('.presence-avatar').length).toBe(2)
+    })
+    it('không bind thì không có presence-bar', async () => {
+      await act(async () => { render(<App />) })
+      expect(document.querySelector('.presence-bar')).toBeNull()
     })
   })
 })
