@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ContentApp, openInApp, FAIL_TEXT } from './ContentApp'
+import css from './content.css?inline'
 import { isMarkdownUrl } from '../shared/md-url'
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: () => void }, { hasError: boolean }> {
@@ -119,16 +120,13 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 
   const rootEl = document.createElement('div')
   rootEl.id = 'md-reader-root'
-  rootEl.style.cssText =
-    'all: initial !important; position: fixed !important; bottom: 24px !important; right: 24px !important; z-index: 2147483647 !important; display: block !important; width: auto !important; height: auto !important;'
   targetContainer.appendChild(rootEl)
 
   const shadow = rootEl.attachShadow({ mode: 'open' })
 
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = chrome.runtime.getURL('app.css')
-  shadow.appendChild(link)
+  const style = document.createElement('style')
+  style.textContent = css
+  shadow.appendChild(style)
   const mount = document.createElement('div')
   shadow.appendChild(mount)
 
