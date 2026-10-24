@@ -1640,4 +1640,31 @@ describe('App', () => {
       expect(document.querySelector('.presence-bar')).toBeNull()
     })
   })
+  describe('Người viết (8f2.2)', () => {
+    const loadDoc = async () => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# Title\n\nContent') } as any)
+      await act(async () => { render(<App />) })
+    }
+    const findAction = (name: string) => screen.queryByTitle(name) ?? screen.queryByLabelText(name) ?? screen.queryByText(name)
+    it('reading mode không có nút Người viết', async () => {
+      await loadDoc()
+      expect(findAction('Hiện người viết')).toBeNull()
+    })
+    it('editor mode có nút, bật hiện .cm-blame-mark, tắt thì mất', async () => {
+      await loadDoc()
+      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      let btn = findAction('Hiện người viết')
+      if (!btn) { const more = screen.queryByLabelText('Thêm') ?? screen.queryByTitle('Thêm'); if (more) { await act(async () => { fireEvent.click(more) }); btn = findAction('Hiện người viết') } }
+      expect(btn).not.toBeNull()
+      await act(async () => { fireEvent.click(btn!) })
+      expect(document.querySelectorAll('.cm-blame-mark').length).toBeGreaterThan(0)
+      let off = findAction('Ẩn người viết')
+      if (!off) { const more = screen.queryByLabelText('Thêm') ?? screen.queryByTitle('Thêm'); if (more) { await act(async () => { fireEvent.click(more) }); off = findAction('Ẩn người viết') } }
+      expect(off).not.toBeNull()
+      await act(async () => { fireEvent.click(off!) })
+      expect(document.querySelectorAll('.cm-blame-mark').length).toBe(0)
+    })
+  })
 })
