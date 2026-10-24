@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
+import { normalizeServerUrl } from '@md-reader/core';
 import { Icon } from './Icon';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
@@ -45,6 +46,10 @@ export interface ReaderSettings {
   slideFont?: string;
   slideBgImage?: string;
   slideImageOpacity?: number;
+
+  // Collaboration
+  serverUrl?: string;
+  displayName?: string;
 }
 
 export interface SettingsModalProps {
@@ -63,6 +68,7 @@ export interface SettingsModalProps {
   themePicker?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  defaultServerUrl?: string;
 }
 
 const SECTIONS = [
@@ -71,6 +77,7 @@ const SECTIONS = [
   { id: 'open', label: 'Khi mở file .md' },
   { id: 'aids', label: 'Hỗ trợ đọc' },
   { id: 'slides', label: 'Trình chiếu' },
+  { id: 'collab', label: 'Cộng tác' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -517,6 +524,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
       ? alwaysOpenApp
       : false;
 
+  const serverUrlRaw = settings?.serverUrl ?? '';
+  const serverUrlInvalid = serverUrlRaw !== '' && normalizeServerUrl(serverUrlRaw) === null;
+
   const handleSettingChange = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     onSettingChange?.(key, value);
     if (key === 'mode' && onModeChange) {
@@ -793,6 +803,44 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     value={settings?.slideImageOpacity}
                     onChange={(val) => handleSettingChange('slideImageOpacity', val)}
                   />
+</section>
+<section aria-labelledby="settings-h-collab" id="settings-sec-collab" data-section={"collab"} className="settings-group" ref={(el) => { sectionRefs.current['collab'] = el }}>
+<h3 id="settings-h-collab" className="settings-group-title">Cộng tác</h3>
+                  <div className="settings-row">
+                    <div className="settings-row-info">
+                      <label htmlFor="settings-displayName" className="settings-row-label">Tên hiển thị</label>
+                      <div id="settings-displayName-desc" className="settings-row-desc">Hiện cho người cùng xem và trong lịch sử sửa.</div>
+                    </div>
+                    <input
+                      id="settings-displayName"
+                      type="text"
+                      className="settings-input-field"
+                      maxLength={40}
+                      placeholder="Bạn"
+                      aria-describedby="settings-displayName-desc"
+                      value={settings?.displayName ?? ''}
+                      onChange={(e) => handleSettingChange('displayName', e.target.value)}
+                    />
+                  </div>
+                  <div className="settings-row">
+                    <div className="settings-row-info">
+                      <label htmlFor="settings-serverUrl" className="settings-row-label">Máy chủ đồng bộ</label>
+                      <div id="settings-serverUrl-desc" className="settings-row-desc">Tài liệu đã chia sẻ vẫn dùng máy chủ lúc bật chia sẻ.</div>
+                      {serverUrlInvalid && (
+                        <div role="alert" className="settings-row-desc">Địa chỉ phải bắt đầu bằng https:// (http:// chỉ cho localhost)</div>
+                      )}
+                    </div>
+                    <input
+                      id="settings-serverUrl"
+                      type="text"
+                      className="settings-input-field"
+                      placeholder={props.defaultServerUrl}
+                      aria-invalid={serverUrlInvalid ? 'true' : undefined}
+                      aria-describedby="settings-serverUrl-desc"
+                      value={settings?.serverUrl ?? ''}
+                      onChange={(e) => handleSettingChange('serverUrl', e.target.value)}
+                    />
+                  </div>
 </section>
           </div>
         </div>
