@@ -264,4 +264,33 @@ describe('ShareModal', () => {
       expect(screen.getByRole('button', { name: 'Thu hồi' })).toBeTruthy()
     })
   })
+
+  it('confirmAll resets when links go to zero', () => {
+    const props = {
+      open: true, onClose: vi.fn(), binding, links: [link()],
+      onEnable: vi.fn(), onCreateLink: vi.fn(), onRevoke: vi.fn(), onRevokeAll: vi.fn().mockResolvedValue(undefined),
+      buildUrl: (t: string) => t,
+    }
+    const { rerender } = render(<ShareModal {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Tắt chia sẻ' }))
+    expect(screen.getByText(/Thu hồi tất cả link/)).toBeTruthy()
+    rerender(<ShareModal {...props} links={[]} />)
+    rerender(<ShareModal {...props} links={[link({ tokenPrefix: 'new999' })]} />)
+    expect(screen.queryByText(/Thu hồi tất cả link/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Tắt chia sẻ' })).toBeTruthy()
+  })
+
+  it('confirming row removed then re-added is no longer confirming', () => {
+    const props = {
+      open: true, onClose: vi.fn(), binding, links: [link()],
+      onEnable: vi.fn(), onCreateLink: vi.fn(), onRevoke: vi.fn(),
+      buildUrl: (t: string) => t,
+    }
+    const { rerender } = render(<ShareModal {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+    expect(screen.getByText('Thu hồi link này?')).toBeTruthy()
+    rerender(<ShareModal {...props} links={[]} />)
+    rerender(<ShareModal {...props} links={[link()]} />)
+    expect(screen.queryByText('Thu hồi link này?')).toBeNull()
+  })
 })

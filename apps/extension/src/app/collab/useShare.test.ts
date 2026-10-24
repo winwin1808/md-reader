@@ -259,6 +259,53 @@ describe('useShare', () => {
       expect(h.result.current.binding).not.toBeNull()
     })
 
+    it('404 DELETE counts as revoked, no error', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(json({}, 404)).mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent())
+      fetchMock.mockReturnValueOnce(json({}, 500))
+      await act(async () => { await h.result.current.revokeAll() })
+      expect(h.result.current.error).toBeNull()
+      expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+    })
+
+    it('all 401 surfaces the mapped cause, not the count', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(json({}, 401)).mockReturnValueOnce(json({}, 401)).mockReturnValueOnce(json({}, 401))
+      fetchMock.mockReturnValueOnce(json({}, 500))
+      await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Không có quyền với phòng này') })
+      expect(h.result.current.error).toBe('Không có quyền với phòng này')
+    })
+
+    it('doc switch during first DELETE stops the loop silently', async () => {
+      fetchMock.mockReturnValueOnce(json({ roomId: 'r1', ownerToken: 'own' }))
+      const other = (await createRecord({ title: 'o', originKind: 'drop', originPath: null })).docId
+      const h = renderHook((p: { id: string }) => useShare({ docId: p.id, serverUrl: SERVER }), { initialProps: { id: docId } })
+      await act(async () => { await h.result.current.enable() })
+      fetchMock.mockReturnValueOnce(json([link('', 'aaaa'), link('', 'bbbb'), link('', 'cccc')]))
+      await act(async () => { await h.result.current.refresh() })
+      let release!: () => void
+      fetchMock.mockReturnValueOnce(new Promise((r) => { release = () => r(new Response(null, { status: 204 })) }))
+      let pr!: Promise<unknown>
+      act(() => { pr = h.result.current.revokeAll() })
+      const callsBefore = fetchMock.mock.calls.length
+      h.rerender({ id: other })
+      await act(async () => { release(); await pr })
+      expect(fetchMock.mock.calls.length).toBe(callsBefore)
+      expect(h.result.current.error).toBeNull()
+    })
+
+    it('successful refresh with revokedAt set does not resurrect rows', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent())
+      fetchMock.mockReturnValueOnce(json([
+        { ...link('', 'aaaa'), revokedAt: 9 }, { ...link('', 'bbbb'), revokedAt: 9 },
+        { ...link('', 'dead'), revokedAt: 5 }, { ...link('', 'cccc'), revokedAt: 9 },
+      ]))
+      await act(async () => { await h.result.current.revokeAll() })
+      expect(h.result.current.links).toHaveLength(4)
+      expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+    })
+
     it('rejects when not bound', async () => {
       const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
       await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Chưa bật chia sẻ') })
