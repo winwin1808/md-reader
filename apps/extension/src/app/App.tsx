@@ -408,6 +408,7 @@ export function App(): React.JSX.Element {
         <Suspense fallback={<LazyFallback />}>
         <Deck
           slides={slides}
+          mermaid={readerSettings.enableMermaid !== false}
           initialSlide={currentSlideIndex}
           onClose={() => setIsPresenting(false)}
           onSlideChange={(idx) => {
