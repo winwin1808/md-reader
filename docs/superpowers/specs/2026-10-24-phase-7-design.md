@@ -463,7 +463,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7p2: done
 - 7q1: done
 - 7q2: done
-- 7r: pending
+- 7r: planned
 - 7s1: pending
 - 7s2: pending
 
