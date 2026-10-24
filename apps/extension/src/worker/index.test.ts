@@ -155,4 +155,26 @@ describe('Service Worker', () => {
     await installedListener!()
     expect(removeMock).toHaveBeenCalledWith(['file_content_legacy', 'file_content_old'])
   })
+  it('renderMd responds synchronously with html', async () => {
+    await import('./index')
+    const sendResponse = vi.fn()
+    const l = (chrome.runtime.onMessage.addListener as any).mock.calls[0][0]
+    const ret = l({ action: 'renderMd', markdown: '# Hi' }, {}, sendResponse)
+    expect(ret).not.toBe(true)
+    const arg = sendResponse.mock.calls[0]![0]
+    expect(arg.ok).toBe(true)
+    expect(arg.html).toContain('<h1')
+    expect(arg.title).toBe('Hi')
+  })
+
+  it('renderMd rejects non-string and too-large input', async () => {
+    await import('./index')
+    const l = (chrome.runtime.onMessage.addListener as any).mock.calls[0][0]
+    const r1 = vi.fn()
+    l({ action: 'renderMd', markdown: 42 }, {}, r1)
+    expect(r1).toHaveBeenCalledWith({ ok: false, error: 'bad-request' })
+    const r2 = vi.fn()
+    l({ action: 'renderMd', markdown: 'a'.repeat(2_000_001) }, {}, r2)
+    expect(r2).toHaveBeenCalledWith({ ok: false, error: 'too-large' })
+  })
 })
