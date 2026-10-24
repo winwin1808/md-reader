@@ -447,7 +447,7 @@ here; the rest stays a documented no-op (they are redundant, not wrong).
 - 7j: done
 - 7k: done
 - 7l1: done
-- 7l2: pending
+- 7l2: planned
 - 7m: pending
 - 7n: pending
 - 7o: pending
