@@ -51,12 +51,9 @@ export function extractToc(tree: Root): TocEntry[] {
   return toc
 }
 
-import rehypeRaw from 'rehype-raw'
 import { unified } from 'unified'
 import remarkRehype from 'remark-rehype'
 import rehypeSlug from 'rehype-slug'
-import rehypeHighlight from 'rehype-highlight'
-import rehypeKatex from 'rehype-katex'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeStringify from 'rehype-stringify'
 import type { ParseResult } from '../parse/index.js'
@@ -73,12 +70,12 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml, clobberPrefix: '' })
   processor.use(rehypeSlug)
   
-  if (allowRawHtml) {
-    processor.use(rehypeRaw)
+  if (allowRawHtml && options?.plugins?.raw) {
+    processor.use(options.plugins.raw)
   }
 
-  if (highlight !== false) {
-    processor.use(rehypeHighlight)
+  if (highlight !== false && options?.plugins?.highlight) {
+    processor.use(options.plugins.highlight)
   }
 
   const codeAttributes = (sanitizeSchema.attributes?.code || []).filter(
@@ -153,8 +150,8 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   processor.use(rehypePrefixFragmentLinks, HEADING_ID_PREFIX)
   processor.use(rehypeSafeLinkTargets)
   processor.use(rehypeSanitize, schema as any)
-  if (options?.math !== false) {
-    processor.use(rehypeKatex, { throwOnError: false, strict: 'ignore' } as any)
+  if (options?.math !== false && options?.plugins?.math) {
+    processor.use(options.plugins.math, { throwOnError: false, strict: 'ignore' } as any)
   }
   processor.use(rehypeStringify, { allowDangerousHtml: allowRawHtml })
 
