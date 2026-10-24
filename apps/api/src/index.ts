@@ -1,6 +1,6 @@
 import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
-import { authorizeWs, handleApi } from './api.js'
+import { authorizeWs, handleApi, safeDecode } from './api.js'
 import { D1TokenStore } from './tokens-d1.js'
 import type { TokenStore } from './tokens.js'
 
@@ -33,11 +33,12 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
   if (url.pathname.startsWith('/parties/')) {
     const [, , party, roomId] = url.pathname.split('/')
     if (party !== 'doc-room') return json({ error: 'not found' }, 404)
+    const wantedRoom = safeDecode(roomId ?? '')
+    if (wantedRoom === null) return json({ error: 'bad path' }, 400)
     const auth = await authorizeWs(req, store)
     if (auth instanceof Response) return auth
-    if (decodeURIComponent(roomId ?? '') !== auth.roomId) return json({ error: 'forbidden' }, 403)
+    if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
     const req2 = new Request(req)
-    req2.headers.delete('x-mdr-role')
     req2.headers.set('x-mdr-role', auth.role)
     const res = await deps.routeParty(req2, env)
     return res ?? json({ error: 'not found' }, 404)

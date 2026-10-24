@@ -89,7 +89,7 @@ export class D1TokenStore implements TokenStore {
   async listLinks(roomId: string): Promise<ShareLink[]> {
     const res = await this.db
       .prepare(
-        'SELECT token_prefix, room_id, role, label, created_at, expires_at, revoked_at FROM links WHERE room_id = ? ORDER BY created_at DESC',
+        'SELECT token_prefix, room_id, role, label, created_at, expires_at, revoked_at FROM links WHERE room_id = ? ORDER BY created_at DESC, rowid DESC',
       )
       .bind(roomId)
       .all<LinkRow>()
@@ -99,7 +99,7 @@ export class D1TokenStore implements TokenStore {
   async revoke(roomId: string, prefix: string): Promise<boolean> {
     const res = await this.db
       .prepare(
-        'UPDATE links SET revoked_at = ? WHERE room_id = ? AND token_prefix = ? AND revoked_at IS NULL',
+        'UPDATE links SET revoked_at = ? WHERE token_hash = (SELECT token_hash FROM links WHERE room_id = ? AND token_prefix = ? AND revoked_at IS NULL ORDER BY created_at ASC, rowid ASC LIMIT 1)',
       )
       .bind(this.now(), roomId, prefix)
       .run()
