@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
-import { computeTextChanges, type ResolveTokenResponse } from '@md-reader/core'
-import { FormattingToolbar, SplitViewContainer, Viewer, applyFormat } from '@md-reader/ui'
+import { computeTextChanges, trackLocalActor, type ResolveTokenResponse } from '@md-reader/core'
+import { FormattingToolbar, PresenceBar, usePeers, SplitViewContainer, Viewer, applyFormat } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
@@ -78,6 +78,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     conn: ReturnType<typeof bindRoom>
   } | null>(null)
 
+  const peers = usePeers(session?.conn.awareness)
+
   useEffect(() => {
     setStatus('connecting')
     setWasOnline(false)
@@ -86,6 +88,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     const doc = new Y.Doc({ gc: false })
     const yText = doc.getText('source')
     const undo = new Y.UndoManager(yText)
+    const stopActor = trackLocalActor(doc, () => name)
     const conn = (bind ?? bindRoom)(doc, {
       serverUrl: serverUrl ?? location.origin,
       roomId: info.roomId,
@@ -121,6 +124,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
       off()
       conn.destroy()
       undo.destroy()
+      stopActor()
       doc.destroy()
       setSession(null)
     }
@@ -161,6 +165,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   return (
     <div>
       <p role="status">{STATUS_TEXT[status]}</p>
+      <PresenceBar peers={peers} />
       <FormattingToolbar
         onAction={onAction}
         canUndo={session.undo.undoStack.length > 0}
@@ -172,7 +177,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
         mode="split"
         editor={
           <Suspense fallback={<div aria-busy="true" />}>
-            <Editor yText={session.yText} undoManager={session.undo} editorViewRef={editorViewRef} />
+            <Editor yText={session.yText} undoManager={session.undo} awareness={session.conn.awareness} editorViewRef={editorViewRef} />
           </Suspense>
         }
         preview={<Viewer html={html} isAppPage={false} />}

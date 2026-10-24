@@ -1,6 +1,7 @@
 import type * as Y from 'yjs'
 import YProvider from 'y-partyserver/provider'
 import { API_PATHS, wsHost } from '@md-reader/core'
+import { peerUser } from '@md-reader/ui'
 import type { SyncStatus } from '../../shared/collab'
 
 type Awareness = YProvider['awareness']
@@ -31,7 +32,7 @@ export function bindRoom(
     connect: false,
     ...(opts.serverUrl.startsWith('http://') ? { protocol: 'ws' as const } : {}),
   })
-  provider.awareness.setLocalStateField('user', { name: opts.name })
+  provider.awareness.setLocalStateField('user', peerUser(provider.awareness.clientID, opts.name))
 
   let status: SyncStatus = 'connecting'
   let destroyed = false

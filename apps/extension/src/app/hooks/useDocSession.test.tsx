@@ -383,7 +383,7 @@ vi.mock('../collab/bindRoom', () => ({
   bindRoom: vi.fn((doc: unknown, opts: unknown) => {
     let cb: ((s: string) => void) | null = null
     const conn = {
-      awareness: { setLocalStateField: vi.fn() },
+      awareness: { clientID: 5, setLocalStateField: vi.fn() },
       status$: (f: (s: string) => void) => { cb = f; f('connecting'); return () => { cb = null } },
       destroy: vi.fn(),
       emit: (s: string) => cb?.(s),
@@ -453,6 +453,6 @@ describe('useDocSession room binding', () => {
     rerender({ room, displayName: 'Lan' })
     await flush()
     expect(bindRoom).toHaveBeenCalledTimes(1)
-    expect(bind.conns[0].awareness.setLocalStateField).toHaveBeenCalledWith('user', { name: 'Lan' })
+    expect(bind.conns[0].awareness.setLocalStateField).toHaveBeenCalledWith('user', expect.objectContaining({ name: 'Lan' }))
   })
 })
