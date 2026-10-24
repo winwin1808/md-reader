@@ -1,0 +1,23 @@
+{
+  "name": "@md-reader/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "partyserver": "0.5.10",
+    "y-partyserver": "2.2.0",
+    "yjs": "13.6.33"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.152.0"
+  }
+}

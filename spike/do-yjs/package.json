@@ -1,1 +1,0 @@
-{"name":"mdr-spike-do-yjs","private":true,"type":"module","version":"0.0.0","dependencies":{"partyserver":"^0.5.10","wrangler":"^4.152.0","ws":"^8.22.0","y-partyserver":"^2.2.0","yjs":"^13.6.33"}}
