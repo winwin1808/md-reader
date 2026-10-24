@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { processFrontmatter } from './options.js'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from './render.js'
+import { defaultRenderPlugins } from '../plugins/index.js'
 
 describe('Render Options', () => {
-  const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), o as any).html
+  const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), ...o } as any).html
 
   describe('typographer', () => {
     it('replaces symbols and smart quotes', () => {
@@ -169,7 +170,7 @@ describe('Render Options', () => {
 
 describe('math', () => {
   const rm = (md: string, o: Record<string, unknown> = {}, p: Record<string, unknown> = {}) =>
-    renderToHtml(parseMarkdown(md, p as any), o as any).html
+    renderToHtml(parseMarkdown(md, p as any), { plugins: defaultRenderPlugins(), ...o } as any).html
 
   it('renders inline math with katex', () => {
     expect(rm('$a^2$')).toContain('class="katex"')
