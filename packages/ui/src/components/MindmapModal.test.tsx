@@ -64,29 +64,79 @@ describe('MindmapModal', () => {
     expect(paths.length).toBe(3) // 3 connections: root->sec1, root->sec2, sec1->subsec1.1
   })
 
-  it('assigns branch colors to branches and descendants inherit ancestor branch color', () => {
-    render(<MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} />)
-
-    const paths = document.querySelectorAll('path.mindmap-branch')
-    // root -> sec1
-    expect(paths[0]?.getAttribute('stroke')).toBe('#2563eb')
-    // sec1 -> subsec1.1 (inherits #2563eb)
-    expect(paths[1]?.getAttribute('stroke')).toBe('#2563eb')
-    // root -> sec2 (2nd top-level branch gets #10b981)
-    expect(paths[2]?.getAttribute('stroke')).toBe('#10b981')
+  it('assigns Lề sách tones: depth-1 branches cycle accent, ok, danger, pencil; descendants inherit', () => {
+    const tree: MindNode = {
+      id: 'r',
+      text: 'R',
+      depth: 0,
+      children: [0, 1, 2, 3, 4].map((i) => ({
+        id: `b${i}`,
+        text: `B${i}`,
+        depth: 1,
+        children: i === 0 ? [{ id: 'c', text: 'C', depth: 2, children: [] }] : [],
+      })),
+    }
+    render(<MindmapModal root={tree} isOpen={true} onClose={vi.fn()} />)
+    const strokes = Array.from(document.querySelectorAll('path.mindmap-branch')).map((p) =>
+      p.getAttribute('stroke')
+    )
+    // layout order: r->b0, b0->c, r->b1 ... r->b4
+    expect(strokes).toEqual([
+      'var(--accent)',
+      'var(--accent)',
+      'var(--ok)',
+      'var(--danger)',
+      'var(--pencil)',
+      'var(--accent)',
+    ])
   })
 
-  it('calls onClose when header close button or floating close button is clicked', () => {
+  it('has exactly one button named Đóng and it calls onClose', () => {
     const onClose = vi.fn()
     render(<MindmapModal root={sampleTree} isOpen={true} onClose={onClose} />)
-
-    const headerCloseBtn = screen.getByRole('button', { name: /^đóng sơ đồ tư duy$/i })
-    fireEvent.click(headerCloseBtn)
+    const btns = screen.getAllByRole('button', { name: 'Đóng' })
+    expect(btns.length).toBe(1)
+    fireEvent.click(btns[0] as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
 
-    const floatingCloseBtn = screen.getByRole('button', { name: /^đóng$/i })
-    fireEvent.click(floatingCloseBtn)
-    expect(onClose).toHaveBeenCalledTimes(2)
+  it('drag past 4px never jumps; a click without movement jumps', () => {
+    const onNodeClick = vi.fn()
+    render(
+      <MindmapModal root={sampleTree} isOpen={true} onClose={vi.fn()} onNodeClick={onNodeClick} />
+    )
+    const node = screen.getByText('Section 1')
+    fireEvent.pointerDown(node, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(node, { clientX: 110, clientY: 100 })
+    fireEvent.pointerUp(node, { clientX: 110, clientY: 100 })
+    fireEvent.click(node)
+    expect(onNodeClick).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(node, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerUp(node, { clientX: 101, clientY: 100 })
+    fireEvent.click(node)
+    expect(onNodeClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('wraps a long Vietnamese label to two lines with an ellipsis', () => {
+    const long: MindNode = {
+      id: 'r',
+      text: 'Gốc',
+      depth: 0,
+      children: [
+        {
+          id: 'l',
+          text: 'Phương pháp tiếp cận hệ thống để thiết kế giao diện đọc tài liệu Markdown thân thiện với người dùng Việt Nam trên mọi thiết bị',
+          depth: 1,
+          children: [],
+        },
+      ],
+    }
+    render(<MindmapModal root={long} isOpen={true} onClose={vi.fn()} />)
+    const texts = Array.from(document.querySelectorAll('.mindmap-node-text'))
+    const tspans = texts[1]!.querySelectorAll('tspan')
+    expect(tspans.length).toBe(2)
+    expect(tspans[1]!.textContent!.endsWith('\u2026')).toBe(true)
   })
 
   it('calls onClose when Escape key is pressed', () => {
@@ -141,9 +191,9 @@ describe('MindmapModal', () => {
     const zoomGroup = document.querySelector('g.mindmap-viewport')!
     const initialTransform = zoomGroup.getAttribute('transform')
 
-    fireEvent.mouseDown(svg, { button: 0, clientX: 100, clientY: 100 })
-    fireEvent.mouseMove(svg, { clientX: 180, clientY: 150 })
-    fireEvent.mouseUp(svg)
+    fireEvent.pointerDown(svg, { button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { clientX: 180, clientY: 150 })
+    fireEvent.pointerUp(svg)
 
     const pannedTransform = zoomGroup.getAttribute('transform')
     expect(pannedTransform).not.toEqual(initialTransform)
