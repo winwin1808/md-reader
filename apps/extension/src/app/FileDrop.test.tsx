@@ -4,7 +4,7 @@ import React from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { FileDrop } from './FileDrop';
-import { listRecent, __resetForTests } from './doc-registry';
+import { listRecent, __resetForTests, docParam } from './doc-registry';
 import * as registry from './doc-registry';
 import { RecentFiles } from './RecentFiles';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
@@ -67,7 +67,7 @@ describe('FileDrop', () => {
 
     const a = recs.find((r) => r.title === 'a.md')!;
     const b = recs.find((r) => r.title === 'b.md')!;
-    expect(navigate).toHaveBeenCalledWith('?doc=' + a.docId);
+    expect(navigate).toHaveBeenCalledWith('?d=' + docParam(a));
     const da = await readPersisted(a.persistenceName);
     const db = await readPersisted(b.persistenceName);
     expect(da.getText('source').toString()).toBe('# One');

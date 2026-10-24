@@ -48,6 +48,9 @@ vi.mock('./doc-registry', () => {
   const recs = new Map<string, any>()
   return {
     migrateLegacyRegistry: async () => 0,
+    docQuery: async (id: string) => '?d=doc-' + id,
+    resolveDocParam: async () => null,
+    docParam: (r: any) => 'doc-' + r.docId,
     findByOrigin: async (o: string) => recs.get(o) ?? null,
     getRecord: async () => null,
     createRecord: async (i: any) => { const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
@@ -782,11 +785,11 @@ describe('App', () => {
     await act(async () => {
       capturedDeckProps.onOpenSpeakerView()
     })
-    expect(window.open).toHaveBeenCalledWith(
+    await waitFor(() => expect(window.open).toHaveBeenCalledWith(
       expect.stringContaining('speaker=true'),
       'md-speaker',
       'width=1080,height=680'
-    )
+    ))
 
     // Test closing deck
     await act(async () => {

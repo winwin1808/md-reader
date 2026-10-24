@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor, cleanup } from '@testing-library/react'
 import * as Y from 'yjs'
 import { hashText, ORIGIN_LOAD } from '@md-reader/core'
-import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase } from '../doc-registry'
+import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase, getRecord, docParam } from '../doc-registry'
 
 vi.mock('../doc-registry', async (orig) => {
   const actual = await orig<typeof import('../doc-registry')>()
@@ -145,7 +145,7 @@ describe('useDocSession safe load', () => {
     expect(all).toHaveLength(1)
     const rec = await findByOrigin('https://x.test/a.md')
     expect(second.result.current.docId).toBe(rec!.docId)
-    expect(spy).toHaveBeenCalledWith(null, '', '?doc=' + rec!.docId)
+    expect(spy).toHaveBeenCalledWith(null, '', '?d=' + docParam((await getRecord(rec!.docId))!))
     spy.mockRestore()
   })
 

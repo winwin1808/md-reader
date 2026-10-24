@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createRecord, deleteRecord, writeDocText } from './doc-registry';
+import { createRecord, deleteRecord, writeDocText, docParam } from './doc-registry';
 
 interface FileDropProps {
   children: React.ReactNode;
@@ -58,7 +58,7 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
           const record = await createRecord({ title: file.name, originKind: 'drop', originPath: null });
           created = record.docId;
           await writeDocText(record, content, 'replace');
-          navigate('?doc=' + record.docId);
+          navigate('?d=' + docParam(record));
           finish();
         } catch (err) {
           console.error('Failed to import dropped file', err);
