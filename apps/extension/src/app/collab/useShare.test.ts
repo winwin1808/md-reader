@@ -219,4 +219,97 @@ describe('useShare', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(h.result.current.binding?.roomId).toBe('r1')
   })
+
+  describe('revokeAll', () => {
+    const noContent = () => Promise.resolve(new Response(null, { status: 204 }))
+    async function withLinks() {
+      const h = await bound()
+      const list = [link('', 'aaaa'), link('', 'bbbb'), { ...link('', 'dead'), revokedAt: 5 }, link('', 'cccc')]
+      fetchMock.mockReturnValueOnce(json(list))
+      await act(async () => { await h.result.current.refresh() })
+      return h
+    }
+
+    it('DELETEs active links in order, marks revoked, keeps binding', async () => {
+      const h = await withLinks()
+      const before = h.result.current.binding
+      fetchMock.mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent())
+      fetchMock.mockReturnValueOnce(json({}, 500)) // refresh fails; local state must stand
+      await act(async () => { await h.result.current.revokeAll() })
+      const urls = fetchMock.mock.calls.slice(2, 5).map((c: any) => c[0])
+      expect(urls).toEqual([
+        `${SERVER}/api/rooms/r1/links/aaaa`, `${SERVER}/api/rooms/r1/links/bbbb`, `${SERVER}/api/rooms/r1/links/cccc`,
+      ])
+      expect(fetchMock.mock.calls[2][1].method).toBe('DELETE')
+      expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe('Bearer own')
+      expect(h.result.current.links).toHaveLength(4)
+      expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+      expect(h.result.current.binding).toEqual(before)
+      expect((await getRecord(docId))?.room).toEqual(before)
+    })
+
+    it('reports remaining count when a DELETE fails, keeps earlier successes', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(noContent()).mockReturnValueOnce(json({}, 500)).mockReturnValueOnce(json({}, 500))
+      fetchMock.mockReturnValueOnce(json({}, 500))
+      await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Còn 2 link chưa thu hồi được') })
+      expect(h.result.current.error).toBe('Còn 2 link chưa thu hồi được')
+      expect(h.result.current.links.find((l) => l.tokenPrefix === 'aaaa')!.revokedAt).not.toBeNull()
+      expect(h.result.current.links.find((l) => l.tokenPrefix === 'bbbb')!.revokedAt).toBeNull()
+      expect(h.result.current.binding).not.toBeNull()
+    })
+
+    it('404 DELETE counts as revoked, no error', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(json({}, 404)).mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent())
+      fetchMock.mockReturnValueOnce(json({}, 500))
+      await act(async () => { await h.result.current.revokeAll() })
+      expect(h.result.current.error).toBeNull()
+      expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+    })
+
+    it('all 401 surfaces the mapped cause, not the count', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(json({}, 401)).mockReturnValueOnce(json({}, 401)).mockReturnValueOnce(json({}, 401))
+      fetchMock.mockReturnValueOnce(json({}, 500))
+      await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Không có quyền với phòng này') })
+      expect(h.result.current.error).toBe('Không có quyền với phòng này')
+    })
+
+    it('doc switch during first DELETE stops the loop silently', async () => {
+      fetchMock.mockReturnValueOnce(json({ roomId: 'r1', ownerToken: 'own' }))
+      const other = (await createRecord({ title: 'o', originKind: 'drop', originPath: null })).docId
+      const h = renderHook((p: { id: string }) => useShare({ docId: p.id, serverUrl: SERVER }), { initialProps: { id: docId } })
+      await act(async () => { await h.result.current.enable() })
+      fetchMock.mockReturnValueOnce(json([link('', 'aaaa'), link('', 'bbbb'), link('', 'cccc')]))
+      await act(async () => { await h.result.current.refresh() })
+      let release!: () => void
+      fetchMock.mockReturnValueOnce(new Promise((r) => { release = () => r(new Response(null, { status: 204 })) }))
+      let pr!: Promise<unknown>
+      act(() => { pr = h.result.current.revokeAll() })
+      const callsBefore = fetchMock.mock.calls.length
+      h.rerender({ id: other })
+      await act(async () => { release(); await pr })
+      expect(fetchMock.mock.calls.length).toBe(callsBefore)
+      expect(h.result.current.error).toBeNull()
+    })
+
+    it('successful refresh with revokedAt set does not resurrect rows', async () => {
+      const h = await withLinks()
+      fetchMock.mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent()).mockReturnValueOnce(noContent())
+      fetchMock.mockReturnValueOnce(json([
+        { ...link('', 'aaaa'), revokedAt: 9 }, { ...link('', 'bbbb'), revokedAt: 9 },
+        { ...link('', 'dead'), revokedAt: 5 }, { ...link('', 'cccc'), revokedAt: 9 },
+      ]))
+      await act(async () => { await h.result.current.revokeAll() })
+      expect(h.result.current.links).toHaveLength(4)
+      expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+    })
+
+    it('rejects when not bound', async () => {
+      const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+      await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Chưa bật chia sẻ') })
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+  })
 })
