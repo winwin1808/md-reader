@@ -730,13 +730,15 @@ export function App(): React.JSX.Element {
 
           {viewMode === 'editor' && (
             <div className="editor-mode-container">
-              <FormattingToolbar onAction={handleFormatAction} />
+              {previewHtml === null && <FormattingToolbar onAction={handleFormatAction} />}
               <div className="editor-mode-body">
                 {previewHtml !== null ? (
-                  <div className="main-content" data-font-scale={fontScale}>
+                  <div className="history-preview-scroll">
                     {previewBanner}
-                    <div className="a4-document-container">
-                      <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                    <div className="main-content" data-font-scale={fontScale}>
+                      <div className="a4-document-container">
+                        <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                      </div>
                     </div>
                   </div>
                 ) : (
