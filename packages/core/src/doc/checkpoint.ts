@@ -92,3 +92,22 @@ export function registerActor(doc: Y.Doc, name: string): void {
     map.set(String(doc.clientID), name)
   })
 }
+
+export function trackLocalActor(doc: Y.Doc, getName: () => string): () => void {
+  let last: string | null = null
+  let active = true
+  const source = getSource(doc)
+  const handler = (tr: Y.Transaction) => {
+    if (!tr.local || !(tr.changed as Map<unknown, unknown>).has(source)) return
+    const name = getName().trim()
+    if (!name || name === last) return
+    last = name
+    registerActor(doc, name)
+  }
+  doc.on('afterTransaction', handler)
+  return () => {
+    if (!active) return
+    active = false
+    doc.off('afterTransaction', handler)
+  }
+}
