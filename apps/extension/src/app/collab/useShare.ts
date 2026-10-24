@@ -14,7 +14,7 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
     throw new Error('Không kết nối được máy chủ')
   }
   if (res.status === 401) throw new Error('Không có quyền với phòng này')
-  if (!res.ok) throw new Error(`Máy chủ trả lỗi ${res.status}`)
+  if (!res.ok) throw Object.assign(new Error(`Máy chủ trả lỗi ${res.status}`), { status: res.status })
   if (res.status === 204) return undefined as T
   let text: string
   try {
@@ -42,6 +42,8 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const tokens = useRef(new Map<string, string>())
   const session = useRef(new Map<string, ShareLink>())
   const gen = useRef(0)
+  const linksRef = useRef<ShareLink[]>([])
+  linksRef.current = links
   const enabling = useRef<Promise<RoomBinding> | null>(null)
 
   useEffect(() => {
@@ -142,5 +144,36 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     setLinks((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
   }), [run])
 
-  return { binding, links, enable, createLink, revoke, refresh, busy: pending > 0, error }
+  const revokeAll = useCallback(() => run(async (stale) => {
+    const b = need()
+    const active = linksRef.current.filter((l) => l.revokedAt === null).map((l) => l.tokenPrefix)
+    let failed = 0
+    const causes = new Set<string>()
+    for (const prefix of active) {
+      if (stale()) return
+      try {
+        await call<unknown>(`${b.serverUrl}${API_PATHS.revoke(b.roomId, prefix)}`, { method: 'DELETE', headers: auth(b) })
+      } catch (e) {
+        if ((e as { status?: number }).status !== 404) {
+          failed++
+          const m = (e as Error).message
+          causes.add(m === 'Không có quyền với phòng này' || m === 'Không kết nối được máy chủ' ? m : '')
+          continue
+        }
+      }
+      if (stale()) return
+      tokens.current.delete(prefix)
+      session.current.delete(prefix)
+      const now = Date.now()
+      setLinks((cur) => cur.map((l) => (l.tokenPrefix === prefix ? { ...l, revokedAt: now } : l)))
+    }
+    if (stale()) return
+    try { await refresh() } catch { /* local marks stand */ }
+    if (failed > 0) {
+      const only = causes.size === 1 ? [...causes][0] : ''
+      throw new Error(only || `Còn ${failed} link chưa thu hồi được`)
+    }
+  }), [run, refresh])
+
+  return { binding, links, enable, createLink, revoke, revokeAll, refresh, busy: pending > 0, error }
 }
