@@ -1571,7 +1571,7 @@ describe('App', () => {
     expect(view!.state.selection.main.to).toBe(13)
   })
 
-  it('Chia sẻ mở ShareModal, bật chia sẻ rồi hiện Tạo link xem', async () => {
+  it('Chia sẻ mở ShareModal, bật chia sẻ rồi hiện form Tạo link', async () => {
     docOverride.shareDoc = true
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
     vi.stubGlobal('fetch', fetchMock)
@@ -1580,7 +1580,7 @@ describe('App', () => {
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
       expect(screen.getByRole('dialog', { name: 'Chia sẻ' })).toBeDefined()
       await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
-      expect(await screen.findByText('Tạo link xem')).toBeDefined()
+      expect(await screen.findByRole('button', { name: 'Tạo link' })).toBeDefined()
       const last = useSessionCalls[useSessionCalls.length - 1]
       expect(last.room.roomId).toBe('r1')
       expect(last.room.ownerToken).toBe('tok')

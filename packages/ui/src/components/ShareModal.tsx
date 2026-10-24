@@ -140,8 +140,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
               onSubmit={(e) => {
                 e.preventDefault()
                 const req = { role, expiresIn: SHARE_EXPIRY_PRESETS[expiry], label: label.trim() || undefined }
-                setLabel('')
-                void run(() => onCreateLink(req))
+                void run(async () => { await onCreateLink(req); setLabel('') })
               }}
               style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
             >
