@@ -241,7 +241,7 @@ describe('App', () => {
       fireEvent.click(htmlOption)
     })
     expect(htmlSpy).toHaveBeenCalledWith(expect.objectContaining({
-      cssContent: expect.stringContaining('740px'),
+      cssContent: expect.stringContaining('68ch'),
       title: 'document',
     }))
     expect(clickSpy).toHaveBeenCalled()
