@@ -14,12 +14,18 @@ const link = (token: string, prefix: string) => ({
 
 let fetchMock: any
 let docId: string
+let store: Record<string, any>
 
 beforeEach(async () => {
   await __resetForTests()
   docId = (await createRecord({ title: 't', originKind: 'drop', originPath: null })).docId
   fetchMock = vi.fn()
   globalThis.fetch = fetchMock as unknown as typeof fetch
+  store = {}
+  ;(globalThis as any).chrome = { storage: { local: {
+    get: async (k: string) => (k in store ? { [k]: store[k] } : {}),
+    set: async (o: Record<string, unknown>) => { Object.assign(store, o) },
+  } } }
 })
 
 async function bound() {
@@ -68,6 +74,22 @@ describe('useShare', () => {
     fetchMock.mockReturnValueOnce(json([link('', 'bbbb'), link('', 'aaaa')]))
     await act(async () => { await h.result.current.refresh() })
     expect(h.result.current.links.map((l) => l.token)).toEqual(['', 'SECRET'])
+  })
+
+  it('cached full token fills listed link with empty token; created saved; revoked forgotten', async () => {
+    const h = await bound()
+    fetchMock.mockReturnValueOnce(json(link('SECRET', 'aaaa')))
+    await act(async () => { await h.result.current.createLink({ role: 'view', expiresIn: null }) })
+    expect(store['mdr.links.r1']).toEqual({ aaaa: 'SECRET' })
+    store['mdr.links.r1'] = { aaaa: 'SECRET', cccc: 'CACHED' }
+    const h2 = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+    await waitFor(() => expect(h2.result.current.binding?.roomId).toBe('r1'))
+    fetchMock.mockReturnValueOnce(json([link('', 'cccc')]))
+    await act(async () => { await h2.result.current.refresh() })
+    expect(h2.result.current.links[0]!.token).toBe('CACHED')
+    fetchMock.mockReturnValueOnce(Promise.resolve(new Response(null, { status: 204 })))
+    await act(async () => { await h2.result.current.revoke('cccc') })
+    expect(store['mdr.links.r1']).toEqual({ aaaa: 'SECRET' })
   })
 
   it('revoke DELETEs and removes row', async () => {

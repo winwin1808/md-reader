@@ -8,7 +8,7 @@ import {
   placeholder as cmPlaceholder,
   keymap,
 } from '@codemirror/view'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import {
   bracketMatching,
   syntaxHighlighting,
@@ -19,7 +19,17 @@ import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { applyFormat } from './markdown-commands'
 import type { FormatAction } from './FormattingToolbar'
 import { blameGutter, type LineAuthor } from './blame'
+import type { ImageResolver } from '../Viewer'
+import { imageResolverFacet } from '../live/widgets'
+import { livePreview, createDefaultRenderers, pasteImages, toDataUrl } from '../live'
+import type { ImageSaver } from '../live'
+import type { BlockRenderers } from '../live'
 import '../theme/editor.css'
+import '../theme/live.css'
+
+export type { ImageResolver }
+export { livePreview, createDefaultRenderers, pasteImages, toDataUrl }
+export type { ImageSaver }
 
 export const lereSachHighlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--ink)', fontWeight: '600' },
@@ -72,6 +82,12 @@ export interface EditorProps {
   onEditorReady?: (view: EditorView) => void
   awareness?: Parameters<typeof yCollab>[1]
   blame?: Array<LineAuthor | null> | null
+  variant?: 'source' | 'live'
+  renderers?: BlockRenderers
+  resolveImage?: ImageResolver
+  saveImage?: ImageSaver
+  onImageMessage?(m: string): void
+  live?: { theme?: () => 'default' | 'dark' }
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
@@ -86,6 +102,12 @@ export function Editor({
   editorViewRef,
   awareness,
   blame,
+  variant = 'source',
+  renderers,
+  live: liveOpts,
+  resolveImage,
+  saveImage,
+  onImageMessage,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -93,6 +115,14 @@ export function Editor({
   const blameCompartmentRef = useRef(new Compartment())
   const blameRef = useRef(blame)
   blameRef.current = blame
+  const liveThemeRef = useRef(liveOpts?.theme)
+  liveThemeRef.current = liveOpts?.theme
+  const resolveImageRef = useRef(resolveImage)
+  resolveImageRef.current = resolveImage
+  const saveImageRef = useRef(saveImage)
+  saveImageRef.current = saveImage
+  const onImageMessageRef = useRef(onImageMessage)
+  onImageMessageRef.current = onImageMessage
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
 
@@ -114,11 +144,19 @@ export function Editor({
 
   useEffect(() => {
     if (!containerRef.current) return
+    const live = variant === 'live'
 
     const extensions = [
-      markdown(),
-      lineNumbers(),
-      highlightActiveLine(),
+      live ? markdown({ base: markdownLanguage }) : markdown(),
+      ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
+      ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default' }) : []),
+      imageResolverFacet.of(resolveImage ? (src) => resolveImageRef.current!(src) : null),
+      ...(live && saveImage
+        ? [pasteImages((f) => saveImageRef.current!(f), {
+            onError: (m) => onImageMessageRef.current?.(m),
+            onNote: (m) => onImageMessageRef.current?.(m),
+          })]
+        : []),
       bracketMatching(),
       syntaxHighlighting(lereSachHighlight),
       Prec.high(
@@ -166,7 +204,16 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager, awareness])
+  }, [yText, undoManager, awareness, variant, renderers, !!resolveImage, !!saveImage])
 
+  if (variant === 'live') {
+    return (
+      <div className="editor-live-pane">
+        <div className="editor-live-sheet">
+          <div ref={containerRef} className={['editor-live', className].filter(Boolean).join(' ')} />
+        </div>
+      </div>
+    )
+  }
   return <div ref={containerRef} className={className} style={{ height: '100%', minHeight: 0 }} />
 }

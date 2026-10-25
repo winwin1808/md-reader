@@ -47,8 +47,7 @@ const FONT_SCALE_LABELS: Record<FontScale, string> = {
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; title: string }[] = [
   { mode: 'reading', label: 'Đọc', title: 'Chế độ Đọc' },
-  { mode: 'editor', label: 'Soạn', title: 'Chế độ Soạn thảo' },
-  { mode: 'split', label: 'Chia đôi', title: 'Chế độ Chia đôi' },
+  { mode: 'live', label: 'Sửa', title: 'Sửa trên trang' },
 ]
 
 const NARROW_QUERY = '(max-width: 720px)'

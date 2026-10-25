@@ -1,4 +1,5 @@
-import { docQuery } from './doc-registry'
+import { docQuery, getRecord, touchRecord } from './doc-registry'
+import { nearestHeadingAtTop, lineOfHeading, headingIdAtLine } from './view-anchor'
 import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   ThemeProvider,
@@ -23,7 +24,6 @@ import {
   historyLabel,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
-const SplitViewContainer = React.lazy(() => import('@md-reader/ui/split-view').then(m => ({ default: m.SplitViewContainer })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
 import { inlineMermaid, usePeers, lineAuthors } from '@md-reader/ui'
@@ -55,6 +55,9 @@ import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
+import { createImageResolver } from './image-resolver'
+import { createImageSaver } from './image-saver'
+import { getHandle, getDirHandle, storeDirHandle } from './doc-registry'
 import './app.css'
 
 const PLUGINS = defaultRenderPlugins()
@@ -154,9 +157,56 @@ export function App(): React.JSX.Element {
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
+  const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | undefined>(undefined)
+  const [imageNotice, setImageNotice] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setDirHandle(undefined)
+    if (session.docId) void getDirHandle(session.docId).then((d) => { if (!cancelled && d) setDirHandle(d) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [session.docId])
+  const allowImageDir = useCallback(async () => {
+    try {
+      if (!session.docId) return null
+      const fh = await getHandle(session.docId)
+      const picker = (window as unknown as { showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
+      if (!fh || !picker) { setImageNotice('Trình duyệt không hỗ trợ chọn thư mục.'); return null }
+      const dir = await picker({ startIn: fh, mode: 'readwrite' })
+      if (!(await dir.resolve(fh))) { setImageNotice('Thư mục đã chọn không chứa file này.'); return null }
+      await storeDirHandle(session.docId, dir)
+      setDirHandle(dir)
+      setImageNotice(null)
+      return dir
+    } catch { return null /* cancelled */ }
+  }, [session.docId])
+  const resolveImage = useMemo(
+    () => (dirHandle || imageOriginUrl ? createImageResolver({ url: imageOriginUrl ?? undefined, dirHandle }) : undefined),
+    [imageOriginUrl, dirHandle],
+  )
+  const saveImage = useMemo(
+    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl, room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir }),
+    [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title, session.record?.hasHandle, allowImageDir],
+  )
+  useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
+  const pendingAnchorRef = useRef<{ to: ViewMode; id: string | null } | null>(null)
+  const userSwitchedRef = useRef(false)
+  const [systemDark, setSystemDark] = useState<boolean>(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const on = () => setSystemDark(mq.matches)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  const resolvedDarkRef = useRef(false)
+  const modeSetting = readerSettings.mode || 'system'
+  resolvedDarkRef.current = modeSetting === 'system' ? systemDark : modeSetting === 'dark'
+  const liveOpts = useMemo(() => ({ theme: () => (resolvedDarkRef.current ? 'dark' as const : 'default' as const) }), [])
   const [isPresenting, setIsPresenting] = useState<boolean>(false)
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0)
   const [isConfettiActive, setIsConfettiActive] = useState<boolean>(false)
@@ -187,6 +237,80 @@ export function App(): React.JSX.Element {
   const isSpeakerMode = new URLSearchParams(window.location.search).get('speaker') === 'true'
 
   const docContainerRef = useRef<HTMLDivElement | null>(null)
+
+  const sessionDocId = session.docId
+  useEffect(() => {
+    if (!sessionDocId) return
+    let cancelled = false
+    void Promise.resolve(getRecord(sessionDocId)).then((rec) => {
+      if (cancelled || userSwitchedRef.current || !rec?.viewMode) return
+      setViewMode(rec.viewMode === 'reading' ? 'reading' : 'live')
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [sessionDocId])
+
+  const changeViewMode = useCallback((next: ViewMode) => {
+    if (next === viewMode) return
+    userSwitchedRef.current = true
+    let id: string | null = null
+    if (viewMode === 'reading') {
+      if (docContainerRef.current) id = nearestHeadingAtTop(docContainerRef.current, 56)
+    } else {
+      const view = editorViewRef.current
+      if (view) {
+        const pane = view.dom.closest('.editor-live-pane') as HTMLElement | null
+        const y = (pane?.getBoundingClientRect().top ?? 48) + 8
+        const x = view.contentDOM.getBoundingClientRect().left + 20
+        const pos = view.posAtCoords({ x, y }, false)
+        id = headingIdAtLine(yText.toString(), view.state.doc.lineAt(pos).number - 1)
+      }
+    }
+    pendingAnchorRef.current = { to: next, id }
+    setViewMode(next)
+    if (sessionDocId) void Promise.resolve(touchRecord(sessionDocId, { viewMode: next })).catch(() => {})
+  }, [viewMode, yText, sessionDocId])
+
+  useEffect(() => {
+    const p = pendingAnchorRef.current
+    if (!p || p.to !== viewMode) return
+    pendingAnchorRef.current = null
+    if (!p.id) return
+    const id = p.id
+    let frames = 0
+    let raf = 0
+    const step = () => {
+      frames++
+      let settled = false
+      if (viewMode === 'live') {
+        const view = editorViewRef.current
+        const line = lineOfHeading(yText.toString(), id)
+        const pane = view?.dom.closest('.editor-live-pane') as HTMLElement | null
+        if (view && pane && line !== null) {
+          const pos = view.state.doc.line(Math.min(line + 1, view.state.doc.lines)).from
+          const top = pane.getBoundingClientRect().top + 8
+          const c = view.coordsAtPos(pos)
+          if (c) {
+            const d = c.top - top
+            if (Math.abs(d) <= 2) settled = frames > 3
+            else pane.scrollTop += d
+          } else {
+            const blk = view.lineBlockAt(pos)
+            pane.scrollTop = view.contentDOM.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop + blk.top - 8
+          }
+        }
+      } else {
+        const el = document.getElementById(id)
+        if (el) {
+          const d = el.getBoundingClientRect().top - 56
+          if (Math.abs(d) <= 2) settled = frames > 3
+          else window.scrollBy({ top: d, behavior: 'instant' as ScrollBehavior })
+        }
+      }
+      if (!settled && frames < 40) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [viewMode, yText])
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl })
@@ -613,7 +737,7 @@ export function App(): React.JSX.Element {
           onPresent={() => setIsPresenting(true)}
           onOpenMindmap={() => setIsMindmapOpen(true)}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={changeViewMode}
           saveStatus={saveStatus}
           onSave={() => fileSave.save({ explicit: true })}
           actions={toolbarActions}
@@ -629,6 +753,7 @@ export function App(): React.JSX.Element {
             onEnable={async () => { await share.enable() }}
             onCreateLink={share.createLink}
             onRevoke={share.revoke}
+            onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl, t)}
             busy={share.busy}
@@ -646,6 +771,15 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop>
+          {imageNotice && (
+            <div className="error-banner notice" role="status">
+              <span>{imageNotice}</span>
+              <div className="notice__actions">
+                {session.record?.hasHandle && !dirHandle && !room && <button type="button" onClick={() => void allowImageDir()}>Cho phép lưu ảnh cạnh file</button>}
+                <button type="button" onClick={() => setImageNotice(null)}>Đóng</button>
+              </div>
+            </div>
+          )}
           {session.externalChange && (
             <div className="error-banner notice" role="status">
               <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
@@ -702,7 +836,7 @@ export function App(): React.JSX.Element {
               <div className="main-content" data-font-scale={fontScale}>
                 {previewBanner}
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
+                  <Viewer html={previewHtml ?? html} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
@@ -735,7 +869,7 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
-          {viewMode === 'editor' && (
+          {viewMode === 'live' && (
             <div className="editor-mode-container">
               {previewHtml === null && <FormattingToolbar onAction={handleFormatAction} />}
               <div className="editor-mode-body">
@@ -744,37 +878,15 @@ export function App(): React.JSX.Element {
                     {previewBanner}
                     <div className="main-content" data-font-scale={fontScale}>
                       <div className="a4-document-container">
-                        <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                        <Viewer html={previewHtml} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} />
                       </div>
                     </div>
                   </div>
                 ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} />
                 </Suspense>
                 )}
-              </div>
-            </div>
-          )}
-
-          {viewMode === 'split' && (
-            <div className="split-mode-container">
-              <FormattingToolbar onAction={handleFormatAction} />
-              <div className="split-mode-body">
-                <Suspense fallback={<LazyFallback />}>
-                <SplitViewContainer
-                  mode="split"
-                  editor={<Suspense fallback={<div className="lazy-fallback" aria-busy="true" />}><Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} /></Suspense>}
-                  preview={
-                    <>
-                      {previewBanner}
-                      <div ref={docContainerRef} className="a4-document-container">
-                        <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} />
-                      </div>
-                    </>
-                  }
-                />
-                </Suspense>
               </div>
             </div>
           )}

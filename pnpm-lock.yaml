@@ -39,6 +39,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4
         version: 4.20260702.1
+      '@md-reader/web':
+        specifier: workspace:*
+        version: link:../web
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

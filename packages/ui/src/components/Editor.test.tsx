@@ -233,3 +233,19 @@ describe('Editor', () => {
     expect(yText.toString()).toBe('abcd')
   })
 })
+
+describe('Editor live variant', () => {
+  it('mounts .cm-live without gutters and writes to Y.Text', () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('source')
+    yText.insert(0, '# Hi **there**')
+    let view: EditorView | undefined
+    const { container } = render(<Editor yText={yText} variant="live" onEditorReady={(v) => { view = v }} />)
+    expect(container.querySelector('.cm-live')).not.toBeNull()
+    expect(container.querySelector('.cm-gutters')).toBeNull()
+    expect(container.querySelector('.editor-live')).not.toBeNull()
+    view!.dispatch({ changes: { from: 0, insert: 'x' } })
+    expect(yText.toString()).toBe('x# Hi **there**')
+  })
+})
+

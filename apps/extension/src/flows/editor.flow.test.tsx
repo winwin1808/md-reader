@@ -110,7 +110,7 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     expect(container.textContent).toContain('Phase 5 Architecture')
 
     // 2. Switch to Editor mode
-    const editorModeBtn = screenByTitle(container, 'Chế độ Soạn thảo')
+    const editorModeBtn = screenByTitle(container, 'Sửa trên trang')
     expect(editorModeBtn).toBeTruthy()
     fireEvent.click(editorModeBtn!)
 
@@ -119,16 +119,9 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     })
     expect(container.querySelector('.a4-document-container')).toBeNull()
 
-    // 3. Switch to Split View mode
-    const splitModeBtn = screenByTitle(container, 'Chế độ Chia đôi')
-    expect(splitModeBtn).toBeTruthy()
-    fireEvent.click(splitModeBtn!)
-
-    await waitFor(() => {
-      expect(container.querySelector('.split-view-container')).toBeTruthy()
-      expect(container.querySelector('.cm-editor')).toBeTruthy()
-      expect(container.querySelector('.a4-document-container')).toBeTruthy()
-    })
+    // 3. Split view is gone: only Đọc / Sửa remain
+    expect(screenByTitle(container, 'Chế độ Chia đôi')).toBeFalsy()
+    expect(container.querySelector('.split-view-container')).toBeNull()
 
     // 4. Formatting Toolbar interaction: Select text and click Bold
     const editorEl = container.querySelector('.cm-editor') as HTMLElement
@@ -153,10 +146,6 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     expect(view.state.selection.main.from).toBe(idx + 2)
     expect(view.state.selection.main.to).toBe(idx + 2 + 'sample'.length)
 
-    await waitFor(() => {
-      const strong = container.querySelector('.a4-document-container strong')
-      expect(strong?.textContent).toBe('sample')
-    })
 
     // 5. Live synchronized editing: Dispatch new H2 heading and paragraph
     view.dispatch({
@@ -168,8 +157,6 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     })
 
     await waitFor(() => {
-      const h2 = container.querySelector('.a4-document-container h2')
-      expect(h2?.textContent).toBe('Realtime Section')
       expect(container.querySelector('.dirty-indicator')).toBeTruthy()
     })
 
@@ -245,8 +232,8 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     await waitFor(() => {
       expect(container.querySelector('.a4-document-container')).toBeTruthy()
       expect(container.querySelector('.cm-editor')).toBeNull()
+      expect(container.textContent).toContain('Realtime Section')
     })
-    expect(container.textContent).toContain('Realtime Section')
   })
 })
 

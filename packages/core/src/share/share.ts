@@ -82,5 +82,18 @@ export const API_PATHS = {
   revoke: (roomId: string, prefix: string) => `/api/rooms/${roomId}/links/${prefix}`,
   resolve: (token: string) => `/api/s/${token}`,
   snapshot: (token: string) => `/api/s/${token}/snapshot`,
+  assets: (roomId: string) => `/api/rooms/${roomId}/assets`,
+  asset: (id: string) => `/api/a/${id}`,
   party: 'doc-room',
 } as const
+
+export interface UploadAssetResponse {
+  id: string
+  url: string
+  size: number
+  mime: string
+}
+
+export const MAX_ASSET_BYTES = 2 * 1024 * 1024
+export const ROOM_ASSET_QUOTA = 50 * 1024 * 1024
+export const ASSET_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const

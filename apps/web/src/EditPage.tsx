@@ -1,12 +1,74 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
-import { computeTextChanges, trackLocalActor, type ResolveTokenResponse } from '@md-reader/core'
-import { FormattingToolbar, PresenceBar, usePeers, SplitViewContainer, Viewer, applyFormat } from '@md-reader/ui'
+import { API_PATHS, computeTextChanges, trackLocalActor, type ResolveTokenResponse, type UploadAssetResponse } from '@md-reader/core'
+import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
 
+export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
+  let res: Response
+  try {
+    res = await fetch(serverUrl.replace(/\/+$/, '') + API_PATHS.assets(room), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'content-type': file.type },
+      body: file,
+    })
+  } catch {
+    throw new Error('Không tải được ảnh lên máy chủ.')
+  }
+  if (res.status === 413) {
+    let code = ''
+    try { code = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
+    throw new Error(code === 'quota' ? 'Tài liệu đã dùng hết 50 MB ảnh.' : 'Ảnh quá 2 MB.')
+  }
+  if (!res.ok) throw new Error('Không tải được ảnh lên máy chủ.')
+  return (await res.json()) as UploadAssetResponse
+}
+
 const Editor = lazy(() => import('@md-reader/ui/editor').then((m) => ({ default: m.Editor })))
+
+export function firstH1(text: string): string {
+  const m = /^#[ \t]+(.+?)[ \t#]*$/m.exec(text.replace(/^---\n[\s\S]*?\n---\n/, ''))
+  return m?.[1]?.trim() || 'Tài liệu được chia sẻ'
+}
+
+export function PageHeader(props: {
+  title: string
+  status?: string
+  presence?: React.ReactNode
+  toggle?: { value: 'edit' | 'view'; onChange: (v: 'edit' | 'view') => void }
+}): React.JSX.Element {
+  return (
+    <header className="web-header">
+      <div className="web-header-brand">
+        <Logo size={24} />
+        <span className="web-header-title">{props.title}</span>
+      </div>
+      <div className="web-header-side">
+        {props.status && <span role="status" className="web-status">{props.status}</span>}
+        {props.presence}
+        {props.toggle && (
+          <div role="radiogroup" aria-label="Chế độ" className="web-toggle">
+            {(['edit', 'view'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={props.toggle!.value === v}
+                title={v === 'edit' ? 'Sửa trên trang' : 'Xem'}
+                className={props.toggle!.value === v ? 'is-active' : ''}
+                onClick={() => props.toggle!.onChange(v)}
+              >
+                {v === 'edit' ? 'Sửa' : 'Xem'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </header>
+  )
+}
 
 const NAME_KEY = 'mdr.displayName'
 
@@ -49,13 +111,16 @@ export function EditPage(props: EditPageProps): React.JSX.Element {
       setName(v)
     }
     return (
-      <form onSubmit={submit}>
-        <label>
-          Tên của bạn
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={40} required />
-        </label>
-        <button type="submit">Bắt đầu sửa</button>
-      </form>
+      <div className="web-notice">
+        <form onSubmit={submit} className="web-card">
+          <label>
+            Tên của bạn
+            <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={40} required />
+          </label>
+          <p className="web-hint">Người khác sẽ thấy tên này cạnh con trỏ của bạn.</p>
+          <button type="submit">Bắt đầu sửa</button>
+        </form>
+      </div>
     )
   }
   return <EditSession {...props} name={name} />
@@ -68,6 +133,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const [failed, setFailed] = useState(false)
   const [html, setHtml] = useState('')
   const [, setTick] = useState(0)
+  const [mode, setMode] = useState<'edit' | 'view'>('edit')
+  const resolved = useResolvedTheme()
   const editorViewRef = useRef<EditorView | null>(null)
 
   const [retry, setRetry] = useState(0)
@@ -154,34 +221,51 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
 
   if (failed && !wasOnline) {
     return (
-      <div>
+      <div className="web-notice">
         <p role="alert">Không kết nối được phòng sửa. Link có thể đã bị thu hồi hoặc máy chủ không phản hồi.</p>
         <button type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại</button>
       </div>
     )
   }
-  if (!wasOnline || !session) return <p role="status">Đang tải tài liệu…</p>
+  if (!wasOnline || !session) return <div className="web-notice"><p role="status">Đang tải tài liệu…</p></div>
 
   return (
-    <div>
-      <p role="status">{STATUS_TEXT[status]}</p>
-      <PresenceBar peers={peers} />
-      <FormattingToolbar
-        onAction={onAction}
-        canUndo={session.undo.undoStack.length > 0}
-        canRedo={session.undo.redoStack.length > 0}
-        onUndo={() => session.undo.undo()}
-        onRedo={() => session.undo.redo()}
+    <div className="web-page">
+      <PageHeader
+        title={info.title ?? firstH1(session.yText.toString())}
+        status={STATUS_TEXT[status]}
+        presence={<PresenceBar peers={peers} />}
+        toggle={{ value: mode, onChange: setMode }}
       />
-      <SplitViewContainer
-        mode="split"
-        editor={
-          <Suspense fallback={<div aria-busy="true" />}>
-            <Editor yText={session.yText} undoManager={session.undo} awareness={session.conn.awareness} editorViewRef={editorViewRef} />
-          </Suspense>
-        }
-        preview={<Viewer html={html} isAppPage={false} />}
-      />
+      {mode === 'edit' ? (
+        <>
+          <FormattingToolbar
+            onAction={onAction}
+            canUndo={session.undo.undoStack.length > 0}
+            canRedo={session.undo.redoStack.length > 0}
+            onUndo={() => session.undo.undo()}
+            onRedo={() => session.undo.redo()}
+          />
+          <div className="web-sheet web-sheet-edit">
+            <Suspense fallback={<div aria-busy="true" />}>
+              <Editor
+                variant="live"
+                live={{ theme: () => (resolved === 'dark' ? 'dark' : 'default') }}
+                yText={session.yText}
+                undoManager={session.undo}
+                awareness={session.conn.awareness}
+                editorViewRef={editorViewRef}
+                saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file)).url })}
+                onImageMessage={(m) => window.alert(m)}
+              />
+            </Suspense>
+          </div>
+        </>
+      ) : (
+        <div className="web-sheet">
+          <Viewer html={html} isAppPage={false} />
+        </div>
+      )}
     </div>
   )
 }

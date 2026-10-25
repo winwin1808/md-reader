@@ -4,7 +4,8 @@ import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-libra
 import * as Y from 'yjs'
 import { createDoc } from '@md-reader/core'
 import { EditorView } from '@codemirror/view'
-import { EditPage } from './EditPage'
+import { EditPage, uploadImage } from './EditPage'
+import { SharePage } from './SharePage'
 import type { SyncStatus, BindRoomOptions } from './collab'
 
 const info = { roomId: 'room-1', role: 'edit' as const, title: 'T' }
@@ -92,6 +93,7 @@ describe('EditPage', () => {
     await waitFor(() => expect(container.querySelector('.cm-editor')).toBeTruthy())
     vi.useFakeTimers()
     act(() => { m.calls[0]!.doc.getText('source').insert(0, '# Chào bạn') })
+    act(() => { fireEvent.click(screen.getByRole('radio', { name: 'Xem' })) })
     act(() => { vi.advanceTimersByTime(50) })
     expect(container.querySelector('h1')).toBeNull()
     act(() => { vi.advanceTimersByTime(80) })
@@ -241,5 +243,39 @@ describe('EditPage', () => {
     syncRoom(doc)
     expect(actorsOf(doc)).toContain('Binh')
     expect(actorsOf(doc)).toContain(String(doc.clientID))
+  })
+  it('edit link shows live editor and a Sửa/Xem toggle; Xem swaps to the Viewer', async () => {
+    localStorage.setItem('mdr.displayName', 'Binh')
+    const m = makeBind()
+    const { container } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+    m.emit('online')
+    await waitFor(() => expect(container.querySelector('.cm-live')).toBeTruthy())
+    expect(screen.getByRole('radio', { name: 'Sửa' }).getAttribute('aria-checked')).toBe('true')
+    act(() => { m.calls[0]!.doc.getText('source').insert(0, '# Tiêu đề') })
+    fireEvent.click(screen.getByRole('radio', { name: 'Xem' }))
+    expect(container.querySelector('.cm-live')).toBeNull()
+    await waitFor(() => expect(container.querySelector('h1')?.textContent).toContain('Tiêu đề'), { timeout: 1500 })
+    expect(screen.queryByRole('toolbar')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Sửa' }))
+    await waitFor(() => expect(container.querySelector('.cm-live')).toBeTruthy())
+  })
+  it('view link page has no toggle', async () => {
+    render(<SharePage token={TOKEN} load={async () => ({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '# Hi' }) as never} />)
+    await waitFor(() => expect(screen.getByText('T')).toBeTruthy())
+    expect(screen.queryByRole('radio')).toBeNull()
+  })
+})
+
+describe('uploadImage (web)', () => {
+  it('posts with the link token as Bearer and maps 413', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ id: 'x', url: 'https://s/api/a/x', size: 1, mime: 'image/png' }), { status: 201 }))
+    vi.stubGlobal('fetch', f)
+    const file = new File([new Uint8Array([1])], 'a.png', { type: 'image/png' })
+    expect((await uploadImage('https://s', 'room-1', 'LINKTOK', file)).url).toBe('https://s/api/a/x')
+    const init = (f.mock.calls[0] as unknown as [string, RequestInit])[1]
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer LINKTOK' })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"too_large"}', { status: 413 })))
+    await expect(uploadImage('https://s', 'room-1', 't', file)).rejects.toThrow('Ảnh quá 2 MB.')
+    vi.unstubAllGlobals()
   })
 })

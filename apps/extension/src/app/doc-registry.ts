@@ -14,6 +14,7 @@ export interface DocRecord {
   hasHandle: boolean
   shortKey?: string
   room?: RoomBinding
+  viewMode?: 'reading' | 'live' | 'editor' | 'split'
 }
 
 const DB_NAME = 'md_reader_registry'
@@ -396,4 +397,17 @@ export async function resolveDocParam(params: URLSearchParams): Promise<string |
   const legacy = params.get('doc')
   if (!legacy) return null
   return (await getRecord(legacy))?.docId ?? null
+}
+
+export async function storeDirHandle(docId: string, dir: FileSystemDirectoryHandle): Promise<void> {
+  const db = await openDb()
+  const tx = db.transaction('handles', 'readwrite')
+  tx.objectStore('handles').put(dir, 'dir:' + docId)
+  await done(tx)
+}
+
+export async function getDirHandle(docId: string): Promise<FileSystemDirectoryHandle | null> {
+  const db = await openDb()
+  const v = await req(db.transaction('handles').objectStore('handles').get('dir:' + docId))
+  return (v as FileSystemDirectoryHandle | undefined) ?? null
 }
