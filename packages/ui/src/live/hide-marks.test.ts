@@ -39,4 +39,8 @@ describe('hideMarks', () => {
   it('hides backticks', () => {
     expect(run('`c` x', 5).hidden).toEqual([[0, 1], [2, 3]]);
   });
+  it('does not hide the brackets of an alert tag link', () => {
+    const doc = '> [!NOTE]\n> body\n\nz';
+    expect(run(doc, doc.length).hidden.filter(([f]) => f >= 2 && f < 10)).toEqual([]);
+  });
 });

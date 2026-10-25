@@ -27,6 +27,17 @@ export function revealRanges(state: EditorState): Array<{ from: number; to: numb
 }
 
 const hidden = Decoration.replace({});
+const ALERT_TAG = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
+
+// A Link that is the [!TYPE] tag on an alert blockquote's first line (title widget replaces it whole).
+function isAlertTag(state: EditorState, link: { from: number; parent: { name: string; from: number } | null }): boolean {
+  let p = link.parent;
+  while (p && p.name !== 'Blockquote') p = (p as unknown as { parent: typeof p }).parent;
+  if (!p) return false;
+  const first = state.doc.lineAt(p.from);
+  const m = ALERT_TAG.exec(first.text);
+  return !!m && link.from === first.from + first.text.indexOf('[!');
+}
 const mk = (c: string) => Decoration.mark({ class: c });
 const ln = (c: string) => Decoration.line({ class: c });
 
@@ -69,14 +80,14 @@ export function computeDecorations(state: EditorState, ranges?: Array<{ from: nu
           if (node.node.parent?.name === 'InlineCode') hide(node.from, node.to);
         } else if (MARKS.has(name)) {
           if (name === 'LinkMark') {
-            if (node.node.parent?.name === 'Link') hide(node.from, node.to);
+            if (node.node.parent?.name === 'Link' && !isAlertTag(state, node.node.parent)) hide(node.from, node.to);
           } else {
             let to = node.to;
             if ((name === 'HeaderMark' || name === 'QuoteMark') && doc.sliceString(to, to + 1) === ' ') to += 1;
             if (name !== 'HeaderMark' || node.node.parent?.name?.startsWith('ATX')) hide(node.from, to);
           }
         } else if (name === 'URL' || name === 'LinkTitle') {
-          if (node.node.parent?.name === 'Link') hide(node.from, node.to);
+          if (node.node.parent?.name === 'Link' && !isAlertTag(state, node.node.parent)) hide(node.from, node.to);
         }
       },
     });
