@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_PATHS } from '@md-reader/core'
 import type { CreateLinkRequest, CreateRoomResponse, RoomBinding, ShareLink } from '@md-reader/core'
+import { saveLinkToken, getLinkTokens, forgetLinkToken } from './link-cache'
 import { getRecord, touchRecord } from '../doc-registry'
 
 const INVALID = 'Máy chủ trả dữ liệu không hợp lệ'
@@ -113,8 +114,9 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     const b = need()
     const list = await call<ShareLink[]>(`${b.serverUrl}${API_PATHS.links(b.roomId)}`, { headers: auth(b) })
     if (!Array.isArray(list)) throw new Error(INVALID)
+    const cached = await getLinkTokens(b.roomId)
     if (stale()) return
-    const server = list.map((l) => ({ ...l, token: l.token || tokens.current.get(l.tokenPrefix) || '' }))
+    const server = list.map((l) => ({ ...l, token: l.token || tokens.current.get(l.tokenPrefix) || cached[l.tokenPrefix] || '' }))
     const seen = new Set(server.map((l) => l.tokenPrefix))
     const kept = [...session.current.values()].filter((l) => !seen.has(l.tokenPrefix))
     setLinks([...kept.reverse(), ...server])
@@ -128,6 +130,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
       body: JSON.stringify(req),
     })
     if (!isObj(l) || typeof l.tokenPrefix !== 'string') throw new Error(INVALID)
+    if (l.token) await saveLinkToken(b.roomId, l.tokenPrefix, l.token)
     if (stale()) return l
     tokens.current.set(l.tokenPrefix, l.token)
     if (l.token !== '') session.current.set(l.tokenPrefix, l)
@@ -138,6 +141,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const revoke = useCallback((prefix: string) => run(async (stale) => {
     const b = need()
     await call<unknown>(`${b.serverUrl}${API_PATHS.revoke(b.roomId, prefix)}`, { method: 'DELETE', headers: auth(b) })
+    await forgetLinkToken(b.roomId, prefix)
     if (stale()) return
     tokens.current.delete(prefix)
     session.current.delete(prefix)
@@ -161,6 +165,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
           continue
         }
       }
+      await forgetLinkToken(b.roomId, prefix)
       if (stale()) return
       tokens.current.delete(prefix)
       session.current.delete(prefix)
