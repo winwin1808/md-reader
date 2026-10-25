@@ -2,7 +2,11 @@ import WebSocket from 'ws'
 import * as Y from 'yjs'
 import YProvider from 'y-partyserver/provider'
 
-const HOST = process.env.HOST ?? 'https://md-reader-api.qhao-work.workers.dev'
+const HOST = process.env.HOST ?? process.argv[2]
+if (!HOST) {
+  console.error('usage: node scripts/smoke.mjs <https://your-worker.workers.dev>')
+  process.exit(1)
+}
 const wsHost = HOST.replace(/^https?:\/\//, '')
 const fail = (m) => { console.error('SMOKE FAIL: ' + m); process.exit(1) }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

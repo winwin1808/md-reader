@@ -93,6 +93,8 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   celebrationConfetti: false,
 }
 
+const SELF_HOST_GUIDE_URL = 'https://github.com/winwin1808/md-reader/blob/main/docs/SELF_HOST.md'
+
 export function App(): React.JSX.Element {
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
@@ -151,7 +153,8 @@ export function App(): React.JSX.Element {
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
   const [room, setRoom] = useState<RoomBinding | null>(null)
-  const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? DEFAULT_SERVER_URL
+  const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? (DEFAULT_SERVER_URL || null)
+  const [retryNonce, setRetryNonce] = useState(0)
   const displayName = readerSettings.displayName?.trim() || 'Bạn'
   const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName })
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
@@ -185,7 +188,7 @@ export function App(): React.JSX.Element {
     [imageOriginUrl, dirHandle],
   )
   const saveImage = useMemo(
-    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl, room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir }),
+    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl ?? '', room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir }),
     [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title, session.record?.hasHandle, allowImageDir],
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
@@ -313,7 +316,21 @@ export function App(): React.JSX.Element {
   }, [viewMode, yText])
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
-  const share = useShare({ docId: session.docId, serverUrl })
+  const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
+  const shareServer = !serverUrl
+    ? ({ state: 'missing' } as const)
+    : share.error === 'Không kết nối được máy chủ'
+      ? ({ state: 'unreachable', url: serverUrl } as const)
+      : share.error === 'Máy chủ trả dữ liệu không hợp lệ'
+        ? ({ state: 'not-md-reader', url: serverUrl } as const)
+        : undefined
+  const shareRef = useRef(share)
+  shareRef.current = share
+  useEffect(() => {
+    if (retryNonce === 0 || !serverUrl) return
+    const s = shareRef.current
+    void (s.binding ? s.refresh() : s.enable()).catch(() => {})
+  }, [retryNonce, serverUrl])
   useEffect(() => { setRoom(share.binding) }, [share.binding])
   const shareRoomId = share.binding?.roomId
   const shareRefresh = share.refresh
@@ -755,9 +772,12 @@ export function App(): React.JSX.Element {
             onRevoke={share.revoke}
             onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
-            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl, t)}
+            buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl ?? '', t)}
             busy={share.busy}
             error={share.error}
+            server={shareServer}
+            onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
+            guideUrl={SELF_HOST_GUIDE_URL}
           />
           <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} />
         </>
