@@ -153,4 +153,8 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9e: done
 - 9f: merged into 9e
 - 9g1: done
-- 9g2: pending
+- 9g2: planned
+- 9h1: pending      (relative images resolve against the document origin; dir permission for opened files)
+- 9h2: pending      (api: D1 assets + asset_chunks (1 MB chunks), POST /api/rooms/:room/assets edit/owner only, GET /api/a/:id, png/jpeg/gif/webp, ≤2 MiB, 50 MB/room)
+- 9h3: pending      (paste/drop: shared → D1 upload; unshared + dir access → assets/; else data:; privacy policy line)
+- 9h4: pending      (deploy worker + D1 migration + smoke upload/read)
