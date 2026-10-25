@@ -422,6 +422,24 @@ dùng cho blame. Không OAuth, không bảng user. Nút Chia sẻ chỉ ở app 
 content script không gọi server. Không có gì rời máy cho tới khi người dùng
 bấm Chia sẻ.
 
+### Phase 9 — Soạn ngay trên trang đọc
+
+Ship: *sửa thẳng trên trang đọc (live preview CM6 trên Y.Text), trên cả extension và web; copy lại link chia sẻ đã tạo.*
+Spec: `docs/superpowers/specs/2026-10-25-phase-9-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 9a1 | Cache token link | Token đầy đủ lưu `chrome.storage.local` theo room+prefix; useShare trộn vào danh sách |
+| 9a2 | ShareModal hoàn thiện | Nhóm Xem/Sửa, Sao chép mọi link copy được, Tạo lại link, toast |
+| 9b1 | Ẩn dấu + theme | `hideMarks()` theo nút Lezer, `livePreviewTheme` token Lề sách |
+| 9b2 | Widget inline | Ảnh, hr, checkbox, khung code, alert |
+| 9b3 | Widget khối | Bảng, `$$`, mermaid render khi con trỏ ngoài khối |
+| 9b4 | `Editor variant="live"` | Subpath `@md-reader/ui/editor` export live preview |
+| 9c1 | Chế độ extension | Đọc · Soạn trên trang · Mã nguồn · Chia đôi; nhớ theo tài liệu; giữ vị trí |
+| 9d1 | Web Lề sách | EditPage/SharePage theo token, Soạn/Xem |
+| 9e | E2E | Playwright live preview + copy link |
+| 9f | Ship | 1.2.0, listing |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
