@@ -65,6 +65,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
+  // A real web app page (GitLab/Bitbucket editors, docs sites…) whose URL ends in .md is HTML, not raw markdown.
+  if (!isFileProtocol && document.contentType === 'text/html') {
+    return
+  }
+
   if (!document.body) {
     if (document.readyState === 'loading') {
       await new Promise<void>((resolve) => {
