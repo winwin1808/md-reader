@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ThemeProvider } from '@md-reader/ui'
 import 'katex/dist/katex.min.css'
 import '@md-reader/ui/fonts.css'
+import './web.css'
 import { SharePage } from './SharePage'
 import { tokenFromPath } from './share-client'
 
