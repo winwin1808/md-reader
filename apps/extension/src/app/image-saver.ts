@@ -14,8 +14,18 @@ export interface ImageSaverCtx {
 const MSG_TOO_LARGE = 'Ảnh quá 2 MB.'
 const MSG_QUOTA = 'Tài liệu đã dùng hết 50 MB ảnh.'
 const MSG_NET = 'Không tải được ảnh lên máy chủ.'
-const MSG_DECLINED = 'Cần cho phép thư mục chứa file để lưu ảnh.'
-const MSG_NO_FILE = 'Lưu tài liệu thành file trên máy (⌘S) hoặc bật chia sẻ để chèn ảnh.'
+const MSG_DECLINED = 'Ảnh lớn hơn 600 KB — cho phép thư mục chứa file để lưu ảnh.'
+const MSG_NO_FILE = 'Ảnh lớn hơn 600 KB — lưu tài liệu thành file (⌘S) hoặc bật chia sẻ để chèn ảnh lớn.'
+export const INLINE_IMAGE_MAX_BYTES = 600_000
+
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result))
+    r.onerror = () => reject(new Error(MSG_NET))
+    r.readAsDataURL(file)
+  })
+}
 
 export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
   let res: Response
@@ -74,6 +84,7 @@ export function createImageSaver(ctx: ImageSaverCtx): ImageSaver {
       return { src: res.url }
     }
     if (ctx.dirHandle) return saveToDir(ctx.dirHandle, ctx.docName, file)
+    if (file.size <= INLINE_IMAGE_MAX_BYTES) return { src: await readDataUrl(file) }
     if (ctx.hasFileHandle) {
       const dir = ctx.requestDir ? await ctx.requestDir() : null
       if (!dir) throw new Error(MSG_DECLINED)
