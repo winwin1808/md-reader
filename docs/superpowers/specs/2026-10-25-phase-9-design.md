@@ -160,3 +160,4 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9h3b: done     (extension + web storage choice: D1 upload when shared, assets/ with dir access, else data:; privacy line)
 - 9h4: done      (deploy worker + D1 migration + smoke upload/read)
 - 9h5: done      (small images ≤600 KB inline when no D1/assets)
+- 9i: planned       (ShareModal redesign)
