@@ -41,7 +41,7 @@ describe('blockWidgets', () => {
     const v = setup(doc, doc.length, r);
     const ws = widgets(v);
     expect(ws).toHaveLength(1);
-    ws[0].w.toDOM(v);
+    ws[0]!.w.toDOM(v);
     expect(r.table).toHaveBeenCalledWith(T);
   });
   it('no widget when cursor inside', () => {
@@ -53,7 +53,7 @@ describe('blockWidgets', () => {
     const v = setup(doc, doc.length, r);
     const ws = widgets(v);
     expect(ws).toHaveLength(1);
-    ws[0].w.toDOM(v);
+    ws[0]!.w.toDOM(v);
     expect(r.math).toHaveBeenCalledWith('x^2');
   });
   it('mermaid placeholder then svg', async () => {
@@ -62,7 +62,7 @@ describe('blockWidgets', () => {
     const v = setup(doc, doc.length, r);
     const ws = widgets(v);
     expect(ws).toHaveLength(1);
-    const el = ws[0].w.toDOM(v) as HTMLElement;
+    const el = ws[0]!.w.toDOM(v) as HTMLElement;
     document.body.appendChild(el);
     expect(el.textContent).toContain('Đang vẽ');
     await Promise.resolve(); await Promise.resolve();
