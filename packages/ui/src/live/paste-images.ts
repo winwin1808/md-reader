@@ -1,10 +1,11 @@
 import { EditorView } from '@codemirror/view'
 import { StateEffect, StateField, type Extension } from '@codemirror/state'
 import { ASSET_MIME } from '@md-reader/core'
+import { translateFacet, defaultTranslate } from './i18n-facet'
+import type { TFunction } from '../i18n'
 
 export type ImageSaver = (file: File) => Promise<{ src: string; note?: string }>
 
-const PLACEHOLDER = '![Đang tải ảnh…]()'
 
 function imageFiles(dt: DataTransfer | null): File[] {
   if (!dt) return []
@@ -38,7 +39,7 @@ export function pasteImages(
   const handle = (files: File[], view: EditorView, pos: number) => {
     for (const file of files) {
       const id = ++counter
-      const ph = PLACEHOLDER
+      const ph = `![${view.state.facet(translateFacet)('live.image.uploading')}]()`
       view.dispatch({
         changes: { from: pos, insert: ph },
         selection: { anchor: pos + ph.length },
@@ -83,17 +84,17 @@ export function pasteImages(
   })]
 }
 
-function readAsDataUrl(blob: Blob): Promise<string> {
+function readAsDataUrl(blob: Blob, t: TFunction = defaultTranslate): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result))
-    r.onerror = () => reject(new Error('Không đọc được ảnh'))
+    r.onerror = () => reject(new Error(t('live.image.readError')))
     r.readAsDataURL(blob)
   })
 }
 
-export async function toDataUrl(file: File, maxBytes = 1_000_000): Promise<string> {
-  if (file.size <= maxBytes) return readAsDataUrl(file)
+export async function toDataUrl(file: File, maxBytes = 1_000_000, t: TFunction = defaultTranslate): Promise<string> {
+  if (file.size <= maxBytes) return readAsDataUrl(file, t)
   const bmp = await createImageBitmap(file)
   let w = bmp.width
   let h = bmp.height
@@ -114,9 +115,9 @@ export async function toDataUrl(file: File, maxBytes = 1_000_000): Promise<strin
     }
     if (blob && blob.size <= maxBytes) {
       bmp.close?.()
-      return readAsDataUrl(blob)
+      return readAsDataUrl(blob, t)
     }
   }
   bmp.close?.()
-  throw new Error('Ảnh quá lớn')
+  throw new Error(t('live.image.tooLarge'))
 }

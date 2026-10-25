@@ -3,6 +3,7 @@ import { Annotation, StateEffect } from '@codemirror/state';
 import type { EditorState } from '@codemirror/state';
 import { EditorView, WidgetType } from '@codemirror/view';
 import { parseMarkdown, renderToHtml } from '@md-reader/core';
+import { translateFacet } from './i18n-facet';
 import { deleteColumn, deleteRow, insertColumn, insertRow } from './table-ops';
 
 /** Mark the table starting at this doc offset as raw (source lines instead of grid). */
@@ -160,6 +161,7 @@ export class TableGridWidget extends WidgetType {
       const el = view.dom.querySelector<HTMLElement>(`[data-r="${f.r}"][data-c="${f.c}"]`);
       if (el) focusEl(el);
     };
+    const tr = view.state.facet(translateFacet);
     const mkBtn = (label: string, onClick: () => void) => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -170,11 +172,11 @@ export class TableGridWidget extends WidgetType {
       bar.appendChild(b);
       return b;
     };
-    const bAddRow = mkBtn('Thêm dòng', () => struct((s) => insertRow(s, last.r), () => ({ r: last.r + 1, c: last.c })));
-    const bAddCol = mkBtn('Thêm cột', () => struct((s) => insertColumn(s, last.c), () => ({ r: last.r, c: last.c + 1 })));
-    const bDelRow = mkBtn('Xoá dòng', () => struct((s) => deleteRow(s, last.r), () => ({ r: Math.max(0, last.r - 1), c: last.c })));
-    const bDelCol = mkBtn('Xoá cột', () => struct((s) => deleteColumn(s, last.c), () => ({ r: last.r, c: Math.max(0, last.c - 1) })));
-    mkBtn('Sửa mã bảng', () => {
+    const bAddRow = mkBtn(tr('live.table.addRow'), () => struct((s) => insertRow(s, last.r), () => ({ r: last.r + 1, c: last.c })));
+    const bAddCol = mkBtn(tr('live.table.addCol'), () => struct((s) => insertColumn(s, last.c), () => ({ r: last.r, c: last.c + 1 })));
+    const bDelRow = mkBtn(tr('live.table.delRow'), () => struct((s) => deleteRow(s, last.r), () => ({ r: Math.max(0, last.r - 1), c: last.c })));
+    const bDelCol = mkBtn(tr('live.table.delCol'), () => struct((s) => deleteColumn(s, last.c), () => ({ r: last.r, c: Math.max(0, last.c - 1) })));
+    mkBtn(tr('live.table.editSource'), () => {
       const t = tableRange();
       if (t) view.dispatch({ effects: markTableRaw.of(t.from), selection: { anchor: t.from }, scrollIntoView: true });
     });

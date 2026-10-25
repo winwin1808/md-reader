@@ -18,6 +18,7 @@ export function livePreview(r: BlockRenderers, opts?: { theme?: () => 'default' 
   ]
 }
 
+export { translateFacet } from './i18n-facet'
 export { createDefaultRenderers } from './renderers'
 export type { BlockRenderers } from './block-widgets'
 export { pasteImages, toDataUrl } from './paste-images'

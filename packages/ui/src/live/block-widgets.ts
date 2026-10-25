@@ -3,6 +3,7 @@ import { EditorState, StateField } from '@codemirror/state';
 import type { Extension, Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
+import { translateFacet } from './i18n-facet';
 import { TableGridWidget, markTableRaw } from './table-grid';
 
 export interface BlockRenderers {
@@ -31,7 +32,7 @@ class BlockWidget extends WidgetType {
     el.className = `cm-live-block cm-live-block-${this.kind}`;
     if (this.kind === 'math') el.innerHTML = this.r.math(this.src);
     else {
-      el.textContent = 'Đang vẽ sơ đồ…';
+      el.textContent = view.state.facet(translateFacet)('live.diagram.rendering');
       this.r.mermaid(this.src, this.theme).then(
         (svg) => {
           if (el.isConnected) el.innerHTML = svg;

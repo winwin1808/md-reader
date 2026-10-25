@@ -24,6 +24,8 @@ import { imageResolverFacet } from '../live/widgets'
 import { livePreview, createDefaultRenderers, pasteImages, toDataUrl } from '../live'
 import type { ImageSaver } from '../live'
 import type { BlockRenderers } from '../live'
+import { translateFacet } from '../live/i18n-facet'
+import { useT, type TFunction } from '../i18n'
 import '../theme/editor.css'
 import '../theme/live.css'
 
@@ -47,12 +49,12 @@ export const lereSachHighlight = HighlightStyle.define([
 ])
 
 // Wraps the pure applyFormat helper; dispatches only the changed range (Yjs-safe).
-function formatCommand(action: FormatAction) {
+function formatCommand(action: FormatAction, tf: TFunction) {
   return (view: EditorView): boolean => {
     if (view.state.readOnly) return false
     const text = view.state.doc.toString()
     const { from, to } = view.state.selection.main
-    const r = applyFormat(text, from, to, action)
+    const r = applyFormat(text, from, to, action, tf)
     const a = text
     const b = r.newText
     let start = 0
@@ -138,10 +140,11 @@ export function Editor({
 
   useEffect(() => {
     viewRef.current?.dispatch({
-      effects: blameCompartmentRef.current.reconfigure(blame ? blameGutter(blame) : []),
+      effects: blameCompartmentRef.current.reconfigure(blame ? blameGutter(blame, tr) : []),
     })
   }, [blame])
 
+  const tr = useT()
   useEffect(() => {
     if (!containerRef.current) return
     const live = variant === 'live'
@@ -161,15 +164,15 @@ export function Editor({
       syntaxHighlighting(lereSachHighlight),
       Prec.high(
         keymap.of([
-          { key: 'Mod-b', run: formatCommand('bold') },
-          { key: 'Mod-i', run: formatCommand('italic') },
-          { key: 'Mod-k', run: formatCommand('link') },
+          { key: 'Mod-b', run: formatCommand('bold', tr) },
+          { key: 'Mod-i', run: formatCommand('italic', tr) },
+          { key: 'Mod-k', run: formatCommand('link', tr) },
           ...yUndoManagerKeymap,
         ])
       ),
       yCollab(yText, awareness ?? null, undoManager !== undefined ? { undoManager } : undefined),
       readOnlyCompartmentRef.current.of(EditorState.readOnly.of(Boolean(readOnly))),
-      blameCompartmentRef.current.of(blameRef.current ? blameGutter(blameRef.current) : []),
+      blameCompartmentRef.current.of(blameRef.current ? blameGutter(blameRef.current, tr) : []),
       EditorView.domEventHandlers({
         scroll: (_event, view) => {
           if (onScrollRef.current) {
@@ -178,6 +181,7 @@ export function Editor({
           }
         },
       }),
+      translateFacet.of(tr),
       ...(placeholder ? [cmPlaceholder(placeholder)] : []),
     ]
 
@@ -204,7 +208,7 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager, awareness, variant, renderers, !!resolveImage, !!saveImage])
+  }, [yText, undoManager, awareness, variant, tr, renderers, !!resolveImage, !!saveImage])
 
   if (variant === 'live') {
     return (

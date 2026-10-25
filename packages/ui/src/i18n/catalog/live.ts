@@ -1,3 +1,33 @@
-export const vi = {} as const
+export const vi = {
+  'live.alert.note': 'Ghi chú',
+  'live.alert.tip': 'Mẹo',
+  'live.alert.important': 'Quan trọng',
+  'live.alert.warning': 'Cảnh báo',
+  'live.alert.caution': 'Thận trọng',
+  'live.diagram.rendering': 'Đang vẽ sơ đồ…',
+  'live.image.uploading': 'Đang tải ảnh…',
+  'live.image.readError': 'Không đọc được ảnh',
+  'live.image.tooLarge': 'Ảnh quá lớn',
+  'live.table.addRow': 'Thêm dòng',
+  'live.table.addCol': 'Thêm cột',
+  'live.table.delRow': 'Xoá dòng',
+  'live.table.delCol': 'Xoá cột',
+  'live.table.editSource': 'Sửa mã bảng',
+} as const
 
-export const en: Record<keyof typeof vi, string> = {}
+export const en: Record<keyof typeof vi, string> = {
+  'live.alert.note': 'Note',
+  'live.alert.tip': 'Tip',
+  'live.alert.important': 'Important',
+  'live.alert.warning': 'Warning',
+  'live.alert.caution': 'Caution',
+  'live.diagram.rendering': 'Rendering diagram…',
+  'live.image.uploading': 'Uploading image…',
+  'live.image.readError': 'Could not read the image',
+  'live.image.tooLarge': 'Image is too large',
+  'live.table.addRow': 'Add row',
+  'live.table.addCol': 'Add column',
+  'live.table.delRow': 'Delete row',
+  'live.table.delCol': 'Delete column',
+  'live.table.editSource': 'Edit table source',
+}

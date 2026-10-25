@@ -5,15 +5,16 @@ import type { ImageResolver } from '../Viewer';
 import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { revealRanges } from './hide-marks';
+import { translateFacet } from './i18n-facet';
 
 const SAFE_SRC = /^(https?:|data:image\/|blob:)/i;
-const ALERT_TITLES: Record<string, string> = {
-  note: 'Ghi chú',
-  tip: 'Mẹo',
-  important: 'Quan trọng',
-  warning: 'Cảnh báo',
-  caution: 'Thận trọng',
-};
+const ALERT_KEYS = {
+  note: 'live.alert.note',
+  tip: 'live.alert.tip',
+  important: 'live.alert.important',
+  warning: 'live.alert.warning',
+  caution: 'live.alert.caution',
+} as const;
 
 export const imageResolverFacet = Facet.define<ImageResolver | null, ImageResolver | null>({
   combine: (v) => v.find((x) => x) ?? null,
@@ -173,7 +174,7 @@ export function computeWidgets(state: EditorState, ranges?: Array<{ from: number
           const tagTo = first.from + m[0].length;
           if (!inReveal(first.from, first.to)) {
             decos.push(
-              Decoration.replace({ widget: new TextWidget('span', 'cm-live-alert-title', ALERT_TITLES[type] ?? '') }).range(
+              Decoration.replace({ widget: new TextWidget('span', 'cm-live-alert-title', (type in ALERT_KEYS ? state.facet(translateFacet)(ALERT_KEYS[type as keyof typeof ALERT_KEYS]) : '')) }).range(
                 tagFrom,
                 tagTo,
               ),
