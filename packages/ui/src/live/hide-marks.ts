@@ -1,11 +1,10 @@
 import { syntaxTree } from '@codemirror/language';
-import type { EditorState, Range } from '@codemirror/state';
+import type { EditorState, Extension, Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin } from '@codemirror/view';
-import type { DecorationSet, Extension, ViewUpdate } from '@codemirror/view';
+import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 
 const INLINE = new Set(['Emphasis', 'StrongEmphasis', 'InlineCode', 'Link', 'Image', 'Strikethrough']);
 const MARKS = new Set(['EmphasisMark', 'StrikethroughMark', 'HeaderMark', 'QuoteMark', 'LinkMark']);
-const LINK_PARTS = new Set(['LinkMark', 'URL', 'LinkTitle']);
 
 export function revealRanges(state: EditorState): Array<{ from: number; to: number }> {
   const out: Array<{ from: number; to: number }> = [];
@@ -82,7 +81,6 @@ export function computeDecorations(state: EditorState, ranges?: Array<{ from: nu
       },
     });
   }
-  void LINK_PARTS;
   return Decoration.set(decos, true);
 }
 
