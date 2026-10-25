@@ -20,3 +20,5 @@ export function livePreview(r: BlockRenderers, opts?: { theme?: () => 'default' 
 
 export { createDefaultRenderers } from './renderers'
 export type { BlockRenderers } from './block-widgets'
+export { pasteImages, toDataUrl } from './paste-images'
+export type { ImageSaver } from './paste-images'
