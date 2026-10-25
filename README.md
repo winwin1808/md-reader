@@ -24,6 +24,8 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
   <img src="docs/store/screenshots/01-doc.png" alt="Trang đọc, bảng màu Giấy" width="100%">
 </p>
 
+> **English:** the UI follows your browser language (Vietnamese or English; anything else falls back to English). Override it in Settings → Language, or with `?lang=en|vi` on the share page.
+
 ## ✨ Tính năng
 
 ### Đọc
