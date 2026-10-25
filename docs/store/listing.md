@@ -12,7 +12,7 @@ MD Reader — đọc, soạn, trình chiếu Markdown
 
 VI: Mở file .md là đọc đẹp ngay. Soạn, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ ngoại tuyến; chia sẻ là tuỳ chọn.
 
-EN: Open any .md file and read it beautifully. Edit, slides, mind map, PDF/Word export. Works fully offline; sharing is optional.
+EN: Open any .md file and read it beautifully. Edit on the page, slides, mind map, PDF/Word export. Works fully offline; sharing is optional.
 
 ## Danh mục · ngôn ngữ
 
@@ -30,6 +30,7 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 • Ba bảng màu: Giấy, Than chì (tối), Tương phản cao. Tìm trong tài liệu (⌘F).
 
 Soạn
+• Sửa thẳng trên trang đọc: gõ **đậm**, danh sách… hiện đúng kiểu ngay khi viết.
 • Trình soạn thảo CodeMirror, thanh định dạng, ⌘B / ⌘I / ⌘K.
 • Chia đôi màn hình: soạn bên trái, xem bên phải, cuộn đồng bộ.
 • Lưu thẳng về file trên đĩa (⌘S), phát hiện khi file bị sửa ở nơi khác và cho so sánh trước khi ghi đè.
@@ -40,7 +41,7 @@ Trình bày
 • Sơ đồ tư duy từ các đề mục, đi được bằng bàn phím, xuất SVG/PNG.
 
 Chia sẻ
-• Gửi link xem hoặc link sửa cho người khác, cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
+• Gửi link xem hoặc link sửa cho người khác (mở lại hộp Chia sẻ vẫn bấm Sao chép được link đã tạo), cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
 • Xem ai đã viết dòng nào.
 • Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng nếu bạn nhập trong Cài đặt. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu.
 
@@ -63,6 +64,7 @@ Read
 • Three palettes: Paper, Graphite (dark), High contrast. Find in document (⌘F).
 
 Edit
+• Write right on the reading page: **bold**, lists and more render as you type.
 • CodeMirror editor, formatting bar, ⌘B / ⌘I / ⌘K.
 • Split view with synchronized scrolling.
 • Save straight back to the file on disk (⌘S); detects outside changes and shows a diff before overwriting.
@@ -73,7 +75,7 @@ Present
 • Mind map of your headings, keyboard navigable, export to SVG/PNG.
 
 Share
-• Send a view link or an edit link, edit together live and see each other's names and cursors.
+• Send a view link or an edit link, edit together live and see each other's names and cursors.  Reopen the Share dialog and Copy still works for links you created.
 • See who wrote which line.
 • Sharing is optional and off by default; only documents you choose to share are sent, to the author's default server (Cloudflare Workers) or your own server if you set one in Settings. Turning sharing off or revoking a link only stops access; it does not delete stored data.
 
