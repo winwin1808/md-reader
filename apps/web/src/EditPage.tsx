@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { API_PATHS, computeTextChanges, trackLocalActor, type ResolveTokenResponse, type UploadAssetResponse } from '@md-reader/core'
-import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme } from '@md-reader/ui'
+import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme, useT, useLocale, createT } from '@md-reader/ui'
+import type { TFunction } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
 
-export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
+export async function uploadImage(serverUrl: string, room: string, token: string, file: File, t: TFunction = createT('vi')): Promise<UploadAssetResponse> {
   let res: Response
   try {
     res = await fetch(serverUrl.replace(/\/+$/, '') + API_PATHS.assets(room), {
@@ -15,22 +16,22 @@ export async function uploadImage(serverUrl: string, room: string, token: string
       body: file,
     })
   } catch {
-    throw new Error('Không tải được ảnh lên máy chủ.')
+    throw new Error(t('web.errUpload'))
   }
   if (res.status === 413) {
     let code = ''
     try { code = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
-    throw new Error(code === 'quota' ? 'Tài liệu đã dùng hết 50 MB ảnh.' : 'Ảnh quá 2 MB.')
+    throw new Error(code === 'quota' ? t('web.errQuota') : t('web.errTooBig'))
   }
-  if (!res.ok) throw new Error('Không tải được ảnh lên máy chủ.')
+  if (!res.ok) throw new Error(t('web.errUpload'))
   return (await res.json()) as UploadAssetResponse
 }
 
 const Editor = lazy(() => import('@md-reader/ui/editor').then((m) => ({ default: m.Editor })))
 
-export function firstH1(text: string): string {
+export function firstH1(text: string, t: TFunction = createT('vi')): string {
   const m = /^#[ \t]+(.+?)[ \t#]*$/m.exec(text.replace(/^---\n[\s\S]*?\n---\n/, ''))
-  return m?.[1]?.trim() || 'Tài liệu được chia sẻ'
+  return m?.[1]?.trim() || t('web.sharedDoc')
 }
 
 export function PageHeader(props: {
@@ -39,6 +40,7 @@ export function PageHeader(props: {
   presence?: React.ReactNode
   toggle?: { value: 'edit' | 'view'; onChange: (v: 'edit' | 'view') => void }
 }): React.JSX.Element {
+  const t = useT()
   return (
     <header className="web-header">
       <div className="web-header-brand">
@@ -49,18 +51,18 @@ export function PageHeader(props: {
         {props.status && <span role="status" className="web-status">{props.status}</span>}
         {props.presence}
         {props.toggle && (
-          <div role="radiogroup" aria-label="Chế độ" className="web-toggle">
+          <div role="radiogroup" aria-label={t('web.mode')} className="web-toggle">
             {(['edit', 'view'] as const).map((v) => (
               <button
                 key={v}
                 type="button"
                 role="radio"
                 aria-checked={props.toggle!.value === v}
-                title={v === 'edit' ? 'Sửa trên trang' : 'Xem'}
+                title={v === 'edit' ? t('web.editInPage') : t('web.view')}
                 className={props.toggle!.value === v ? 'is-active' : ''}
                 onClick={() => props.toggle!.onChange(v)}
               >
-                {v === 'edit' ? 'Sửa' : 'Xem'}
+                {v === 'edit' ? t('web.edit') : t('web.view')}
               </button>
             ))}
           </div>
@@ -87,14 +89,15 @@ function readName(): string {
   }
 }
 
-const STATUS_TEXT: Record<SyncStatus, string> = {
-  off: 'Ngoại tuyến',
-  connecting: 'Đang kết nối',
-  online: 'Đã đồng bộ',
-  offline: 'Ngoại tuyến',
-}
+const STATUS_KEY = {
+  off: 'web.statusOffline',
+  connecting: 'web.statusConnecting',
+  online: 'web.statusOnline',
+  offline: 'web.statusOffline',
+} as const satisfies Record<SyncStatus, string>
 
 export function EditPage(props: EditPageProps): React.JSX.Element {
+  const t = useT()
   const [name, setName] = useState<string>(() => readName())
   const [draft, setDraft] = useState('')
 
@@ -114,11 +117,11 @@ export function EditPage(props: EditPageProps): React.JSX.Element {
       <div className="web-notice">
         <form onSubmit={submit} className="web-card">
           <label>
-            Tên của bạn
+            {t('web.yourName')}
             <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={40} required />
           </label>
-          <p className="web-hint">Người khác sẽ thấy tên này cạnh con trỏ của bạn.</p>
-          <button type="submit">Bắt đầu sửa</button>
+          <p className="web-hint">{t('web.nameHint')}</p>
+          <button type="submit">{t('web.startEditing')}</button>
         </form>
       </div>
     )
@@ -135,6 +138,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const [, setTick] = useState(0)
   const [mode, setMode] = useState<'edit' | 'view'>('edit')
   const resolved = useResolvedTheme()
+  const t = useT()
+  const locale = useLocale()
   const editorViewRef = useRef<EditorView | null>(null)
 
   const [retry, setRetry] = useState(0)
@@ -175,13 +180,13 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString())), 120)
+      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString(), locale)), 120)
     }
     const onStack = () => setTick((n) => n + 1)
     yText.observe(onChange)
     undo.on('stack-item-added', onStack)
     undo.on('stack-item-popped', onStack)
-    setHtml(renderShareHtml(yText.toString()))
+    setHtml(renderShareHtml(yText.toString(), locale))
     setSession({ doc, yText, undo, conn })
     return () => {
       if (timer) clearTimeout(timer)
@@ -203,7 +208,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
       if (!view || !session) return
       const { from, to } = view.state.selection.main
       const current = session.yText.toString()
-      const r = applyFormat(current, from, to, action)
+      const r = applyFormat(current, from, to, action, t)
       view.dispatch({
         changes: computeTextChanges(current, r.newText).map((c) => ({
           from: c.index,
@@ -222,18 +227,18 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   if (failed && !wasOnline) {
     return (
       <div className="web-notice">
-        <p role="alert">Không kết nối được phòng sửa. Link có thể đã bị thu hồi hoặc máy chủ không phản hồi.</p>
-        <button type="button" onClick={() => setRetry((n) => n + 1)}>Thử lại</button>
+        <p role="alert">{t('web.roomFailed')}</p>
+        <button type="button" onClick={() => setRetry((n) => n + 1)}>{t('web.retry')}</button>
       </div>
     )
   }
-  if (!wasOnline || !session) return <div className="web-notice"><p role="status">Đang tải tài liệu…</p></div>
+  if (!wasOnline || !session) return <div className="web-notice"><p role="status">{t('web.loadingDoc')}</p></div>
 
   return (
     <div className="web-page">
       <PageHeader
-        title={info.title ?? firstH1(session.yText.toString())}
-        status={STATUS_TEXT[status]}
+        title={info.title ?? firstH1(session.yText.toString(), t)}
+        status={t(STATUS_KEY[status])}
         presence={<PresenceBar peers={peers} />}
         toggle={{ value: mode, onChange: setMode }}
       />
@@ -255,7 +260,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
                 undoManager={session.undo}
                 awareness={session.conn.awareness}
                 editorViewRef={editorViewRef}
-                saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file)).url })}
+                saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file, t)).url })}
                 onImageMessage={(m) => window.alert(m)}
               />
             </Suspense>

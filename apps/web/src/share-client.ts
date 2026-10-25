@@ -1,4 +1,5 @@
 import * as Y from 'yjs'
+import { createT, type Locale, type TFunction } from '@md-reader/ui'
 import { defaultRenderPlugins, parseYaml } from '@md-reader/core/plugins'
 import {
   API_PATHS,
@@ -20,38 +21,38 @@ export type ShareState =
   | { kind: 'gone' }
   | { kind: 'error'; message: string }
 
-export async function loadShare(token: string, fetchFn: typeof fetch = fetch): Promise<ShareState> {
+export async function loadShare(token: string, fetchFn: typeof fetch = fetch, t: TFunction = createT('vi')): Promise<ShareState> {
   let res: Response
   let snap: Response
   try {
     res = await fetchFn(API_PATHS.resolve(token))
     if (res.status === 410) return { kind: 'gone' }
-    if (!res.ok) return { kind: 'error', message: `Máy chủ trả lỗi ${res.status}` }
+    if (!res.ok) return { kind: 'error', message: t('web.errServer', { status: res.status }) }
     const info = (await res.json()) as ResolveTokenResponse
     snap = await fetchFn(API_PATHS.snapshot(token))
     if (snap.status === 410) return { kind: 'gone' }
-    if (!snap.ok) return { kind: 'error', message: `Máy chủ trả lỗi ${snap.status}` }
+    if (!snap.ok) return { kind: 'error', message: t('web.errServer', { status: snap.status }) }
     const bytes = new Uint8Array(await snap.arrayBuffer())
     try {
       const doc = new Y.Doc({ gc: false })
       Y.applyUpdate(doc, bytes)
       return { kind: 'ready', info, text: exportText(doc) }
     } catch {
-      return { kind: 'error', message: 'Dữ liệu chia sẻ không hợp lệ' }
+      return { kind: 'error', message: t('web.errInvalid') }
     }
   } catch {
-    return { kind: 'error', message: 'Không kết nối được máy chủ' }
+    return { kind: 'error', message: t('web.errConnect') }
   }
 }
 
 const PLUGINS = defaultRenderPlugins()
 
-export function renderShareHtml(text: string): string {
+export function renderShareHtml(text: string, locale: Locale = 'vi'): string {
   const parsed = parseMarkdown(text, { gfm: true, math: true, parseYaml })
   return renderToHtml(parsed, {
     math: true,
     githubAlerts: true,
-    localizeAlerts: 'vi',
+    localizeAlerts: locale,
     stripFrontmatter: true,
     displayMetadata: true,
     typographer: true,
