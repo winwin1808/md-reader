@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="vi" data-lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MD Reader — Đọc Markdown như đọc sách</title>
+<meta name="description" content="MD Reader: extension trình duyệt đọc file .md như một trang sách, sửa ngay trên trang đọc, chia sẻ và cùng sửa thời gian thực. Mã nguồn mở, không tài khoản, không theo dõi.">
+<meta property="og:title" content="MD Reader — Đọc Markdown như đọc sách">
+<meta property="og:description" content="Read Markdown like a book. Edit in place, share and co-edit live. Open source, no account, no tracking.">
+<meta property="og:image" content="https://winwin1808.github.io/md-reader/img/01-doc.webp">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.png">
+<link rel="preload" href="fonts/literata-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script>
+(function(){var l;try{l=localStorage.getItem("lang")}catch(e){}
+if(l!=="vi"&&l!=="en")l=/^vi\b/i.test(navigator.language||"")?"vi":"en";
+document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
+</script>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="./"><img src="logo.svg" alt="" width="32" height="32"><span>MD Reader</span></a>
+  <nav aria-label="Main">
+    <a class="hide-s" href="#diff"><span lang="vi">Điểm khác biệt</span><span lang="en">Why</span></a>
+    <a class="hide-s" href="#platforms"><span lang="vi">Nền tảng</span><span lang="en">Platforms</span></a>
+    <a class="hide-s" href="privacy.html"><span lang="vi">Riêng tư</span><span lang="en">Privacy</span></a>
+    <a href="https://github.com/winwin1808/md-reader">GitHub</a>
+    <button class="lang" type="button" id="langbtn"><span lang="vi">EN</span><span lang="en">VI</span></button>
+  </nav>
+</header>
+
+<main>
+<div class="hero">
+  <div>
+    <p class="eyebrow">Chrome · Edge · Brave · MIT</p>
+    <h1>
+      <span lang="vi">Mở file .md là <mark>đọc như sách</mark>.</span>
+      <span lang="en">Open a .md and <mark>read it like a book</mark>.</span>
+    </h1>
+    <p class="sub">
+      <span lang="vi">Chữ Literata, mục lục bám theo, ghi chú bên lề. Sửa ngay trên trang đọc, lưu về đĩa, chia sẻ link và cùng sửa thời gian thực — trên Worker Cloudflare miễn phí của chính bạn.</span>
+      <span lang="en">Literata serif, a ToC that follows you, notes in the margin. Edit right on the reading page, save to disk, share a link and co-edit live — on your own free Cloudflare Worker.</span>
+    </p>
+    <div class="cta">
+      <a class="btn main" href="https://github.com/winwin1808/md-reader#readme"><span lang="vi">Cài từ mã nguồn</span><span lang="en">Install from source</span></a>
+      <a class="btn" href="https://github.com/winwin1808/md-reader"><span lang="vi">Xem trên GitHub</span><span lang="en">View on GitHub</span></a>
+      <span class="btn soon" aria-disabled="true">Chrome Web Store · <span lang="vi">Sắp có</span><span lang="en">Soon</span></span>
+    </div>
+  </div>
+  <figure class="shot"><img src="img/01-doc.webp" width="1280" height="800" alt="MD Reader hiển thị tài liệu Markdown với mục lục bên phải và ghi chú bên lề / Markdown document with ToC and margin note"></figure>
+</div>
+
+<section id="diff">
+  <p class="eyebrow"><span lang="vi">Ba điều khác biệt</span><span lang="en">Three things that set it apart</span></p>
+  <h2><span lang="vi">Không phải trình xem Markdown thứ một nghìn.</span><span lang="en">Not the thousandth Markdown viewer.</span></h2>
+
+  <article class="diff">
+    <div>
+      <span class="num">01</span>
+      <h3><span lang="vi">Sửa ngay trên trang đọc</span><span lang="en">Edit on the reading page itself</span></h3>
+      <p><span lang="vi">Không có khung code bên cạnh. Dấu Markdown chỉ hiện ở chỗ con trỏ đang đứng; bảng vẫn là lưới khi sửa; dán ảnh là xong. Lưu về đĩa có so sánh khác biệt nếu file đã bị đổi ở nơi khác.</span><span lang="en">No code pane beside it. Markdown marks show only where your cursor is; tables stay a grid while you edit; paste an image and you are done. Saving to disk shows a diff if the file changed elsewhere.</span></p>
+    </div>
+    <figure class="shot"><img loading="lazy" src="img/02-edit.webp" width="1280" height="800" alt="Chế độ Sửa với live preview / Edit mode with live preview"></figure>
+  </article>
+
+  <article class="diff flip">
+    <div>
+      <span class="num">02</span>
+      <h3><span lang="vi">Chia sẻ và cùng sửa, tự chủ hạ tầng</span><span lang="en">Share and co-edit, on your own infrastructure</span></h3>
+      <p><span lang="vi">Tạo link xem hoặc link sửa. Nhiều người sửa cùng lúc, thấy ai đang ở đâu, ai viết dòng nào, và khôi phục được từ lịch sử. Máy chủ là Cloudflare Worker của bạn — gói miễn phí là đủ.</span><span lang="en">Create a view or an edit link. Several people edit at once, see who is where, who wrote which line, and restore from history. The server is your own Cloudflare Worker — the free tier is enough.</span></p>
+    </div>
+    <figure class="shot"><img loading="lazy" src="img/04-share.webp" width="1280" height="800" alt="Hộp thoại chia sẻ / Share dialog"></figure>
+  </article>
+
+  <article class="diff">
+    <div>
+      <span class="num">03</span>
+      <h3><span lang="vi">Một tài liệu, nhiều cách nhìn</span><span lang="en">One document, many views</span></h3>
+      <p><span lang="vi">Cùng một file có thể thành slide có speaker view, sơ đồ tư duy, hoặc xuất ra HTML, PDF, Word. Ba bảng màu: Giấy, Than chì, Tương phản cao.</span><span lang="en">The same file becomes slides with a speaker view, a mind map, or exports to HTML, PDF, Word. Three palettes: Paper (Giấy), Graphite (Than chì), High contrast (Tương phản cao).</span></p>
+    </div>
+    <figure class="shot"><img loading="lazy" src="img/07-mindmap.webp" width="1280" height="800" alt="Sơ đồ tư duy từ tài liệu / Mind map from a document"></figure>
+  </article>
+</section>
+
+<section id="features">
+  <p class="eyebrow"><span lang="vi">Chi tiết</span><span lang="en">Details</span></p>
+  <h2><span lang="vi">Mọi thứ trong một extension</span><span lang="en">Everything in one extension</span></h2>
+  <ul class="feat">
+    <li><span lang="vi"><b>Đọc:</b> chữ serif Literata, mục lục bám mục đang đọc, alert thành ghi chú lề, KaTeX, mermaid.</span><span lang="en"><b>Read:</b> Literata serif, a ToC tracking your position, alerts as margin notes, KaTeX, mermaid.</span></li>
+    <li><span lang="vi"><b>Sửa:</b> live preview, bảng dạng lưới, dán/kéo ảnh, hoàn tác theo tài liệu.</span><span lang="en"><b>Edit:</b> live preview, grid tables, paste/drag images, per-document undo.</span></li>
+    <li><span lang="vi"><b>Lưu về đĩa:</b> ghi lại file gốc, phát hiện lệch file và hiện diff 3 chiều.</span><span lang="en"><b>Save to disk:</b> writes the original file back, detects drift and shows a 3-way diff.</span></li>
+    <li><span lang="vi"><b>Chia sẻ:</b> link xem / link sửa, hết hạn, thu hồi, sửa cùng lúc.</span><span lang="en"><b>Share:</b> view / edit links, expiry, revoke, simultaneous editing.</span></li>
+    <li><span lang="vi"><b>Ai viết gì:</b> blame theo dòng, lịch sử và khôi phục.</span><span lang="en"><b>Who wrote what:</b> per-line blame, history and restore.</span></li>
+    <li><span lang="vi"><b>Trình chiếu:</b> slide cắt từ heading, speaker view có ghi chú và đồng hồ.</span><span lang="en"><b>Slides:</b> cut from headings, speaker view with notes and timer.</span></li>
+    <li><span lang="vi"><b>Sơ đồ tư duy</b> từ cấu trúc heading, xuất SVG / PNG.</span><span lang="en"><b>Mind map</b> from your headings, export to SVG / PNG.</span></li>
+    <li><span lang="vi"><b>Xuất:</b> HTML độc lập, PDF qua in, Word (.docx).</span><span lang="en"><b>Export:</b> standalone HTML, PDF via print, Word (.docx).</span></li>
+    <li><span lang="vi"><b>Giao diện:</b> Giấy, Than chì, Tương phản cao; tiếng Việt và tiếng Anh theo trình duyệt.</span><span lang="en"><b>Look:</b> Paper, Graphite, High contrast; Vietnamese and English following your browser.</span></li>
+  </ul>
+  <div class="gal">
+    <figure class="shot"><img loading="lazy" src="img/03-table.webp" width="1280" height="800" alt="Bảng giữ dạng lưới khi sửa / Table stays a grid while editing"></figure>
+    <figure class="shot"><img loading="lazy" src="img/05-present.webp" width="1280" height="800" alt="Trình chiếu / Presentation"></figure>
+    <figure class="shot"><img loading="lazy" src="img/06-dark.webp" width="1280" height="800" alt="Bảng màu Than chì / Graphite palette"></figure>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="margin">
+    <div>
+      <p class="eyebrow"><span lang="vi">Quyền riêng tư</span><span lang="en">Privacy</span></p>
+      <h2><span lang="vi">Dữ liệu ở lại máy bạn.</span><span lang="en">Your data stays on your machine.</span></h2>
+      <p><span lang="vi">Mặc định mọi thứ lưu trong trình duyệt của bạn. Chỉ khi bạn bật chia sẻ cho một tài liệu, nội dung mới đến máy chủ đồng bộ — mà máy chủ đó do chính bạn dựng. Không tài khoản, không phân tích, không theo dõi, không quảng cáo.</span><span lang="en">By default everything lives in your browser. Only when you turn on sharing for a document does its content reach a sync server — one you run yourself. No account, no analytics, no tracking, no ads.</span></p>
+      <p><a href="privacy.html"><span lang="vi">Đọc chính sách đầy đủ</span><span lang="en">Read the full policy</span></a></p>
+    </div>
+    <aside class="note"><strong><span lang="vi">Ghi chú lề</span><span lang="en">Margin note</span></strong><span lang="vi">Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, chưa xoá dữ liệu trên máy chủ. Với máy chủ riêng, bạn tự xoá.</span><span lang="en">Turning sharing off or revoking a link blocks access but does not delete data on the server. On your own server, you delete it yourself.</span></aside>
+  </div>
+</section>
+
+<section id="platforms">
+  <p class="eyebrow"><span lang="vi">Nền tảng</span><span lang="en">Platforms</span></p>
+  <h2><span lang="vi">Chạy ở đâu</span><span lang="en">Where it runs</span></h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th><span lang="vi">Nền tảng</span><span lang="en">Platform</span></th><th><span lang="vi">Trạng thái</span><span lang="en">Status</span></th></tr></thead>
+    <tbody>
+      <tr><td>Chrome</td><td class="ok"><span lang="vi">Dùng được (cài từ mã nguồn)</span><span lang="en">Works (install from source)</span></td></tr>
+      <tr><td>Edge</td><td class="ok"><span lang="vi">Dùng được</span><span lang="en">Works</span></td></tr>
+      <tr><td>Brave · Opera · Arc</td><td class="ok"><span lang="vi">Dùng được</span><span lang="en">Works</span></td></tr>
+      <tr><td>Firefox</td><td><span lang="vi">Hạn chế</span><span lang="en">Limited</span></td></tr>
+      <tr><td>VS Code · Obsidian</td><td class="soon"><span lang="vi">Dự kiến</span><span lang="en">Planned</span></td></tr>
+      <tr><td>Web app</td><td class="soon"><span lang="vi">Dự kiến</span><span lang="en">Planned</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="next">
+  <div class="margin">
+    <div>
+      <p class="eyebrow"><span lang="vi">Lộ trình</span><span lang="en">Roadmap</span></p>
+      <h2><span lang="vi">Tiếp theo: máy chủ MCP cho AI agent</span><span lang="en">Next: an MCP server for AI agents</span></h2>
+      <p><span lang="vi">Để agent AI xuất bản một file Markdown và nhận lại link chia sẻ ngay, không cần copy-paste.</span><span lang="en">So an AI agent can publish a Markdown file and get a share link back, with no copy-paste.</span></p>
+      <p><a href="https://github.com/winwin1808/md-reader/blob/main/docs/ROADMAP.md"><span lang="vi">Xem lộ trình</span><span lang="en">See the roadmap</span></a></p>
+    </div>
+    <aside class="note"><strong><span lang="vi">Tự dựng máy chủ chia sẻ</span><span lang="en">Self-host the share server</span></strong><span lang="vi">Một Cloudflare Worker, gói miễn phí. </span><span lang="en">One Cloudflare Worker, free tier. </span><a href="https://github.com/winwin1808/md-reader/blob/main/docs/SELF_HOST.md"><span lang="vi">Hướng dẫn SELF_HOST</span><span lang="en">SELF_HOST guide</span></a></aside>
+  </div>
+</section>
+</main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>MD Reader · <span lang="vi">Giấy phép MIT</span><span lang="en">MIT licence</span></span>
+    <a href="https://github.com/winwin1808/md-reader">GitHub</a>
+    <a href="privacy.html"><span lang="vi">Quyền riêng tư</span><span lang="en">Privacy</span></a>
+  </div>
+</footer>
+<script src="lang.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+@font-face{font-family:Literata;src:url(fonts/literata-vietnamese-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:Literata;src:url(fonts/literata-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Literata;src:url(fonts/literata-vietnamese-400-italic.woff2) format("woff2");font-weight:400;font-style:italic;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:Literata;src:url(fonts/literata-latin-400-italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:Literata;src:url(fonts/literata-vietnamese-600-normal.woff2) format("woff2");font-weight:600;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:Literata;src:url(fonts/literata-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-vietnamese-400-normal.woff2) format("woff2");font-weight:400;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-vietnamese-500-normal.woff2) format("woff2");font-weight:500;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-vietnamese-600-normal.woff2) format("woff2");font-weight:600;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+
+:root{--ink:#1B2422;--paper:#F1F3F2;--muted:#5E6A67;--rule:#C9D2CF;--hi:#F3DE4A;--green:#2F7A68;--link:#1f5f50;
+--serif:Literata,Georgia,serif;--sans:"IBM Plex Sans",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--ink:#E9EEEC;--paper:#1B2422;--muted:#A9B5B1;--rule:#34413E;--link:#8fd3bf}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1.0625rem/1.65 var(--serif)}
+html[data-lang=vi] [lang=en],html[data-lang=en] [lang=vi]{display:none!important}
+a{color:var(--link);text-underline-offset:.2em}
+:focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:2px}
+@media (prefers-color-scheme:dark){:focus-visible{outline-color:var(--hi)}}
+.wrap{max-width:68rem;margin:0 auto;padding:0 1.25rem}
+header.top{display:flex;align-items:center;gap:1rem;padding:1rem 0;font-family:var(--sans)}
+.brand{display:flex;align-items:center;gap:.6rem;font-weight:600;color:var(--ink);text-decoration:none}
+.brand img{width:32px;height:32px}
+.top nav{margin-left:auto;display:flex;gap:1.1rem;align-items:center;font-size:.9rem}
+.top nav a{color:var(--ink);text-decoration:none}
+.top nav a:hover{text-decoration:underline}
+.lang{font:500 .8rem var(--sans);background:none;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:.3rem .8rem;cursor:pointer}
+.lang:hover{border-color:var(--ink)}
+@media(max-width:620px){.top nav a.hide-s{display:none}}
+
+.hero{display:grid;grid-template-columns:5fr 7fr;gap:3rem;align-items:center;padding:3.5rem 0 4.5rem}
+.hero h1{font:600 clamp(2.2rem,5vw,3.6rem)/1.08 var(--serif);margin:0 0 1.2rem;letter-spacing:-.01em}
+.hero h1 mark{background:linear-gradient(transparent 58%,var(--hi) 58% 92%,transparent 92%);color:inherit;padding:0 .1em}
+.hero p.sub{font-size:1.15rem;color:var(--muted);margin:0 0 1.8rem;max-width:34rem}
+.cta{display:flex;flex-wrap:wrap;gap:.7rem;font-family:var(--sans)}
+.btn{display:inline-block;padding:.7rem 1.1rem;border-radius:6px;font-weight:500;font-size:.95rem;text-decoration:none;border:1.5px solid var(--ink);color:var(--ink)}
+.btn.main{background:var(--ink);color:var(--paper)}
+.btn.main:hover{background:var(--green);border-color:var(--green);color:#fff}
+.btn:hover{background:var(--hi);color:#1B2422;border-color:#1B2422}
+.btn.soon{border-style:dashed;color:var(--muted);border-color:var(--muted);cursor:default}
+.btn.soon:hover{background:none;color:var(--muted);border-color:var(--muted)}
+.shot{margin:0;border-radius:10px;overflow:hidden;box-shadow:0 1px 0 var(--rule),0 18px 40px -18px rgba(0,0,0,.45)}
+.shot img{display:block;width:100%;height:auto}
+@media(max-width:860px){.hero{grid-template-columns:1fr;gap:2rem;padding-top:1.5rem}}
+
+section{padding:3.5rem 0;border-top:1px solid var(--rule)}
+h2{font:600 clamp(1.5rem,3vw,2.1rem)/1.2 var(--serif);margin:0 0 1.6rem}
+.eyebrow{font:500 .75rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .5rem}
+
+.diff{display:grid;grid-template-columns:1fr 1.25fr;gap:2.5rem;align-items:center;margin:0 0 4rem}
+.diff.flip{grid-template-columns:1.25fr 1fr}
+.diff.flip .shot{order:-1}
+.diff h3{font:600 1.5rem/1.25 var(--serif);margin:0 0 .6rem}
+.diff p{margin:0;color:var(--muted)}
+.num{font:600 .85rem var(--sans);color:var(--green);display:block;margin-bottom:.4rem}
+@media (prefers-color-scheme:dark){.num{color:var(--hi)}}
+@media(max-width:860px){.diff,.diff.flip{grid-template-columns:1fr;gap:1.2rem}.diff.flip .shot{order:0}}
+
+.feat{columns:2 18rem;column-gap:3rem;list-style:none;margin:0;padding:0}
+.feat li{break-inside:avoid;padding:.55rem 0 .55rem 1.2rem;border-bottom:1px solid var(--rule);position:relative}
+.feat li::before{content:"";position:absolute;left:0;top:1.15rem;width:.5rem;height:.5rem;background:var(--hi);border:1px solid var(--ink)}
+.feat b{font-weight:600}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2.5rem}
+@media(max-width:700px){.gal{grid-template-columns:1fr}}
+
+.margin{display:grid;grid-template-columns:1fr 16rem;gap:2.5rem}
+.note{font:400 .92rem/1.5 var(--sans);border-top:2px solid var(--ink);padding-top:.5rem;color:var(--muted);align-self:start}
+.note strong{color:var(--ink);display:block;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
+@media(max-width:820px){.margin{grid-template-columns:1fr;gap:1.2rem}}
+.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 0;padding:0;list-style:none;font:500 .85rem var(--sans)}
+.tags li{border:1px solid var(--ink);border-radius:999px;padding:.2rem .8rem}
+
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:400 .95rem var(--sans);min-width:30rem}
+th,td{text-align:left;padding:.7rem .9rem;border-bottom:1px solid var(--rule)}
+th{font-weight:600;border-bottom:2px solid var(--ink)}
+td.ok{color:var(--green);font-weight:600}
+@media (prefers-color-scheme:dark){td.ok{color:var(--hi)}}
+td.soon{color:var(--muted)}
+code{font:400 .88em ui-monospace,Menlo,monospace;background:color-mix(in srgb,var(--rule) 50%,transparent);padding:.1em .35em;border-radius:3px}
+footer{border-top:1px solid var(--rule);padding:2.5rem 0 3rem;font:400 .9rem var(--sans);color:var(--muted)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:.6rem 1.5rem;align-items:center}
+footer a{color:var(--muted)}
+
+.doc{max-width:46rem;padding:1rem 1.25rem 4rem}
+.doc h1{font:600 2rem/1.2 var(--serif)}
+.doc h2{font-size:1.4rem;margin-top:2.5rem}
+.doc li{margin:.6rem 0}
