@@ -191,4 +191,4 @@ Quy trình đưa lên Chrome Web Store (listing, ảnh, giải trình quyền) n
 
 ## 📄 Giấy phép và liên hệ
 
-Chưa khai báo giấy phép trong repo; mọi quyền được giữ cho tới khi có file `LICENSE`. Góp ý và báo lỗi: [GitHub Issues](https://github.com/winwin1808/md-reader/issues).
+Giấy phép [MIT](LICENSE). Góp ý và báo lỗi: [GitHub Issues](https://github.com/winwin1808/md-reader/issues).
