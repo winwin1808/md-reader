@@ -103,6 +103,12 @@ export function computeWidgets(state: EditorState, ranges?: Array<{ from: number
           const url = node.node.getChild('URL');
           const src = url ? doc.sliceString(url.from, url.to) : '';
           decos.push(Decoration.replace({ widget: new ImageWidget(src, m ? (m[1] ?? '') : '') }).range(from, to));
+        } else if (name === 'ListMark') {
+          const t = doc.sliceString(from, to);
+          if (t !== '-' && t !== '*' && t !== '+') return;
+          if (touchesSel(from, to)) return;
+          if (/^\s\[[ xX]\]/.test(doc.sliceString(to, to + 4))) return;
+          decos.push(Decoration.replace({ widget: new TextWidget('span', 'cm-live-bullet', '\u2022') }).range(from, to));
         } else if (name === 'HorizontalRule') {
           if (touchesSel(from, to)) return;
           decos.push(Decoration.replace({ widget: new TextWidget('hr', 'cm-live-hr', '') }).range(from, to));

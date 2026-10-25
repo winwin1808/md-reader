@@ -14,6 +14,7 @@ export interface DocRecord {
   hasHandle: boolean
   shortKey?: string
   room?: RoomBinding
+  viewMode?: 'reading' | 'live' | 'editor' | 'split'
 }
 
 const DB_NAME = 'md_reader_registry'
