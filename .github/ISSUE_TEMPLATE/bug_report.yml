@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A sample Markdown snippet helps a lot.
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      placeholder: "1.2.0"
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Chrome 130, macOS
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or console output

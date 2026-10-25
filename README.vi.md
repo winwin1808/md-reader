@@ -200,6 +200,10 @@ pnpm deploy:api                    # deploy máy chủ của bạn (xem docs/SEL
 
 Quy trình đưa lên cửa hàng ở [`docs/store/README.md`](docs/store/README.md); thiết kế chi tiết ở [`docs/DESIGN.md`](docs/DESIGN.md).
 
+## Đóng góp
+
+Chào đón mọi đóng góp: xem [CONTRIBUTING.md](CONTRIBUTING.md) (tiếng Anh), [Quy tắc ứng xử](CODE_OF_CONDUCT.md) và [chính sách bảo mật](SECURITY.md). Lịch sử thay đổi ở [CHANGELOG.md](CHANGELOG.md).
+
 ## Giấy phép và liên hệ
 
 Giấy phép [MIT](LICENSE). Góp ý và báo lỗi: [GitHub Issues](https://github.com/winwin1808/md-reader/issues).

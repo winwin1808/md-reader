@@ -200,6 +200,10 @@ pnpm deploy:api                    # deploy your server (see docs/SELF_HOST.md)
 
 The store submission process is in [`docs/store/README.md`](docs/store/README.md); detailed design in [`docs/DESIGN.md`](docs/DESIGN.md) (Vietnamese).
 
+## Contributing
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and the [security policy](SECURITY.md). Changes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
 ## License and contact
 
 [MIT](LICENSE) license. Feedback and bug reports: [GitHub Issues](https://github.com/winwin1808/md-reader/issues).
