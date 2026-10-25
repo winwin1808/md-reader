@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { createImageSaver } from './image-saver'
+import { createImageSaver, INLINE_IMAGE_MAX_BYTES } from './image-saver'
 
 const png = () => new File([new Uint8Array([1, 2, 3])], 'a.png', { type: 'image/png' })
+const big = () => new File([new Uint8Array(700_000)], 'b.png', { type: 'image/png' })
 afterEach(() => vi.unstubAllGlobals())
 
 function dirStub(existing: string[] = []) {
@@ -56,16 +57,29 @@ describe('createImageSaver', () => {
   it('file doc without dir: requestDir granted saves to assets/', async () => {
     const { dir } = dirStub()
     const requestDir = vi.fn(async () => dir)
-    const r = await createImageSaver({ serverUrl: 'https://s', docName: 'd', hasFileHandle: true, requestDir })(png())
+    const r = await createImageSaver({ serverUrl: 'https://s', docName: 'd', hasFileHandle: true, requestDir })(big())
     expect(requestDir).toHaveBeenCalledOnce()
     expect(r.src.startsWith('assets/')).toBe(true)
   })
   it('file doc without dir: declined throws', async () => {
     const save = createImageSaver({ serverUrl: 'https://s', docName: 'd', hasFileHandle: true, requestDir: async () => null })
-    await expect(save(png())).rejects.toThrow('Cần cho phép thư mục chứa file để lưu ảnh.')
+    await expect(save(big())).rejects.toThrow('Ảnh lớn hơn 600 KB — cho phép thư mục chứa file để lưu ảnh.')
   })
-  it('URL doc (no file handle) throws, no data: fallback', async () => {
+  it('large URL doc throws', async () => {
     const save = createImageSaver({ serverUrl: 'https://s', docName: 'd' })
-    await expect(save(png())).rejects.toThrow('Lưu tài liệu thành file trên máy (⌘S) hoặc bật chia sẻ để chèn ảnh.')
+    await expect(save(big())).rejects.toThrow('Ảnh lớn hơn 600 KB — lưu tài liệu thành file (⌘S) hoặc bật chia sẻ để chèn ảnh lớn.')
+  })
+  it('small image inlines as data URL, no requestDir', async () => {
+    const requestDir = vi.fn(async () => null)
+    const r = await createImageSaver({ serverUrl: 'https://s', docName: 'd', requestDir })(png())
+    expect(r.src.startsWith('data:image/png;base64,')).toBe(true)
+    expect(requestDir).not.toHaveBeenCalled()
+    expect(INLINE_IMAGE_MAX_BYTES).toBe(600_000)
+  })
+  it('shared small still uploads', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ id: 'x', url: 'https://s/api/a/x', size: 3, mime: 'image/png' }), { status: 201 }))
+    vi.stubGlobal('fetch', f)
+    const r = await createImageSaver({ serverUrl: 'https://s', room: 'r', ownerToken: 't', docName: 'd' })(png())
+    expect(r.src).toBe('https://s/api/a/x')
   })
 })
