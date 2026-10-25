@@ -53,11 +53,19 @@ describe('createImageSaver', () => {
     vi.useRealTimers()
     expect(b.src).toBe('assets/notes-20260102-030405-1.png')
   })
-  it('no room no dir inlines data url with note once', async () => {
+  it('file doc without dir: requestDir granted saves to assets/', async () => {
+    const { dir } = dirStub()
+    const requestDir = vi.fn(async () => dir)
+    const r = await createImageSaver({ serverUrl: 'https://s', docName: 'd', hasFileHandle: true, requestDir })(png())
+    expect(requestDir).toHaveBeenCalledOnce()
+    expect(r.src.startsWith('assets/')).toBe(true)
+  })
+  it('file doc without dir: declined throws', async () => {
+    const save = createImageSaver({ serverUrl: 'https://s', docName: 'd', hasFileHandle: true, requestDir: async () => null })
+    await expect(save(png())).rejects.toThrow('Cần cho phép thư mục chứa file để lưu ảnh.')
+  })
+  it('URL doc (no file handle) throws, no data: fallback', async () => {
     const save = createImageSaver({ serverUrl: 'https://s', docName: 'd' })
-    const a = await save(png())
-    expect(a.src.startsWith('data:')).toBe(true)
-    expect(a.note).toContain('nhúng thẳng')
-    expect((await save(png())).note).toBeUndefined()
+    await expect(save(png())).rejects.toThrow('Lưu tài liệu thành file trên máy (⌘S) hoặc bật chia sẻ để chèn ảnh.')
   })
 })

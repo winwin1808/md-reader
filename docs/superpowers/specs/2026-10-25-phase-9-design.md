@@ -158,4 +158,4 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9h2: done      (api: D1 assets + asset_chunks (1 MB chunks), POST /api/rooms/:room/assets edit/owner only, GET /api/a/:id, png/jpeg/gif/webp, ≤2 MiB, 50 MB/room)
 - 9h3a: done     (ui paste/drop + data: fallback + downscale)
 - 9h3b: done     (extension + web storage choice: D1 upload when shared, assets/ with dir access, else data:; privacy line)
-- 9h4: pending      (deploy worker + D1 migration + smoke upload/read)
+- 9h4: planned      (deploy worker + D1 migration + smoke upload/read)
