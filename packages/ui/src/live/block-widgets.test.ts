@@ -41,11 +41,10 @@ describe('blockWidgets', () => {
     const v = setup(doc, doc.length, r);
     const ws = widgets(v);
     expect(ws).toHaveLength(1);
-    ws[0]!.w.toDOM(v);
-    expect(r.table).toHaveBeenCalledWith(T);
+    expect(ws[0]!.w.toDOM(v).querySelector('table.cm-live-grid')).not.toBeNull();
   });
-  it('no widget when cursor inside', () => {
-    expect(widgets(setup(`${T}\n\nafter`, 3, fake()))).toHaveLength(0);
+  it('table stays a grid even when cursor inside', () => {
+    expect(widgets(setup(`${T}\n\nafter`, 3, fake()))).toHaveLength(1);
   });
   it('math widget', () => {
     const r = fake();

@@ -3,6 +3,7 @@ import { EditorState, StateField } from '@codemirror/state';
 import type { Extension, Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
+import { TableGridWidget } from './table-grid';
 
 export interface BlockRenderers {
   table(src: string): string;
@@ -28,8 +29,7 @@ class BlockWidget extends WidgetType {
   toDOM(view: EditorView) {
     const el = document.createElement('div');
     el.className = `cm-live-block cm-live-block-${this.kind}`;
-    if (this.kind === 'table') el.innerHTML = this.r.table(this.src);
-    else if (this.kind === 'math') el.innerHTML = this.r.math(this.src);
+    if (this.kind === 'math') el.innerHTML = this.r.math(this.src);
     else {
       el.textContent = 'Đang vẽ sơ đồ…';
       this.r.mermaid(this.src, this.theme).then(
@@ -60,6 +60,10 @@ function build(state: EditorState, r: BlockRenderers, theme: 'default' | 'dark')
   const sel = state.selection.ranges;
   const touched = (from: number, to: number) => sel.some((s) => s.from <= to && s.to >= from);
   const add = (kind: Kind, from: number, to: number, src: string) => {
+    if (kind === 'table') {
+      out.push(Decoration.replace({ block: true, widget: TableGridWidget.fromState(state, from, to) }).range(from, to));
+      return;
+    }
     if (touched(from, to)) return;
     out.push(
       Decoration.replace({ block: true, widget: new BlockWidget(kind, src, from, r, theme) }).range(from, to),
