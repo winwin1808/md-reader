@@ -30,9 +30,9 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 • Ba bảng màu: Giấy, Than chì (tối), Tương phản cao. Tìm trong tài liệu (⌘F).
 
 Soạn
-• Sửa thẳng trên trang đọc: gõ **đậm**, danh sách… hiện đúng kiểu ngay khi viết.
-• Trình soạn thảo CodeMirror, thanh định dạng, ⌘B / ⌘I / ⌘K.
-• Chia đôi màn hình: soạn bên trái, xem bên phải, cuộn đồng bộ.
+• Hai chế độ Đọc · Sửa. Sửa thẳng trên trang đọc: dấu Markdown chỉ hiện ở chỗ con trỏ.
+• Bảng giữ dạng lưới khi sửa: gõ vào ô, Tab để đi, thêm/xoá dòng và cột.
+• Dán hoặc kéo ảnh vào tài liệu. Thanh định dạng, ⌘B / ⌘I / ⌘K.
 • Lưu thẳng về file trên đĩa (⌘S), phát hiện khi file bị sửa ở nơi khác và cho so sánh trước khi ghi đè.
 
 Trình bày
@@ -43,7 +43,7 @@ Trình bày
 Chia sẻ
 • Gửi link xem hoặc link sửa cho người khác (mở lại hộp Chia sẻ vẫn bấm Sao chép được link đã tạo), cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
 • Xem ai đã viết dòng nào.
-• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng nếu bạn nhập trong Cài đặt. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu.
+• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ đồng bộ do chính bạn dựng (Cloudflare Workers, gói miễn phí); MD Reader không kèm máy chủ nào. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu.
 
 Xuất
 • HTML một file, PDF (in từ trình duyệt), Word (.docx), PDF slide khổ ngang.
@@ -64,9 +64,9 @@ Read
 • Three palettes: Paper, Graphite (dark), High contrast. Find in document (⌘F).
 
 Edit
-• Write right on the reading page: **bold**, lists and more render as you type.
-• CodeMirror editor, formatting bar, ⌘B / ⌘I / ⌘K.
-• Split view with synchronized scrolling.
+• Two modes, Read and Edit. Edit right on the reading page: Markdown marks show only where the cursor is.
+• Tables stay a grid while editing: type in cells, Tab to move, add/remove rows and columns.
+• Paste or drop images into the document. Formatting bar, ⌘B / ⌘I / ⌘K.
 • Save straight back to the file on disk (⌘S); detects outside changes and shows a diff before overwriting.
 
 Present
@@ -77,7 +77,7 @@ Present
 Share
 • Send a view link or an edit link, edit together live and see each other's names and cursors.  Reopen the Share dialog and Copy still works for links you created.
 • See who wrote which line.
-• Sharing is optional and off by default; only documents you choose to share are sent, to the author's default server (Cloudflare Workers) or your own server if you set one in Settings. Turning sharing off or revoking a link only stops access; it does not delete stored data.
+• Sharing is optional and off by default; only documents you choose to share are sent, to a sync server you host yourself (Cloudflare Workers, free tier); MD Reader ships with no server. Turning sharing off or revoking a link only stops access; it does not delete stored data.
 
 Export
 • Single-file HTML, PDF (browser print), Word (.docx), landscape slide PDF.
@@ -104,7 +104,7 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 
 ## Data usage (tab Privacy practices)
 
-- Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó (nội dung liên lạc/nội dung trang web) và tên hiển thị tự khai mới được gửi, tới máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng của người dùng — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
+- Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó (nội dung liên lạc/nội dung trang web) và tên hiển thị tự khai mới được gửi, tới máy chủ đồng bộ do người dùng tự dựng — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
 - Tick cả ba cam kết: không bán dữ liệu cho bên thứ ba · không dùng/chuyển cho mục đích không liên quan · không dùng để xét tín dụng.
 - Privacy policy URL: link tới `docs/store/privacy-policy.md` trên GitHub (hoặc GitHub Pages), xem file cùng thư mục.
 
@@ -113,5 +113,5 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 | File | Kích thước | Dùng cho |
 |---|---|---|
 | `../../apps/extension/public/icons/icon-128.png` | 128×128 | Store icon |
-| `screenshots/01-doc-giay.png` … `05-*.png` | 1280×800 | Screenshots (tối đa 5) |
+| `screenshots/01-doc.png` … `07-mindmap.png` | 1280×800 | Screenshots (dashboard nhận tối đa 5: chọn 01, 02, 03, 04, 05) |
 | `promo-small-440x280.png` | 440×280 | Small promo tile |

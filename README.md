@@ -21,7 +21,7 @@
 MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong Chrome. Bấm vào link `.md` (GitHub raw, file trên máy) là mở trang đọc với chữ Literata, cột chữ vừa mắt và giao diện "Lề sách".
 
 <p align="center">
-  <img src="docs/store/screenshots/01-doc-giay.png" alt="Trang đọc, bảng màu Giấy" width="100%">
+  <img src="docs/store/screenshots/01-doc.png" alt="Trang đọc, bảng màu Giấy" width="100%">
 </p>
 
 ## ✨ Tính năng
@@ -35,8 +35,8 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/store/screenshots/01-doc-giay.png" alt="Bảng màu Giấy"></td>
-    <td width="50%"><img src="docs/store/screenshots/02-doc-than-chi.png" alt="Bảng màu Than chì"></td>
+    <td width="50%"><img src="docs/store/screenshots/01-doc.png" alt="Bảng màu Giấy"></td>
+    <td width="50%"><img src="docs/store/screenshots/06-dark.png" alt="Bảng màu Than chì"></td>
   </tr>
   <tr>
     <td align="center"><sub>Giấy</sub></td>
@@ -52,6 +52,17 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 - Dán (⌘V) hoặc kéo ảnh vào: ảnh ≤ 600 KB nhúng thẳng vào file; lớn hơn thì lưu vào thư mục `assets/` cạnh file `.md` (cấp quyền thư mục một lần); tài liệu đã chia sẻ thì ảnh lên máy chủ (≤ 2 MB). Ảnh đường dẫn tương đối (`./img/a.png`) hiển thị đúng.
 - Lưu thẳng về file trên đĩa (⌘S), phát hiện khi file bị sửa ở nơi khác và cho so sánh trước khi ghi đè.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/store/screenshots/02-edit.png" alt="Sửa trên trang"></td>
+    <td width="50%"><img src="docs/store/screenshots/03-table.png" alt="Bảng dạng lưới"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Sửa trên trang</sub></td>
+    <td align="center"><sub>Bảng dạng lưới</sub></td>
+  </tr>
+</table>
+
 ### Trình bày
 
 - Bấm Trình chiếu: tách slide theo `---` hoặc đề mục, tự co giãn theo màn hình.
@@ -60,8 +71,8 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/store/screenshots/04-present.png" alt="Trình chiếu"></td>
-    <td width="50%"><img src="docs/store/screenshots/05-mindmap.png" alt="Sơ đồ tư duy"></td>
+    <td width="50%"><img src="docs/store/screenshots/05-present.png" alt="Trình chiếu"></td>
+    <td width="50%"><img src="docs/store/screenshots/07-mindmap.png" alt="Sơ đồ tư duy"></td>
   </tr>
   <tr>
     <td align="center"><sub>Trình chiếu</sub></td>
@@ -80,6 +91,10 @@ HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ n
 - Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login` → tạo D1 → `wrangler d1 migrations apply … --remote` → `pnpm deploy:api` → dán địa chỉ `…workers.dev` vào MD Reader.
 - Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu trên máy chủ của bạn.
 - Chi tiết dữ liệu nào được gửi đi: [chính sách riêng tư](docs/store/privacy-policy.md).
+
+<p align="center">
+  <img src="docs/store/screenshots/04-share.png" alt="Hộp thoại chia sẻ" width="70%">
+</p>
 
 ### Riêng tư
 
