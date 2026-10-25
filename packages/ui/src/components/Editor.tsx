@@ -8,7 +8,7 @@ import {
   placeholder as cmPlaceholder,
   keymap,
 } from '@codemirror/view'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import {
   bracketMatching,
   syntaxHighlighting,
@@ -19,7 +19,12 @@ import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { applyFormat } from './markdown-commands'
 import type { FormatAction } from './FormattingToolbar'
 import { blameGutter, type LineAuthor } from './blame'
+import { livePreview, createDefaultRenderers } from '../live'
+import type { BlockRenderers } from '../live'
 import '../theme/editor.css'
+import '../theme/live.css'
+
+export { livePreview, createDefaultRenderers }
 
 export const lereSachHighlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--ink)', fontWeight: '600' },
@@ -72,6 +77,8 @@ export interface EditorProps {
   onEditorReady?: (view: EditorView) => void
   awareness?: Parameters<typeof yCollab>[1]
   blame?: Array<LineAuthor | null> | null
+  variant?: 'source' | 'live'
+  renderers?: BlockRenderers
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
@@ -86,6 +93,8 @@ export function Editor({
   editorViewRef,
   awareness,
   blame,
+  variant = 'source',
+  renderers,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -114,11 +123,12 @@ export function Editor({
 
   useEffect(() => {
     if (!containerRef.current) return
+    const live = variant === 'live'
 
     const extensions = [
-      markdown(),
-      lineNumbers(),
-      highlightActiveLine(),
+      live ? markdown({ base: markdownLanguage }) : markdown(),
+      ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
+      ...(live ? livePreview(renderers ?? createDefaultRenderers()) : []),
       bracketMatching(),
       syntaxHighlighting(lereSachHighlight),
       Prec.high(
@@ -166,7 +176,16 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager, awareness])
+  }, [yText, undoManager, awareness, variant, renderers])
 
+  if (variant === 'live') {
+    return (
+      <div className="editor-live-pane">
+        <div className="editor-live-sheet">
+          <div ref={containerRef} className={['editor-live', className].filter(Boolean).join(' ')} />
+        </div>
+      </div>
+    )
+  }
   return <div ref={containerRef} className={className} style={{ height: '100%', minHeight: 0 }} />
 }
