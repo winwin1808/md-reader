@@ -149,6 +149,6 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9b3: done
 - 9b4: done
 - 9c1: done
-- 9d1: planned
+- 9d1: done
 - 9e: pending
 - 9f: pending
