@@ -5,6 +5,7 @@ import type { Root } from 'react-dom/client'
 import { MermaidBlock } from './components/MermaidBlock'
 import { useResolvedTheme } from './theme/ThemeProvider'
 import { ExcalidrawBlock } from './components/ExcalidrawBlock'
+import { useT } from './i18n'
 import './viewer.css'
 
 export type ImageResolver = (src: string) => string | Promise<string>
@@ -43,6 +44,8 @@ function findAnchor(container: HTMLElement, raw: string): Element | null {
 }
 
 export function Viewer(props: ViewerProps): React.JSX.Element {
+  const tRef = useRef(useT())
+  tRef.current = useT()
   const { html, className = '', onActiveHeadingChange, isAppPage = true, mermaid = true, resolveImage } = props
   const containerRef = useRef<HTMLDivElement>(null)
   
@@ -209,6 +212,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
     const container = containerRef.current
     if (!container) return
 
+    const t = tRef.current
     const pres = container.querySelectorAll('pre')
     const timeouts: ReturnType<typeof setTimeout>[] = []
 
@@ -239,7 +243,7 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       header.className = 'code-block-header md-no-print'
       const copyIcon = iconSvg('copy', 16)
       const copyLabel = (text: string) => `${copyIcon}<span>${text}</span>`
-      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" aria-label="Sao chép mã">${copyLabel('Sao chép')}</button>`
+      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" aria-label="${t('settings.code.copyAria')}">${copyLabel(t('common.copy'))}</button>`
 
       const copyBtn = header.querySelector<HTMLButtonElement>('.code-copy-btn')
       if (copyBtn) {
@@ -249,13 +253,13 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
           try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
               await navigator.clipboard.writeText(codeText)
-              copyBtn.innerHTML = copyLabel('Đã chép')
+              copyBtn.innerHTML = copyLabel(t('common.copied'))
               copyBtn.classList.add('copied')
               if (timeoutId) {
                 clearTimeout(timeoutId)
               }
               timeoutId = setTimeout(() => {
-                copyBtn.innerHTML = copyLabel('Sao chép')
+                copyBtn.innerHTML = copyLabel(t('common.copy'))
                 copyBtn.classList.remove('copied')
                 timeoutId = null
               }, 1500)

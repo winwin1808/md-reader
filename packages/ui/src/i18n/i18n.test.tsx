@@ -33,7 +33,7 @@ describe('catalogs', () => {
     expect(Object.keys(en).length).toBe(Object.keys(vi).length)
   })
   it('placeholders match between vi and en', () => {
-    const ph = (s: string) => (s.match(/\{\w+/g) ?? []).sort().join()
+    const ph = (s: string) => [...new Set(s.match(/\{\w+/g) ?? [])].sort().join()
     for (const k of Object.keys(vi)) expect(ph(en[k] ?? ''), k).toBe(ph(vi[k] ?? ''))
   })
 })

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { useT } from '../i18n'
 
 export interface ExcalidrawBlockProps {
   data: string // JSON string of Excalidraw scene ({ elements: [...] })
@@ -78,6 +79,7 @@ function parseExcalidrawElements(data: string): ExcalidrawElement[] | null {
 export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element {
   const { data, title, isAppPage } = props
   const svgRef = useRef<SVGSVGElement>(null)
+  const t = useT()
   const [copied, setCopied] = useState(false)
 
   if (isAppPage === false) {
@@ -85,9 +87,9 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
       <div className="excalidraw-placeholder-card">
         <span className="excalidraw-placeholder-icon">🎨</span>
         <div className="excalidraw-placeholder-body">
-          <div className="excalidraw-placeholder-title">Sơ đồ Excalidraw</div>
+          <div className="excalidraw-placeholder-title">{t('settings.excalidraw.title')}</div>
           <div className="excalidraw-placeholder-hint">
-            Nhấn để mở trong MD Reader để xem và tương tác đầy đủ
+            {t('settings.excalidraw.hint')}
           </div>
         </div>
       </div>
@@ -99,7 +101,7 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
     return (
       <div className="excalidraw-container excalidraw-error-card">
         <span className="excalidraw-error-icon">⚠️</span>
-        <span className="excalidraw-error-text">Không thể đọc dữ liệu Excalidraw</span>
+        <span className="excalidraw-error-text">{t('settings.excalidraw.error')}</span>
       </div>
     )
   }
@@ -109,7 +111,7 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
     return (
       <div className="excalidraw-container excalidraw-error-card">
         <span className="excalidraw-error-icon">⚠️</span>
-        <span className="excalidraw-error-text">Không thể đọc dữ liệu Excalidraw</span>
+        <span className="excalidraw-error-text">{t('settings.excalidraw.error')}</span>
       </div>
     )
   }
@@ -158,7 +160,7 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
     return (
       <div className="excalidraw-container excalidraw-error-card">
         <span className="excalidraw-error-icon">⚠️</span>
-        <span className="excalidraw-error-text">Không thể đọc dữ liệu Excalidraw</span>
+        <span className="excalidraw-error-text">{t('settings.excalidraw.error')}</span>
       </div>
     )
   }
@@ -204,20 +206,20 @@ export function ExcalidrawBlock(props: ExcalidrawBlockProps): React.JSX.Element 
         <button
           type="button"
           className="excalidraw-btn excalidraw-copy-btn"
-          title="Sao chép SVG"
-          aria-label="Sao chép SVG"
+          title={t('settings.excalidraw.copySvg')}
+          aria-label={t('settings.excalidraw.copySvg')}
           onClick={handleCopySvg}
         >
-          {copied ? 'Đã chép ✓' : 'Sao chép SVG'}
+          {copied ? `${t('common.copied')} ✓` : t('settings.excalidraw.copySvg')}
         </button>
         <button
           type="button"
           className="excalidraw-btn excalidraw-download-btn"
-          title="Tải SVG"
-          aria-label="Tải SVG"
+          title={t('settings.excalidraw.downloadSvg')}
+          aria-label={t('settings.excalidraw.downloadSvg')}
           onClick={handleDownloadSvg}
         >
-          Tải SVG
+          {t('settings.excalidraw.downloadSvg')}
         </button>
       </div>
 

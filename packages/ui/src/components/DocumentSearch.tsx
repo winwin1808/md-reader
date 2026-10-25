@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useT } from '../i18n'
 import { Icon } from './Icon'
 
 export interface DocumentSearchProps {
@@ -89,6 +90,7 @@ function highlightText(container: HTMLElement, query: string): HTMLElement[] {
 export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | null {
   const { isOpen, onClose, containerRef } = props
 
+  const t = useT()
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(-1)
   const [matchCount, setMatchCount] = useState(0)
@@ -195,7 +197,7 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
   const countDisplay = query.trim()
     ? matchCount > 0
       ? `${activeIndex + 1} / ${matchCount}`
-      : 'Không thấy'
+      : t('settings.search.none')
     : ''
 
   const btnStyle: React.CSSProperties = {
@@ -235,8 +237,8 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
         ref={inputRef}
         autoFocus
         type="text"
-        placeholder="Tìm trong tài liệu"
-        aria-label="Tìm trong tài liệu"
+        placeholder={t('settings.search.placeholder')}
+        aria-label={t('settings.search.placeholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -263,15 +265,15 @@ export function DocumentSearch(props: DocumentSearchProps): React.JSX.Element | 
         {countDisplay}
       </span>
 
-      <button type="button" aria-label="Trước" title="Trước (Shift+Enter)" onClick={handlePrev} style={btnStyle}>
+      <button type="button" aria-label={t('common.prev')} title={t('settings.search.prevTitle')} onClick={handlePrev} style={btnStyle}>
         <Icon name="chevron-left" size={16} />
       </button>
 
-      <button type="button" aria-label="Sau" title="Sau (Enter)" onClick={handleNext} style={btnStyle}>
+      <button type="button" aria-label={t('common.next')} title={t('settings.search.nextTitle')} onClick={handleNext} style={btnStyle}>
         <Icon name="chevron-right" size={16} />
       </button>
 
-      <button type="button" aria-label="Đóng" title="Đóng (Esc)" onClick={onClose} style={btnStyle}>
+      <button type="button" aria-label={t('common.close')} title={t('settings.search.closeTitle')} onClick={onClose} style={btnStyle}>
         <Icon name="close" size={16} />
       </button>
     </div>

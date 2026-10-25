@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { useT, useLocale } from '../i18n'
 
 export interface WordCountBarProps {
   text: string
@@ -13,6 +14,8 @@ export function WordCountBar({
   autoHide = false,
   className,
 }: WordCountBarProps): React.JSX.Element | null {
+  const t = useT()
+  const locale = useLocale()
   const [isHidden, setIsHidden] = useState(false)
 
   const { words, readingTime } = useMemo(() => {
@@ -57,7 +60,7 @@ export function WordCountBar({
     .filter(Boolean)
     .join(' ')
 
-  const formattedText = `${new Intl.NumberFormat('vi-VN').format(words)} từ · ${readingTime} phút đọc`
+  const formattedText = t('settings.wordcount', { words: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN').format(words), minutes: readingTime })
 
   return (
     <div

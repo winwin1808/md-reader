@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n'
 
 export type ExportFormat = 'html' | 'pdf' | 'docx' | 'slides-pdf'
 
@@ -15,16 +17,16 @@ export interface ExportModalProps {
 interface FormatOption {
   format: ExportFormat
   icon: IconName
-  title: string
-  description: string
-  working: string
+  title: MessageKey
+  description: MessageKey
+  working: MessageKey
 }
 
 const FORMAT_OPTIONS: FormatOption[] = [
-  { format: 'html', icon: 'export', title: 'Trang web (.html)', description: 'Một file mở được không cần mạng.', working: 'Đang tạo trang web…' },
-  { format: 'pdf', icon: 'book', title: 'PDF để in', description: 'Mở hộp thoại in của trình duyệt.', working: 'Đang chuẩn bị bản in…' },
-  { format: 'docx', icon: 'edit', title: 'Word (.docx)', description: 'Sửa tiếp được trong Word hoặc Google Docs.', working: 'Đang tạo file Word…' },
-  { format: 'slides-pdf', icon: 'present', title: 'PDF trình chiếu', description: 'Mỗi trang chiếu một trang ngang.', working: 'Đang chuẩn bị trang chiếu…' },
+  { format: 'html', icon: 'export', title: 'settings.export.html.title', description: 'settings.export.html.desc', working: 'settings.export.html.working' },
+  { format: 'pdf', icon: 'book', title: 'settings.export.pdf.title', description: 'settings.export.pdf.desc', working: 'settings.export.pdf.working' },
+  { format: 'docx', icon: 'edit', title: 'settings.export.docx.title', description: 'settings.export.docx.desc', working: 'settings.export.docx.working' },
+  { format: 'slides-pdf', icon: 'present', title: 'settings.export.slidespdf.title', description: 'settings.export.slidespdf.desc', working: 'settings.export.slidespdf.working' },
 ]
 
 function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
@@ -49,6 +51,7 @@ function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) 
 }
 
 export function ExportModal(props: ExportModalProps): React.JSX.Element {
+  const t = useT()
   const { onExport, hasSlides } = props
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange)
   const [working, setWorking] = useState<ExportFormat | null>(null)
@@ -147,11 +150,11 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                   color: 'var(--ink)',
                 }}
               >
-                Xuất tài liệu
+                {t('settings.export.title')}
               </h2>
               <button
                 type="button"
-                aria-label="Đóng"
+                aria-label={t('common.close')}
                 disabled={working !== null}
                 onClick={requestClose}
                 style={{
@@ -203,10 +206,10 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                     <Icon name={opt.icon} size={20} />
                     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                       <span style={{ fontSize: '14px', fontWeight: 600, marginBottom: '3px' }}>
-                        {isWorking ? opt.working : opt.title}
+                        {isWorking ? t(opt.working) : t(opt.title)}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--pencil)', lineHeight: 1.4 }}>
-                        {opt.description}
+                        {t(opt.description)}
                       </span>
                     </span>
                   </button>
@@ -218,7 +221,7 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
               <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--ink)' }}>
                 <span>{error.message}</span>{' '}
                 <button type="button" onClick={() => { void run(error.format) }}>
-                  Thử lại
+                  {t('common.retry')}
                 </button>
               </div>
             )}
@@ -230,8 +233,8 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
     <>
       {props.open === undefined && <button
         type="button"
-        title="Xuất tài liệu"
-        aria-label="Xuất tài liệu"
+        title={t('settings.export.title')}
+        aria-label={t('settings.export.title')}
         onClick={() => setIsOpen(true)}
         style={{
           width: '38px',

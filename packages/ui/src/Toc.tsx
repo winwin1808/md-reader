@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { useT } from './i18n'
 import type { TocEntry } from '@md-reader/core'
 
 export interface TocProps {
@@ -71,6 +72,7 @@ function buildTree(entries: TocEntry[]): TocNode[] {
 export function Toc(props: TocProps): React.JSX.Element | null {
   const { entries, activeId, onSelect, onNavigate } = props
   const navRef = useRef<HTMLElement>(null)
+  const t = useT()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   const toggleCollapse = (slug: string) => {
@@ -113,7 +115,7 @@ export function Toc(props: TocProps): React.JSX.Element | null {
               <button
                 type="button"
                 className="toc-collapse-btn"
-                aria-label={`Thu gọn hoặc mở rộng ${entry.text}`}
+                aria-label={t('settings.toc.toggle', { name: entry.text })}
                 aria-expanded={!isCollapsed}
                 onClick={() => toggleCollapse(entry.slug)}
                 style={{
@@ -163,7 +165,7 @@ export function Toc(props: TocProps): React.JSX.Element | null {
 
   return (
     <nav className="md-toc" ref={navRef}>
-      <h2 className="sr-only">Mục lục</h2>
+      <h2 className="sr-only">{t('settings.toc.title')}</h2>
       <ul>
         {renderEntries(tree)}
       </ul>

@@ -1,5 +1,7 @@
 import React, { useRef } from 'react'
 import { Icon } from './Icon'
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n'
 import type { Contrast, ThemeMode } from '../theme/ThemeProvider'
 
 export interface PalettePickerProps {
@@ -9,10 +11,10 @@ export interface PalettePickerProps {
   onContrastChange(c: Contrast): void
 }
 
-const OPTIONS: { key: ThemeMode; label: string }[] = [
-  { key: 'light', label: 'Giấy' },
-  { key: 'dark', label: 'Than chì' },
-  { key: 'system', label: 'Theo hệ thống' },
+const OPTIONS: { key: ThemeMode; label: MessageKey }[] = [
+  { key: 'light', label: 'settings.theme.paper' as const },
+  { key: 'dark', label: 'settings.theme.graphite' as const },
+  { key: 'system', label: 'settings.theme.system' as const },
 ]
 
 // Literal values depict OTHER palettes; allowed only in preview swatches.
@@ -54,6 +56,7 @@ function Preview(props: { kind: ThemeMode }): React.JSX.Element {
 
 export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
   const { mode, contrast, onModeChange, onContrastChange } = props
+  const t = useT()
   const refs = useRef<Record<string, HTMLButtonElement | null>>({})
   const keyHandled = useRef(false)
   const idx = Math.max(0, OPTIONS.findIndex((o) => o.key === mode))
@@ -74,7 +77,7 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
 
   return (
     <div className="palette-picker">
-      <div role="radiogroup" aria-label="Bảng màu" style={{ display: 'flex', gap: 'var(--space-3, 12px)', flexWrap: 'wrap' }}>
+      <div role="radiogroup" aria-label={t('settings.theme.group')} style={{ display: 'flex', gap: 'var(--space-3, 12px)', flexWrap: 'wrap' }}>
         {OPTIONS.map((o, i) => {
           const selected = o.key === mode
           return (
@@ -112,7 +115,7 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
                 </span>
               )}
               <Preview kind={o.key} />
-              <span>{o.label}</span>
+              <span>{t(o.label)}</span>
             </button>
           )
         })}
@@ -155,7 +158,7 @@ export function PalettePicker(props: PalettePickerProps): React.JSX.Element {
             }}
           />
         </span>
-        Tăng tương phản
+        {t('settings.theme.contrast')}
       </button>
     </div>
   )
