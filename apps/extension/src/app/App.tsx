@@ -629,6 +629,7 @@ export function App(): React.JSX.Element {
             onEnable={async () => { await share.enable() }}
             onCreateLink={share.createLink}
             onRevoke={share.revoke}
+            onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl, t)}
             busy={share.busy}
