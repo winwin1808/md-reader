@@ -1,0 +1,35 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Tag must match extension version
+        run: |
+          V=$(node -p "require('./apps/extension/package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${V}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} != v${V} (apps/extension/package.json)"; exit 1
+          fi
+          echo "VERSION=${V}" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @md-reader/extension package
+      - run: pnpm --filter @md-reader/extension package:firefox
+      - name: Draft release (Edge uses the Chrome zip)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --draft --generate-notes --title "MD Reader ${GITHUB_REF_NAME}" \
+            "docs/store/md-reader-${VERSION}.zip#md-reader-${VERSION}-chrome-edge.zip" \
+            "docs/store/md-reader-${VERSION}-firefox.zip"
