@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-libra
 import * as Y from 'yjs'
 import { createDoc } from '@md-reader/core'
 import { EditorView } from '@codemirror/view'
-import { EditPage } from './EditPage'
+import { EditPage, uploadImage } from './EditPage'
 import { SharePage } from './SharePage'
 import type { SyncStatus, BindRoomOptions } from './collab'
 
@@ -263,5 +263,19 @@ describe('EditPage', () => {
     render(<SharePage token={TOKEN} load={async () => ({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '# Hi' }) as never} />)
     await waitFor(() => expect(screen.getByText('T')).toBeTruthy())
     expect(screen.queryByRole('radio')).toBeNull()
+  })
+})
+
+describe('uploadImage (web)', () => {
+  it('posts with the link token as Bearer and maps 413', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ id: 'x', url: 'https://s/api/a/x', size: 1, mime: 'image/png' }), { status: 201 }))
+    vi.stubGlobal('fetch', f)
+    const file = new File([new Uint8Array([1])], 'a.png', { type: 'image/png' })
+    expect((await uploadImage('https://s', 'room-1', 'LINKTOK', file)).url).toBe('https://s/api/a/x')
+    const init = (f.mock.calls[0] as unknown as [string, RequestInit])[1]
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer LINKTOK' })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"too_large"}', { status: 413 })))
+    await expect(uploadImage('https://s', 'room-1', 't', file)).rejects.toThrow('Ảnh quá 2 MB.')
+    vi.unstubAllGlobals()
   })
 })
