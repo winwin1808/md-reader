@@ -227,3 +227,17 @@ describe('iconSvg / no react-dom/server', () => {
     expect(fs.readFileSync(path.resolve(__dirname, 'theme', 'typography.css'), 'utf-8')).toContain('@container sheet (min-width: 49rem)')
   })
 })
+
+describe('Viewer resolveImage', () => {
+  it('rewrites relative img src, leaves absolute alone, marks failures', async () => {
+    const html = '<img src="./a.png" alt="a"><img src="https://x.test/b.png" alt="b"><img src="bad.png" alt="c">'
+    const resolve = (s: string) => (s === 'bad.png' ? Promise.reject(new Error('no')) : 'blob:' + s)
+    const { container } = render(<Viewer html={html} resolveImage={resolve} />)
+    await act(async () => { await Promise.resolve(); await Promise.resolve() })
+    const imgs = container.querySelectorAll('img')
+    expect(imgs[0]!.getAttribute('src')).toBe('blob:./a.png')
+    expect(imgs[1]!.getAttribute('src')).toBe('https://x.test/b.png')
+    expect(imgs[2]!.classList.contains('img-broken')).toBe(true)
+    expect(imgs[2]!.getAttribute('alt')).toBe('c')
+  })
+})
