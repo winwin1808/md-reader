@@ -168,24 +168,25 @@ export function App(): React.JSX.Element {
   }, [session.docId])
   const allowImageDir = useCallback(async () => {
     try {
-      if (!session.docId) return
+      if (!session.docId) return null
       const fh = await getHandle(session.docId)
       const picker = (window as unknown as { showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
-      if (!fh || !picker) { setImageNotice('Trình duyệt không hỗ trợ chọn thư mục.'); return }
+      if (!fh || !picker) { setImageNotice('Trình duyệt không hỗ trợ chọn thư mục.'); return null }
       const dir = await picker({ startIn: fh, mode: 'readwrite' })
-      if (!(await dir.resolve(fh))) { setImageNotice('Thư mục đã chọn không chứa file này.'); return }
+      if (!(await dir.resolve(fh))) { setImageNotice('Thư mục đã chọn không chứa file này.'); return null }
       await storeDirHandle(session.docId, dir)
       setDirHandle(dir)
       setImageNotice(null)
-    } catch { /* cancelled */ }
+      return dir
+    } catch { return null /* cancelled */ }
   }, [session.docId])
   const resolveImage = useMemo(
     () => (dirHandle || imageOriginUrl ? createImageResolver({ url: imageOriginUrl ?? undefined, dirHandle }) : undefined),
     [imageOriginUrl, dirHandle],
   )
   const saveImage = useMemo(
-    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl, room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image' }),
-    [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title],
+    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl, room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir }),
+    [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title, session.record?.hasHandle, allowImageDir],
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)

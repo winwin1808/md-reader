@@ -1,6 +1,7 @@
 import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
 import { authorizeWs, handleApi, safeDecode } from './api.js'
+import { D1AssetStore } from './assets.js'
 import { D1TokenStore } from './tokens-d1.js'
 import type { TokenStore } from './tokens.js'
 
@@ -47,6 +48,7 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
     }
     try {
       return withCors((await handleApi(req, store, {
+        assets: new D1AssetStore(env.DB),
         snapshot: (roomId) =>
           deps.routeParty(
             new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
