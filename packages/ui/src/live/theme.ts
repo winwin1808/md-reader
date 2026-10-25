@@ -21,3 +21,18 @@ export const livePreviewTheme: Extension = EditorView.theme({
   '.cm-live-code': { fontFamily: 'var(--font-code)', backgroundColor: 'var(--surface)' },
   '.cm-live-link': { color: 'var(--accent)', textDecoration: 'underline' },
 });
+
+export const livePreviewWidgetTheme: Extension = EditorView.theme({
+  '.cm-live-hr': { border: 'none', borderTop: '1px solid var(--rule)', margin: '0.5em 0' },
+  '.cm-live-task': { accentColor: 'var(--accent)' },
+  '.cm-live-img': { maxWidth: '100%' },
+  '.cm-live-lang': { float: 'right', fontSize: '0.75em', color: 'var(--pencil)' },
+  '.cm-live-fence-close': { fontSize: '0', lineHeight: '0.5' },
+  '.cm-live-alert': { borderLeft: '3px solid var(--accent)', paddingLeft: '1em' },
+  '.cm-live-alert-title': { fontWeight: '600' },
+  '.cm-live-alert-note': { borderLeftColor: 'var(--accent)' },
+  '.cm-live-alert-tip': { borderLeftColor: 'var(--ok)' },
+  '.cm-live-alert-important': { borderLeftColor: 'var(--ink)' },
+  '.cm-live-alert-warning': { borderLeftColor: 'var(--hl)' },
+  '.cm-live-alert-caution': { borderLeftColor: 'var(--danger)' },
+});
