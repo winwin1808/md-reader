@@ -302,17 +302,13 @@ describe('TopToolbar ViewMode buttons', () => {
     )
 
     const readingBtn = screen.getByRole('radio', { name: 'Đọc' })
-    const editorBtn = screen.getByRole('radio', { name: 'Soạn' })
-    const splitBtn = screen.getByRole('radio', { name: 'Chia đôi' })
+    const editorBtn = screen.getByRole('radio', { name: 'Sửa' })
 
     expect(readingBtn.classList.contains('active')).toBe(true)
     expect(editorBtn.classList.contains('active')).toBe(false)
-    expect(splitBtn.classList.contains('active')).toBe(false)
 
     fireEvent.click(editorBtn)
-    expect(onViewModeChange).toHaveBeenCalledWith('editor')
-
-    fireEvent.click(splitBtn)
-    expect(onViewModeChange).toHaveBeenCalledWith('split')
+    expect(onViewModeChange).toHaveBeenCalledWith('live')
+    expect(screen.queryByRole('radio', { name: 'Chia đôi' })).toBeNull()
   })
 })

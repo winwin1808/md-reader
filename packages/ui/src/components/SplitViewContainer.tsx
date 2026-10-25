@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useCallback } from 'react'
 
-export type ViewMode = 'reading' | 'editor' | 'split'
+export type ViewMode = 'reading' | 'live'
+export type ContainerMode = ViewMode | 'editor' | 'split'
 
 export interface SplitViewContainerProps {
-  mode: ViewMode
+  mode: ContainerMode
   editor: React.ReactNode
   preview: React.ReactNode
   onSyncScroll?: (source: 'editor' | 'preview', ratio: number) => void
@@ -80,7 +81,7 @@ export function SplitViewContainer(props: SplitViewContainerProps): React.JSX.El
 
   return (
     <div className={containerClassName} data-testid="split-view-container">
-      {(props.mode === 'editor' || props.mode === 'split') && (
+      {(props.mode === 'editor' || props.mode === 'live' || props.mode === 'split') && (
         <div
           ref={editorPaneRef}
           className="split-view-pane split-view-pane-editor"

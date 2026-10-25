@@ -139,6 +139,8 @@ type `**x**` elsewhere → asterisks hidden off-cursor, saved source contains `*
 ### 9f — ship kit
 FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/store/listing.md` (mention Soạn trên trang).
 
+**Change 2026-10-25 (user):** extension has only two modes — Đọc · Sửa (live). Mã nguồn and Chia đôi are removed.
+
 ## Sub-phase queue
 - 9a1: done
 - 9a2: done
@@ -146,7 +148,7 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9b2: done
 - 9b3: done
 - 9b4: done
-- 9c1: pending
+- 9c1: planned
 - 9d1: pending
 - 9e: pending
 - 9f: pending
