@@ -1,5 +1,7 @@
 # Lộ trình MD Reader
 
+[English](ROADMAP.en.md) · **Tiếng Việt**
+
 Đây là kế hoạch, không phải cam kết ngày giao. Thứ tự và phạm vi có thể đổi theo phản hồi. Ký hiệu: `[x]` xong, `[ ]` chưa làm.
 
 ## Đã xong (phase 1 đến 9, phiên bản 1.2.0)
