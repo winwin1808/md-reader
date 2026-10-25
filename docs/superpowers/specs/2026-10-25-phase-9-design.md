@@ -155,6 +155,6 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9g1: done
 - 9g2: done
 - 9h1: done      (relative images resolve against the document origin; dir permission for opened files)
-- 9h2: planned      (api: D1 assets + asset_chunks (1 MB chunks), POST /api/rooms/:room/assets edit/owner only, GET /api/a/:id, png/jpeg/gif/webp, ≤2 MiB, 50 MB/room)
+- 9h2: done      (api: D1 assets + asset_chunks (1 MB chunks), POST /api/rooms/:room/assets edit/owner only, GET /api/a/:id, png/jpeg/gif/webp, ≤2 MiB, 50 MB/room)
 - 9h3: pending      (paste/drop: shared → D1 upload; unshared + dir access → assets/; else data:; privacy policy line)
 - 9h4: pending      (deploy worker + D1 migration + smoke upload/read)
