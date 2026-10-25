@@ -43,4 +43,9 @@ export const livePreviewBlockTheme: Extension = EditorView.theme({
   '.cm-live-block th, .cm-live-block td': { border: '1px solid var(--rule)', padding: '0.4em 0.7em', textAlign: 'left' },
   '.cm-live-block th': { backgroundColor: 'var(--surface)' },
   '.cm-live-block pre': { fontFamily: 'var(--font-code)', backgroundColor: 'var(--surface)', padding: '0.7em' },
+  '.cm-live-grid': { width: '100%', borderCollapse: 'collapse' },
+  '.cm-live-block .cm-live-grid th, .cm-live-block .cm-live-grid td': { border: '1px solid var(--rule)', padding: '0', textAlign: 'left', minWidth: '3ch' },
+  '.cm-live-grid th': { backgroundColor: 'var(--surface)', fontWeight: '600' },
+  '.cm-live-grid-cell': { padding: '0.4em 0.7em', minWidth: '3ch', minHeight: '1.4em', outline: 'none', whiteSpace: 'pre-wrap' },
+  '.cm-live-grid-cell:focus': { outline: '2px solid var(--accent)', outlineOffset: '-2px' },
 });
