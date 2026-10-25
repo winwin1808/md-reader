@@ -43,3 +43,5 @@ export * from './components/presence'
 export * from './components/blame'
 export * from './components/HistoryTimeline'
 export type { HistoryTimelineProps } from './components/HistoryTimeline'
+
+export * from './i18n'
