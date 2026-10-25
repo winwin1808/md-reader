@@ -19,3 +19,4 @@ spike/
 docs/store/*.zip
 .wrangler/
 .wrangler-e2e/
+apps/extension/.env.local

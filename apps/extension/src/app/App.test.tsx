@@ -1575,8 +1575,9 @@ describe('App', () => {
 
   it('Chia sẻ mở ShareModal, bật chia sẻ rồi hiện form Tạo link', async () => {
     docOverride.shareDoc = true
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+    const fetchMock = vi.fn().mockImplementation(async (u: string) => ({ ok: true, status: 200, json: async () => (u.endsWith('/api/rooms') ? { roomId: 'r1', ownerToken: 'tok' } : []) }))
     vi.stubGlobal('fetch', fetchMock)
+    ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, serverUrl: 'https://example.workers.dev' })
     try {
       await act(async () => { render(<App />) })
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
@@ -1608,9 +1609,20 @@ describe('App', () => {
       const f = await enableShare({ serverUrl: 'https://own.example' })
       expect(f.mock.calls[0]![0]).toBe('https://own.example/api/rooms')
     })
-    it('serverUrl không hợp lệ rơi về mặc định', async () => {
-      const f = await enableShare({ serverUrl: 'http://bad.example' })
-      expect(f.mock.calls[0]![0]).toBe(DEFAULT_SERVER_URL + '/api/rooms')
+    it('serverUrl không hợp lệ rơi về mặc định (không có mặc định thì hiện hướng dẫn dựng máy chủ)', async () => {
+      docOverride.shareDoc = true
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ roomId: 'r1', ownerToken: 'tok' }) })
+      vi.stubGlobal('fetch', fetchMock)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, serverUrl: 'http://bad.example' })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Chia sẻ' })) })
+      if (DEFAULT_SERVER_URL === '') {
+        expect(screen.getByText('Cần máy chủ đồng bộ')).toBeDefined()
+        expect(fetchMock).not.toHaveBeenCalled()
+      } else {
+        await act(async () => { fireEvent.click(screen.getByText('Bật chia sẻ')) })
+        expect(fetchMock.mock.calls[0]![0]).toBe(DEFAULT_SERVER_URL + '/api/rooms')
+      }
     })
     it('displayName được cắt khoảng trắng', async () => {
       ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, displayName: '  Lan ' })

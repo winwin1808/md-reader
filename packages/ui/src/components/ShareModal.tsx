@@ -19,6 +19,9 @@ export interface ShareModalProps {
   buildUrl(token: string): string
   busy?: boolean
   error?: string | null
+  server?: { state: 'missing' | 'unreachable' | 'not-md-reader'; url?: string }
+  onSaveServer?(url: string): void
+  guideUrl?: string
 }
 
 export function formatRemaining(expiresAt: number | null, now: number): string {
@@ -32,7 +35,8 @@ export function formatRemaining(expiresAt: number | null, now: number): string {
 type Expiry = '7d' | '30d' | 'never'
 
 export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
-  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, now = Date.now, buildUrl, busy, error } = props
+  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, now = Date.now, buildUrl, busy, error, server, onSaveServer, guideUrl } = props
+  const [serverInput, setServerInput] = useState(server?.url ?? '')
   const titleId = useId()
   const [copied, setCopied] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -124,18 +128,43 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     }
   }
 
+  const needsSetup = !!server
+  const stateMsg = server?.state === 'unreachable' ? 'Không kết nối được máy chủ này.'
+    : server?.state === 'not-md-reader' ? 'Địa chỉ này không phải máy chủ MD Reader.' : null
+  const cmd = 'pnpm --filter @md-reader/api exec wrangler login, rồi pnpm deploy:api'
+
+  const setupPanel = (
+    <div>
+      <p className="share-sub">Đọc, sửa, lưu và xuất chạy hoàn toàn trên máy. Chia sẻ và cùng sửa cần một máy chủ đồng bộ của riêng bạn — dựng miễn phí trên Cloudflare trong khoảng 5 phút.</p>
+      <ol className="share-steps" style={{ paddingLeft: 18, margin: '8px 0' }}>
+        <li>Tạo tài khoản Cloudflare miễn phí</li>
+        <li>Trong thư mục md-reader chạy: <code>{cmd}</code>{' '}
+          <button type="button" className="share-icon-btn" aria-label="Sao chép lệnh" title="Sao chép lệnh"
+            onClick={() => { void navigator.clipboard?.writeText(cmd).catch(() => {}) }}><Icon name="copy" size={16} /></button>
+        </li>
+        <li>Dán địa chỉ …workers.dev vào ô dưới</li>
+      </ol>
+      <div className="share-label-row">
+        <input type="text" aria-label="Địa chỉ máy chủ" placeholder="https://md-reader-api.<tên-của-bạn>.workers.dev" value={serverInput} onChange={(e) => setServerInput(e.target.value)} />
+        <button type="button" className="share-btn is-primary" onClick={() => onSaveServer?.(serverInput.trim())}>Lưu và thử lại</button>
+      </div>
+      {stateMsg && <p role="status" className="share-sub">{stateMsg}</p>}
+      {guideUrl && <a href={guideUrl} target="_blank" rel="noopener noreferrer" className="share-text-btn">Xem hướng dẫn đầy đủ</a>}
+    </div>
+  )
+
   const content = (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={onClose} className="share-overlay">
       <div onClick={(e) => e.stopPropagation()} className="share-dialog">
         <div className="share-head">
-          <h2 id={titleId} className="share-title">Chia sẻ</h2>
+          <h2 id={titleId} className="share-title">{needsSetup ? 'Cần máy chủ đồng bộ' : 'Chia sẻ'}</h2>
           <button type="button" aria-label="Đóng" title="Đóng" onClick={onClose} className="share-icon-btn">
             <Icon name="close" size={16} />
           </button>
         </div>
-        <p className="share-sub">Ai có link đều mở được tài liệu này.</p>
+        {!needsSetup && <p className="share-sub">Ai có link đều mở được tài liệu này.</p>}
 
-        {binding === null ? (
+        {needsSetup ? setupPanel : binding === null ? (
           <div>
             <p className="share-sub">Tài liệu sẽ được tải lên máy chủ đồng bộ. Chỉ người có link mới xem được.</p>
             <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} className="share-btn is-primary">Bật chia sẻ</button>
