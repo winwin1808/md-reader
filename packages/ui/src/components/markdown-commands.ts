@@ -1,13 +1,14 @@
 import type { FormatAction } from './FormattingToolbar'
-
-const TABLE_TEMPLATE = '\n| Cột 1 | Cột 2 | Cột 3 |\n| --- | --- | --- |\n| Ô 1 | Ô 2 | Ô 3 |\n'
+import { createT, type TFunction } from '../i18n'
 
 export function applyFormat(
   text: string,
   selectionStart: number,
   selectionEnd: number,
-  action: FormatAction
+  action: FormatAction,
+  t: TFunction = createT('vi')
 ): { newText: string; newSelectionStart: number; newSelectionEnd: number } {
+  const TABLE_TEMPLATE = t('format.tableTemplate')
   const before = text.slice(0, selectionStart)
   const selected = text.slice(selectionStart, selectionEnd)
   const after = text.slice(selectionEnd)

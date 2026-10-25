@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef } from 'react'
 import { computeLineDiff } from '@md-reader/core'
 import { Icon } from './Icon'
+import { useT } from '../i18n'
 import '../theme/conflict.css'
 
 export interface ConflictModalProps {
@@ -57,6 +58,7 @@ export function ConflictModal({
   onRevertToDisk,
   onClose,
 }: ConflictModalProps): React.JSX.Element | null {
+  const t = useT()
   const titleId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
@@ -135,7 +137,7 @@ export function ConflictModal({
           <span
             className="conflict-diff-counts"
             role="img"
-            aria-label={`${counts.added} dòng thêm, ${counts.removed} dòng bỏ`}
+            aria-label={t('conflict.counts', { added: counts.added, removed: counts.removed })}
           >{`+${counts.added} \u2212${counts.removed}`}</span>
         )}
       </div>
@@ -143,8 +145,8 @@ export function ConflictModal({
         {lines.map((line, idx) => (
           <div key={idx} className={`conflict-diff-line ${line.type}`}>
             <span className="conflict-diff-marker" aria-hidden="true">{marker(line.type)}</span>
-            {line.type === 'added' && <span className="conflict-sr">thêm</span>}
-            {line.type === 'removed' && <span className="conflict-sr">bỏ</span>}
+            {line.type === 'added' && <span className="conflict-sr">{t('conflict.srAdded')}</span>}
+            {line.type === 'removed' && <span className="conflict-sr">{t('conflict.srRemoved')}</span>}
             {line.num !== undefined && (
               <span className="conflict-diff-line-number">{line.num !== null ? line.num : ''}</span>
             )}
@@ -166,13 +168,13 @@ export function ConflictModal({
       <div className="conflict-modal-container" ref={containerRef} onKeyDown={handleTrap}>
         <div className="conflict-modal-header">
           <div className="conflict-modal-heading">
-            <h2 id={`${titleId}-title`}>Tài liệu đã đổi ở hai nơi</h2>
+            <h2 id={`${titleId}-title`}>{t('conflict.title')}</h2>
             <p className="conflict-modal-hint">
-              Bản trên đĩa khác với lần bạn mở. Chọn bản muốn giữ — không có gì bị ghi cho tới khi bạn chọn.
+              {t('conflict.hint')}
             </p>
             <span className="conflict-modal-filename">{fileName}</span>
           </div>
-          <button type="button" className="conflict-modal-close" aria-label="Đóng" onClick={onClose}>
+          <button type="button" className="conflict-modal-close" aria-label={t('conflict.close')} onClick={onClose}>
             <Icon name="close" />
           </button>
         </div>
@@ -180,31 +182,31 @@ export function ConflictModal({
         <div className="conflict-modal-body">
           {threeWay ? (
             <>
-              {renderUnified('disk', 'Bản trên đĩa', threeWay.disk)}
-              {renderUnified('mine', 'Bản của bạn', threeWay.mine)}
+              {renderUnified('disk', t('conflict.disk'), threeWay.disk)}
+              {renderUnified('mine', t('conflict.mine'), threeWay.mine)}
               {renderPane(
                 'base',
-                'Bản gốc chung',
+                t('conflict.base'),
                 (baseContent ?? '').split('\n').map((text) => ({ text, type: 'same' }))
               )}
             </>
           ) : (
             <>
-              {renderPane('disk', 'Bản trên đĩa', diskDiff)}
-              {renderPane('mine', 'Bản của bạn', localDiff)}
+              {renderPane('disk', t('conflict.disk'), diskDiff)}
+              {renderPane('mine', t('conflict.mine'), localDiff)}
             </>
           )}
         </div>
 
         <div className="conflict-modal-footer">
           <button type="button" className="conflict-btn conflict-btn-later" onClick={onClose}>
-            Để sau
+            {t('conflict.later')}
           </button>
           <button type="button" className="conflict-btn conflict-btn-revert" onClick={onRevertToDisk}>
-            Lấy bản trên đĩa
+            {t('conflict.revert')}
           </button>
           <button type="button" className="conflict-btn conflict-btn-keep" onClick={onKeepLocal}>
-            Giữ bản của tôi và ghi đè
+            {t('conflict.keep')}
           </button>
         </div>
       </div>

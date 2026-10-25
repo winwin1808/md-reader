@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, RoomBinding, ShareLink } from '@md-reader/core'
 import { Icon } from './Icon'
+import { createT, useT, type TFunction } from '../i18n'
 import '../theme/share.css'
 
 export interface ShareModalProps {
@@ -24,18 +25,19 @@ export interface ShareModalProps {
   guideUrl?: string
 }
 
-export function formatRemaining(expiresAt: number | null, now: number): string {
-  if (expiresAt === null) return 'Không hết hạn'
-  if (expiresAt <= now) return 'Đã hết hạn'
+export function formatRemaining(expiresAt: number | null, now: number, t: TFunction = createT('vi')): string {
+  if (expiresAt === null) return t('share.expiry.never')
+  if (expiresAt <= now) return t('share.expiry.expired')
   const left = expiresAt - now
-  if (left < 86_400_000) return 'còn dưới 1 ngày'
-  return `còn ${Math.ceil(left / 86_400_000)} ngày`
+  if (left < 86_400_000) return t('share.expiry.underDay')
+  return t('share.expiry.days', { n: Math.ceil(left / 86_400_000) })
 }
 
 type Expiry = '7d' | '30d' | 'never'
 
 export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, now = Date.now, buildUrl, busy, error, server, onSaveServer, guideUrl } = props
+  const t = useT()
   const [serverInput, setServerInput] = useState(server?.url ?? '')
   const titleId = useId()
   const [copied, setCopied] = useState(false)
@@ -107,7 +109,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     try {
       await fn()
     } catch (e) {
-      setLocalError(e instanceof Error && e.message ? e.message : 'Không thực hiện được')
+      setLocalError(e instanceof Error && e.message ? e.message : t('share.actionFailed'))
     }
   }
 
@@ -129,27 +131,27 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   }
 
   const needsSetup = !!server
-  const stateMsg = server?.state === 'unreachable' ? 'Không kết nối được máy chủ này.'
-    : server?.state === 'not-md-reader' ? 'Địa chỉ này không phải máy chủ MD Reader.' : null
-  const cmd = 'pnpm --filter @md-reader/api exec wrangler login, rồi pnpm deploy:api'
+  const stateMsg = server?.state === 'unreachable' ? t('share.unreachable')
+    : server?.state === 'not-md-reader' ? t('share.notServer') : null
+  const cmd = `pnpm --filter @md-reader/api exec wrangler login${t('share.setup.cmdSep')}pnpm deploy:api`
 
   const setupPanel = (
     <div>
-      <p className="share-sub">Đọc, sửa, lưu và xuất chạy hoàn toàn trên máy. Chia sẻ và cùng sửa cần một máy chủ đồng bộ của riêng bạn — dựng miễn phí trên Cloudflare trong khoảng 5 phút.</p>
+      <p className="share-sub">{t('share.setup.intro')}</p>
       <ol className="share-steps" style={{ paddingLeft: 18, margin: '8px 0' }}>
-        <li>Tạo tài khoản Cloudflare miễn phí</li>
-        <li>Trong thư mục md-reader chạy: <code>{cmd}</code>{' '}
-          <button type="button" className="share-icon-btn" aria-label="Sao chép lệnh" title="Sao chép lệnh"
+        <li>{t('share.setup.step1')}</li>
+        <li>{t('share.setup.step2')} <code>{cmd}</code>{' '}
+          <button type="button" className="share-icon-btn" aria-label={t('share.setup.copyCmd')} title={t('share.setup.copyCmd')}
             onClick={() => { void navigator.clipboard?.writeText(cmd).catch(() => {}) }}><Icon name="copy" size={16} /></button>
         </li>
-        <li>Dán địa chỉ …workers.dev vào ô dưới</li>
+        <li>{t('share.setup.step3')}</li>
       </ol>
       <div className="share-label-row">
-        <input type="text" aria-label="Địa chỉ máy chủ" placeholder="https://md-reader-api.<tên-của-bạn>.workers.dev" value={serverInput} onChange={(e) => setServerInput(e.target.value)} />
-        <button type="button" className="share-btn is-primary" onClick={() => onSaveServer?.(serverInput.trim())}>Lưu và thử lại</button>
+        <input type="text" aria-label={t('share.setup.serverAddr')} placeholder={t('share.setup.serverPlaceholder')} value={serverInput} onChange={(e) => setServerInput(e.target.value)} />
+        <button type="button" className="share-btn is-primary" onClick={() => onSaveServer?.(serverInput.trim())}>{t('share.setup.saveRetry')}</button>
       </div>
       {stateMsg && <p role="status" className="share-sub">{stateMsg}</p>}
-      {guideUrl && <a href={guideUrl} target="_blank" rel="noopener noreferrer" className="share-text-btn">Xem hướng dẫn đầy đủ</a>}
+      {guideUrl && <a href={guideUrl} target="_blank" rel="noopener noreferrer" className="share-text-btn">{t('share.setup.guide')}</a>}
     </div>
   )
 
@@ -157,17 +159,17 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={onClose} className="share-overlay">
       <div onClick={(e) => e.stopPropagation()} className="share-dialog">
         <div className="share-head">
-          <h2 id={titleId} className="share-title">{needsSetup ? 'Cần máy chủ đồng bộ' : 'Chia sẻ'}</h2>
-          <button type="button" aria-label="Đóng" title="Đóng" onClick={onClose} className="share-icon-btn">
+          <h2 id={titleId} className="share-title">{needsSetup ? t('share.title.setup') : t('share.title')}</h2>
+          <button type="button" aria-label={t('share.close')} title={t('share.close')} onClick={onClose} className="share-icon-btn">
             <Icon name="close" size={16} />
           </button>
         </div>
-        {!needsSetup && <p className="share-sub">Ai có link đều mở được tài liệu này.</p>}
+        {!needsSetup && <p className="share-sub">{t('share.anyoneWithLink')}</p>}
 
         {needsSetup ? setupPanel : binding === null ? (
           <div>
-            <p className="share-sub">Tài liệu sẽ được tải lên máy chủ đồng bộ. Chỉ người có link mới xem được.</p>
-            <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} className="share-btn is-primary">Bật chia sẻ</button>
+            <p className="share-sub">{t('share.enable.desc')}</p>
+            <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} className="share-btn is-primary">{t('share.enable')}</button>
           </div>
         ) : (
           <div>
@@ -184,66 +186,66 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
               }}
             >
               <div className="share-create">
-                <div className="share-seg" role="radiogroup" aria-label="Quyền" onKeyDown={onSeg}>
-                  <button type="button" role="radio" aria-checked={role === 'view'} tabIndex={role === 'view' ? 0 : -1} onClick={() => setRole('view')}>Xem</button>
-                  <button type="button" role="radio" aria-checked={role === 'edit'} tabIndex={role === 'edit' ? 0 : -1} onClick={() => setRole('edit')}>Sửa</button>
+                <div className="share-seg" role="radiogroup" aria-label={t('share.permission')} onKeyDown={onSeg}>
+                  <button type="button" role="radio" aria-checked={role === 'view'} tabIndex={role === 'view' ? 0 : -1} onClick={() => setRole('view')}>{t('share.role.view')}</button>
+                  <button type="button" role="radio" aria-checked={role === 'edit'} tabIndex={role === 'edit' ? 0 : -1} onClick={() => setRole('edit')}>{t('share.role.edit')}</button>
                 </div>
-                <select className="share-select" aria-label="Hết hạn" value={expiry} onChange={(e) => setExpiry(e.target.value as Expiry)}>
-                  <option value="7d">7 ngày</option>
-                  <option value="30d">30 ngày</option>
-                  <option value="never">Không hết hạn</option>
+                <select className="share-select" aria-label={t('share.expiresLabel')} value={expiry} onChange={(e) => setExpiry(e.target.value as Expiry)}>
+                  <option value="7d">{t('share.expiry.7d')}</option>
+                  <option value="30d">{t('share.expiry.30d')}</option>
+                  <option value="never">{t('share.expiry.never')}</option>
                 </select>
-                <button type="submit" disabled={busy} className="share-btn is-primary">Tạo link</button>
+                <button type="submit" disabled={busy} className="share-btn is-primary">{t('share.createLink')}</button>
               </div>
               {showLabel ? (
                 <div className="share-label-row">
-                  <input type="text" aria-label="Nhãn (tuỳ chọn)" placeholder="Nhãn (tuỳ chọn)" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} />
+                  <input type="text" aria-label={t('share.labelOptional')} placeholder={t('share.labelOptional')} maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} />
                 </div>
               ) : (
-                <button type="button" className="share-text-btn" style={{ marginTop: 6 }} onClick={() => setShowLabel(true)}>Thêm nhãn</button>
+                <button type="button" className="share-text-btn" style={{ marginTop: 6 }} onClick={() => setShowLabel(true)}>{t('share.addLabel')}</button>
               )}
             </form>
 
             {created && (
               <div className="share-created">
-                <span className="share-created-url" title={buildUrl(created.token)} aria-label="Link vừa tạo">{mid(buildUrl(created.token))}</span>
-                <button type="button" disabled={busy} className="share-btn is-primary" onClick={() => { void copy(created) }}>Sao chép</button>
+                <span className="share-created-url" title={buildUrl(created.token)} aria-label={t('share.justCreated')}>{mid(buildUrl(created.token))}</span>
+                <button type="button" disabled={busy} className="share-btn is-primary" onClick={() => { void copy(created) }}>{t('share.copy')}</button>
               </div>
             )}
 
             {active.length === 0 ? (
-              <p className="share-empty">Chưa có link nào. Tạo link xem để gửi cho người khác.</p>
+              <p className="share-empty">{t('share.empty')}</p>
             ) : (
               <ul className="share-list">
                 {active.map((l) => {
-                  const t = now()
+                  const nowMs = now()
                   return (
                     <li key={l.tokenPrefix} className="share-row">
-                      <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? 'Sửa' : 'Xem'}</span>
+                      <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? t('share.role.edit') : t('share.role.view')}</span>
                       <div className="share-row-main">
-                        <span className="share-row-name">{l.label || `Link ${l.tokenPrefix}`}</span>
-                        <span className="share-row-meta">{formatRemaining(l.expiresAt, t)}</span>
+                        <span className="share-row-name">{l.label || t('share.linkName', { prefix: l.tokenPrefix })}</span>
+                        <span className="share-row-meta">{formatRemaining(l.expiresAt, nowMs, t)}</span>
                       </div>
                       {confirming === l.tokenPrefix ? (
                         <span className="share-confirm">
-                          <span>Thu hồi?</span>
+                          <span>{t('share.revokeQ')}</span>
                           <button type="button" disabled={busy} className="share-text-btn is-danger"
-                            onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>Có</button>
-                          <button type="button" className="share-text-btn" onClick={() => setConfirming(null)}>Không</button>
+                            onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>{t('share.yes')}</button>
+                          <button type="button" className="share-text-btn" onClick={() => setConfirming(null)}>{t('share.no')}</button>
                         </span>
                       ) : (
                         <>
                           {l.token !== '' ? (
-                            <button type="button" disabled={busy} className="share-icon-btn" aria-label="Sao chép link" title="Sao chép link" onClick={() => { void copy(l) }}>
+                            <button type="button" disabled={busy} className="share-icon-btn" aria-label={t('share.copyLink')} title={t('share.copyLink')} onClick={() => { void copy(l) }}>
                               <Icon name="copy" size={16} />
                             </button>
                           ) : onRecreate ? (
-                            <button type="button" disabled={busy} className="share-icon-btn" aria-label="Tạo lại link"
-                              title="Link tạo trên máy khác — tạo link mới cùng quyền" onClick={() => { void run(() => onRecreate(l)) }}>
+                            <button type="button" disabled={busy} className="share-icon-btn" aria-label={t('share.recreate')}
+                              title={t('share.recreateTitle')} onClick={() => { void run(() => onRecreate(l)) }}>
                               <Icon name="refresh" size={16} />
                             </button>
                           ) : null}
-                          <button type="button" disabled={busy} className="share-icon-btn is-danger" aria-label="Thu hồi link" title="Thu hồi link" onClick={() => setConfirming(l.tokenPrefix)}>
+                          <button type="button" disabled={busy} className="share-icon-btn is-danger" aria-label={t('share.revokeLink')} title={t('share.revokeLink')} onClick={() => setConfirming(l.tokenPrefix)}>
                             <Icon name="trash" size={16} />
                           </button>
                         </>
@@ -258,16 +260,16 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
               <div className="share-disclosure">
                 <button type="button" aria-expanded={showOff} onClick={() => setShowOff((v) => !v)}>
                   <Icon name={showOff ? 'chevron-down' : 'chevron-right'} size={16} />
-                  Link đã tắt ({off.length})
+                  {t('share.offLinks', { count: off.length })}
                 </button>
                 {showOff && (
                   <ul className="share-list" style={{ marginTop: 4 }}>
                     {off.map((l) => (
                       <li key={l.tokenPrefix} className="share-row is-off">
-                        <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? 'Sửa' : 'Xem'}</span>
+                        <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? t('share.role.edit') : t('share.role.view')}</span>
                         <div className="share-row-main">
-                          <span className="share-row-name">{l.label || `Link ${l.tokenPrefix}`}</span>
-                          <span className="share-row-meta">{l.revokedAt !== null ? 'Đã thu hồi' : 'Hết hạn'}</span>
+                          <span className="share-row-name">{l.label || t('share.linkName', { prefix: l.tokenPrefix })}</span>
+                          <span className="share-row-meta">{l.revokedAt !== null ? t('share.revoked') : t('share.expired')}</span>
                         </div>
                       </li>
                     ))}
@@ -277,22 +279,22 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
             )}
 
             <div className="share-foot">
-              <span>{visible.length > 0 ? `Đang chia sẻ · ${visible.length} link hoạt động` : 'Chưa có link hoạt động'}</span>
+              <span>{visible.length > 0 ? t('share.sharingActive', { count: visible.length }) : t('share.noneActive')}</span>
               {onRevokeAll && visible.length > 0 && (
                 confirmAll ? (
                   <span className="share-confirm">
-                    <span>Thu hồi tất cả link?</span>
+                    <span>{t('share.revokeAllQ')}</span>
                     <button type="button" disabled={busy} className="share-text-btn is-danger"
-                      onClick={() => { setConfirmAll(false); void run(() => onRevokeAll()) }}>Có</button>
-                    <button type="button" className="share-text-btn" onClick={() => setConfirmAll(false)}>Không</button>
+                      onClick={() => { setConfirmAll(false); void run(() => onRevokeAll()) }}>{t('share.yes')}</button>
+                    <button type="button" className="share-text-btn" onClick={() => setConfirmAll(false)}>{t('share.no')}</button>
                   </span>
                 ) : (
-                  <button type="button" disabled={busy} className="share-text-btn is-danger" onClick={() => setConfirmAll(true)}>Tắt chia sẻ</button>
+                  <button type="button" disabled={busy} className="share-text-btn is-danger" onClick={() => setConfirmAll(true)}>{t('share.turnOff')}</button>
                 )
               )}
             </div>
-            <div role="status" aria-live="polite" className="share-toast">{copied ? 'Đã sao chép' : ''}</div>
-            {copyFailed && <p className="share-toast">Không sao chép được</p>}
+            <div role="status" aria-live="polite" className="share-toast">{copied ? t('share.copied') : ''}</div>
+            {copyFailed && <p className="share-toast">{t('share.copyFailed')}</p>}
           </div>
         )}
 

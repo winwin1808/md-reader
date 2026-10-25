@@ -2,6 +2,7 @@ import type { Extension } from '@codemirror/state'
 import { gutter, GutterMarker } from '@codemirror/view'
 import type { BlameRange } from '@md-reader/core'
 import { peerColor } from './PresenceBar'
+import { createT, type TFunction } from '../i18n'
 
 export interface LineAuthor { clientId: number; actor: string | null }
 
@@ -55,7 +56,7 @@ export function lineAuthors(ranges: BlameRange[], text: string): Array<LineAutho
 }
 
 class BlameMarker extends GutterMarker {
-  constructor(readonly author: LineAuthor) {
+  constructor(readonly author: LineAuthor, readonly t: TFunction = createT('vi')) {
     super()
   }
   eq(other: GutterMarker): boolean {
@@ -69,18 +70,18 @@ class BlameMarker extends GutterMarker {
     const el = document.createElement('span')
     el.className = 'cm-blame-mark'
     el.style.setProperty('--peer', peerColor(this.author.clientId))
-    el.setAttribute('title', this.author.actor ?? 'Không rõ')
+    el.setAttribute('title', this.author.actor ?? this.t('blame.unknown'))
     return el
   }
 }
 
-export function blameGutter(lines: Array<LineAuthor | null>): Extension {
+export function blameGutter(lines: Array<LineAuthor | null>, t: TFunction = createT('vi')): Extension {
   return gutter({
     class: 'cm-blame-gutter',
     lineMarker(view, line) {
       const n = view.state.doc.lineAt(line.from).number
       const a = lines[n - 1]
-      return a ? new BlameMarker(a) : null
+      return a ? new BlameMarker(a, t) : null
     },
   })
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { peerColor, type Peer } from './PresenceBar'
+import { createT, useT, type TFunction } from '../i18n'
 
 export interface AwarenessLike {
   clientID: number
@@ -8,12 +9,12 @@ export interface AwarenessLike {
   off(ev: 'change', cb: () => void): void
 }
 
-export function awarenessToPeers(states: Map<number, Record<string, unknown>>, selfId: number): Peer[] {
+export function awarenessToPeers(states: Map<number, Record<string, unknown>>, selfId: number, t: TFunction = createT('vi')): Peer[] {
   const out: Peer[] = []
   states.forEach((s, clientId) => {
     const user = s?.user
     if (!user || typeof user !== 'object') return
-    const name = String((user as { name?: unknown }).name ?? '').trim().slice(0, 40) || 'Ẩn danh'
+    const name = String((user as { name?: unknown }).name ?? '').trim().slice(0, 40) || t('presence.anon')
     out.push({ clientId, name, color: peerColor(clientId), isSelf: clientId === selfId })
   })
   return out
@@ -25,14 +26,15 @@ export function peerUser(clientId: number, name: string): { name: string; color:
 }
 
 export function usePeers(awareness: AwarenessLike | null | undefined): Peer[] {
+  const t = useT()
   const [peers, setPeers] = useState<Peer[]>(() =>
-    awareness ? awarenessToPeers(awareness.getStates(), awareness.clientID) : [])
+    awareness ? awarenessToPeers(awareness.getStates(), awareness.clientID, t) : [])
   useEffect(() => {
     if (!awareness) { setPeers([]); return }
-    const update = () => setPeers(awarenessToPeers(awareness.getStates(), awareness.clientID))
+    const update = () => setPeers(awarenessToPeers(awareness.getStates(), awareness.clientID, t))
     update()
     awareness.on('change', update)
     return () => awareness.off('change', update)
-  }, [awareness])
+  }, [awareness, t])
   return awareness ? peers : []
 }

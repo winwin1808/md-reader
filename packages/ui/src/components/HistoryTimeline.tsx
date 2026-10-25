@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, JSX } from 'react'
 import type { HistoryEntry } from '@md-reader/core'
+import { createT, useLocale, useT, type TFunction } from '../i18n'
 
 export interface HistoryTimelineProps {
   entries: HistoryEntry[]
@@ -13,17 +14,19 @@ export interface HistoryTimelineProps {
   now?: () => number
 }
 
-export function historyLabel(label: string): string {
-  if (label === 'save') return 'Đã lưu'
-  if (label === 'auto') return 'Tự động lưu mốc'
-  if (label === 'import') return 'Nhập'
-  if (label.startsWith('Khôi phục: ')) return 'Khôi phục: ' + historyLabel(label.slice('Khôi phục: '.length))
+export function historyLabel(label: string, t: TFunction = createT('vi')): string {
+  if (label === 'save') return t('history.save')
+  if (label === 'auto') return t('history.auto')
+  if (label === 'import') return t('history.import')
+  // stored data prefix (written in Vietnamese), displayed per locale
+  if (label.startsWith('Khôi phục: ')) return t('history.restored', { label: historyLabel(label.slice('Khôi phục: '.length), t) })
   return label
 }
 
-const fmt = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-
 export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
+  const t = useT()
+  const locale = useLocale()
+  const fmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }), [locale])
   const { entries, actors, previewId, onPreview, onRestore, onClose } = props
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -59,15 +62,15 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
   }, [])
 
   return (
-    <aside className="history-panel" aria-label="Lịch sử" onKeyDown={onKeyDown}>
+    <aside className="history-panel" aria-label={t('history.title')} onKeyDown={onKeyDown}>
       <header className="history-panel__head">
-        <h2>Lịch sử</h2>
-        <button type="button" ref={closeRef} aria-label="Đóng lịch sử" onClick={onClose}>×</button>
+        <h2>{t('history.title')}</h2>
+        <button type="button" ref={closeRef} aria-label={t('history.closeLabel')} onClick={onClose}>×</button>
       </header>
       {sorted.length === 0 ? (
-        <p>Chưa có mốc nào.</p>
+        <p>{t('history.empty')}</p>
       ) : (
-        <ul role="listbox" aria-label="Các mốc" ref={listRef}>
+        <ul role="listbox" aria-label={t('history.list')} ref={listRef}>
           {sorted.map((en) => {
             const others = Array.from(
               new Set(
@@ -77,28 +80,28 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
               ),
             )
             const noSnap = !en.snapshot
-            const title = noSnap ? 'Mốc này không có ảnh chụp' : undefined
+            const title = noSnap ? t('history.noSnapshot') : undefined
             const previewing = en.id === previewId
             return (
               <li key={en.id} role="option" aria-selected={previewing} tabIndex={0} className="history-row">
-                <div>{historyLabel(en.label)}</div>
+                <div>{historyLabel(en.label, t)}</div>
                 <div>{fmt.format(new Date(en.ts))}</div>
-                <div>bởi {en.actor}</div>
-                {others.length > 0 && <div>cùng {others.join(', ')}</div>}
+                <div>{t('history.by', { actor: en.actor })}</div>
+                {others.length > 0 && <div>{t('history.with', { names: others.join(', ') })}</div>}
                 {confirmId === en.id ? (
                   <div>
-                    <span>Khôi phục về mốc này?</span>
-                    <button type="button" onClick={() => { setConfirmId(null); onRestore(en.id) }}>Khôi phục</button>
-                    <button type="button" onClick={() => setConfirmId(null)}>Huỷ</button>
+                    <span>{t('history.restoreQ')}</span>
+                    <button type="button" onClick={() => { setConfirmId(null); onRestore(en.id) }}>{t('history.restore')}</button>
+                    <button type="button" onClick={() => setConfirmId(null)}>{t('history.cancel')}</button>
                   </div>
                 ) : (
                   <div>
                     <button type="button" disabled={noSnap} title={title}
                       onClick={() => onPreview(previewing ? null : en.id)}>
-                      {previewing ? 'Thoát xem' : 'Xem'}
+                      {previewing ? t('history.exitPreview') : t('history.preview')}
                     </button>
                     <button type="button" disabled={noSnap} title={title} onClick={() => setConfirmId(en.id)}>
-                      Khôi phục
+                      {t('history.restore')}
                     </button>
                   </div>
                 )}

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { Icon } from './Icon'
+import { useT, type MessageKey } from '../i18n'
 import '../theme/formatting-toolbar.css'
 
 export type FormatAction =
@@ -20,33 +21,33 @@ export interface FormattingToolbarProps {
 
 interface ActionButtonDef {
   action: FormatAction
-  title: string
+  title: MessageKey
   label: React.ReactNode
 }
 
 const ACTION_GROUPS: ActionButtonDef[][] = [
   [
-    { action: 'bold', title: 'Đậm (⌘B)', label: <strong>B</strong> },
-    { action: 'italic', title: 'Nghiêng (⌘I)', label: <em>I</em> },
-    { action: 'strike', title: 'Gạch ngang', label: <span style={{ textDecoration: 'line-through' }}>S</span> },
-    { action: 'code', title: 'Mã trong dòng', label: <span>`</span> },
-    { action: 'math', title: 'Công thức', label: <span>&Sigma;</span> },
+    { action: 'bold', title: 'format.bold', label: <strong>B</strong> },
+    { action: 'italic', title: 'format.italic', label: <em>I</em> },
+    { action: 'strike', title: 'format.strike', label: <span style={{ textDecoration: 'line-through' }}>S</span> },
+    { action: 'code', title: 'format.code', label: <span>`</span> },
+    { action: 'math', title: 'format.math', label: <span>&Sigma;</span> },
   ],
   [
-    { action: 'h1', title: 'Tiêu đề 1', label: <span>H1</span> },
-    { action: 'h2', title: 'Tiêu đề 2', label: <span>H2</span> },
-    { action: 'h3', title: 'Tiêu đề 3', label: <span>H3</span> },
+    { action: 'h1', title: 'format.h1', label: <span>H1</span> },
+    { action: 'h2', title: 'format.h2', label: <span>H2</span> },
+    { action: 'h3', title: 'format.h3', label: <span>H3</span> },
   ],
   [
-    { action: 'bullet', title: 'Danh sách', label: <Icon name="toc" size={16} /> },
-    { action: 'number', title: 'Danh sách số', label: <span>1.</span> },
-    { action: 'task', title: 'Danh sách việc', label: <Icon name="check" size={16} /> },
-    { action: 'quote', title: 'Trích dẫn', label: <span>&ldquo;&rdquo;</span> },
+    { action: 'bullet', title: 'format.bullet', label: <Icon name="toc" size={16} /> },
+    { action: 'number', title: 'format.number', label: <span>1.</span> },
+    { action: 'task', title: 'format.task', label: <Icon name="check" size={16} /> },
+    { action: 'quote', title: 'format.quote', label: <span>&ldquo;&rdquo;</span> },
   ],
   [
-    { action: 'link', title: 'Liên kết (⌘K)', label: <span>[ ]</span> },
-    { action: 'codeblock', title: 'Khối mã', label: <span>```</span> },
-    { action: 'table', title: 'Bảng', label: <span>|||</span> },
+    { action: 'link', title: 'format.link', label: <span>[ ]</span> },
+    { action: 'codeblock', title: 'format.codeblock', label: <span>```</span> },
+    { action: 'table', title: 'format.table', label: <span>|||</span> },
   ],
 ]
 
@@ -58,6 +59,7 @@ export function FormattingToolbar({
   onRedo,
   className = '',
 }: FormattingToolbarProps): React.JSX.Element {
+  const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   const [activeKey, setActiveKey] = useState<string | null>(null)
 
@@ -85,7 +87,7 @@ export function FormattingToolbar({
       ref={ref}
       className={`md-formatting-toolbar ${className}`.trim()}
       role="toolbar"
-      aria-label="Định dạng"
+      aria-label={t('format.toolbar')}
       onKeyDown={onKeyDown}
     >
       {(onUndo || onRedo) && (
@@ -93,8 +95,8 @@ export function FormattingToolbar({
           <button
             type="button"
             className="toolbar-btn"
-            title="Hoàn tác (⌘Z)"
-            aria-label="Hoàn tác (⌘Z)"
+            title={t('format.undo')}
+            aria-label={t('format.undo')}
             data-action="undo"
             tabIndex={tab('undo')}
             disabled={!canUndo}
@@ -106,8 +108,8 @@ export function FormattingToolbar({
           <button
             type="button"
             className="toolbar-btn"
-            title="Làm lại (⇧⌘Z)"
-            aria-label="Làm lại (⇧⌘Z)"
+            title={t('format.redo')}
+            aria-label={t('format.redo')}
             data-action="redo"
             tabIndex={tab('redo')}
             disabled={!canRedo}
@@ -128,8 +130,8 @@ export function FormattingToolbar({
                 key={btn.action}
                 type="button"
                 className="toolbar-btn"
-                title={btn.title}
-                aria-label={btn.title}
+                title={t(btn.title)}
+                aria-label={t(btn.title)}
                 data-action={btn.action}
                 tabIndex={tab(btn.action)}
                 onFocus={() => setActiveKey(btn.action)}
