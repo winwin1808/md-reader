@@ -14,7 +14,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
 </p>
 
-> **TL;DR (English)** — MD Reader is a Chrome (MV3) extension that turns any `.md` file into a calm reading page, with a CodeMirror editor and split view, slides with speaker view, mind maps, and export to HTML / PDF / Word. No account, no tracking: documents and settings stay in your browser unless you turn on optional sharing, which you can self-host.
+> **TL;DR (English)** — MD Reader is a Chrome (MV3) extension that turns any `.md` file into a calm reading page, with in-place editing on the reading page (live preview), slides with speaker view, mind maps, and export to HTML / PDF / Word. No account, no tracking: documents and settings stay in your browser unless you turn on optional sharing on a sync server you host yourself (free Cloudflare Workers).
 
 ## 📖 Giới thiệu
 
@@ -44,15 +44,13 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
   </tr>
 </table>
 
-### Soạn
+### Sửa thẳng trên trang
 
-- Trình soạn thảo CodeMirror, thanh định dạng, ⌘B / ⌘I / ⌘K.
-- Chia đôi màn hình: soạn bên trái, xem bên phải, cuộn đồng bộ.
+- Hai chế độ: **Đọc** và **Sửa**. Ở chế độ Sửa, trang trông như lúc đọc; dấu Markdown (`#`, `**`, `[]()`…) chỉ hiện ở chỗ con trỏ.
+- Ảnh, checkbox, khối code, ghi chú, công thức, mermaid hiện ngay khi sửa. Bảng giữ dạng lưới: gõ thẳng vào ô, Tab / Enter / ↑↓ để đi, thêm/xoá dòng và cột, nút "Sửa mã bảng" khi cần.
+- Thanh định dạng, ⌘B / ⌘I / ⌘K. Chuyển Đọc ↔ Sửa vẫn giữ vị trí; mỗi tài liệu nhớ chế độ dùng lần cuối.
+- Dán (⌘V) hoặc kéo ảnh vào: ảnh ≤ 600 KB nhúng thẳng vào file; lớn hơn thì lưu vào thư mục `assets/` cạnh file `.md` (cấp quyền thư mục một lần); tài liệu đã chia sẻ thì ảnh lên máy chủ (≤ 2 MB). Ảnh đường dẫn tương đối (`./img/a.png`) hiển thị đúng.
 - Lưu thẳng về file trên đĩa (⌘S), phát hiện khi file bị sửa ở nơi khác và cho so sánh trước khi ghi đè.
-
-<p align="center">
-  <img src="docs/store/screenshots/03-split-view.png" alt="Chia đôi màn hình: soạn và xem" width="100%">
-</p>
 
 ### Trình bày
 
@@ -75,19 +73,17 @@ MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong
 
 HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ ngang.
 
-### Chia sẻ & cộng tác
+### Chia sẻ & cộng tác (tuỳ chọn, tự host)
 
-- Tạo link xem hoặc link sửa, cùng sửa một tài liệu theo thời gian thực, thấy ai đang mở và xem dòng nào do ai viết.
-- Tính năng này là tuỳ chọn và tắt theo mặc định. Khi chưa bật, không có gì rời khỏi trình duyệt. Khi bật, tài liệu đi tới máy chủ mặc định của tác giả (Cloudflare Workers), trừ khi bạn nhập máy chủ riêng; với máy chủ mặc định, tác giả vận hành nơi lưu trữ.
-- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, không xoá nội dung và siêu dữ liệu đã lưu trên máy chủ; muốn xoá, liên hệ người vận hành máy chủ hoặc tự xoá dữ liệu Worker/D1 nếu dùng máy chủ riêng.
-- Tự host: `pnpm deploy:api` triển khai `apps/api` lên tài khoản Cloudflare của bạn (gói Workers Free), dùng Durable Objects (SQLite) và D1, không cần R2 hay KV. Cần đặt biến môi trường `CLOUDFLARE_API_TOKEN` (token của bạn, đừng commit vào repo).
-- Sau khi triển khai, nhập địa chỉ máy chủ (ví dụ `https://<ten-worker>.<tai-khoan>.workers.dev`) tại Cài đặt → Cộng tác.
-- Chạy thử cục bộ: `pnpm --filter @md-reader/extension e2e:collab` (dùng `wrangler dev` chạy cục bộ).
+- Tạo link xem hoặc link sửa, cùng sửa theo thời gian thực, thấy ai đang mở, xem dòng nào do ai viết, lịch sử phiên bản. Link đã tạo sao chép lại được bất cứ lúc nào trên máy đã tạo.
+- **MD Reader không kèm máy chủ nào.** Chia sẻ cần một máy chủ đồng bộ của riêng bạn: một Cloudflare Worker chạy trong gói miễn phí (Durable Objects + D1). Lần đầu bấm Chia sẻ mà chưa có máy chủ, hộp thoại hiện các bước dựng và ô dán địa chỉ.
+- Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login` → tạo D1 → `wrangler d1 migrations apply … --remote` → `pnpm deploy:api` → dán địa chỉ `…workers.dev` vào MD Reader.
+- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu trên máy chủ của bạn.
 - Chi tiết dữ liệu nào được gửi đi: [chính sách riêng tư](docs/store/privacy-policy.md).
 
 ### Riêng tư
 
-Không tài khoản, không theo dõi. Mặc định tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ thì nội dung tài liệu được chia sẻ mới đi qua máy chủ mặc định của tác giả (Cloudflare Workers) hoặc máy chủ riêng nếu bạn nhập. Font được đóng gói sẵn, không gọi ra ngoài khi đọc. Xem [chính sách riêng tư](docs/store/privacy-policy.md).
+Không tài khoản, không theo dõi, không máy chủ mặc định. Tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ trên máy chủ của chính bạn thì tài liệu đó mới rời máy. Font được đóng gói sẵn, không gọi ra ngoài khi đọc.
 
 ## 🚀 Cài đặt
 
@@ -107,6 +103,10 @@ pnpm --filter extension build
 ```
 
 Sau đó mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `apps/extension/dist`.
+
+Dùng một mình thì vậy là đủ — không cần deploy gì. Khi có code mới: `git pull && pnpm install && pnpm --filter extension build`, rồi bấm **Reload** trên MD Reader.
+
+Muốn bản build tự biết địa chỉ máy chủ chia sẻ của bạn: tạo `apps/extension/.env.local` (đã gitignore) với dòng `VITE_MDR_SERVER_URL=https://…workers.dev`.
 
 > **Mẹo:** muốn đọc file trên máy (`file://`), vào `chrome://extensions` → MD Reader → bật **"Cho phép truy cập URL tệp"** (*Allow access to file URLs*).
 
@@ -133,12 +133,15 @@ Monorepo pnpm workspaces:
 | `packages/core` | TypeScript thuần: parser `unified`/`remark`, mô hình tài liệu Yjs, slide, mindmap, export. Không dùng React hay `chrome.*`. |
 | `packages/ui` | Thành phần React (Viewer, Editor, Deck, Mindmap, ...). Không dùng `chrome.*`. |
 | `apps/extension` | Vỏ extension MV3 (app page, content script, build). Lớp duy nhất được dùng `chrome.*`. |
+| `apps/api` | Máy chủ đồng bộ tự host: Cloudflare Worker, Durable Object (Yjs qua WebSocket) + D1 (link, ảnh). |
+| `apps/web` | Trang `/s/<token>` cho người được chia sẻ: xem hoặc sửa thẳng trên trang. |
 
 Nguyên tắc chính:
 
 - **`Y.Doc` (Yjs) là nguồn sự thật**; file `.md` chỉ là cổng import/export. Lưu cục bộ bằng IndexedDB (`y-indexeddb`).
 - Content script **không dùng Yjs** và giữ ngân sách **≤ 60 KB gzip** (hiện khoảng 12 KB).
-- Stack: Vite, React, TypeScript, vitest, Playwright, CodeMirror 6.
+- Chế độ Sửa là live preview CodeMirror 6 ngay trên `Y.Text` — file `.md` giữ nguyên từng ký tự, cộng tác/undo/lịch sử không đổi.
+- Stack: Vite, React, TypeScript, vitest, Playwright, CodeMirror 6, Cloudflare Workers.
 
 ## 🛠️ Phát triển
 
@@ -151,6 +154,8 @@ pnpm typecheck                     # tsc --noEmit mọi package
 pnpm --filter extension build      # build vào apps/extension/dist
 pnpm --filter extension e2e        # Playwright (build rồi chạy)
 pnpm --filter extension package    # đóng gói zip cho Chrome Web Store
+pnpm --filter api test             # máy chủ đồng bộ
+pnpm deploy:api                    # deploy máy chủ của bạn (xem docs/SELF_HOST.md)
 ```
 
 Quy trình đưa lên Chrome Web Store (listing, ảnh, giải trình quyền) nằm ở [`docs/store/README.md`](docs/store/README.md). Thiết kế chi tiết ở [`docs/DESIGN.md`](docs/DESIGN.md).
@@ -167,6 +172,7 @@ Quy trình đưa lên Chrome Web Store (listing, ảnh, giải trình quyền) n
 | 6 | Gia cố (không mất/nhân đôi chữ, quyền tối thiểu, Playwright) | Xong |
 | 7 | Giao diện Lề sách và logo | Xong |
 | 8 | Chia sẻ và cộng tác (Cloudflare Workers) | Xong |
+| 9 | Sửa thẳng trên trang, bảng dạng lưới, ảnh, hộp thoại chia sẻ mới | Xong |
 
 ## 📄 Giấy phép và liên hệ
 
