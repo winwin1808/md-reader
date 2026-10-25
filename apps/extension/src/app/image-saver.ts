@@ -1,5 +1,4 @@
 import { API_PATHS, type UploadAssetResponse } from '@md-reader/core'
-import { toDataUrl } from '@md-reader/ui'
 import type { ImageSaver } from '@md-reader/ui'
 
 export interface ImageSaverCtx {
@@ -8,12 +7,15 @@ export interface ImageSaverCtx {
   ownerToken?: string
   dirHandle?: FileSystemDirectoryHandle
   docName: string
+  hasFileHandle?: boolean
+  requestDir?: () => Promise<FileSystemDirectoryHandle | null>
 }
 
 const MSG_TOO_LARGE = 'Ảnh quá 2 MB.'
 const MSG_QUOTA = 'Tài liệu đã dùng hết 50 MB ảnh.'
 const MSG_NET = 'Không tải được ảnh lên máy chủ.'
-const NOTE_INLINE = 'Ảnh được nhúng thẳng vào file — file .md sẽ nặng hơn.'
+const MSG_DECLINED = 'Cần cho phép thư mục chứa file để lưu ảnh.'
+const MSG_NO_FILE = 'Lưu tài liệu thành file trên máy (⌘S) hoặc bật chia sẻ để chèn ảnh.'
 
 export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
   let res: Response
@@ -52,28 +54,31 @@ async function exists(dir: FileSystemDirectoryHandle, name: string): Promise<boo
   try { await dir.getFileHandle(name); return true } catch { return false }
 }
 
+async function saveToDir(dir: FileSystemDirectoryHandle, docName: string, file: File) {
+  const assets = await dir.getDirectoryHandle('assets', { create: true })
+  const base = `${slug(docName)}-${stamp(new Date())}`
+  const e = ext(file)
+  let name = `${base}.${e}`
+  for (let n = 1; await exists(assets, name); n++) name = `${base}-${n}.${e}`
+  const fh = await assets.getFileHandle(name, { create: true })
+  const w = await fh.createWritable()
+  await w.write(file)
+  await w.close()
+  return { src: `assets/${name}` }
+}
+
 export function createImageSaver(ctx: ImageSaverCtx): ImageSaver {
-  let noted = false
   return async (file: File) => {
     if (ctx.room && ctx.ownerToken) {
       const res = await uploadImage(ctx.serverUrl, ctx.room, ctx.ownerToken, file)
       return { src: res.url }
     }
-    if (ctx.dirHandle) {
-      const assets = await ctx.dirHandle.getDirectoryHandle('assets', { create: true })
-      const base = `${slug(ctx.docName)}-${stamp(new Date())}`
-      const e = ext(file)
-      let name = `${base}.${e}`
-      for (let n = 1; await exists(assets, name); n++) name = `${base}-${n}.${e}`
-      const fh = await assets.getFileHandle(name, { create: true })
-      const w = await fh.createWritable()
-      await w.write(file)
-      await w.close()
-      return { src: `assets/${name}` }
+    if (ctx.dirHandle) return saveToDir(ctx.dirHandle, ctx.docName, file)
+    if (ctx.hasFileHandle) {
+      const dir = ctx.requestDir ? await ctx.requestDir() : null
+      if (!dir) throw new Error(MSG_DECLINED)
+      return saveToDir(dir, ctx.docName, file)
     }
-    const src = await toDataUrl(file, 1_000_000)
-    if (noted) return { src }
-    noted = true
-    return { src, note: NOTE_INLINE }
+    throw new Error(MSG_NO_FILE)
   }
 }
