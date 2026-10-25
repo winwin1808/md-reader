@@ -4,6 +4,8 @@ Cập nhật: 2026-10-25. Branch: `main` — phase 8 đã merge vào `main` (PR 
 
 ## Đang ở đâu
 
+- **Phase 9 (Sửa thẳng trên trang) đã ship** trên branch `phase-9`, MR vào `main` (xem CLAUDE.md Status 2026-10-25). Token Cloudflare để deploy nằm ở `~/.config/md-reader/cloudflare.env` (ngoài repo): `set -a; . ~/.config/md-reader/cloudflare.env; pnpm deploy:api`.
+
 - Phase 6 và 7 đã merge vào `main` (PR #1, #2, #3).
 - **Phase 8 (Chia sẻ & cộng tác) đã ship và đã merge** vào `main` ngày 2026-10-25: MR https://github.com/winwin1808/md-reader/pull/4 (commit `e0b9a75`).
   Spec `docs/superpowers/specs/2026-10-24-phase-8-design.md`,
