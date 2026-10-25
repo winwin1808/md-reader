@@ -1,108 +1,131 @@
 <p align="center">
-  <img src="apps/extension/public/icons/logo.svg" alt="MD Reader" width="96" height="96">
+  <img src="apps/extension/public/icons/logo.svg" alt="MD Reader" width="112" height="112">
 </p>
 
 <h1 align="center">MD Reader</h1>
 
 <p align="center">
-  Đọc, soạn, trình chiếu và xuất Markdown ngay trong Chrome. Chạy trên máy; chia sẻ là tuỳ chọn.
+  <b>Đọc đẹp. Sửa thẳng trên trang. Cùng sửa qua link. Trình chiếu ngay.</b><br>
+  Tiện ích trình duyệt biến mọi file Markdown thành một trang đọc dễ chịu, rồi cho bạn sửa, chia sẻ và trình bày nó. Chạy trên máy; chia sẻ là tuỳ chọn.
 </p>
 
 <p align="center">
+  <a href="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <img alt="Version 1.2.0" src="https://img.shields.io/badge/version-1.2.0-blue">
   <img alt="Chrome MV3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white">
-  <img alt="pnpm" src="https://img.shields.io/badge/pnpm-workspaces-F69220?logo=pnpm&logoColor=white">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
+  <img alt="Edge, Brave, Firefox" src="https://img.shields.io/badge/Edge%20%7C%20Brave%20%7C%20Firefox-xem%20b%E1%BA%A3ng%20n%E1%BB%81n%20t%E1%BA%A3ng-lightgrey">
 </p>
-
-> **TL;DR (English)** — MD Reader is a Chrome (MV3) extension that turns any `.md` file into a calm reading page, with in-place editing on the reading page (live preview), slides with speaker view, mind maps, and export to HTML / PDF / Word. No account, no tracking: documents and settings stay in your browser unless you turn on optional sharing on a sync server you host yourself (free Cloudflare Workers).
-
-## 📖 Giới thiệu
-
-MD Reader biến file Markdown thành một trang đọc dễ chịu, ngay trong Chrome. Bấm vào link `.md` (GitHub raw, file trên máy) là mở trang đọc với chữ Literata, cột chữ vừa mắt và giao diện "Lề sách".
 
 <p align="center">
-  <img src="docs/store/screenshots/01-doc.png" alt="Trang đọc, bảng màu Giấy" width="100%">
+  <a href="https://winwin1808.github.io/md-reader/">Trang giới thiệu</a> ·
+  <a href="https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca">Giới thiệu nhanh (Gist)</a> ·
+  <a href="docs/ROADMAP.md">Lộ trình</a> ·
+  <a href="docs/SELF_HOST.md">Tự host chia sẻ</a> ·
+  <a href="https://github.com/winwin1808/md-reader/issues">Góp ý</a>
 </p>
 
-> **English:** the UI follows your browser language (Vietnamese or English; anything else falls back to English). Override it in Settings → Language, or with `?lang=en|vi` on the share page.
+<p align="center">
+  <img src="docs/store/screenshots/01-doc.png" alt="Trang đọc Markdown, bảng màu Giấy" width="100%">
+</p>
 
-## ✨ Tính năng
+> **TL;DR (English)** — MD Reader is a browser extension (Chrome MV3; Edge/Brave/Opera/Arc/Vivaldi via the same build; Firefox with limits) that turns any `.md` file into a calm reading page. You can edit in place with a live preview (hidden Markdown marks, grid tables, paste images), save back to disk with a conflict diff, share view/edit links with realtime co-editing, blame and history, present slides with a speaker view, draw a mind map, and export to HTML / PDF / Word. No account, no tracking, no default server: documents stay in your browser unless you turn on optional sharing on a Cloudflare Worker you host yourself (free tier). UI in Vietnamese and English. MIT licensed. Next up: an MCP server so AI agents can publish Markdown and hand you a share link (see [roadmap](docs/ROADMAP.md)).
 
-### Đọc
+## Vì sao MD Reader
 
-- Mở link `.md` là đọc đẹp ngay, tuỳ chỉnh độ rộng trang.
-- Mục lục bên trái đánh dấu mục bạn đang đọc; ghi chú `[!NOTE]` nằm gọn bên lề.
-- Bảng, công thức toán (KaTeX), sơ đồ mermaid, excalidraw, khối code tô màu và nút sao chép.
-- Ba bảng màu: Giấy, Than chì (tối), Tương phản cao. Tìm trong tài liệu (⌘F).
+Có nhiều trình xem Markdown. MD Reader cố làm tốt ba việc mà một trang đọc thường không làm:
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/store/screenshots/01-doc.png" alt="Bảng màu Giấy"></td>
-    <td width="50%"><img src="docs/store/screenshots/06-dark.png" alt="Bảng màu Than chì"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Giấy</sub></td>
-    <td align="center"><sub>Than chì (tối)</sub></td>
-  </tr>
-</table>
+1. **Sửa thẳng trên trang đọc.** Không có cửa sổ soạn riêng. Trang trông như lúc đọc; dấu Markdown chỉ hiện ở chỗ con trỏ. Bảng là lưới gõ được, ảnh dán vào là xong, lưu thẳng về file và cảnh báo khi file bị sửa ở nơi khác.
+2. **Cùng sửa qua link.** Tạo link xem hoặc link sửa, nhiều người sửa cùng lúc, thấy ai đang mở, xem dòng nào do ai viết, khôi phục phiên bản cũ. Máy chủ là Cloudflare Worker của chính bạn (gói miễn phí), nên dữ liệu không đi qua bên thứ ba.
+3. **Trình chiếu có speaker view.** Một file Markdown thành bộ slide: đồng hồ, slide kế tiếp và ghi chú diễn giả ở cửa sổ riêng, đồng bộ với màn chiếu. Xuất được PDF slide khổ ngang.
 
-### Sửa thẳng trên trang
+Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵn, mã nguồn mở MIT.
 
-- Hai chế độ: **Đọc** và **Sửa**. Ở chế độ Sửa, trang trông như lúc đọc; dấu Markdown (`#`, `**`, `[]()`…) chỉ hiện ở chỗ con trỏ.
-- Ảnh, checkbox, khối code, ghi chú, công thức, mermaid hiện ngay khi sửa. Bảng giữ dạng lưới: gõ thẳng vào ô, Tab / Enter / ↑↓ để đi, thêm/xoá dòng và cột, nút "Sửa mã bảng" khi cần.
-- Thanh định dạng, ⌘B / ⌘I / ⌘K. Chuyển Đọc ↔ Sửa vẫn giữ vị trí; mỗi tài liệu nhớ chế độ dùng lần cuối.
-- Dán (⌘V) hoặc kéo ảnh vào: ảnh ≤ 600 KB nhúng thẳng vào file; lớn hơn thì lưu vào thư mục `assets/` cạnh file `.md` (cấp quyền thư mục một lần); tài liệu đã chia sẻ thì ảnh lên máy chủ (≤ 2 MB). Ảnh đường dẫn tương đối (`./img/a.png`) hiển thị đúng.
-- Lưu thẳng về file trên đĩa (⌘S), phát hiện khi file bị sửa ở nơi khác và cho so sánh trước khi ghi đè.
+## Tính năng
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/store/screenshots/02-edit.png" alt="Sửa trên trang"></td>
-    <td width="50%"><img src="docs/store/screenshots/03-table.png" alt="Bảng dạng lưới"></td>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/01-doc.png" alt="Đọc">
+      <h4>Đọc dễ chịu</h4>
+      Chữ Literata, cột chữ vừa mắt, mục lục bám mục đang đọc, ghi chú <code>[!NOTE]</code> nằm bên lề. Bảng, KaTeX, mermaid, excalidraw, code tô màu có nút sao chép. Tìm trong tài liệu bằng ⌘F.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/02-edit.png" alt="Sửa trên trang">
+      <h4>Sửa thẳng trên trang</h4>
+      Hai chế độ Đọc / Sửa với live preview. Ảnh, checkbox, code, ghi chú, công thức, mermaid hiện ngay khi sửa. Chuyển chế độ vẫn giữ vị trí. Lưu về đĩa bằng ⌘S, có so sánh khi file bị đổi bên ngoài.
+    </td>
   </tr>
   <tr>
-    <td align="center"><sub>Sửa trên trang</sub></td>
-    <td align="center"><sub>Bảng dạng lưới</sub></td>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/03-table.png" alt="Bảng dạng lưới">
+      <h4>Bảng dạng lưới</h4>
+      Gõ thẳng vào ô, Tab / Enter / ↑↓ để đi, thêm hoặc xoá dòng và cột; cần thì bấm "Sửa mã bảng". Dán hoặc kéo ảnh: ảnh nhỏ nhúng vào file, ảnh lớn vào thư mục <code>assets/</code> cạnh file, tài liệu đã chia sẻ thì lên máy chủ.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/04-share.png" alt="Chia sẻ">
+      <h4>Chia sẻ và cùng sửa</h4>
+      Link xem hoặc link sửa, cộng tác thời gian thực, presence, blame theo dòng, lịch sử và khôi phục. Thu hồi link là chặn truy cập ngay. Cần máy chủ tự host (xem bên dưới).
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/05-present.png" alt="Trình chiếu">
+      <h4>Trình chiếu</h4>
+      Tách slide theo <code>---</code> hoặc đề mục, tự co giãn theo màn hình. Speaker view có đồng hồ, slide kế tiếp, ghi chú; xuất PDF slide khổ ngang.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/06-dark.png" alt="Than chì">
+      <h4>Ba bảng màu</h4>
+      Giấy, Than chì (tối), Tương phản cao. Giao diện theo ngôn ngữ trình duyệt (Việt / Anh), đổi được trong Cài đặt → Ngôn ngữ.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/store/screenshots/07-mindmap.png" alt="Sơ đồ tư duy">
+      <h4>Sơ đồ tư duy</h4>
+      Dựng từ các đề mục, màu theo nhánh, đi bằng bàn phím, zoom và pan, bấm node để cuộn tới đoạn đó. Xuất SVG / PNG (⌘M để mở).
+    </td>
+    <td width="50%" valign="top">
+      <h4>Xuất bản</h4>
+      HTML một file, PDF (in từ trình duyệt với CSS in riêng), Word <code>.docx</code>, PDF slide. Tất cả theo giao diện Lề sách.
+      <h4>Riêng tư</h4>
+      Không tài khoản, không theo dõi, không máy chủ mặc định. Chỉ khi bạn bật chia sẻ trên máy chủ của chính bạn thì tài liệu đó mới rời máy. Xem <a href="docs/store/privacy-policy.md">chính sách riêng tư</a>.
+    </td>
   </tr>
 </table>
 
-### Trình bày
+## Nền tảng hỗ trợ
 
-- Bấm Trình chiếu: tách slide theo `---` hoặc đề mục, tự co giãn theo màn hình.
-- Speaker view có đồng hồ, slide kế tiếp và ghi chú diễn giả.
-- Sơ đồ tư duy từ các đề mục, đi được bằng bàn phím, xuất SVG/PNG.
+| Nền tảng | Trạng thái | Ghi chú |
+|---|---|---|
+| Chrome | **Có** | Cài từ mã nguồn hoặc zip phát hành; Chrome Web Store đang chuẩn bị. |
+| Edge | **Có** | Dùng nguyên zip Chrome. Trang Edge Add-ons: dự kiến. |
+| Brave / Opera / Arc / Vivaldi | **Có** | Cùng nhân Chromium, dùng zip Chrome. |
+| Firefox (MV3, từ 128) | **Có giới hạn** | Có bản build. Không có File System Access API nên không Mở file / Lưu thẳng về đĩa / ảnh vào `assets/`; một số quyền phải cấp thủ công. Chi tiết: [`docs/PLATFORMS.md`](docs/PLATFORMS.md). |
+| Chrome Web Store / Edge Add-ons / Firefox AMO | **Đang làm** | Hồ sơ listing và ảnh đã có; chờ publish. |
+| VS Code, Obsidian | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
+| Web app (kéo file, không cài) | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
+| Di động | **Dự kiến** | Sau cùng. |
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/store/screenshots/05-present.png" alt="Trình chiếu"></td>
-    <td width="50%"><img src="docs/store/screenshots/07-mindmap.png" alt="Sơ đồ tư duy"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Trình chiếu</sub></td>
-    <td align="center"><sub>Sơ đồ tư duy</sub></td>
-  </tr>
-</table>
+## Lộ trình tóm tắt
 
-### Xuất
+Phase 1 đến 9 đã xong (đọc, xuất, trình chiếu, mindmap, sửa và lưu đĩa an toàn, gia cố, giao diện Lề sách, chia sẻ và cộng tác, sửa thẳng trên trang). Kế tiếp:
 
-HTML một file, PDF (in từ trình duyệt), Word (`.docx`), PDF slide khổ ngang.
+- **v1.3, Chia sẻ cho AI (MCP):** máy chủ MCP để Claude, ChatGPT, Cursor... đăng một tài liệu Markdown và nhận về link xem/sửa.
+- **v1.4:** thêm loại sơ đồ (PlantUML, Graphviz, Vega, ECharts, draw.io), OpenAPI, xuất EPUB / XLSX, thêm giao diện tài liệu.
+- **v1.5:** bình luận, endpoint xoá dữ liệu phòng, rate limit, deploy một chạm lên Cloudflare, lên các cửa hàng.
+- **v2.0:** VS Code, Obsidian, web app không cần cài, CLI.
 
-### Chia sẻ & cộng tác (tuỳ chọn, tự host)
+Đây là kế hoạch, không phải cam kết ngày giao. Toàn bộ ở [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-- Tạo link xem hoặc link sửa, cùng sửa theo thời gian thực, thấy ai đang mở, xem dòng nào do ai viết, lịch sử phiên bản. Link đã tạo sao chép lại được bất cứ lúc nào trên máy đã tạo.
+## Chia sẻ & cộng tác (tuỳ chọn, tự host)
+
 - **MD Reader không kèm máy chủ nào.** Chia sẻ cần một máy chủ đồng bộ của riêng bạn: một Cloudflare Worker chạy trong gói miễn phí (Durable Objects + D1). Lần đầu bấm Chia sẻ mà chưa có máy chủ, hộp thoại hiện các bước dựng và ô dán địa chỉ.
-- Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login` → tạo D1 → `wrangler d1 migrations apply … --remote` → `pnpm deploy:api` → dán địa chỉ `…workers.dev` vào MD Reader.
-- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu trên máy chủ của bạn.
-- Chi tiết dữ liệu nào được gửi đi: [chính sách riêng tư](docs/store/privacy-policy.md).
+- Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login`, tạo D1, `wrangler d1 migrations apply … --remote`, `pnpm deploy:api`, rồi dán địa chỉ Worker của bạn vào MD Reader.
+- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, chưa xoá dữ liệu đã lưu trên máy chủ của bạn (endpoint xoá nằm trong lộ trình).
 
-<p align="center">
-  <img src="docs/store/screenshots/04-share.png" alt="Hộp thoại chia sẻ" width="70%">
-</p>
-
-### Riêng tư
-
-Không tài khoản, không theo dõi, không máy chủ mặc định. Tài liệu và cài đặt chỉ nằm trong trình duyệt của bạn; chỉ khi bạn bật chia sẻ trên máy chủ của chính bạn thì tài liệu đó mới rời máy. Font được đóng gói sẵn, không gọi ra ngoài khi đọc.
-
-## 🚀 Cài đặt
+## Cài đặt
 
 ### Từ Chrome Web Store
 
@@ -119,15 +142,15 @@ pnpm install
 pnpm --filter extension build
 ```
 
-Sau đó mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `apps/extension/dist`.
+Sau đó mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `apps/extension/dist`. Dùng một mình thì vậy là đủ, không cần deploy gì. Khi có code mới: `git pull && pnpm install && pnpm --filter extension build`, rồi bấm **Reload** trên MD Reader.
 
-Dùng một mình thì vậy là đủ — không cần deploy gì. Khi có code mới: `git pull && pnpm install && pnpm --filter extension build`, rồi bấm **Reload** trên MD Reader.
-
-Muốn bản build tự biết địa chỉ máy chủ chia sẻ của bạn: tạo `apps/extension/.env.local` (đã gitignore) với dòng `VITE_MDR_SERVER_URL=https://…workers.dev`.
+Muốn bản build tự biết địa chỉ máy chủ chia sẻ của bạn: tạo `apps/extension/.env.local` (đã gitignore) với dòng `VITE_MDR_SERVER_URL=<địa chỉ Worker của bạn>`.
 
 > **Mẹo:** muốn đọc file trên máy (`file://`), vào `chrome://extensions` → MD Reader → bật **"Cho phép truy cập URL tệp"** (*Allow access to file URLs*).
 
-## ⌨️ Phím tắt
+Edge, Brave và các trình duyệt Chromium khác: nạp cùng thư mục `dist`. Firefox: `pnpm --filter extension package:firefox`, xem [`docs/PLATFORMS.md`](docs/PLATFORMS.md).
+
+## Phím tắt
 
 Trên Windows/Linux dùng `Ctrl` thay cho `⌘`.
 
@@ -141,7 +164,7 @@ Trên Windows/Linux dùng `Ctrl` thay cho `⌘`.
 | Esc | Thoát trình chiếu |
 | `?speaker=true` | Thêm vào URL để mở speaker view |
 
-## 🧱 Kiến trúc
+## Kiến trúc
 
 Monorepo pnpm workspaces:
 
@@ -156,11 +179,11 @@ Monorepo pnpm workspaces:
 Nguyên tắc chính:
 
 - **`Y.Doc` (Yjs) là nguồn sự thật**; file `.md` chỉ là cổng import/export. Lưu cục bộ bằng IndexedDB (`y-indexeddb`).
-- Content script **không dùng Yjs** và giữ ngân sách **≤ 60 KB gzip** (hiện khoảng 12 KB).
-- Chế độ Sửa là live preview CodeMirror 6 ngay trên `Y.Text` — file `.md` giữ nguyên từng ký tự, cộng tác/undo/lịch sử không đổi.
+- Content script **không dùng Yjs** và giữ ngân sách **≤ 60 KB gzip** (hiện khoảng 13 KB).
+- Chế độ Sửa là live preview CodeMirror 6 ngay trên `Y.Text`, nên file `.md` giữ nguyên từng ký tự; cộng tác, undo và lịch sử không đổi.
 - Stack: Vite, React, TypeScript, vitest, Playwright, CodeMirror 6, Cloudflare Workers.
 
-## 🛠️ Phát triển
+## Phát triển
 
 ```bash
 pnpm test                          # chạy test mọi package
@@ -175,22 +198,8 @@ pnpm --filter api test             # máy chủ đồng bộ
 pnpm deploy:api                    # deploy máy chủ của bạn (xem docs/SELF_HOST.md)
 ```
 
-Quy trình đưa lên Chrome Web Store (listing, ảnh, giải trình quyền) nằm ở [`docs/store/README.md`](docs/store/README.md). Thiết kế chi tiết ở [`docs/DESIGN.md`](docs/DESIGN.md).
+Quy trình đưa lên cửa hàng ở [`docs/store/README.md`](docs/store/README.md); thiết kế chi tiết ở [`docs/DESIGN.md`](docs/DESIGN.md).
 
-## 🗺️ Roadmap
-
-| Phase | Nội dung | Trạng thái |
-|---|---|---|
-| 1 | Nền tảng và trình đọc | Xong |
-| 2 | Xuất HTML / PDF / Word | Xong |
-| 3 | Trình chiếu, speaker view | Xong |
-| 4 | Mindmap và Excalidraw | Xong |
-| 5 | Chỉnh sửa, lưu đĩa an toàn | Xong |
-| 6 | Gia cố (không mất/nhân đôi chữ, quyền tối thiểu, Playwright) | Xong |
-| 7 | Giao diện Lề sách và logo | Xong |
-| 8 | Chia sẻ và cộng tác (Cloudflare Workers) | Xong |
-| 9 | Sửa thẳng trên trang, bảng dạng lưới, ảnh, hộp thoại chia sẻ mới | Xong |
-
-## 📄 Giấy phép và liên hệ
+## Giấy phép và liên hệ
 
 Giấy phép [MIT](LICENSE). Góp ý và báo lỗi: [GitHub Issues](https://github.com/winwin1808/md-reader/issues).
