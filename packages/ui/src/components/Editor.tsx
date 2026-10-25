@@ -21,13 +21,15 @@ import type { FormatAction } from './FormattingToolbar'
 import { blameGutter, type LineAuthor } from './blame'
 import type { ImageResolver } from '../Viewer'
 import { imageResolverFacet } from '../live/widgets'
-import { livePreview, createDefaultRenderers } from '../live'
+import { livePreview, createDefaultRenderers, pasteImages, toDataUrl } from '../live'
+import type { ImageSaver } from '../live'
 import type { BlockRenderers } from '../live'
 import '../theme/editor.css'
 import '../theme/live.css'
 
 export type { ImageResolver }
-export { livePreview, createDefaultRenderers }
+export { livePreview, createDefaultRenderers, pasteImages, toDataUrl }
+export type { ImageSaver }
 
 export const lereSachHighlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--ink)', fontWeight: '600' },
@@ -83,6 +85,8 @@ export interface EditorProps {
   variant?: 'source' | 'live'
   renderers?: BlockRenderers
   resolveImage?: ImageResolver
+  saveImage?: ImageSaver
+  onImageMessage?(m: string): void
   live?: { theme?: () => 'default' | 'dark' }
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
@@ -102,6 +106,8 @@ export function Editor({
   renderers,
   live: liveOpts,
   resolveImage,
+  saveImage,
+  onImageMessage,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -113,6 +119,10 @@ export function Editor({
   liveThemeRef.current = liveOpts?.theme
   const resolveImageRef = useRef(resolveImage)
   resolveImageRef.current = resolveImage
+  const saveImageRef = useRef(saveImage)
+  saveImageRef.current = saveImage
+  const onImageMessageRef = useRef(onImageMessage)
+  onImageMessageRef.current = onImageMessage
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
 
@@ -141,6 +151,12 @@ export function Editor({
       ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
       ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default' }) : []),
       imageResolverFacet.of(resolveImage ? (src) => resolveImageRef.current!(src) : null),
+      ...(live && saveImage
+        ? [pasteImages((f) => saveImageRef.current!(f), {
+            onError: (m) => onImageMessageRef.current?.(m),
+            onNote: (m) => onImageMessageRef.current?.(m),
+          })]
+        : []),
       bracketMatching(),
       syntaxHighlighting(lereSachHighlight),
       Prec.high(
@@ -188,7 +204,7 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager, awareness, variant, renderers, !!resolveImage])
+  }, [yText, undoManager, awareness, variant, renderers, !!resolveImage, !!saveImage])
 
   if (variant === 'live') {
     return (
