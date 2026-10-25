@@ -341,3 +341,24 @@ describe('ShareModal', () => {
     })
   })
 })
+
+describe('ShareModal setup panel', () => {
+  afterEach(() => { cleanup() })
+  it('missing: shows setup panel, no Tạo link, save calls onSaveServer', () => {
+    const onSaveServer = vi.fn()
+    setup({ server: { state: 'missing' }, onSaveServer, guideUrl: 'https://g' })
+    expect(screen.getByText('Cần máy chủ đồng bộ')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Tạo link' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('Địa chỉ máy chủ'), { target: { value: 'https://example.workers.dev' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu và thử lại' }))
+    expect(onSaveServer).toHaveBeenCalledWith('https://example.workers.dev')
+  })
+  it('unreachable text', () => {
+    setup({ server: { state: 'unreachable', url: 'https://a' } })
+    expect(screen.getByText('Không kết nối được máy chủ này.')).toBeTruthy()
+  })
+  it('no server prop shows normal dialog', () => {
+    setup()
+    expect(screen.getByRole('button', { name: 'Tạo link' })).toBeTruthy()
+  })
+})

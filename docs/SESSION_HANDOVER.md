@@ -10,7 +10,7 @@ Cập nhật: 2026-10-25. Branch: `main` — phase 8 đã merge vào `main` (PR 
 - **Phase 8 (Chia sẻ & cộng tác) đã ship và đã merge** vào `main` ngày 2026-10-25: MR https://github.com/winwin1808/md-reader/pull/4 (commit `e0b9a75`).
   Spec `docs/superpowers/specs/2026-10-24-phase-8-design.md`,
   intent `docs/superpowers/intent/2026-10-24-phase-8-chia-se-cong-tac.md`. Hàng đợi 8a0..8k (thêm 8j2 gia cố) tất cả done.
-- **Worker đã deploy** lên tài khoản Cloudflare của người dùng: `https://md-reader-api.qhao-work.workers.dev`
+- **Worker đã deploy** lên tài khoản Cloudflare của người dùng: `https://md-reader-api.<subdomain>.workers.dev`
   (Workers Free: Durable Objects SQLite + D1, không R2/KV). D1 remote: "No migrations to apply".
   Đây là máy chủ mặc định (`DEFAULT_SERVER_URL` trong `apps/extension/src/shared/collab.ts`).
 - Không còn phase nào trong bảng; phase tiếp theo cần intent mới (`brainstorm-intent`/`capture-intent`).
