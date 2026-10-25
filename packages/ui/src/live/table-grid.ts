@@ -1,7 +1,19 @@
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { Annotation } from '@codemirror/state';
+import { Annotation, StateEffect } from '@codemirror/state';
 import type { EditorState } from '@codemirror/state';
 import { EditorView, WidgetType } from '@codemirror/view';
+import { parseMarkdown, renderToHtml } from '@md-reader/core';
+import { deleteColumn, deleteRow, insertColumn, insertRow } from './table-ops';
+
+/** Mark the table starting at this doc offset as raw (source lines instead of grid). */
+export const markTableRaw = StateEffect.define<number>();
+
+function renderInline(text: string): string {
+  if (!text.trim()) return '';
+  const html = renderToHtml(parseMarkdown(text), { highlight: false }).html.trim();
+  const m = /^<p>([\s\S]*)<\/p>$/.exec(html);
+  return m ? m[1]! : html;
+}
 
 /** Doc offsets of a cell's TEXT (trimmed, inside the pipes). */
 export interface CellRef {
@@ -76,6 +88,10 @@ function findTable(state: EditorState, pos: number): { from: number; to: number 
   return null;
 }
 
+function showRendered(el: HTMLElement) {
+  el.innerHTML = renderInline(el.dataset.raw ?? '');
+}
+
 function setEditable(el: HTMLElement) {
   el.setAttribute('contenteditable', 'plaintext-only');
   if (el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');
@@ -98,7 +114,10 @@ export class TableGridWidget extends WidgetType {
       const cells = old.dom.querySelectorAll<HTMLElement>('[data-r]');
       cells.forEach((c) => {
         const t = this.rows[Number(c.dataset.r)]?.[Number(c.dataset.c)];
-        if (t !== undefined && c !== document.activeElement && c.textContent !== t) c.textContent = t;
+        if (t !== undefined) {
+          c.dataset.raw = t;
+          if (c !== document.activeElement) showRendered(c);
+        }
       });
     }
     return true;
@@ -118,15 +137,79 @@ export class TableGridWidget extends WidgetType {
         div.className = 'cm-live-grid-cell';
         div.dataset.r = String(r);
         div.dataset.c = String(c);
-        div.textContent = text;
+        div.dataset.raw = text;
+        showRendered(div);
         setEditable(div);
         td.appendChild(div);
         tr.appendChild(td);
       });
       table.appendChild(tr);
     });
+    const bar = document.createElement('div');
+    bar.className = 'cm-live-table-bar';
+    let last = { r: 1, c: 0 };
+    const tableRange = () => findTable(view.state, view.posAtDOM(wrap));
+    const struct = (op: (src: string) => string, focus: () => { r: number; c: number }) => {
+      const t = tableRange();
+      if (!t) return;
+      const src = view.state.sliceDoc(t.from, t.to);
+      const next = op(src);
+      if (next === src) return;
+      view.dispatch({ changes: { from: t.from, to: t.to, insert: next }, userEvent: 'input.table.struct' });
+      const f = focus();
+      const el = view.dom.querySelector<HTMLElement>(`[data-r="${f.r}"][data-c="${f.c}"]`);
+      if (el) focusEl(el);
+    };
+    const mkBtn = (label: string, onClick: () => void) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cm-live-table-btn';
+      b.textContent = label;
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', onClick);
+      bar.appendChild(b);
+      return b;
+    };
+    const bAddRow = mkBtn('Thêm dòng', () => struct((s) => insertRow(s, last.r), () => ({ r: last.r + 1, c: last.c })));
+    const bAddCol = mkBtn('Thêm cột', () => struct((s) => insertColumn(s, last.c), () => ({ r: last.r, c: last.c + 1 })));
+    const bDelRow = mkBtn('Xoá dòng', () => struct((s) => deleteRow(s, last.r), () => ({ r: Math.max(0, last.r - 1), c: last.c })));
+    const bDelCol = mkBtn('Xoá cột', () => struct((s) => deleteColumn(s, last.c), () => ({ r: last.r, c: Math.max(0, last.c - 1) })));
+    mkBtn('Sửa mã bảng', () => {
+      const t = tableRange();
+      if (t) view.dispatch({ effects: markTableRaw.of(t.from), selection: { anchor: t.from }, scrollIntoView: true });
+    });
+    const syncBar = () => {
+      bDelRow.disabled = last.r === 0 || last.r >= table.rows.length;
+      bDelCol.disabled = (this.rows[0]?.length ?? 0) <= 1;
+      bAddRow.disabled = false;
+      bAddCol.disabled = false;
+    };
+    syncBar();
+    wrap.addEventListener('focusin', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]');
+      if (!el) return;
+      last = { r: Number(el.dataset.r), c: Number(el.dataset.c) };
+      el.textContent = el.dataset.raw ?? '';
+      syncBar();
+    });
+    wrap.addEventListener('focusout', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-r]');
+      if (el) showRendered(el);
+    });
+    wrap.appendChild(bar);
     wrap.appendChild(table);
     this.dom = wrap;
+    const focusEl = (el: HTMLElement) => {
+      el.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    };
 
     const focusCell = (r: number, c: number) => {
       const el = cellEl(r, c);
@@ -152,6 +235,7 @@ export class TableGridWidget extends WidgetType {
       const { r, c } = cur(el);
       const ref = tableCells(view.state, t.from, t.to)[r]?.[c];
       if (!ref) return;
+      el.dataset.raw = el.textContent ?? '';
       view.dispatch({
         changes: cellChange(ref, el.textContent ?? ''),
         userEvent: 'input.table',
@@ -173,6 +257,10 @@ export class TableGridWidget extends WidgetType {
         focusCell(nr, nc);
       } else if (e.key === 'Enter') {
         if (r + 1 < rowsN) focusCell(r + 1, c);
+        else {
+          last = { r, c };
+          struct((s) => insertRow(s, r), () => ({ r: r + 1, c: 0 }));
+        }
       } else if (e.key === 'ArrowDown') {
         if (r + 1 < rowsN) focusCell(r + 1, c);
         else handled = false;

@@ -3,7 +3,7 @@ import { EditorState, StateField } from '@codemirror/state';
 import type { Extension, Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
-import { TableGridWidget } from './table-grid';
+import { TableGridWidget, markTableRaw } from './table-grid';
 
 export interface BlockRenderers {
   table(src: string): string;
@@ -55,12 +55,36 @@ class BlockWidget extends WidgetType {
   }
 }
 
+/** Raw tables: [from, to] ranges, mapped through changes, dropped when the selection leaves. */
+const rawTables = StateField.define<Array<[number, number]>>({
+  create: () => [],
+  update(v, tr) {
+    let out = tr.docChanged ? v.map(([a, b]) => [tr.changes.mapPos(a, 1), tr.changes.mapPos(b, -1)] as [number, number]) : v;
+    for (const e of tr.effects) {
+      if (e.is(markTableRaw)) {
+        const from = e.value;
+        let to = from;
+        syntaxTree(tr.state).iterate({
+          enter: (n) => {
+            if (n.name === 'Table' && n.from === from) to = n.to;
+          },
+        });
+        out = [...out, [from, to]];
+      }
+    }
+    if (!out.length) return out;
+    const sel = tr.state.selection.main;
+    return out.filter(([a, b]) => sel.from >= a && sel.to <= b);
+  },
+});
+
 function build(state: EditorState, r: BlockRenderers, theme: 'default' | 'dark'): DecorationSet {
   const out: Range<Decoration>[] = [];
   const sel = state.selection.ranges;
   const touched = (from: number, to: number) => sel.some((s) => s.from <= to && s.to >= from);
   const add = (kind: Kind, from: number, to: number, src: string) => {
     if (kind === 'table') {
+      if (state.field(rawTables, false)?.some(([a]) => a === from)) return;
       out.push(Decoration.replace({ block: true, widget: TableGridWidget.fromState(state, from, to) }).range(from, to));
       return;
     }
@@ -102,9 +126,10 @@ function build(state: EditorState, r: BlockRenderers, theme: 'default' | 'dark')
 
 export function blockWidgets(r: BlockRenderers, opts?: { theme?: () => 'default' | 'dark' }): Extension {
   const theme = () => opts?.theme?.() ?? 'default';
-  return StateField.define<DecorationSet>({
+  const deco = StateField.define<DecorationSet>({
     create: (state) => build(state, r, theme()),
-    update: (deco, tr) => (tr.docChanged || tr.selection ? build(tr.state, r, theme()) : deco),
+    update: (d, tr) => (tr.docChanged || tr.selection || tr.effects.length ? build(tr.state, r, theme()) : d),
     provide: (f) => EditorView.decorations.from(f),
   });
+  return [rawTables, deco];
 }
