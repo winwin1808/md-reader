@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { AppErrorBoundary } from './AppErrorBoundary'
+import { LocaleRoot } from './LocaleRoot'
 import 'katex/dist/katex.min.css'
 import '@md-reader/ui/fonts.css'
 
@@ -10,9 +11,11 @@ if (container) {
   const root = createRoot(container)
   root.render(
     <React.StrictMode>
-      <AppErrorBoundary>
-        <App />
-      </AppErrorBoundary>
+      <LocaleRoot>
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
+      </LocaleRoot>
     </React.StrictMode>
   )
 }

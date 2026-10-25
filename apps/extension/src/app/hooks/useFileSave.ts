@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '@md-reader/ui'
 import {
   formatMarkdown, detectConflict, hashText,
   applyTextChange, ORIGIN_FORMAT, ORIGIN_REVERT,
@@ -25,6 +26,7 @@ export interface FileSave {
 }
 
 export function useFileSave(session: DocSession, settings: { formatOnSave: boolean }): FileSave {
+  const t = useT()
   const { doc, yText, content, isDirty } = session
   const docTitle = session.title
   const setIsDirty = session.setDirty
@@ -151,7 +153,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
         diskText = await file.text()
       } catch (err) {
         console.warn('Could not read disk file:', err)
-        next = { kind: 'error', message: 'Không đọc được file trên đĩa (đã bị xoá hoặc di chuyển?).', canSaveAs: true }
+        next = { kind: 'error', message: t('ext.save.readFailed'), canSaveAs: true }
         return
       }
 
@@ -174,7 +176,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       next = { kind: 'saved', at: Date.now() }
     } catch (err) {
       console.error('Error saving file:', err)
-      next = { kind: 'error', message: (err as Error)?.message || 'Không ghi được file.', canSaveAs: true }
+      next = { kind: 'error', message: (err as Error)?.message || t('ext.save.writeFailed'), canSaveAs: true }
     } finally {
       isSavingRef.current = false
       setSaveState(next)
@@ -198,7 +200,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
       await executeSave(activeHandle, true)
       next = { kind: 'saved', at: Date.now() }
     } catch (err) {
-      next = { kind: 'error', message: (err as Error)?.message || 'Không ghi được file.', canSaveAs: true }
+      next = { kind: 'error', message: (err as Error)?.message || t('ext.save.writeFailed'), canSaveAs: true }
     } finally {
       isSavingRef.current = false
       setSaveState(next)

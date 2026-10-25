@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { IndexeddbPersistence, storeState } from 'y-indexeddb'
 import type { RoomBinding } from '@md-reader/core'
+import { createT } from '@md-reader/ui'
 import { ensureDoc, getSource, getMeta, applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core'
 
 export type OriginKind = 'url' | 'file' | 'drop'
@@ -280,7 +281,7 @@ async function runMigration(): Promise<number> {
       const docId = crypto.randomUUID()
       docs.put({
         docId,
-        title: 'Tài liệu đã kéo thả',
+        title: createT('vi')('ext.docs.droppedTitle'),
         originKind: 'drop',
         originPath: null,
         persistenceName: 'md-reader',

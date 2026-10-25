@@ -26,7 +26,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid, usePeers, lineAuthors } from '@md-reader/ui'
+import { inlineMermaid, usePeers, lineAuthors, useT, useLocale } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -96,6 +96,8 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
 const SELF_HOST_GUIDE_URL = 'https://github.com/winwin1808/md-reader/blob/main/docs/SELF_HOST.md'
 
 export function App(): React.JSX.Element {
+  const t = useT()
+  const locale = useLocale()
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocRailOpen, setTocRailOpen] = useState<boolean>(true)
@@ -123,7 +125,7 @@ export function App(): React.JSX.Element {
       target?.focus()
     } else if (tocWasOpenRef.current) {
       tocWasOpenRef.current = false
-      document.querySelector<HTMLElement>('button[aria-label="Mục lục"][aria-pressed]')?.focus()
+      document.querySelector<HTMLElement>(`button[aria-label="${t('ext.app.toc')}"][aria-pressed]`)?.focus()
     }
   }, [drawerOpen])
   useEffect(() => {
@@ -174,9 +176,9 @@ export function App(): React.JSX.Element {
       if (!session.docId) return null
       const fh = await getHandle(session.docId)
       const picker = (window as unknown as { showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
-      if (!fh || !picker) { setImageNotice('Trình duyệt không hỗ trợ chọn thư mục.'); return null }
+      if (!fh || !picker) { setImageNotice(t('ext.image.noPicker')); return null }
       const dir = await picker({ startIn: fh, mode: 'readwrite' })
-      if (!(await dir.resolve(fh))) { setImageNotice('Thư mục đã chọn không chứa file này.'); return null }
+      if (!(await dir.resolve(fh))) { setImageNotice(t('ext.image.dirMismatch')); return null }
       await storeDirHandle(session.docId, dir)
       setDirHandle(dir)
       setImageNotice(null)
@@ -188,7 +190,7 @@ export function App(): React.JSX.Element {
     [imageOriginUrl, dirHandle],
   )
   const saveImage = useMemo(
-    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl ?? '', room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir }),
+    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl ?? '', room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image', hasFileHandle: !!session.record?.hasHandle, requestDir: allowImageDir, t }),
     [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title, session.record?.hasHandle, allowImageDir],
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
@@ -319,9 +321,9 @@ export function App(): React.JSX.Element {
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
   const shareServer = !serverUrl
     ? ({ state: 'missing' } as const)
-    : share.error === 'Không kết nối được máy chủ'
+    : share.error === t('ext.share.unreachable')
       ? ({ state: 'unreachable', url: serverUrl } as const)
-      : share.error === 'Máy chủ trả dữ liệu không hợp lệ'
+      : share.error === t('ext.share.invalid')
         ? ({ state: 'not-md-reader', url: serverUrl } as const)
         : undefined
   const shareRef = useRef(share)
@@ -435,7 +437,7 @@ export function App(): React.JSX.Element {
       const res = await openLocalFileAsDoc()
       if (res) window.location.assign((await docQuery(res.docId)) + (res.kept ? '&kept=1' : ''))
     } catch (err) {
-      setError((err as Error)?.message || 'Không mở được file.')
+      setError((err as Error)?.message || t('ext.app.openFailed'))
     }
   }
 
@@ -444,7 +446,7 @@ export function App(): React.JSX.Element {
     if (view) {
       const { from, to } = view.state.selection.main
       const current = yText.toString()
-      const r = applyFormat(current, from, to, action)
+      const r = applyFormat(current, from, to, action, t)
       view.dispatch({
         changes: computeTextChanges(current, r.newText).map((c) => ({
           from: c.index,
@@ -463,14 +465,14 @@ export function App(): React.JSX.Element {
     if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
       const start = activeEl.selectionStart ?? 0
       const end = activeEl.selectionEnd ?? 0
-      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(yText.toString(), start, end, action)
+      const { newText, newSelectionStart, newSelectionEnd } = applyFormat(yText.toString(), start, end, action, t)
       applyTextChange(yText, newText)
       setTimeout(() => {
         activeEl.focus()
         activeEl.setSelectionRange?.(newSelectionStart, newSelectionEnd)
       }, 0)
     } else {
-      const { newText } = applyFormat(yText.toString(), 0, 0, action)
+      const { newText } = applyFormat(yText.toString(), 0, 0, action, t)
       applyTextChange(yText, newText)
     }
   }
@@ -505,8 +507,8 @@ export function App(): React.JSX.Element {
   const previewEntry = history.previewId ? history.entries.find((e) => e.id === history.previewId) : undefined
   const previewBanner = previewHtml !== null && previewEntry ? (
     <div role="status" className="history-preview-banner">
-      Đang xem mốc {historyLabel(previewEntry.label)} — {new Date(previewEntry.ts).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}. Đây là bản chỉ đọc.
-      <button type="button" onClick={() => history.preview(null)}>Thoát xem</button>
+      {t('ext.history.previewing', { label: historyLabel(previewEntry.label), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+      <button type="button" onClick={() => history.preview(null)}>{t('ext.history.exitPreview')}</button>
     </div>
   ) : null
   const closeHistory = () => { history.preview(null); setHistoryOpen(false) }
@@ -532,7 +534,7 @@ export function App(): React.JSX.Element {
 
   const mindmapRoot = useMemo(() => {
     if (!isMindmapOpen) return null
-    return extractMindmap(parsedDoc.tree, docTitle || 'Tài liệu không tên')
+    return extractMindmap(parsedDoc.tree, docTitle || t('ext.app.untitled'))
   }, [parsedDoc.tree, docTitle, isMindmapOpen])
 
   const handleMindNodeClick = (node: MindNode) => {
@@ -656,16 +658,16 @@ export function App(): React.JSX.Element {
               : { kind: 'none' }
 
   const toolbarActions: ToolbarAction[] = [
-    { id: 'open', label: 'Mở file…', icon: 'open-file', onSelect: () => { void handleOpenFile() } },
-    { id: 'export', label: 'Xuất file', icon: 'export', onSelect: () => setExportOpen(true) },
-    ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? 'Ẩn người viết' : 'Hiện người viết', icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
-    { id: 'history', label: 'Lịch sử', icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
-    { id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: () => setSettingsOpen(true) },
+    { id: 'open', label: t('ext.menu.open'), icon: 'open-file', onSelect: () => { void handleOpenFile() } },
+    { id: 'export', label: t('ext.menu.export'), icon: 'export', onSelect: () => setExportOpen(true) },
+    ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? t('ext.menu.blameHide') : t('ext.menu.blameShow'), icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
+    { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
+    { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true) },
   ]
 
   return (
     <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
-      {preparingSlides && <div role="status" className="deck-print-busy">Đang chuẩn bị sơ đồ…</div>}
+      {preparingSlides && <div role="status" className="deck-print-busy">{t('ext.app.preparingDiagrams')}</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
           {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html }))).map((slide, idx) => (
@@ -740,7 +742,7 @@ export function App(): React.JSX.Element {
         <TopToolbar
           syncStatus={session.syncStatus}
           presence={session.syncStatus !== 'off' ? peers : undefined}
-          title={docTitle || 'Tài liệu không tên'}
+          title={docTitle || t('ext.app.untitled')}
           tocOpen={tocOpen}
           onToggleToc={() => (narrow ? setTocDrawerOpen(v => !v) : setTocRailOpen(v => !v))}
           fontScale={fontScale}
@@ -787,7 +789,7 @@ export function App(): React.JSX.Element {
             onClick={() => setIsReadingMode(false)}
           >
             <Icon name="close" size={16} />
-            Thoát chế độ đọc
+            {t('ext.app.exitReading')}
           </button>
         )}
         <FileDrop>
@@ -795,35 +797,35 @@ export function App(): React.JSX.Element {
             <div className="error-banner notice" role="status">
               <span>{imageNotice}</span>
               <div className="notice__actions">
-                {session.record?.hasHandle && !dirHandle && !room && <button type="button" onClick={() => void allowImageDir()}>Cho phép lưu ảnh cạnh file</button>}
-                <button type="button" onClick={() => setImageNotice(null)}>Đóng</button>
+                {session.record?.hasHandle && !dirHandle && !room && <button type="button" onClick={() => void allowImageDir()}>{t('ext.image.allowDir')}</button>}
+                <button type="button" onClick={() => setImageNotice(null)}>{t('ext.close')}</button>
               </div>
             </div>
           )}
           {session.externalChange && (
             <div className="error-banner notice" role="status">
-              <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
+              <span>{t('ext.notice.externalChanged')}</span>
               <div className="notice__actions">
-                <button type="button" onClick={session.acceptExternal}>Tải bản mới</button>
-                <button type="button" onClick={session.dismissExternal}>Giữ bản của tôi</button>
+                <button type="button" onClick={session.acceptExternal}>{t('ext.notice.loadNew')}</button>
+                <button type="button" onClick={session.dismissExternal}>{t('ext.notice.keepMine')}</button>
               </div>
             </div>
           )}
           {keptNoticeOpen && (
             <div className="error-banner notice" role="status">
-              <span>Tài liệu này đang có bản sửa chưa lưu nên chưa nạp lại từ đĩa. Khi lưu, bạn sẽ thấy phần khác nhau để chọn.</span>
+              <span>{t('ext.notice.keptUnsaved')}</span>
               <div className="notice__actions">
-                <button type="button" onClick={() => setKeptNoticeOpen(false)}>Đã hiểu</button>
+                <button type="button" onClick={() => setKeptNoticeOpen(false)}>{t('ext.notice.gotIt')}</button>
               </div>
             </div>
           )}
           {fileSave.saveState.kind === 'error' && (
             <div className="error-banner notice notice--danger" role="alert">
-              <span>Không lưu được: {fileSave.saveState.message}</span>
+              <span>{t('ext.save.failed', { message: fileSave.saveState.message })}</span>
               <div className="notice__actions">
-                <button type="button" onClick={() => { void fileSave.save({ explicit: true }) }}>Thử lại</button>
+                <button type="button" onClick={() => { void fileSave.save({ explicit: true }) }}>{t('ext.save.retry')}</button>
                 {fileSave.saveState.canSaveAs && (
-                  <button type="button" onClick={() => { void fileSave.saveAs() }}>Lưu thành file khác…</button>
+                  <button type="button" onClick={() => { void fileSave.saveAs() }}>{t('ext.save.saveAs')}</button>
                 )}
               </div>
             </div>
@@ -844,7 +846,7 @@ export function App(): React.JSX.Element {
                       }
                     }}
                   >
-                    Mở Cài đặt Tiện ích để Bật "Cho phép truy cập vào các URL tệp"
+                    {t('ext.fileAccess.openLong')}
                   </button>
                 </div>
               )}
@@ -867,7 +869,7 @@ export function App(): React.JSX.Element {
               {toc && toc.length > 0 && drawerOpen && !isReadingMode && (
                 <>
                   <div className="toc-backdrop" data-testid="toc-backdrop" onClick={() => setTocDrawerOpen(false)} />
-                  <div className="toc-drawer" role="dialog" aria-modal="true" aria-label="Mục lục" ref={drawerRef}>
+                  <div className="toc-drawer" role="dialog" aria-modal="true" aria-label={t('ext.app.toc')} ref={drawerRef}>
                     <Toc entries={toc} activeId={activeHeadingId} onNavigate={() => setTocDrawerOpen(false)} />
                   </div>
                 </>
@@ -914,10 +916,10 @@ export function App(): React.JSX.Element {
           {viewMode === 'reading' && !hasContent && !error && (
             <div data-testid="app-placeholder" className="first-screen">
               <Logo size={56} />
-              <h1>Mở một tài liệu Markdown</h1>
-              <p>Kéo file .md vào cửa sổ này, hoặc chọn từ máy.</p>
+              <h1>{t('ext.empty.title')}</h1>
+              <p>{t('ext.empty.hint')}</p>
               <button type="button" className="first-screen__open" onClick={() => { void handleOpenFile() }}>
-                <Icon name="open-file" size={16} /> Mở file…
+                <Icon name="open-file" size={16} /> {t('ext.menu.open')}
               </button>
               <RecentFiles />
             </div>

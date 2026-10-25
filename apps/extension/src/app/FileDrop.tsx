@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useT } from '@md-reader/ui';
 import { createRecord, deleteRecord, writeDocText, docParam } from './doc-registry';
 
 interface FileDropProps {
@@ -11,6 +12,7 @@ const defaultNavigate = (url: string): void => {
 };
 
 export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps): React.JSX.Element {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState(false);
@@ -26,8 +28,8 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
   const processDrop = useCallback(
     (e: globalThis.DragEvent) => {
       if (e.defaultPrevented) return;
-      const t = e.target;
-      if (t instanceof Element && t.closest('.cm-editor, input, textarea, [contenteditable]')) return;
+      const tgt = e.target;
+      if (tgt instanceof Element && tgt.closest('.cm-editor, input, textarea, [contenteditable]')) return;
       if (!Array.from(e.dataTransfer?.types ?? []).includes('Files')) return;
       e.preventDefault();
       if (busyRef.current) return;
@@ -69,17 +71,17 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
               /* best effort */
             }
           }
-          setError('Không mở được tệp: ' + (err instanceof Error ? err.message : String(err)));
+          setError(t('ext.drop.openFailed', { reason: err instanceof Error ? err.message : String(err) }));
           finish();
         }
       };
       reader.onerror = () => {
-        setError('Không mở được tệp: không đọc được nội dung');
+        setError(t('ext.drop.openFailed', { reason: t('ext.drop.unreadable') }));
         finish();
       };
       reader.readAsText(file);
     },
-    [navigate, finish]
+    [navigate, finish, t]
   );
 
   useEffect(() => {
@@ -118,13 +120,13 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
 
   return (
     <div style={{ width: '100%' }}>
-      {dragging && <div className="drop-overlay" data-testid="drop-overlay">Thả để mở</div>}
-      {busy && <div role="status">Đang mở tệp…</div>}
+      {dragging && <div className="drop-overlay" data-testid="drop-overlay">{t('ext.drop.release')}</div>}
+      {busy && <div role="status">{t('ext.drop.opening')}</div>}
       {notice && (
         <div className="notice notice--danger" role="alert">
-          <span>Chỉ mở được file Markdown (.md, .markdown, .mdown, .mkd, .mdx) hoặc .txt.</span>
+          <span>{t('ext.drop.unsupported')}</span>
           <span className="notice__actions">
-            <button type="button" onClick={() => setNotice(false)}>Đóng</button>
+            <button type="button" onClick={() => setNotice(false)}>{t('ext.close')}</button>
           </span>
         </div>
       )}

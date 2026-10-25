@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
+import { useT } from '@md-reader/ui'
 
 export function FileAccessHint({ fileUrl, failed }: { fileUrl?: string | null; failed?: boolean }) {
+  const t = useT()
   const isFile = !!fileUrl && fileUrl.startsWith('file:')
   const [denied, setDenied] = useState(false)
 
@@ -16,13 +18,13 @@ export function FileAccessHint({ fileUrl, failed }: { fileUrl?: string | null; f
   if (!isFile || !(denied || failed)) return null
   return (
     <div className="notice" role="status">
-      <span>Để đọc file trên máy, bật “Cho phép truy cập URL tệp” cho MD Reader trong chrome://extensions.</span>
+      <span>{t('ext.fileAccess.hint')}</span>
       <div className="notice__actions">
         <button
           type="button"
           onClick={() => { chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id }) }}
         >
-          Mở cài đặt extension
+          {t('ext.fileAccess.open')}
         </button>
       </div>
     </div>

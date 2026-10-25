@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useT } from '@md-reader/ui'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, ORIGIN_FORMAT, ORIGIN_REVERT, createCheckpointTracker, registerActor, trackLocalActor } from '@md-reader/core'
@@ -41,6 +42,9 @@ export interface DocSession {
 
 export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null; room?: RoomBinding | null; displayName?: string }): DocSession {
   const { docId: legacyDocId, fileUrl: fileUrlParam, shortParam, room, displayName = 'Bạn' } = opts
+  const t = useT()
+  const tRef = useRef(t)
+  tRef.current = t
   const docIdParam = legacyDocId || shortParam || null
   const [error, setError] = useState<string | null>(null)
   const [content, setContent] = useState<string>('')
@@ -74,7 +78,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
             try { window.history.replaceState(null, '', await docQuery(rec.docId)) } catch { /* ignore */ }
           }
           if (!rec) {
-            if (!cancelled) setError('Không tìm thấy tài liệu này.')
+            if (!cancelled) setError(tRef.current('ext.session.notFound'))
             return
           }
         } else if (fileUrlParam) {
@@ -92,7 +96,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         if (!cancelled) setRecord(rec)
       } catch (err) {
         console.warn('Failed to resolve document record:', err)
-        if (!cancelled) setError('Không thể mở tài liệu này.')
+        if (!cancelled) setError(tRef.current('ext.session.openFailed'))
       }
     })()
     return () => { cancelled = true }

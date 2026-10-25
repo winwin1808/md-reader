@@ -1,5 +1,6 @@
 import { API_PATHS, type UploadAssetResponse } from '@md-reader/core'
-import type { ImageSaver } from '@md-reader/ui'
+import { createT } from '@md-reader/ui'
+import type { ImageSaver, TFunction } from '@md-reader/ui'
 
 export interface ImageSaverCtx {
   serverUrl: string
@@ -9,25 +10,22 @@ export interface ImageSaverCtx {
   docName: string
   hasFileHandle?: boolean
   requestDir?: () => Promise<FileSystemDirectoryHandle | null>
+  t?: TFunction
 }
 
-const MSG_TOO_LARGE = 'Ảnh quá 2 MB.'
-const MSG_QUOTA = 'Tài liệu đã dùng hết 50 MB ảnh.'
-const MSG_NET = 'Không tải được ảnh lên máy chủ.'
-const MSG_DECLINED = 'Ảnh lớn hơn 600 KB — cho phép thư mục chứa file để lưu ảnh.'
-const MSG_NO_FILE = 'Ảnh lớn hơn 600 KB — lưu tài liệu thành file (⌘S) hoặc bật chia sẻ để chèn ảnh lớn.'
 export const INLINE_IMAGE_MAX_BYTES = 600_000
 
-function readDataUrl(file: File): Promise<string> {
+function readDataUrl(file: File, t: TFunction): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result))
-    r.onerror = () => reject(new Error(MSG_NET))
+    r.onerror = () => reject(new Error(t('ext.image.net')))
     r.readAsDataURL(file)
   })
 }
 
-export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
+export async function uploadImage(serverUrl: string, room: string, token: string, file: File, t: TFunction = createT('vi')): Promise<UploadAssetResponse> {
+  const MSG_NET = t('ext.image.net')
   let res: Response
   try {
     res = await fetch(serverUrl.replace(/\/+$/, '') + API_PATHS.assets(room), {
@@ -41,7 +39,7 @@ export async function uploadImage(serverUrl: string, room: string, token: string
   if (res.status === 413) {
     let code = ''
     try { code = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
-    throw new Error(code === 'quota' ? MSG_QUOTA : MSG_TOO_LARGE)
+    throw new Error(code === 'quota' ? t('ext.image.quota') : t('ext.image.tooLarge'))
   }
   if (!res.ok) throw new Error(MSG_NET)
   try { return (await res.json()) as UploadAssetResponse } catch { throw new Error(MSG_NET) }
@@ -78,18 +76,19 @@ async function saveToDir(dir: FileSystemDirectoryHandle, docName: string, file: 
 }
 
 export function createImageSaver(ctx: ImageSaverCtx): ImageSaver {
+  const t = ctx.t ?? createT('vi')
   return async (file: File) => {
     if (ctx.room && ctx.ownerToken) {
-      const res = await uploadImage(ctx.serverUrl, ctx.room, ctx.ownerToken, file)
+      const res = await uploadImage(ctx.serverUrl, ctx.room, ctx.ownerToken, file, t)
       return { src: res.url }
     }
     if (ctx.dirHandle) return saveToDir(ctx.dirHandle, ctx.docName, file)
-    if (file.size <= INLINE_IMAGE_MAX_BYTES) return { src: await readDataUrl(file) }
+    if (file.size <= INLINE_IMAGE_MAX_BYTES) return { src: await readDataUrl(file, t) }
     if (ctx.hasFileHandle) {
       const dir = ctx.requestDir ? await ctx.requestDir() : null
-      if (!dir) throw new Error(MSG_DECLINED)
+      if (!dir) throw new Error(t('ext.image.declined'))
       return saveToDir(dir, ctx.docName, file)
     }
-    throw new Error(MSG_NO_FILE)
+    throw new Error(t('ext.image.noFile'))
   }
 }

@@ -1,4 +1,11 @@
 import React from 'react'
+import { useT } from '@md-reader/ui'
+import type { MessageKey } from '@md-reader/ui'
+
+function T({ k }: { k: MessageKey }): React.JSX.Element {
+  const t = useT()
+  return <>{t(k)}</>
+}
 
 export class AppErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -19,9 +26,9 @@ export class AppErrorBoundary extends React.Component<
     if (error) {
       return (
         <div role="alert" className="app-error-boundary">
-          <h1>Có lỗi khi hiển thị tài liệu.</h1>
+          <h1><T k="ext.error.render" /></h1>
           <pre>{error.message}</pre>
-          <button onClick={() => location.reload()}>Tải lại</button>
+          <button onClick={() => location.reload()}><T k="ext.error.reload" /></button>
         </div>
       )
     }
