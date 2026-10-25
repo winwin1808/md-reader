@@ -106,7 +106,7 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 
 - Thu thập dữ liệu người dùng: mặc định không thu thập gì. Chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó (nội dung liên lạc/nội dung trang web) và tên hiển thị tự khai mới được gửi, tới máy chủ đồng bộ do người dùng tự dựng — khai báo mục "nội dung trang web"/"liên lạc" tương ứng khi điền dashboard; các mục còn lại **Không** (thông tin cá nhân, sức khoẻ, tài chính, xác thực, liên lạc, vị trí, lịch sử web, hoạt động người dùng, nội dung trang web).
 - Tick cả ba cam kết: không bán dữ liệu cho bên thứ ba · không dùng/chuyển cho mục đích không liên quan · không dùng để xét tín dụng.
-- Privacy policy URL: https://md-reader-winwin.pages.dev/privacy (trang giới thiệu: https://md-reader-winwin.pages.dev/; bản sao trên Gist: https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca).
+- Privacy policy URL: https://gist.githubusercontent.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca/raw/privacy-policy.md (trang giới thiệu: https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca; bản sao trên Gist: https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca).
 
 ## Hình ảnh
 

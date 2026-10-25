@@ -20,8 +20,7 @@
 <p align="center"><b>English</b> · <a href="README.vi.md">Tiếng Việt</a></p>
 
 <p align="center">
-  <a href="https://md-reader-winwin.pages.dev/">Website</a> ·
-  <a href="https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca">Quick intro (Gist)</a> ·
+  <a href="https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca">Website</a> ·
   <a href="docs/ROADMAP.en.md">Roadmap</a> ·
   <a href="docs/SELF_HOST.md">Self-host sharing</a> ·
   <a href="https://github.com/winwin1808/md-reader/issues">Feedback</a>
