@@ -165,7 +165,7 @@ export function SpeakerView({
       <header className="speaker-view-header">
         <div className="speaker-view-header-left">
           <div className="speaker-slide-counter">
-            Trang {totalSlides > 0 ? currentSlideIndex + 1 : 0} / {totalSlides}
+            {t('present.slideCounter', { i: totalSlides > 0 ? currentSlideIndex + 1 : 0, n: totalSlides })}
           </div>
           <button
             type="button"

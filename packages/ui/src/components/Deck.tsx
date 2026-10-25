@@ -229,7 +229,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
 
   const currentSlide = slides[currentIndex]
   const progressPercent = totalSlides > 0 ? ((currentIndex + 1) / totalSlides) * 100 : 0
-  const counterText = totalSlides > 0 ? `Trang ${currentIndex + 1} / ${totalSlides}` : 'Trang 0 / 0'
+  const counterText = totalSlides > 0 ? t("present.slideCounter", { i: currentIndex + 1, n: totalSlides }) : t("present.slideCounter", { i: 0, n: 0 })
 
   const overlayStyle: React.CSSProperties & Record<string, string | undefined> = {
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,

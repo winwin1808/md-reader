@@ -1,5 +1,6 @@
 export const vi = {
   'present.deck': 'Trình chiếu',
+  'present.slideCounter': 'Trang {i} / {n}',
   'present.prevSlide': 'Trang trước',
   'present.nextSlide': 'Trang sau',
   'present.speakerWindow': 'Cửa sổ diễn giả',
@@ -30,6 +31,7 @@ export const vi = {
 
 export const en: Record<keyof typeof vi, string> = {
   'present.deck': 'Presentation',
+  'present.slideCounter': 'Slide {i} / {n}',
   'present.prevSlide': 'Previous slide',
   'present.nextSlide': 'Next slide',
   'present.speakerWindow': 'Speaker window',

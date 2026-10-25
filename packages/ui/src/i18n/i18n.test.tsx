@@ -53,3 +53,16 @@ describe('I18nProvider', () => {
     expect(createT('en')('common.close')).toBe('Close')
   })
 })
+
+describe('placeholder parity', () => {
+  const names = (s: string) =>
+    [...new Set([...s.matchAll(/\{(\w+)(?:\|[^}]*)?\}/g)].map((m) => m[1]))].sort().join(',')
+  it('every en string has the same placeholders as vi', async () => {
+    const { vi } = await import('./vi')
+    const { en } = await import('./en')
+    const bad = Object.keys(vi).filter(
+      (k) => names((vi as Record<string, string>)[k] ?? "") !== names((en as Record<string, string>)[k] ?? ''),
+    )
+    expect(bad).toEqual([])
+  })
+})
