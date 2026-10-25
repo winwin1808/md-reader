@@ -47,7 +47,8 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
     const context = await chromium.launchPersistentContext(userDir, {
       headless: true,
       channel: 'chromium',
-      args: ['--headless=new', `--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
+      locale: 'vi-VN',
+      args: ['--headless=new', '--lang=vi', `--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
     })
     try {
       await use(context)
