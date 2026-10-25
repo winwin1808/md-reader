@@ -13,6 +13,7 @@ MD Reader là extension Chrome để đọc, soạn và trình bày file Markdow
 - **Hiện diện trực tiếp.** Tên, màu và vị trí con trỏ của người đang sửa chỉ được chuyển tiếp theo thời gian thực, không được lưu.
 - **Không phân tích, không theo dõi, không quảng cáo, không bán dữ liệu, không tài khoản.**
 - **Không gọi ra ngoài ngoài chia sẻ.** Font chữ và mọi mã chạy đều đóng gói sẵn trong extension. Khi đọc tài liệu mà không bật chia sẻ, extension không gửi yêu cầu mạng nào ngoài việc tải chính tài liệu bạn mở. Ảnh hoặc liên kết nằm trong tài liệu được trình duyệt tải như bình thường.
+- **Ảnh trong tài liệu đã chia sẻ.** Ảnh dán vào một tài liệu ĐÃ chia sẻ được tải lên máy chủ đồng bộ và bất kỳ ai có liên kết ảnh đều xem được; tài liệu chưa chia sẻ không bao giờ tải ảnh lên.
 - **Quyền truy cập.** Extension chỉ đọc nội dung các trang Markdown (.md) để hiển thị chúng, và chỉ ghi vào file trên đĩa khi bạn bấm Lưu. Quyền của extension: `storage`, `activeTab` và truy cập các URL Markdown.
 - **Xoá dữ liệu.** Gỡ extension sẽ xoá toàn bộ dữ liệu nó đã lưu trong trình duyệt. Dữ liệu đã chia sẻ nằm trên máy chủ cộng tác thì theo mục Thời gian lưu ở trên.
 
@@ -27,6 +28,7 @@ MD Reader is a Chrome extension for reading, editing and presenting Markdown fil
 - **Live presence.** The name, colour and cursor of people editing are relayed in real time and not stored.
 - **No analytics, no tracking, no ads, no sale of data, no accounts.**
 - **No outbound requests besides sharing.** Fonts and all code are bundled in the extension. While you read without sharing, the extension makes no network requests other than loading the document you opened. Images or links inside a document are loaded by the browser as usual.
+- **Images in shared documents.** Images pasted into a SHARED document are uploaded to the sync server and readable by anyone with the image link; unshared documents never upload images.
 - **Access.** The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: `storage`, `activeTab` and access to Markdown URLs.
 - **Deleting data.** Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention item above.
 
