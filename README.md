@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/store/screenshots/01-doc.png" alt="Markdown reading page, Paper palette" width="100%">
+  <img src="docs/store/screenshots/en/01-doc.png" alt="Markdown reading page, Paper palette" width="100%">
 </p>
 
 ## Why MD Reader
@@ -45,43 +45,43 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/01-doc.png" alt="Reading">
+      <img src="docs/store/screenshots/en/01-doc.png" alt="Reading">
       <h4>Comfortable reading</h4>
       Literata type, a readable column width, a table of contents that follows the section you are reading, <code>[!NOTE]</code> callouts set in the margin. Tables, KaTeX, mermaid, excalidraw, highlighted code with a copy button. Search the document with ⌘F.
     </td>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/02-edit.png" alt="Editing on the page">
+      <img src="docs/store/screenshots/en/02-edit.png" alt="Editing on the page">
       <h4>Edit right on the page</h4>
       Two modes, Read / Edit, with live preview. Images, checkboxes, code, callouts, formulas and mermaid render as you edit. Switching modes keeps your position. Save to disk with ⌘S, with a diff when the file changed outside.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/03-table.png" alt="Grid tables">
+      <img src="docs/store/screenshots/en/03-table.png" alt="Grid tables">
       <h4>Grid tables</h4>
       Type straight into cells, move with Tab / Enter / ↑↓, add or delete rows and columns; click "Edit table source" if you need to. Paste or drag images: small ones are embedded in the file, large ones go to an <code>assets/</code> folder next to the file, and shared documents upload to the server.
     </td>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/04-share.png" alt="Sharing">
+      <img src="docs/store/screenshots/en/04-share.png" alt="Sharing">
       <h4>Share and co-edit</h4>
       View or edit links, realtime collaboration, presence, per-line blame, history and restore. Revoking a link blocks access immediately. Requires a self-hosted server (see below).
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/05-present.png" alt="Presenting">
+      <img src="docs/store/screenshots/en/05-present.png" alt="Presenting">
       <h4>Present</h4>
       Split slides on <code>---</code> or headings, scaled automatically to the screen. The speaker view has a clock, the next slide and notes; export a landscape slide PDF.
     </td>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/06-dark.png" alt="Graphite">
+      <img src="docs/store/screenshots/en/06-dark.png" alt="Graphite">
       <h4>Three palettes</h4>
       Paper, Graphite (dark), High contrast. The interface follows the browser language (Vietnamese / English) and can be changed in Settings → Language.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/store/screenshots/07-mindmap.png" alt="Mind map">
+      <img src="docs/store/screenshots/en/07-mindmap.png" alt="Mind map">
       <h4>Mind map</h4>
       Built from headings, colored by branch, keyboard navigation, zoom and pan, click a node to scroll to that passage. Export SVG / PNG (⌘M to open).
     </td>
