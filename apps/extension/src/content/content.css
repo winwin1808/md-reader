@@ -179,5 +179,7 @@ button:disabled {
   font-family: system-ui, sans-serif;
 }
 .doc code.language-math::before { content: "Công thức — mở trong MD Reader để xem"; }
+.doc[lang="en"] code.language-math::before { content: "Formula — open in MD Reader to view"; }
 .doc code.language-mermaid::before { content: "Sơ đồ — mở trong MD Reader để xem"; }
+.doc[lang="en"] code.language-mermaid::before { content: "Diagram — open in MD Reader to view"; }
 .doc pre:has(> code.language-mermaid) { padding: 0; border: 0; }

@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { ContentApp, openInApp, FAIL_TEXT } from './ContentApp'
+import { ContentApp, openInApp } from './ContentApp'
+import { CONTENT_STRINGS, resolveContentLocale, type ContentLocale } from './strings'
 import css from './content.css?inline'
 import { isMarkdownUrl } from '../shared/md-url'
 import { requestPageRender } from './render'
@@ -26,16 +27,18 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 ;(async function () {
   let autoFormatMd = true
   let alwaysOpenApp = false
+  let locale: ContentLocale = resolveContentLocale('auto', navigator.languages)
 
   try {
     let localSettings: any = {}
     let syncSettings: any = {}
     if (typeof chrome.storage?.local?.get === 'function') {
-      localSettings = (await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+      localSettings = (await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage'])) || {}
     }
     if (typeof chrome.storage?.sync?.get === 'function') {
-      syncSettings = (await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp'])) || {}
+      syncSettings = (await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage'])) || {}
     }
+    locale = resolveContentLocale(localSettings.uiLanguage ?? syncSettings.uiLanguage, navigator.languages)
 
     if (typeof localSettings.autoFormatMd === 'boolean') {
       autoFormatMd = localSettings.autoFormatMd
@@ -116,7 +119,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
   let initialError: string | null = null
   if (alwaysOpenApp && isMdFile) {
     if (await openInApp(markdownText, true)) return
-    initialError = FAIL_TEXT
+    initialError = CONTENT_STRINGS[locale].fail
   }
 
   // Mount the floating widget (when alwaysOpenApp is false)
@@ -177,7 +180,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
       React.createElement(
         ErrorBoundary,
         { onError: restore },
-        React.createElement(ContentApp, { markdown: markdownText, initialError, render, onShowRaw })
+        React.createElement(ContentApp, { markdown: markdownText, initialError, render, locale, onShowRaw })
       )
     )
   } catch (error) {

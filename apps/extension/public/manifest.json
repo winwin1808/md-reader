@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "MD Reader",
+  "default_locale": "vi",
+  "name": "__MSG_extName__",
   "version": "1.2.0",
-  "description": "Mở file .md là đọc đẹp ngay. Soạn, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ ngoại tuyến; chia sẻ là tuỳ chọn.",
+  "description": "__MSG_extDescription__",
   "permissions": [
     "storage",
     "activeTab"
@@ -62,7 +63,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Open MD Reader",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"

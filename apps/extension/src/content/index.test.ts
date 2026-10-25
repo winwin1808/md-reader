@@ -20,6 +20,7 @@ vi.mock('./ContentApp', async (orig) => {
 
 describe('Content script entry point', () => {
   beforeEach(() => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['vi-VN'])
     flags.real = false
     vi.resetModules()
     document.body.innerHTML = ''

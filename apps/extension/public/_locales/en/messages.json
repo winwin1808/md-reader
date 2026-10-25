@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "MD Reader"
+  },
+  "extDescription": {
+    "message": "Open a .md file and read it beautifully. Edit, present, mind maps, export to PDF/Word. Works fully offline; sharing is optional."
+  },
+  "actionTitle": {
+    "message": "Open MD Reader"
+  }
+}

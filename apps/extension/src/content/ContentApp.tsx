@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { makeCacheEntry } from '../shared/md-url'
 import type { PageRender } from './render'
+import { CONTENT_STRINGS, type ContentLocale } from './strings'
 
-export const FAIL_TEXT = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
+export const FAIL_TEXT = CONTENT_STRINGS.vi.fail
 
 /** Cache page text only while an open is in flight; a failed open removes it. */
 export async function openInApp(markdown: string, replace = true): Promise<boolean> {
@@ -43,6 +44,7 @@ export interface ContentAppProps {
   markdown: string
   initialError?: string | null
   render?: PageRender | null
+  locale?: ContentLocale
   onShowRaw?(raw: boolean): void
 }
 
@@ -57,7 +59,8 @@ function BookIcon() {
   )
 }
 
-export function ContentApp({ markdown, initialError = null, render = null, onShowRaw }: ContentAppProps) {
+export function ContentApp({ markdown, initialError = null, render = null, locale = 'vi', onShowRaw }: ContentAppProps) {
+  const S = CONTENT_STRINGS[locale]
   const [raw, setRaw] = useState(false)
   const [isOpening, setIsOpening] = useState(false)
   const [collapsed, setCollapsed] = useState<boolean | null>(null)
@@ -95,7 +98,7 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
     setErrorMsg(null)
     const ok = await openInApp(markdown, replace)
     if (!ok) {
-      setErrorMsg(FAIL_TEXT)
+      setErrorMsg(S.fail)
       setIsOpening(false)
     }
   }
@@ -133,14 +136,14 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
       <>
         <header className="bar">
           <BookIcon />
-          <span className="title">{render.title || 'Tài liệu Markdown'}</span>
+          <span className="title">{render.title || S.docTitle}</span>
           <button type="button" className="open" onClick={() => handleOpen(true)} disabled={isOpening}>
-            {isOpening ? 'Đang mở...' : 'Đọc trong MD Reader'}
+            {isOpening ? S.opening : S.open}
           </button>
-          <button type="button" className="toggle" onClick={flip}>{raw ? 'Xem bản đọc' : 'Xem bản thô'}</button>
+          <button type="button" className="toggle" onClick={flip}>{raw ? S.viewRead : S.viewRaw}</button>
           {errorMsg ? <span className="err" role="alert">{errorMsg}</span> : null}
         </header>
-        {raw ? null : <article className="doc" onClick={onArticleClick} dangerouslySetInnerHTML={{ __html: render.html }} />}
+        {raw ? null : <article className="doc" lang={locale} onClick={onArticleClick} dangerouslySetInnerHTML={{ __html: render.html }} />}
       </>
     )
   }
@@ -150,7 +153,7 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
   if (collapsed) {
     return (
       <div className="tab strip">
-        <button type="button" className="strip-btn" onClick={() => toggle(false)} title="Mở MD Reader" aria-label="Mở MD Reader">
+        <button type="button" className="strip-btn" onClick={() => toggle(false)} title={S.openTitle} aria-label={S.openTitle}>
           <BookIcon />
         </button>
       </div>
@@ -162,11 +165,11 @@ export function ContentApp({ markdown, initialError = null, render = null, onSho
       <BookIcon />
       <div className="body">
         <button type="button" className="open" onClick={() => handleOpen(true)} disabled={isOpening}>
-          {isOpening ? 'Đang mở...' : 'Đọc trong MD Reader'}
+          {isOpening ? S.opening : S.open}
         </button>
         {errorMsg ? <div className="err" role="alert">{errorMsg}</div> : null}
       </div>
-      <button type="button" className="hide" onClick={() => toggle(true)}>Ẩn</button>
+      <button type="button" className="hide" onClick={() => toggle(true)}>{S.hide}</button>
     </div>
   )
 }
