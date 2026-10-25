@@ -152,5 +152,5 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9d1: done
 - 9e: done
 - 9f: merged into 9e
-- 9g1: planned
+- 9g1: done
 - 9g2: pending
