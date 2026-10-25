@@ -140,7 +140,7 @@ type `**x**` elsewhere → asterisks hidden off-cursor, saved source contains `*
 FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/store/listing.md` (mention Soạn trên trang).
 
 ## Sub-phase queue
-- 9a1: pending
+- 9a1: planned
 - 9a2: pending
 - 9b1: pending
 - 9b2: pending
