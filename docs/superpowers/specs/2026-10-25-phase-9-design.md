@@ -161,4 +161,4 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 - 9h4: done      (deploy worker + D1 migration + smoke upload/read)
 - 9h5: done      (small images ≤600 KB inline when no D1/assets)
 - 9i: done       (ShareModal redesign)
-- 9j: planned       (server setup panel + SELF_HOST guide; no built-in server URL)
+- 9j: done       (server setup panel + SELF_HOST guide; no built-in server URL)
