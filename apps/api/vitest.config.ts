@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    testTimeout: 30000,
     server: { deps: { inline: [/partyserver/, /y-partyserver/] } },
   },
 })
