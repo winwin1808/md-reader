@@ -1,4 +1,6 @@
 import type { CreateLinkRequest, ResolveTokenResponse, ShareRole } from '@md-reader/core'
+import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAssetResponse } from '@md-reader/core'
+import type { AssetStore } from './assets.js'
 import { RoomNotFoundError, hashToken, type TokenStore } from './tokens.js'
 
 function json(body: unknown, status = 200): Response {
@@ -44,6 +46,18 @@ function parseLinkRequest(body: unknown): CreateLinkRequest | null {
 
 export interface ApiDeps {
   snapshot?: (roomId: string) => Promise<Response>
+  assets?: AssetStore
+}
+
+function sniffOk(mime: string, b: Uint8Array): boolean {
+  const at = (o: number, ...v: number[]) => v.every((x, i) => b[o + i] === x)
+  switch (mime) {
+    case 'image/png': return at(0, 0x89, 0x50, 0x4e, 0x47)
+    case 'image/jpeg': return at(0, 0xff, 0xd8, 0xff)
+    case 'image/gif': return at(0, 0x47, 0x49, 0x46, 0x38)
+    case 'image/webp': return at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50)
+    default: return false
+  }
 }
 
 export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps = {}): Promise<Response | null> {
@@ -94,6 +108,51 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
     const ok = await store.revoke(roomId, prefix)
     return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+  }
+
+  const up = /^\/api\/rooms\/([^/]+)\/assets$/.exec(path)
+  if (up && method === 'POST') {
+    const roomId = safeDecode(up[1]!)
+    if (roomId === null) return badPath()
+    const tok = bearer(req)
+    let allowed = false
+    if (tok !== null) {
+      if (await store.verifyOwner(roomId, tok)) allowed = true
+      else {
+        const r = await store.resolve(tok)
+        allowed = r !== null && r.roomId === roomId && r.role === 'edit'
+      }
+    }
+    if (!allowed) return json({ error: 'forbidden' }, 403)
+    if (!deps.assets) return json({ error: 'assets not available' }, 501)
+    const mime = (req.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+    if (!(ASSET_MIME as readonly string[]).includes(mime)) return json({ error: 'unsupported_type' }, 415)
+    const declared = Number(req.headers.get('content-length') ?? '0')
+    if (declared > MAX_ASSET_BYTES) return json({ error: 'too_large' }, 413)
+    const bytes = new Uint8Array(await req.arrayBuffer())
+    if (bytes.byteLength > MAX_ASSET_BYTES) return json({ error: 'too_large' }, 413)
+    if (!sniffOk(mime, bytes)) return json({ error: 'unsupported_type' }, 415)
+    if ((await deps.assets.roomUsage(roomId)) + bytes.byteLength > ROOM_ASSET_QUOTA) return json({ error: 'quota' }, 413)
+    const { id, size } = await deps.assets.put(roomId, mime, bytes)
+    const out: UploadAssetResponse = { id, url: url.origin + API_PATHS.asset(id), size, mime }
+    return json(out, 201)
+  }
+
+  const asset = /^\/api\/a\/([^/]+)$/.exec(path)
+  if (asset && method === 'GET') {
+    const id = safeDecode(asset[1]!)
+    if (id === null) return badPath()
+    const a = deps.assets ? await deps.assets.get(id) : null
+    if (!a) return json({ error: 'not found' }, 404)
+    return new Response(a.bytes, {
+      status: 200,
+      headers: {
+        'content-type': a.mime,
+        'cache-control': 'public, max-age=31536000, immutable',
+        'x-content-type-options': 'nosniff',
+        'content-security-policy': "default-src 'none'",
+      },
+    })
   }
 
   const snap = /^\/api\/s\/([^/]+)\/snapshot$/.exec(path)
