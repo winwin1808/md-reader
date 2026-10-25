@@ -1,5 +1,5 @@
 # Intent: Phase 9 — Soạn ngay trên trang đọc (+ hoàn thiện chia sẻ)
-Author: haonq. Status: designed. Phase: 9
+Author: haonq. Status: shipped. Phase: 9
 Design: docs/superpowers/specs/2026-10-25-phase-9-design.md
 
 Nguồn: yêu cầu người dùng 2026-10-25 — "Modal share – hoàn thiện UI, thêm copy link button cho những link đã tạo.
