@@ -1112,7 +1112,7 @@ describe('App', () => {
     expect(container.querySelector('.cm-editor')).toBeNull()
 
     // Switch to editor mode
-    const editBtn = screen.getByTitle('Chế độ Soạn thảo')
+    const editBtn = screen.getByTitle('Sửa trên trang')
     await act(async () => {
       fireEvent.click(editBtn)
     })
@@ -1153,7 +1153,7 @@ describe('App', () => {
 
     // Switch to editor mode
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      fireEvent.click(screen.getByTitle('Sửa trên trang'))
     })
 
     // Edit text in editor
@@ -1192,7 +1192,7 @@ describe('App', () => {
 
     // Switch to editor and make dirty
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      fireEvent.click(screen.getByTitle('Sửa trên trang'))
     })
     const cmContent = container.querySelector('.cm-content')
     await act(async () => {
@@ -1235,7 +1235,7 @@ describe('App', () => {
 
     // Switch to editor
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      fireEvent.click(screen.getByTitle('Sửa trên trang'))
     })
     // Save once to establish activeHandle
     await act(async () => {
@@ -1313,7 +1313,7 @@ describe('App', () => {
 
       // Switch to editor mode
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+        fireEvent.click(screen.getByTitle('Sửa trên trang'))
       })
 
       // Establish activeHandle by saving once via Cmd+S
@@ -1396,7 +1396,7 @@ describe('App', () => {
 
       // Switch to editor mode
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+        fireEvent.click(screen.getByTitle('Sửa trên trang'))
       })
 
       // Trigger first save
@@ -1482,7 +1482,7 @@ describe('App', () => {
 
     // Switch to editor mode
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      fireEvent.click(screen.getByTitle('Sửa trên trang'))
     })
 
     // Save once to establish activeHandle
@@ -1541,7 +1541,7 @@ describe('App', () => {
 
     // Switch to editor mode
     await act(async () => {
-      fireEvent.click(screen.getByTitle('Chế độ Soạn thảo'))
+      fireEvent.click(screen.getByTitle('Sửa trên trang'))
     })
 
     // Retrieve EditorView from DOM
@@ -1654,7 +1654,7 @@ describe('App', () => {
     })
     it('editor mode có nút, bật hiện .cm-blame-mark, tắt thì mất', async () => {
       await loadDoc()
-      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await act(async () => { fireEvent.click(screen.getByTitle('Sửa trên trang')) })
       let btn = findAction('Hiện người viết')
       if (!btn) { const more = screen.queryByLabelText('Thêm') ?? screen.queryByTitle('Thêm'); if (more) { await act(async () => { fireEvent.click(more) }); btn = findAction('Hiện người viết') } }
       expect(btn).not.toBeNull()
@@ -1720,7 +1720,7 @@ describe('App', () => {
     })
     it('(b) chế độ editor: Xem hiện banner + bản cũ, Thoát xem trả editor', async () => {
       await loadDoc(); await seed()
-      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await act(async () => { fireEvent.click(screen.getByTitle('Sửa trên trang')) })
       await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
       await openPanel()
       const rows = screen.getAllByRole('option')
@@ -1733,7 +1733,7 @@ describe('App', () => {
     })
     it('(d) editor: bản cũ nằm trong history-preview-scroll cùng banner; toolbar ẩn khi xem', async () => {
       await loadDoc(); await seed()
-      await act(async () => { fireEvent.click(screen.getByTitle('Chế độ Soạn thảo')) })
+      await act(async () => { fireEvent.click(screen.getByTitle('Sửa trên trang')) })
       await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
       expect(screen.queryByRole('toolbar', { name: 'Định dạng' })).not.toBeNull()
       await openPanel()

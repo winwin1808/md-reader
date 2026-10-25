@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MD Reader",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Mở file .md là đọc đẹp ngay. Soạn, trình chiếu, sơ đồ tư duy, xuất PDF/Word. Chạy đầy đủ ngoại tuyến; chia sẻ là tuỳ chọn.",
   "permissions": [
     "storage",
