@@ -141,7 +141,7 @@ FILES `apps/extension/public/manifest.json` + `package.json` (1.2.0) · `docs/st
 
 ## Sub-phase queue
 - 9a1: done
-- 9a2: pending
+- 9a2: planned
 - 9b1: pending
 - 9b2: pending
 - 9b3: pending

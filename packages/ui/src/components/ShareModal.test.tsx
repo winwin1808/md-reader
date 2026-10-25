@@ -61,7 +61,7 @@ describe('ShareModal', () => {
     setup({ links: [link({ token: 'TOK' })] })
     expect((screen.getByDisplayValue('https://app/s/TOK') as HTMLInputElement).readOnly).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Đã sao chép'))
     expect(writeText).toHaveBeenCalledWith('https://app/s/TOK')
   })
 
@@ -72,17 +72,17 @@ describe('ShareModal', () => {
     await waitFor(() => expect(screen.getByText('Không sao chép được')).toBeTruthy())
   })
 
-  it('row with empty token shows note, no copy button', () => {
+  it('row with empty token shows hint, no copy button', () => {
     setup({ links: [link()] })
-    expect(screen.getByText('Chỉ sao chép được ngay khi tạo')).toBeTruthy()
+    expect(screen.getByText('Link tạo trên máy khác — chỉ sao chép được ở máy đó.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Sao chép' })).toBeNull()
     expect(screen.getByText(/abc123…/)).toBeTruthy()
     expect(document.querySelector('li')!.textContent).toContain('Không hết hạn')
   })
 
-  it('hides revoked links; Thu hồi calls onRevoke with prefix', () => {
-    const p = setup({ links: [link({ tokenPrefix: 'gone', revokedAt: 5 }), link({ tokenPrefix: 'live' })] })
-    expect(screen.queryByText(/gone…/)).toBeNull()
+  it('Thu hồi calls onRevoke with prefix; revoked row has no actions', () => {
+    const p = setup({ links: [link({ tokenPrefix: 'gone', revokedAt: 5, token: 'X' }), link({ tokenPrefix: 'live' })] })
+    expect(screen.getAllByRole('button', { name: 'Thu hồi' }).length).toBe(1)
     fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
     fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
     expect(p.onRevoke).toHaveBeenCalledWith('live')
@@ -157,11 +157,10 @@ describe('ShareModal', () => {
       }
       const { rerender } = render(<ShareModal {...props} />)
       fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Đã sao chép'))
       rerender(<ShareModal {...props} open={false} />)
       rerender(<ShareModal {...props} open={true} />)
-      expect(screen.getByRole('button', { name: 'Sao chép' })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: 'Đã sao chép' })).toBeNull()
+      expect(screen.queryByRole('status')?.textContent ?? '').toBe('')
     })
 
     it('double click on copy calls writeText once', async () => {
@@ -174,7 +173,7 @@ describe('ShareModal', () => {
       fireEvent.click(b)
       expect(writeText).toHaveBeenCalledTimes(1)
       resolve()
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Đã sao chép'))
     })
   })
 
@@ -212,8 +211,8 @@ describe('ShareModal', () => {
       setup({ now: () => 1000, links: [link({ role: 'edit', expiresAt: 1000 + 12 * DAY })] })
       const li = document.querySelector('li')!
       expect(li.textContent).toContain('còn 12 ngày')
-      expect(li.textContent).toContain('Sửa')
-      expect(li.textContent).toContain('Link sửa')
+      expect(screen.getByRole('heading', { name: 'Link sửa' })).toBeTruthy()
+      expect(li.textContent).toContain('Không nhãn')
     })
 
     it('revoke needs confirmation and Huỷ cancels', () => {
@@ -256,12 +255,13 @@ describe('ShareModal', () => {
       expect(screen.queryByRole('button', { name: 'Tắt chia sẻ' })).toBeNull()
     })
 
-    it('expired link shows Đã hết hạn, is-expired, keeps revoke', () => {
-      setup({ now: () => 1000, links: [link({ expiresAt: 500 })] })
+    it('expired link shows Hết hạn, is-expired, no actions', () => {
+      setup({ now: () => 1000, links: [link({ expiresAt: 500, token: 'T' })] })
       const li = document.querySelector('li')!
-      expect(li.textContent).toContain('Đã hết hạn')
+      expect(li.textContent).toContain('Hết hạn')
       expect(li.classList.contains('is-expired')).toBe(true)
-      expect(screen.getByRole('button', { name: 'Thu hồi' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Thu hồi' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Sao chép' })).toBeNull()
     })
   })
 
@@ -292,5 +292,30 @@ describe('ShareModal', () => {
     rerender(<ShareModal {...props} links={[]} />)
     rerender(<ShareModal {...props} links={[link()]} />)
     expect(screen.queryByText('Thu hồi link này?')).toBeNull()
+  })
+
+  describe('9a2.1 grouped list', () => {
+    it('groups under Link xem / Link sửa, hides empty group', () => {
+      setup({ links: [link({ tokenPrefix: 'a' }), link({ tokenPrefix: 'b', role: 'edit' })] })
+      expect(screen.getByRole('heading', { name: 'Link xem' })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'Link sửa' })).toBeTruthy()
+      cleanup()
+      setup({ links: [link({ tokenPrefix: 'a' })] })
+      expect(screen.queryByRole('heading', { name: 'Link sửa' })).toBeNull()
+    })
+
+    it('active row without token: Tạo lại link calls onRecreate', () => {
+      const onRecreate = vi.fn().mockResolvedValue(undefined)
+      const l = link()
+      setup({ links: [l], onRecreate })
+      fireEvent.click(screen.getByRole('button', { name: 'Tạo lại link' }))
+      expect(onRecreate).toHaveBeenCalledWith(l)
+    })
+
+    it('revoked row shows Đã thu hồi, no buttons', () => {
+      setup({ links: [link({ revokedAt: 5, token: 'T' })] })
+      expect(document.querySelector('li')!.textContent).toContain('Đã thu hồi')
+      for (const n of ['Sao chép', 'Tạo lại link', 'Thu hồi']) expect(screen.queryByRole('button', { name: n })).toBeNull()
+    })
   })
 })

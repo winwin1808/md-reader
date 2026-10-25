@@ -12,6 +12,7 @@ export interface ShareModalProps {
   onEnable(): Promise<void>
   onCreateLink(req: CreateLinkRequest): Promise<ShareLink>
   onRevoke(prefix: string): Promise<void>
+  onRecreate?: (link: ShareLink) => Promise<void>
   onRevokeAll?: () => Promise<void>
   now?: () => number
   buildUrl(token: string): string
@@ -40,9 +41,10 @@ export function formatRemaining(expiresAt: number | null, now: number): string {
 type Expiry = '7d' | '30d' | 'never'
 
 export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
-  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRevokeAll, now = Date.now, buildUrl, busy, error } = props
+  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, now = Date.now, buildUrl, busy, error } = props
   const titleId = useId()
-  const [copied, setCopied] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [copyFailed, setCopyFailed] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const copying = useRef(false)
@@ -54,7 +56,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
 
   useEffect(() => {
     if (!open) {
-      setCopied(null)
+      setCopied(false)
       setCopyFailed(false)
       setLocalError(null)
       setConfirming(null)
@@ -77,6 +79,8 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     setConfirming((c) => (c !== null && visiblePrefixes.split('\u0000').includes(c) ? c : null))
   }, [visiblePrefixes])
 
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current) }, [])
+
   if (!open) return null
 
   const copy = async (l: ShareLink) => {
@@ -85,9 +89,11 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     setCopyFailed(false)
     try {
       await navigator.clipboard.writeText(buildUrl(l.token))
-      setCopied(l.tokenPrefix)
+      setCopied(true)
+      if (toastTimer.current) clearTimeout(toastTimer.current)
+      toastTimer.current = setTimeout(() => setCopied(false), 2000)
     } catch {
-      setCopied(null)
+      setCopied(false)
       setCopyFailed(true)
     } finally {
       copying.current = false
@@ -169,49 +175,66 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
               </label>
               <button type="submit" disabled={busy} style={btn}>Tạo link</button>
             </form>
-            {visible.length === 0 ? (
+            {links.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--pencil)' }}>Chưa có link nào.</p>
             ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: '16px 0 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {visible.map((l) => {
-                  const t = now()
-                  const expired = l.expiresAt !== null && l.expiresAt <= t
-                  return (
-                  <li key={l.tokenPrefix} className={expired ? 'is-expired' : undefined} style={{ border: '1px solid var(--rule)', borderRadius: '10px', padding: '10px 12px', background: 'var(--surface)' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600 }}>
-                      <span style={{ fontSize: '11px', border: '1px solid var(--rule)', borderRadius: '4px', padding: '1px 6px', marginRight: '6px' }}>{l.role === 'edit' ? 'Sửa' : 'Xem'}</span>
-                      {l.label || (l.role === 'edit' ? 'Link sửa' : 'Link xem')}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--pencil)', margin: '2px 0 8px' }}>
-                      <span>{l.tokenPrefix}…</span> · <span>{formatRemaining(l.expiresAt, t)}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {l.token !== '' ? (
-                        <>
-                          <input readOnly value={buildUrl(l.token)} aria-label="Link chia sẻ"
-                            style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid var(--rule)', borderRadius: '6px', background: 'var(--paper)', color: 'var(--ink)', fontSize: '12px' }} />
-                          <button type="button" disabled={busy} style={btn} onClick={() => { void copy(l) }}>
-                            {copied === l.tokenPrefix ? 'Đã sao chép' : 'Sao chép'}
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ flex: 1, fontSize: '12px', color: 'var(--pencil)' }}>Chỉ sao chép được ngay khi tạo</span>
-                      )}
-                      {confirming === l.tokenPrefix ? (
-                        <>
-                          <span style={{ fontSize: '12px' }}>Thu hồi link này?</span>
-                          <button type="button" disabled={busy} style={btn}
-                            onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>Thu hồi</button>
-                          <button type="button" style={btn} onClick={() => setConfirming(null)}>Huỷ</button>
-                        </>
-                      ) : (
-                        <button type="button" disabled={busy} style={btn} onClick={() => setConfirming(l.tokenPrefix)}>Thu hồi</button>
-                      )}
-                    </div>
-                  </li>
-                  )
-                })}
-              </ul>
+              (['view', 'edit'] as const).map((r) => {
+                const group = links.filter((l) => l.role === r)
+                if (group.length === 0) return null
+                return (
+                  <section key={r} style={{ marginTop: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--pencil)', letterSpacing: '0.04em' }}>
+                      {r === 'edit' ? 'Link sửa' : 'Link xem'}
+                    </h3>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+                      {group.map((l) => {
+                        const t = now()
+                        const revoked = l.revokedAt !== null
+                        const expired = !revoked && l.expiresAt !== null && l.expiresAt <= t
+                        const active = !revoked && !expired
+                        const status = revoked ? 'Đã thu hồi' : expired ? 'Hết hạn' : formatRemaining(l.expiresAt, t)
+                        return (
+                          <li key={l.tokenPrefix} className={expired ? 'is-expired' : revoked ? 'is-revoked' : undefined}
+                            style={{ borderTop: '1px solid var(--rule)', padding: '10px 0', opacity: active ? 1 : 0.55 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600 }}>{l.label || 'Không nhãn'}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--pencil)', margin: '2px 0 8px' }}>
+                              <span>{l.tokenPrefix}…</span> · <span>{status}</span>
+                            </div>
+                            {active && (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {l.token !== '' ? (
+                                  <>
+                                    <input readOnly value={buildUrl(l.token)} aria-label="Link chia sẻ"
+                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid var(--rule)', borderRadius: '6px', background: 'var(--paper)', color: 'var(--ink)', fontSize: '12px' }} />
+                                    <button type="button" disabled={busy} style={btn} onClick={() => { void copy(l) }}>Sao chép</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span style={{ flex: 1, fontSize: '12px', color: 'var(--pencil)' }}>Link tạo trên máy khác — chỉ sao chép được ở máy đó.</span>
+                                    {onRecreate && (
+                                      <button type="button" disabled={busy} style={btn} onClick={() => { void run(() => onRecreate(l)) }}>Tạo lại link</button>
+                                    )}
+                                  </>
+                                )}
+                                {confirming === l.tokenPrefix ? (
+                                  <>
+                                    <span style={{ fontSize: '12px' }}>Thu hồi link này?</span>
+                                    <button type="button" disabled={busy} style={btn}
+                                      onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>Thu hồi</button>
+                                    <button type="button" style={btn} onClick={() => setConfirming(null)}>Huỷ</button>
+                                  </>
+                                ) : (
+                                  <button type="button" disabled={busy} style={btn} onClick={() => setConfirming(l.tokenPrefix)}>Thu hồi</button>
+                                )}
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </section>
+                )
+              })
             )}
             {onRevokeAll && visible.length > 0 && (
               <div style={{ marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -227,6 +250,9 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
                 )}
               </div>
             )}
+            <div role="status" aria-live="polite" style={{ minHeight: '18px', marginTop: '8px', fontSize: '12px', color: 'var(--pencil)' }}>
+              {copied ? 'Đã sao chép' : ''}
+            </div>
             {copyFailed && <p style={{ fontSize: '12px', color: 'var(--pencil)' }}>Không sao chép được</p>}
           </div>
         )}

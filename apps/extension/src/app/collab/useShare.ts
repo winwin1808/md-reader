@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { API_PATHS } from '@md-reader/core'
+import { API_PATHS, SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, CreateRoomResponse, RoomBinding, ShareLink } from '@md-reader/core'
 import { saveLinkToken, getLinkTokens, forgetLinkToken } from './link-cache'
 import { getRecord, touchRecord } from '../doc-registry'
@@ -148,6 +148,18 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     setLinks((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
   }), [run])
 
+  const recreate = useCallback(async (link: ShareLink): Promise<void> => {
+    let expiresIn: number | null = null
+    if (link.expiresAt !== null) {
+      const left = link.expiresAt - Date.now()
+      const opts = [SHARE_EXPIRY_PRESETS['7d'], SHARE_EXPIRY_PRESETS['30d']].filter((v): v is number => typeof v === 'number')
+      expiresIn = opts.reduce((best, v) => (Math.abs(v - left) < Math.abs(best - left) ? v : best), opts[0] as number)
+    }
+    await createLink({ role: link.role, label: link.label || undefined, expiresIn })
+    await revoke(link.tokenPrefix)
+    await refresh()
+  }, [createLink, revoke, refresh])
+
   const revokeAll = useCallback(() => run(async (stale) => {
     const b = need()
     const active = linksRef.current.filter((l) => l.revokedAt === null).map((l) => l.tokenPrefix)
@@ -180,5 +192,5 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     }
   }), [run, refresh])
 
-  return { binding, links, enable, createLink, revoke, revokeAll, refresh, busy: pending > 0, error }
+  return { binding, links, enable, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
 }
