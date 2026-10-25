@@ -50,7 +50,8 @@ export function isMarkdownUrl(url: string): boolean {
   }
   if (u.protocol !== 'http:' && u.protocol !== 'https:' && u.protocol !== 'file:') return false
   if (!mdPath(u)) return false
-  if (GH_HOSTS.includes(u.hostname) && GH_BLOB.test(u.pathname)) return false
+  // github.com pages (blob, edit, blame, commits…) are HTML apps, never raw markdown
+  if (GH_HOSTS.includes(u.hostname)) return false
   return true
 }
 

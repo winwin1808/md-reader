@@ -16,6 +16,9 @@ describe('isMarkdownUrl', () => {
     'https://e.com/a.md.txt',
     'https://github.com/o/r/blob/main/a.md',
     'https://www.github.com/o/r/blob/main/a.md',
+    'https://github.com/o/r/edit/main/a.md',
+    'https://github.com/o/r/blame/main/a.md',
+    'https://github.com/o/r/commits/main/docs/a.md',
     'not a url',
     'ftp://e.com/a.md',
   ])('false: %s', (u) => expect(isMarkdownUrl(u)).toBe(false))
