@@ -173,12 +173,12 @@ describe('TopToolbar', () => {
     render(<TopToolbar {...defaultProps} viewMode="reading" onViewModeChange={onViewModeChange} />)
     expect(screen.getByRole('radiogroup')).toBeTruthy()
     const radios = screen.getAllByRole('radio')
-    expect(radios.map((r) => r.textContent)).toEqual(['Đọc', 'Soạn', 'Chia đôi'])
+    expect(radios.map((r) => r.textContent)).toEqual(['Đọc', 'Sửa'])
     expect(radios[0]!.getAttribute('aria-checked')).toBe('true')
     fireEvent.keyDown(radios[0]!, { key: 'ArrowRight' })
-    expect(onViewModeChange).toHaveBeenLastCalledWith('editor')
+    expect(onViewModeChange).toHaveBeenLastCalledWith('live')
     fireEvent.keyDown(radios[0]!, { key: 'ArrowLeft' })
-    expect(onViewModeChange).toHaveBeenLastCalledWith('split')
+    expect(onViewModeChange).toHaveBeenLastCalledWith('live')
   })
 
   it('renders actions as bar buttons and Lưu when onSave given', () => {

@@ -79,6 +79,7 @@ export interface EditorProps {
   blame?: Array<LineAuthor | null> | null
   variant?: 'source' | 'live'
   renderers?: BlockRenderers
+  live?: { theme?: () => 'default' | 'dark' }
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
 
@@ -95,6 +96,7 @@ export function Editor({
   blame,
   variant = 'source',
   renderers,
+  live: liveOpts,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -102,6 +104,8 @@ export function Editor({
   const blameCompartmentRef = useRef(new Compartment())
   const blameRef = useRef(blame)
   blameRef.current = blame
+  const liveThemeRef = useRef(liveOpts?.theme)
+  liveThemeRef.current = liveOpts?.theme
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
 
@@ -128,7 +132,7 @@ export function Editor({
     const extensions = [
       live ? markdown({ base: markdownLanguage }) : markdown(),
       ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
-      ...(live ? livePreview(renderers ?? createDefaultRenderers()) : []),
+      ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default' }) : []),
       bracketMatching(),
       syntaxHighlighting(lereSachHighlight),
       Prec.high(

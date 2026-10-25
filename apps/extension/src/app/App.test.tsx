@@ -52,6 +52,7 @@ vi.mock('y-indexeddb', () => {
   }
 })
 
+const touchSpy = vi.hoisted(() => vi.fn(async (..._a: any[]) => {}))
 vi.mock('./doc-registry', () => {
   const recs = new Map<string, any>()
   return {
@@ -63,7 +64,7 @@ vi.mock('./doc-registry', () => {
     getRecord: async () => null,
     createRecord: async (i: any) => { const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
     findOrCreateByOrigin: async (i: any) => { const e = recs.get(i.originPath); if (e) return e; const r = { docId: 'd-' + recs.size, lastOpenedAt: 0, hasHandle: false, persistenceName: 'p', ...i }; recs.set(i.originPath, r); return r },
-    touchRecord: async () => {},
+    touchRecord: touchSpy,
     listRecent: async () => [],
     storeHandle: async () => {},
     getHandle: async () => null,
@@ -1092,7 +1093,7 @@ describe('App', () => {
     document.body.removeChild(introHeading)
   })
 
-  it('switching viewMode toggles between reading, editor, and split view', async () => {
+  it('switching viewMode toggles between reading and live edit', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?file=guide.md') as any
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -1118,14 +1119,11 @@ describe('App', () => {
     expect(container.querySelector('.cm-editor')).not.toBeNull()
     expect(container.querySelector('.md-formatting-toolbar')).not.toBeNull()
 
-    // Switch to split mode
-    const splitBtn = screen.getByTitle('Chế độ Chia đôi')
-    await act(async () => {
-      fireEvent.click(splitBtn)
-    })
-    expect(container.querySelector('.cm-editor')).not.toBeNull()
-    expect(container.querySelector('.a4-document-container')).not.toBeNull()
-    expect(container.querySelector('.split-view-container')).not.toBeNull()
+    // only two modes remain: no split / source segments
+    expect(screen.queryByTitle('Chế độ Chia đôi')).toBeNull()
+    expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual(['Đọc', 'Sửa'])
+    expect(container.querySelector('.cm-live')).not.toBeNull()
+    expect(touchSpy).toHaveBeenCalledWith(expect.any(String), { viewMode: 'live' })
 
     // Switch back to reading mode
     const readBtn = screen.getByTitle('Chế độ Đọc')
