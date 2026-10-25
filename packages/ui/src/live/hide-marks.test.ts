@@ -31,7 +31,6 @@ describe('hideMarks', () => {
     expect(r.lineCls[0]).toContain('cm-live-h1');
   });
   it('link shows only text', () => {
-    expect(run('[t](http://u) z', 15).hidden).toEqual([[0, 1], [2, 3], [3, 12], [12, 13]].slice(0, 1).concat([[2, 3], [3, 12]].slice(0, 0)).length ? run('[t](http://u) z', 15).hidden : []);
     const h = run('[t](http://u) z', 15).hidden;
     const covered = new Set<number>();
     h.forEach(([a, b]) => { for (let i = a; i < b; i++) covered.add(i); });
