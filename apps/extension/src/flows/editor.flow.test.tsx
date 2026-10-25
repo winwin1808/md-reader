@@ -110,7 +110,7 @@ describe('Phase 5 E2E Integration Smoke Test: Editor, Split View, Formatting, an
     expect(container.textContent).toContain('Phase 5 Architecture')
 
     // 2. Switch to Editor mode
-    const editorModeBtn = screenByTitle(container, 'Chế độ Soạn thảo')
+    const editorModeBtn = screenByTitle(container, 'Sửa trên trang')
     expect(editorModeBtn).toBeTruthy()
     fireEvent.click(editorModeBtn!)
 
