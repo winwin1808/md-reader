@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Icon } from './Icon'
+import { useT } from '../i18n'
 import type { MindNode } from '@md-reader/core'
 import {
   exportMindmapToSvg,
@@ -251,6 +252,7 @@ export function MindmapModal({
   onNodeClick,
   title,
 }: MindmapModalProps): React.JSX.Element | null {
+  const t = useT()
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const svgRef = useRef<SVGSVGElement | null>(null)
@@ -625,16 +627,16 @@ export function MindmapModal({
       className="mindmap-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={title || 'Sơ đồ tư duy'}
+      aria-label={title || t('present.mindmap')}
     >
       <div className="mindmap-modal-header">
-        <h2 className="mindmap-modal-title">{title || 'Sơ đồ tư duy'}</h2>
+        <h2 className="mindmap-modal-title">{title || t('present.mindmap')}</h2>
         <button
           type="button"
           className="mindmap-close-btn"
           onClick={onClose}
-          aria-label="Đóng"
-          title="Đóng"
+          aria-label={t('present.close')}
+          title={t('present.close')}
         >
           <Icon name="close" size={20} />
         </button>
@@ -675,7 +677,7 @@ export function MindmapModal({
           })}
 
           {/* Nodes */}
-          <g role="tree" aria-label="Sơ đồ tư duy" onKeyDown={handleTreeKeyDown}>
+          <g role="tree" aria-label={t('present.mindmap')} onKeyDown={handleTreeKeyDown}>
           {nodes.map((n) => {
             const isRoot = n.depth === 0
             const hasChildren = Boolean(n.node.children && n.node.children.length > 0)
@@ -794,13 +796,13 @@ export function MindmapModal({
         </g>
       </svg>
 
-      <div className="mindmap-controls" role="toolbar" aria-label="Điều khiển sơ đồ tư duy">
+      <div className="mindmap-controls" role="toolbar" aria-label={t('present.controls')}>
         <button
           type="button"
           className="mindmap-btn"
           onClick={handleExportSvg}
-          aria-label="Tải SVG"
-          title="Tải SVG"
+          aria-label={t('present.dlSvg')}
+          title={t('present.dlSvg')}
         >
           SVG
         </button>
@@ -808,8 +810,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleExportPng}
-          aria-label="Tải PNG"
-          title="Tải PNG"
+          aria-label={t('present.dlPng')}
+          title={t('present.dlPng')}
         >
           PNG
         </button>
@@ -817,8 +819,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleZoomIn}
-          aria-label="Phóng to"
-          title="Phóng to"
+          aria-label={t('present.zoomIn')}
+          title={t('present.zoomIn')}
         >
           <Icon name="zoom-in" size={20} />
         </button>
@@ -826,8 +828,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleZoomOut}
-          aria-label="Thu nhỏ"
-          title="Thu nhỏ"
+          aria-label={t('present.zoomOut')}
+          title={t('present.zoomOut')}
         >
           <Icon name="zoom-out" size={20} />
         </button>
@@ -835,8 +837,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={fitToScreen}
-          aria-label="Toàn màn hình"
-          title="Toàn màn hình"
+          aria-label={t('present.fullscreen')}
+          title={t('present.fullscreen')}
         >
           <Icon name="fullscreen" size={20} />
         </button>
@@ -844,8 +846,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleCollapseAll}
-          aria-label="Gập tất cả nhánh"
-          title="Gập tất cả nhánh"
+          aria-label={t('present.collapseAll')}
+          title={t('present.collapseAll')}
         >
           <Icon name="collapse-all" size={20} />
         </button>
@@ -853,8 +855,8 @@ export function MindmapModal({
           type="button"
           className="mindmap-btn"
           onClick={handleExpandAll}
-          aria-label="Mở tất cả nhánh"
-          title="Mở tất cả nhánh"
+          aria-label={t('present.expandAll')}
+          title={t('present.expandAll')}
         >
           <Icon name="expand-all" size={20} />
         </button>

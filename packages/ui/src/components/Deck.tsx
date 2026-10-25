@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
+import { useT } from '../i18n'
 import type { Slide } from '@md-reader/core'
 import { ThemeProvider, useResolvedTheme } from '../theme/ThemeProvider'
 import { MermaidBlock } from './MermaidBlock'
@@ -67,6 +68,7 @@ export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean
 }
 
 export function Deck(props: DeckProps): React.JSX.Element {
+  const t = useT()
   const {
     slides,
     initialSlide,
@@ -248,7 +250,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="Trình chiếu"
+        aria-label={t('present.deck')}
         onMouseMove={revealControls}
         onFocus={revealControls}
       >
@@ -278,7 +280,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
           <span className="deck-counter">{counterText}</span>
           <button
             type="button"
-            aria-label="Trang trước" title="Trang trước"
+            aria-label={t('present.prevSlide')} title={t('present.prevSlide')}
             disabled={totalSlides === 0 || currentIndex <= 0}
             onClick={() => goToSlide(currentIndex - 1)}
           >
@@ -286,7 +288,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
           </button>
           <button
             type="button"
-            aria-label="Trang sau" title="Trang sau"
+            aria-label={t('present.nextSlide')} title={t('present.nextSlide')}
             disabled={totalSlides === 0 || currentIndex >= totalSlides - 1}
             onClick={() => goToSlide(currentIndex + 1)}
           >
@@ -294,16 +296,16 @@ export function Deck(props: DeckProps): React.JSX.Element {
           </button>
           <button
             type="button"
-            aria-label="Cửa sổ diễn giả"
-            title="Cửa sổ diễn giả"
+            aria-label={t('present.speakerWindow')}
+            title={t('present.speakerWindow')}
             onClick={handleOpenSpeaker}
           >
             <Icon name="speaker" size={20} />
           </button>
           <button
             type="button"
-            aria-label="Thoát trình chiếu"
-            title="Thoát (Esc)"
+            aria-label={t('present.exit')}
+            title={t('present.exitEsc')}
             onClick={onClose}
           >
             <Icon name="close" size={20} />

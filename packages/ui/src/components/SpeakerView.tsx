@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { Slide } from '@md-reader/core'
 import { Icon } from './Icon'
+import { useT } from '../i18n'
 import { fitScale, SLIDE_W, SLIDE_H, SlideContent } from './Deck'
 
 export interface SpeakerViewProps {
@@ -71,6 +72,7 @@ export function SpeakerView({
   onResetTimer,
   mermaid,
 }: SpeakerViewProps): React.JSX.Element {
+  const t = useT()
   const totalSlides = slides.length
   const currentSlide = slides[currentSlideIndex]
   const hasNext = currentSlideIndex < totalSlides - 1
@@ -171,7 +173,7 @@ export function SpeakerView({
             onClick={goToPrev}
             disabled={!hasPrev}
           >
-            <Icon name="chevron-left" size={16} /> Trước
+            <Icon name="chevron-left" size={16} /> {t('present.prev')}
           </button>
           <button
             type="button"
@@ -179,27 +181,27 @@ export function SpeakerView({
             onClick={goToNext}
             disabled={!hasNext}
           >
-            Tiếp <Icon name="chevron-right" size={16} />
+            {t('present.next')} <Icon name="chevron-right" size={16} />
           </button>
         </div>
 
         <div className="speaker-view-header-center">
           <div className="speaker-timer-group">
-            <span className="speaker-timer-label">Đã trình bày</span>
+            <span className="speaker-timer-label">{t('present.elapsed')}</span>
             <span className="speaker-timer-display">{formatElapsed(currentElapsed)}</span>
             <button
               type="button"
               className="speaker-btn"
               onClick={handleToggleTimer}
             >
-              {isRunning ? 'Tạm dừng' : 'Tiếp tục'}
+              {isRunning ? t('present.pause') : t('present.resume')}
             </button>
             <button
               type="button"
               className="speaker-btn"
               onClick={handleResetTimer}
             >
-              Đặt lại
+              {t('present.reset')}
             </button>
           </div>
         </div>
@@ -213,29 +215,29 @@ export function SpeakerView({
 
       <main className="speaker-view-body">
         <section className="speaker-current-slide-wrapper">
-          <div className="speaker-section-label">Trang hiện tại</div>
+          <div className="speaker-section-label">{t('present.currentSlide')}</div>
           <ScaledSlide html={currentSlide?.html || ''} mermaid={mermaid !== false} />
         </section>
 
         <section className="speaker-sidebar-wrapper">
           <div className="speaker-next-slide-wrapper">
-            <div className="speaker-section-label">Trang tiếp theo</div>
+            <div className="speaker-section-label">{t('present.nextSlideLabel')}</div>
             {nextSlide ? (
               <ScaledSlide html={nextSlide.html || ''} mermaid={mermaid !== false} />
             ) : (
               <div className="speaker-slide-frame speaker-slide-empty">
-                <span>(Đã đến slide cuối cùng)</span>
+                <span>{t('present.lastSlide')}</span>
               </div>
             )}
           </div>
 
           <div className="speaker-notes-wrapper">
-            <div className="speaker-section-label">Ghi chú</div>
+            <div className="speaker-section-label">{t('present.notes')}</div>
             <div className="speaker-notes-box">
               {currentSlide?.notes && currentSlide.notes.length > 0 ? (
                 currentSlide.notes.map((note, idx) => <p key={idx}>{note}</p>)
               ) : (
-                <div className="speaker-notes-empty">(Không có ghi chú cho slide này)</div>
+                <div className="speaker-notes-empty">{t('present.noNotes')}</div>
               )}
             </div>
           </div>
