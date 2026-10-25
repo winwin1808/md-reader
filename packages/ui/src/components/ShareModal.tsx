@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, RoomBinding, ShareLink } from '@md-reader/core'
 import { Icon } from './Icon'
+import '../theme/share.css'
 
 export interface ShareModalProps {
   open: boolean
@@ -18,16 +19,6 @@ export interface ShareModalProps {
   buildUrl(token: string): string
   busy?: boolean
   error?: string | null
-}
-
-const btn: React.CSSProperties = {
-  padding: '6px 12px',
-  borderRadius: '8px',
-  border: '1px solid var(--rule)',
-  background: 'var(--surface)',
-  color: 'var(--ink)',
-  cursor: 'pointer',
-  fontSize: '13px',
 }
 
 export function formatRemaining(expiresAt: number | null, now: number): string {
@@ -53,6 +44,9 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   const [label, setLabel] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null)
   const [confirmAll, setConfirmAll] = useState(false)
+  const [showLabel, setShowLabel] = useState(false)
+  const [showOff, setShowOff] = useState(false)
+  const [created, setCreated] = useState<ShareLink | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -61,6 +55,10 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
       setLocalError(null)
       setConfirming(null)
       setConfirmAll(false)
+      setCreated(null)
+      setShowOff(false)
+      setShowLabel(false)
+      setLabel('')
     }
   }, [open])
 
@@ -109,42 +107,38 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
     }
   }
 
-  const visible = links.filter((l) => l.revokedAt === null)
+  const isOff = (l: ShareLink) => l.revokedAt !== null || (l.expiresAt !== null && l.expiresAt <= now())
+  const sorted = [...links].sort((x, y) => y.createdAt - x.createdAt)
+  const active = sorted.filter((l) => !isOff(l))
+  const off = sorted.filter(isOff)
+  const visible = active
+
+  const mid = (u: string) => (u.length > 32 ? `${u.slice(0, 18)}…${u.slice(-8)}` : u)
+  const onSeg = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setRole((r) => (r === 'view' ? 'edit' : 'view'))
+      const next = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]')
+      const idx = role === 'view' ? 1 : 0
+      next[idx]?.focus()
+    }
+  }
 
   const content = (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.55)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 10000, padding: '20px 16px', boxSizing: 'border-box',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          borderRadius: '16px', border: '1px solid var(--rule)', padding: '24px 28px',
-          minWidth: '340px', maxWidth: '480px', width: '100%', maxHeight: 'calc(100vh - 48px)',
-          overflowY: 'auto', background: 'var(--paper)', color: 'var(--ink)', boxSizing: 'border-box',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 id={titleId} style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Chia sẻ</h2>
-          <button type="button" aria-label="Đóng" onClick={onClose}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--ink)', display: 'inline-flex', padding: '4px 8px' }}>
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={onClose} className="share-overlay">
+      <div onClick={(e) => e.stopPropagation()} className="share-dialog">
+        <div className="share-head">
+          <h2 id={titleId} className="share-title">Chia sẻ</h2>
+          <button type="button" aria-label="Đóng" title="Đóng" onClick={onClose} className="share-icon-btn">
             <Icon name="close" size={16} />
           </button>
         </div>
+        <p className="share-sub">Ai có link đều mở được tài liệu này.</p>
 
         {binding === null ? (
           <div>
-            <p style={{ fontSize: '14px', color: 'var(--pencil)', lineHeight: 1.5 }}>
-              Tài liệu sẽ được tải lên máy chủ đồng bộ. Chỉ người có link mới xem được.
-            </p>
-            <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} style={btn}>Bật chia sẻ</button>
+            <p className="share-sub">Tài liệu sẽ được tải lên máy chủ đồng bộ. Chỉ người có link mới xem được.</p>
+            <button type="button" disabled={busy} onClick={() => { void run(() => onEnable()) }} className="share-btn is-primary">Bật chia sẻ</button>
           </div>
         ) : (
           <div>
@@ -152,114 +146,128 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
               onSubmit={(e) => {
                 e.preventDefault()
                 const req = { role, expiresIn: SHARE_EXPIRY_PRESETS[expiry], label: label.trim() || undefined }
-                void run(async () => { await onCreateLink(req); setLabel('') })
+                void run(async () => {
+                  const l = await onCreateLink(req)
+                  setLabel('')
+                  setShowLabel(false)
+                  if (l && l.token) setCreated(l)
+                })
               }}
-              style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
             >
-              <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', gap: '12px', fontSize: '13px' }}>
-                <legend style={{ fontSize: '12px', color: 'var(--pencil)' }}>Quyền</legend>
-                <label><input type="radio" name="share-role" checked={role === 'view'} onChange={() => setRole('view')} /> Xem</label>
-                <label><input type="radio" name="share-role" checked={role === 'edit'} onChange={() => setRole('edit')} /> Sửa</label>
-              </fieldset>
-              <label style={{ fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                Hết hạn
-                <select value={expiry} onChange={(e) => setExpiry(e.target.value as Expiry)}>
+              <div className="share-create">
+                <div className="share-seg" role="radiogroup" aria-label="Quyền" onKeyDown={onSeg}>
+                  <button type="button" role="radio" aria-checked={role === 'view'} tabIndex={role === 'view' ? 0 : -1} onClick={() => setRole('view')}>Xem</button>
+                  <button type="button" role="radio" aria-checked={role === 'edit'} tabIndex={role === 'edit' ? 0 : -1} onClick={() => setRole('edit')}>Sửa</button>
+                </div>
+                <select className="share-select" aria-label="Hết hạn" value={expiry} onChange={(e) => setExpiry(e.target.value as Expiry)}>
                   <option value="7d">7 ngày</option>
                   <option value="30d">30 ngày</option>
                   <option value="never">Không hết hạn</option>
                 </select>
-              </label>
-              <label style={{ fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                Nhãn (tuỳ chọn)
-                <input type="text" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
-              </label>
-              <button type="submit" disabled={busy} style={btn}>Tạo link</button>
+                <button type="submit" disabled={busy} className="share-btn is-primary">Tạo link</button>
+              </div>
+              {showLabel ? (
+                <div className="share-label-row">
+                  <input type="text" aria-label="Nhãn (tuỳ chọn)" placeholder="Nhãn (tuỳ chọn)" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} />
+                </div>
+              ) : (
+                <button type="button" className="share-text-btn" style={{ marginTop: 6 }} onClick={() => setShowLabel(true)}>Thêm nhãn</button>
+              )}
             </form>
-            {links.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--pencil)' }}>Chưa có link nào.</p>
-            ) : (
-              (['view', 'edit'] as const).map((r) => {
-                const group = links.filter((l) => l.role === r)
-                if (group.length === 0) return null
-                return (
-                  <section key={r} style={{ marginTop: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--pencil)', letterSpacing: '0.04em' }}>
-                      {r === 'edit' ? 'Link sửa' : 'Link xem'}
-                    </h3>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
-                      {group.map((l) => {
-                        const t = now()
-                        const revoked = l.revokedAt !== null
-                        const expired = !revoked && l.expiresAt !== null && l.expiresAt <= t
-                        const active = !revoked && !expired
-                        const status = revoked ? 'Đã thu hồi' : expired ? 'Hết hạn' : formatRemaining(l.expiresAt, t)
-                        return (
-                          <li key={l.tokenPrefix} className={expired ? 'is-expired' : revoked ? 'is-revoked' : undefined}
-                            style={{ borderTop: '1px solid var(--rule)', padding: '10px 0', opacity: active ? 1 : 0.55 }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600 }}>{l.label || 'Không nhãn'}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--pencil)', margin: '2px 0 8px' }}>
-                              <span>{l.tokenPrefix}…</span> · <span>{status}</span>
-                            </div>
-                            {active && (
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                {l.token !== '' ? (
-                                  <>
-                                    <input readOnly value={buildUrl(l.token)} aria-label="Link chia sẻ"
-                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid var(--rule)', borderRadius: '6px', background: 'var(--paper)', color: 'var(--ink)', fontSize: '12px' }} />
-                                    <button type="button" disabled={busy} style={btn} onClick={() => { void copy(l) }}>Sao chép</button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span style={{ flex: 1, fontSize: '12px', color: 'var(--pencil)' }}>Link tạo trên máy khác — chỉ sao chép được ở máy đó.</span>
-                                    {onRecreate && (
-                                      <button type="button" disabled={busy} style={btn} onClick={() => { void run(() => onRecreate(l)) }}>Tạo lại link</button>
-                                    )}
-                                  </>
-                                )}
-                                {confirming === l.tokenPrefix ? (
-                                  <>
-                                    <span style={{ fontSize: '12px' }}>Thu hồi link này?</span>
-                                    <button type="button" disabled={busy} style={btn}
-                                      onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>Thu hồi</button>
-                                    <button type="button" style={btn} onClick={() => setConfirming(null)}>Huỷ</button>
-                                  </>
-                                ) : (
-                                  <button type="button" disabled={busy} style={btn} onClick={() => setConfirming(l.tokenPrefix)}>Thu hồi</button>
-                                )}
-                              </div>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </section>
-                )
-              })
+
+            {created && (
+              <div className="share-created">
+                <span className="share-created-url" title={buildUrl(created.token)} aria-label="Link vừa tạo">{mid(buildUrl(created.token))}</span>
+                <button type="button" disabled={busy} className="share-btn is-primary" onClick={() => { void copy(created) }}>Sao chép</button>
+              </div>
             )}
-            {onRevokeAll && visible.length > 0 && (
-              <div style={{ marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                {confirmAll ? (
-                  <>
-                    <span style={{ fontSize: '12px' }}>Thu hồi tất cả link? Phòng vẫn giữ, có thể tạo link mới.</span>
-                    <button type="button" disabled={busy} style={btn}
-                      onClick={() => { setConfirmAll(false); void run(() => onRevokeAll()) }}>Tắt chia sẻ</button>
-                    <button type="button" style={btn} onClick={() => setConfirmAll(false)}>Huỷ</button>
-                  </>
-                ) : (
-                  <button type="button" disabled={busy} style={btn} onClick={() => setConfirmAll(true)}>Tắt chia sẻ</button>
+
+            {active.length === 0 ? (
+              <p className="share-empty">Chưa có link nào. Tạo link xem để gửi cho người khác.</p>
+            ) : (
+              <ul className="share-list">
+                {active.map((l) => {
+                  const t = now()
+                  return (
+                    <li key={l.tokenPrefix} className="share-row">
+                      <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? 'Sửa' : 'Xem'}</span>
+                      <div className="share-row-main">
+                        <span className="share-row-name">{l.label || `Link ${l.tokenPrefix}`}</span>
+                        <span className="share-row-meta">{formatRemaining(l.expiresAt, t)}</span>
+                      </div>
+                      {confirming === l.tokenPrefix ? (
+                        <span className="share-confirm">
+                          <span>Thu hồi?</span>
+                          <button type="button" disabled={busy} className="share-text-btn is-danger"
+                            onClick={() => { setConfirming(null); void run(() => onRevoke(l.tokenPrefix)) }}>Có</button>
+                          <button type="button" className="share-text-btn" onClick={() => setConfirming(null)}>Không</button>
+                        </span>
+                      ) : (
+                        <>
+                          {l.token !== '' ? (
+                            <button type="button" disabled={busy} className="share-icon-btn" aria-label="Sao chép link" title="Sao chép link" onClick={() => { void copy(l) }}>
+                              <Icon name="copy" size={16} />
+                            </button>
+                          ) : onRecreate ? (
+                            <button type="button" disabled={busy} className="share-icon-btn" aria-label="Tạo lại link"
+                              title="Link tạo trên máy khác — tạo link mới cùng quyền" onClick={() => { void run(() => onRecreate(l)) }}>
+                              <Icon name="refresh" size={16} />
+                            </button>
+                          ) : null}
+                          <button type="button" disabled={busy} className="share-icon-btn is-danger" aria-label="Thu hồi link" title="Thu hồi link" onClick={() => setConfirming(l.tokenPrefix)}>
+                            <Icon name="trash" size={16} />
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {off.length > 0 && (
+              <div className="share-disclosure">
+                <button type="button" aria-expanded={showOff} onClick={() => setShowOff((v) => !v)}>
+                  <Icon name={showOff ? 'chevron-down' : 'chevron-right'} size={16} />
+                  Link đã tắt ({off.length})
+                </button>
+                {showOff && (
+                  <ul className="share-list" style={{ marginTop: 4 }}>
+                    {off.map((l) => (
+                      <li key={l.tokenPrefix} className="share-row is-off">
+                        <span className={`share-pill${l.role === 'edit' ? ' is-edit' : ''}`}>{l.role === 'edit' ? 'Sửa' : 'Xem'}</span>
+                        <div className="share-row-main">
+                          <span className="share-row-name">{l.label || `Link ${l.tokenPrefix}`}</span>
+                          <span className="share-row-meta">{l.revokedAt !== null ? 'Đã thu hồi' : 'Hết hạn'}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             )}
-            <div role="status" aria-live="polite" style={{ minHeight: '18px', marginTop: '8px', fontSize: '12px', color: 'var(--pencil)' }}>
-              {copied ? 'Đã sao chép' : ''}
+
+            <div className="share-foot">
+              <span>{visible.length > 0 ? `Đang chia sẻ · ${visible.length} link hoạt động` : 'Chưa có link hoạt động'}</span>
+              {onRevokeAll && visible.length > 0 && (
+                confirmAll ? (
+                  <span className="share-confirm">
+                    <span>Thu hồi tất cả link?</span>
+                    <button type="button" disabled={busy} className="share-text-btn is-danger"
+                      onClick={() => { setConfirmAll(false); void run(() => onRevokeAll()) }}>Có</button>
+                    <button type="button" className="share-text-btn" onClick={() => setConfirmAll(false)}>Không</button>
+                  </span>
+                ) : (
+                  <button type="button" disabled={busy} className="share-text-btn is-danger" onClick={() => setConfirmAll(true)}>Tắt chia sẻ</button>
+                )
+              )}
             </div>
-            {copyFailed && <p style={{ fontSize: '12px', color: 'var(--pencil)' }}>Không sao chép được</p>}
+            <div role="status" aria-live="polite" className="share-toast">{copied ? 'Đã sao chép' : ''}</div>
+            {copyFailed && <p className="share-toast">Không sao chép được</p>}
           </div>
         )}
 
-        {(error || localError) && (
-          <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--accent)' }}>{error || localError}</div>
-        )}
+        {(error || localError) && <div role="alert" className="share-error">{error || localError}</div>}
       </div>
     </div>
   )

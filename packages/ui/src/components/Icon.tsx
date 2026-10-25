@@ -2,7 +2,7 @@ export type IconName =
   | 'book' | 'edit' | 'split' | 'present' | 'mindmap' | 'export' | 'settings' | 'search' | 'close'
   | 'chevron-left' | 'chevron-right' | 'chevron-down' | 'more' | 'open-file' | 'save' | 'check' | 'alert' | 'fullscreen'
   | 'zoom-in' | 'zoom-out' | 'expand-all' | 'collapse-all' | 'copy' | 'speaker' | 'toc' | 'font-smaller' | 'font-larger'
-  | 'undo' | 'redo' | 'menu' | 'share' | 'person' | 'history'
+  | 'undo' | 'redo' | 'menu' | 'share' | 'person' | 'history' | 'refresh' | 'trash'
 
 // 24-grid line icons, 2px padding, stroke only. Circles are expressed as path arcs.
 const PATHS: Record<IconName, string[]> = {
@@ -38,6 +38,8 @@ const PATHS: Record<IconName, string[]> = {
   menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
   person: ['M12 8m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0', 'M5 20a7 6 0 0 1 14 0'],
   history: ['M3.5 12a8.5 8.5 0 1 0 2.6-6.1', 'M3.5 4v4.5H8', 'M12 7.5V12l3 2'],
+  refresh: ['M20 11a8 8 0 1 0-2.3 5.7', 'M20 4v7h-7'],
+  trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13', 'M10 11v6', 'M14 11v6'],
   share: ['M18 5m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M6 12m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M18 19m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M8.2 10.8l7.6-4.6', 'M8.2 13.2l7.6 4.6'],
 }
 
