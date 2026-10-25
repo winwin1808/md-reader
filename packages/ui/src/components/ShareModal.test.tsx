@@ -52,15 +52,14 @@ describe('ShareModal', () => {
     const p = setup()
     fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
     expect(p.onCreateLink).toHaveBeenCalledWith({ role: 'view', expiresIn: SHARE_EXPIRY_PRESETS['30d'], label: undefined })
-    expect(screen.getByText('Chưa có link nào.')).toBeTruthy()
+    expect(screen.getByText(/Chưa có link nào\./)).toBeTruthy()
   })
 
   it('copy writes url and shows Đã sao chép', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     setup({ links: [link({ token: 'TOK' })] })
-    expect((screen.getByDisplayValue('https://app/s/TOK') as HTMLInputElement).readOnly).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép link' }))
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Đã sao chép'))
     expect(writeText).toHaveBeenCalledWith('https://app/s/TOK')
   })
@@ -68,29 +67,28 @@ describe('ShareModal', () => {
   it('clipboard rejection shows message', async () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('x')) } })
     setup({ links: [link({ token: 'TOK' })] })
-    fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép link' }))
     await waitFor(() => expect(screen.getByText('Không sao chép được')).toBeTruthy())
   })
 
   it('row with empty token shows hint, no copy button', () => {
     setup({ links: [link()] })
-    expect(screen.getByText('Link tạo trên máy khác — chỉ sao chép được ở máy đó.')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Sao chép' })).toBeNull()
-    expect(screen.getByText(/abc123…/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Sao chép link' })).toBeNull()
+    expect(screen.getByText('Link abc123')).toBeTruthy()
     expect(document.querySelector('li')!.textContent).toContain('Không hết hạn')
   })
 
   it('Thu hồi calls onRevoke with prefix; revoked row has no actions', () => {
     const p = setup({ links: [link({ tokenPrefix: 'gone', revokedAt: 5, token: 'X' }), link({ tokenPrefix: 'live' })] })
-    expect(screen.getAllByRole('button', { name: 'Thu hồi' }).length).toBe(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+    expect(screen.getAllByRole('button', { name: 'Thu hồi link' }).length).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Có' }))
     expect(p.onRevoke).toHaveBeenCalledWith('live')
   })
 
   it('busy disables action buttons', () => {
     setup({ busy: true, links: [link({ token: 'T' })] })
-    for (const n of ['Tạo link', 'Sao chép', 'Thu hồi']) {
+    for (const n of ['Tạo link', 'Sao chép link', 'Thu hồi link']) {
       expect((screen.getByRole('button', { name: n }) as HTMLButtonElement).disabled).toBe(true)
     }
   })
@@ -133,8 +131,8 @@ describe('ShareModal', () => {
     it('onRevoke rejection shows alert; non-Error falls back', async () => {
       const spy = guard()
       setup({ links: [link()], onRevoke: vi.fn().mockRejectedValue('boom') })
-      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi link' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Có' }))
       await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Không thực hiện được'))
       await flush()
       process.off('unhandledRejection', spy)
@@ -156,7 +154,7 @@ describe('ShareModal', () => {
         buildUrl: (t: string) => `https://app/s/${t}`,
       }
       const { rerender } = render(<ShareModal {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Sao chép link' }))
       await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Đã sao chép'))
       rerender(<ShareModal {...props} open={false} />)
       rerender(<ShareModal {...props} open={true} />)
@@ -168,7 +166,7 @@ describe('ShareModal', () => {
       const writeText = vi.fn().mockReturnValue(new Promise<void>((r) => { resolve = r }))
       vi.stubGlobal('navigator', { clipboard: { writeText } })
       setup({ links: [link({ token: 'TOK' })] })
-      const b = screen.getByRole('button', { name: 'Sao chép' })
+      const b = screen.getByRole('button', { name: 'Sao chép link' })
       fireEvent.click(b)
       fireEvent.click(b)
       expect(writeText).toHaveBeenCalledTimes(1)
@@ -185,15 +183,17 @@ describe('ShareModal', () => {
       const p = setup()
       fireEvent.click(screen.getByRole('radio', { name: 'Sửa' }))
       fireEvent.change(screen.getByRole('combobox', { name: 'Hết hạn' }), { target: { value: '7d' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Thêm nhãn' }))
       fireEvent.change(screen.getByLabelText('Nhãn (tuỳ chọn)'), { target: { value: '  Nhóm A ' } })
       fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
       expect(p.onCreateLink).toHaveBeenCalledWith({ role: 'edit', expiresIn: SHARE_EXPIRY_PRESETS['7d'], label: 'Nhóm A' })
-      await waitFor(() => expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).value).toBe(''))
-      expect((screen.getByLabelText('Nhãn (tuỳ chọn)') as HTMLInputElement).maxLength).toBe(120)
+      await waitFor(() => expect(screen.queryByLabelText('Nhãn (tuỳ chọn)')).toBeNull())
+      expect(screen.getByRole('button', { name: 'Thêm nhãn' })).toBeTruthy()
     })
 
     it('keeps the typed label when onCreateLink rejects', async () => {
       setup({ onCreateLink: vi.fn().mockRejectedValue(new Error('x')) })
+      fireEvent.click(screen.getByRole('button', { name: 'Thêm nhãn' }))
       fireEvent.change(screen.getByLabelText('Nhãn (tuỳ chọn)'), { target: { value: 'Nhóm A' } })
       fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
       await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('x'))
@@ -207,33 +207,33 @@ describe('ShareModal', () => {
       expect(formatRemaining(1000 + 12 * DAY, 1000)).toBe('còn 12 ngày')
     })
 
-    it('row shows remaining days, role badge and fallback label', () => {
+    it('row shows remaining days, role pill and fallback label', () => {
       setup({ now: () => 1000, links: [link({ role: 'edit', expiresAt: 1000 + 12 * DAY })] })
       const li = document.querySelector('li')!
       expect(li.textContent).toContain('còn 12 ngày')
-      expect(screen.getByRole('heading', { name: 'Link sửa' })).toBeTruthy()
-      expect(li.textContent).toContain('Không nhãn')
+      expect(li.textContent).toContain('Sửa')
+      expect(li.textContent).toContain('Link abc123')
     })
 
-    it('revoke needs confirmation and Huỷ cancels', () => {
+    it('revoke needs inline confirmation and Không cancels', () => {
       const p = setup({ links: [link()] })
-      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi link' }))
       expect(p.onRevoke).not.toHaveBeenCalled()
-      expect(screen.getByText('Thu hồi link này?')).toBeTruthy()
-      fireEvent.click(screen.getByRole('button', { name: 'Huỷ' }))
-      expect(screen.queryByText('Thu hồi link này?')).toBeNull()
+      expect(screen.getByText('Thu hồi?')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Không' }))
+      expect(screen.queryByText('Thu hồi?')).toBeNull()
       expect(p.onRevoke).not.toHaveBeenCalled()
-      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Thu hồi link' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Có' }))
       expect(p.onRevoke).toHaveBeenCalledWith('abc123')
     })
 
     it('only one row confirms at a time', () => {
       setup({ links: [link({ tokenPrefix: 'a' }), link({ tokenPrefix: 'b' })] })
-      const [b1, b2] = screen.getAllByRole('button', { name: 'Thu hồi' }) as [HTMLElement, HTMLElement]
+      const [b1, b2] = screen.getAllByRole('button', { name: 'Thu hồi link' }) as [HTMLElement, HTMLElement]
       fireEvent.click(b1)
       fireEvent.click(b2)
-      expect(screen.getAllByText('Thu hồi link này?').length).toBe(1)
+      expect(screen.getAllByText('Thu hồi?').length).toBe(1)
     })
 
     it('Tắt chia sẻ with confirmation calls onRevokeAll once', async () => {
@@ -241,8 +241,8 @@ describe('ShareModal', () => {
       setup({ onRevokeAll, links: [link()] })
       fireEvent.click(screen.getByRole('button', { name: 'Tắt chia sẻ' }))
       expect(onRevokeAll).not.toHaveBeenCalled()
-      expect(screen.getByText('Thu hồi tất cả link? Phòng vẫn giữ, có thể tạo link mới.')).toBeTruthy()
-      fireEvent.click(screen.getByRole('button', { name: 'Tắt chia sẻ' }))
+      expect(screen.getByText('Thu hồi tất cả link?')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Có' }))
       await flush()
       expect(onRevokeAll).toHaveBeenCalledTimes(1)
     })
@@ -255,13 +255,14 @@ describe('ShareModal', () => {
       expect(screen.queryByRole('button', { name: 'Tắt chia sẻ' })).toBeNull()
     })
 
-    it('expired link shows Hết hạn, is-expired, no actions', () => {
+    it('expired link is folded under the disclosure, no actions', () => {
       setup({ now: () => 1000, links: [link({ expiresAt: 500, token: 'T' })] })
+      expect(document.querySelector('li')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /Link đã tắt \(1\)/ }))
       const li = document.querySelector('li')!
       expect(li.textContent).toContain('Hết hạn')
-      expect(li.classList.contains('is-expired')).toBe(true)
-      expect(screen.queryByRole('button', { name: 'Thu hồi' })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Sao chép' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Thu hồi link' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Sao chép link' })).toBeNull()
     })
   })
 
@@ -287,21 +288,28 @@ describe('ShareModal', () => {
       buildUrl: (t: string) => t,
     }
     const { rerender } = render(<ShareModal {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi' }))
-    expect(screen.getByText('Thu hồi link này?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Thu hồi link' }))
+    expect(screen.getByText('Thu hồi?')).toBeTruthy()
     rerender(<ShareModal {...props} links={[]} />)
     rerender(<ShareModal {...props} links={[link()]} />)
-    expect(screen.queryByText('Thu hồi link này?')).toBeNull()
+    expect(screen.queryByText('Thu hồi?')).toBeNull()
   })
 
-  describe('9a2.1 grouped list', () => {
-    it('groups under Link xem / Link sửa, hides empty group', () => {
-      setup({ links: [link({ tokenPrefix: 'a' }), link({ tokenPrefix: 'b', role: 'edit' })] })
-      expect(screen.getByRole('heading', { name: 'Link xem' })).toBeTruthy()
-      expect(screen.getByRole('heading', { name: 'Link sửa' })).toBeTruthy()
-      cleanup()
-      setup({ links: [link({ tokenPrefix: 'a' })] })
-      expect(screen.queryByRole('heading', { name: 'Link sửa' })).toBeNull()
+  describe('9i.1 redesigned list', () => {
+    it('newest first; label input hidden until Thêm nhãn', () => {
+      setup({ links: [link({ tokenPrefix: 'old', createdAt: 1 }), link({ tokenPrefix: 'new', createdAt: 9 })] })
+      const names = Array.from(document.querySelectorAll('li .share-row-name')).map((e) => e.textContent)
+      expect(names).toEqual(['Link new', 'Link old'])
+      expect(screen.queryByLabelText('Nhãn (tuỳ chọn)')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Thêm nhãn' }))
+      expect(screen.getByLabelText('Nhãn (tuỳ chọn)')).toBeTruthy()
+    })
+
+    it('segment is a radiogroup with arrow keys', () => {
+      setup()
+      const g = screen.getByRole('radiogroup')
+      fireEvent.keyDown(g, { key: 'ArrowRight' })
+      expect(screen.getByRole('radio', { name: 'Sửa' }).getAttribute('aria-checked')).toBe('true')
     })
 
     it('active row without token: Tạo lại link calls onRecreate', () => {
@@ -312,10 +320,24 @@ describe('ShareModal', () => {
       expect(onRecreate).toHaveBeenCalledWith(l)
     })
 
-    it('revoked row shows Đã thu hồi, no buttons', () => {
+    it('revoked hidden until disclosure opened; then dimmed without buttons', () => {
       setup({ links: [link({ revokedAt: 5, token: 'T' })] })
+      expect(document.querySelector('li')).toBeNull()
+      expect(screen.getByText(/Chưa có link nào\./)).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: /Link đã tắt \(1\)/ }))
       expect(document.querySelector('li')!.textContent).toContain('Đã thu hồi')
-      for (const n of ['Sao chép', 'Tạo lại link', 'Thu hồi']) expect(screen.queryByRole('button', { name: n })).toBeNull()
+      for (const n of ['Sao chép link', 'Tạo lại link', 'Thu hồi link']) expect(screen.queryByRole('button', { name: n })).toBeNull()
+    })
+
+    it('footer shows active count; just-created link shows with copy', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal('navigator', { clipboard: { writeText } })
+      setup({ links: [link({ token: 'A' })], onCreateLink: vi.fn().mockResolvedValue(link({ token: 'NEW' })) })
+      expect(screen.getByText('Đang chia sẻ · 1 link hoạt động')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Tạo link' }))
+      await waitFor(() => expect(screen.getByLabelText('Link vừa tạo')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://app/s/NEW'))
     })
   })
 })
