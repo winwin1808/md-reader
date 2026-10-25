@@ -36,3 +36,11 @@ export const livePreviewWidgetTheme: Extension = EditorView.theme({
   '.cm-live-alert-warning': { borderLeftColor: 'var(--hl)' },
   '.cm-live-alert-caution': { borderLeftColor: 'var(--danger)' },
 });
+
+export const livePreviewBlockTheme: Extension = EditorView.theme({
+  '.cm-live-block': { margin: '0.75em 0', overflowX: 'auto', cursor: 'text' },
+  '.cm-live-block table': { width: '100%', borderCollapse: 'collapse' },
+  '.cm-live-block th, .cm-live-block td': { border: '1px solid var(--rule)', padding: '0.4em 0.7em', textAlign: 'left' },
+  '.cm-live-block th': { backgroundColor: 'var(--surface)' },
+  '.cm-live-block pre': { fontFamily: 'var(--font-code)', backgroundColor: 'var(--surface)', padding: '0.7em' },
+});
