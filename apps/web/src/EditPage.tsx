@@ -1,10 +1,30 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
-import { computeTextChanges, trackLocalActor, type ResolveTokenResponse } from '@md-reader/core'
+import { API_PATHS, computeTextChanges, trackLocalActor, type ResolveTokenResponse, type UploadAssetResponse } from '@md-reader/core'
 import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
+
+export async function uploadImage(serverUrl: string, room: string, token: string, file: File): Promise<UploadAssetResponse> {
+  let res: Response
+  try {
+    res = await fetch(serverUrl.replace(/\/+$/, '') + API_PATHS.assets(room), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'content-type': file.type },
+      body: file,
+    })
+  } catch {
+    throw new Error('Không tải được ảnh lên máy chủ.')
+  }
+  if (res.status === 413) {
+    let code = ''
+    try { code = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
+    throw new Error(code === 'quota' ? 'Tài liệu đã dùng hết 50 MB ảnh.' : 'Ảnh quá 2 MB.')
+  }
+  if (!res.ok) throw new Error('Không tải được ảnh lên máy chủ.')
+  return (await res.json()) as UploadAssetResponse
+}
 
 const Editor = lazy(() => import('@md-reader/ui/editor').then((m) => ({ default: m.Editor })))
 
@@ -235,6 +255,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
                 undoManager={session.undo}
                 awareness={session.conn.awareness}
                 editorViewRef={editorViewRef}
+                saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file)).url })}
+                onImageMessage={(m) => window.alert(m)}
               />
             </Suspense>
           </div>

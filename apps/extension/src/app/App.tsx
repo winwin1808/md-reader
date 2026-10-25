@@ -56,6 +56,8 @@ import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
+import { createImageSaver } from './image-saver'
+import { getHandle, getDirHandle, storeDirHandle } from './doc-registry'
 import './app.css'
 
 const PLUGINS = defaultRenderPlugins()
@@ -156,9 +158,34 @@ export function App(): React.JSX.Element {
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | undefined>(undefined)
+  const [imageNotice, setImageNotice] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setDirHandle(undefined)
+    if (session.docId) void getDirHandle(session.docId).then((d) => { if (!cancelled && d) setDirHandle(d) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [session.docId])
+  const allowImageDir = useCallback(async () => {
+    try {
+      if (!session.docId) return
+      const fh = await getHandle(session.docId)
+      const picker = (window as unknown as { showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
+      if (!fh || !picker) { setImageNotice('Trình duyệt không hỗ trợ chọn thư mục.'); return }
+      const dir = await picker({ startIn: fh, mode: 'readwrite' })
+      if (!(await dir.resolve(fh))) { setImageNotice('Thư mục đã chọn không chứa file này.'); return }
+      await storeDirHandle(session.docId, dir)
+      setDirHandle(dir)
+      setImageNotice(null)
+    } catch { /* cancelled */ }
+  }, [session.docId])
   const resolveImage = useMemo(
-    () => (imageOriginUrl ? createImageResolver({ url: imageOriginUrl }) : undefined),
-    [imageOriginUrl],
+    () => (dirHandle || imageOriginUrl ? createImageResolver({ url: imageOriginUrl ?? undefined, dirHandle }) : undefined),
+    [imageOriginUrl, dirHandle],
+  )
+  const saveImage = useMemo(
+    () => createImageSaver({ serverUrl: room?.serverUrl ?? serverUrl, room: room?.roomId, ownerToken: room?.ownerToken, dirHandle, docName: session.title || 'image' }),
+    [room?.serverUrl, room?.roomId, room?.ownerToken, serverUrl, dirHandle, session.title],
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)
@@ -743,6 +770,15 @@ export function App(): React.JSX.Element {
           </button>
         )}
         <FileDrop>
+          {imageNotice && (
+            <div className="error-banner notice" role="status">
+              <span>{imageNotice}</span>
+              <div className="notice__actions">
+                {session.record?.hasHandle && !dirHandle && !room && <button type="button" onClick={() => void allowImageDir()}>Cho phép lưu ảnh cạnh file</button>}
+                <button type="button" onClick={() => setImageNotice(null)}>Đóng</button>
+              </div>
+            </div>
+          )}
           {session.externalChange && (
             <div className="error-banner notice" role="status">
               <span>Tài liệu gốc đã thay đổi từ lần mở trước. Bản của bạn vẫn được giữ.</span>
@@ -847,7 +883,7 @@ export function App(): React.JSX.Element {
                   </div>
                 ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} />
                 </Suspense>
                 )}
               </div>
