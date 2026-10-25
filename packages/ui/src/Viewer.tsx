@@ -7,7 +7,14 @@ import { useResolvedTheme } from './theme/ThemeProvider'
 import { ExcalidrawBlock } from './components/ExcalidrawBlock'
 import './viewer.css'
 
+export type ImageResolver = (src: string) => string | Promise<string>
+
+export const isRelativeSrc = (src: string): boolean =>
+  src !== '' && !/^[a-z][a-z0-9+.-]*:/i.test(src) && !src.startsWith('//') && !src.startsWith('#')
+
 export interface ViewerProps {
+  /** Resolve relative <img src> against the document origin. */
+  resolveImage?: ImageResolver
   /** HTML đã sanitize từ core/render. Viewer KHÔNG tự sanitize lại. */
   html: string
   className?: string
@@ -36,7 +43,7 @@ function findAnchor(container: HTMLElement, raw: string): Element | null {
 }
 
 export function Viewer(props: ViewerProps): React.JSX.Element {
-  const { html, className = '', onActiveHeadingChange, isAppPage = true, mermaid = true } = props
+  const { html, className = '', onActiveHeadingChange, isAppPage = true, mermaid = true, resolveImage } = props
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Use a ref to store onActiveHeadingChange to avoid re-triggering observer on every render
@@ -284,6 +291,22 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       }
     })
   }, [html])
+
+  // Relative images
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !resolveImage) return
+    let cancelled = false
+    container.querySelectorAll('img').forEach((img) => {
+      const src = img.getAttribute('src') ?? ''
+      if (!isRelativeSrc(src)) return
+      Promise.resolve()
+        .then(() => resolveImage(src))
+        .then((out) => { if (!cancelled) img.setAttribute('src', out) })
+        .catch(() => { if (!cancelled) img.classList.add('img-broken') })
+    })
+    return () => { cancelled = true }
+  }, [html, resolveImage])
 
   return (
     <div

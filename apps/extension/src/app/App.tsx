@@ -55,6 +55,7 @@ import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { FileAccessHint } from './FileAccessHint'
+import { createImageResolver } from './image-resolver'
 import './app.css'
 
 const PLUGINS = defaultRenderPlugins()
@@ -154,6 +155,12 @@ export function App(): React.JSX.Element {
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
+  const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
+  const resolveImage = useMemo(
+    () => (imageOriginUrl ? createImageResolver({ url: imageOriginUrl }) : undefined),
+    [imageOriginUrl],
+  )
+  useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
@@ -792,7 +799,7 @@ export function App(): React.JSX.Element {
               <div className="main-content" data-font-scale={fontScale}>
                 {previewBanner}
                 <div ref={docContainerRef} className="a4-document-container">
-                  <Viewer html={previewHtml ?? html} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
+                  <Viewer html={previewHtml ?? html} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
@@ -834,13 +841,13 @@ export function App(): React.JSX.Element {
                     {previewBanner}
                     <div className="main-content" data-font-scale={fontScale}>
                       <div className="a4-document-container">
-                        <Viewer html={previewHtml} mermaid={readerSettings.enableMermaid !== false} />
+                        <Viewer html={previewHtml} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} />
                       </div>
                     </div>
                   </div>
                 ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} />
                 </Suspense>
                 )}
               </div>

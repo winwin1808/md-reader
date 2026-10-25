@@ -1,5 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
+import { Facet } from '@codemirror/state';
 import type { EditorState, Extension, Range } from '@codemirror/state';
+import type { ImageResolver } from '../Viewer';
 import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { revealRanges } from './hide-marks';
@@ -13,6 +15,12 @@ const ALERT_TITLES: Record<string, string> = {
   caution: 'Thận trọng',
 };
 
+export const imageResolverFacet = Facet.define<ImageResolver | null, ImageResolver | null>({
+  combine: (v) => v.find((x) => x) ?? null,
+});
+
+const isRel = (src: string) => src !== '' && !/^[a-z][a-z0-9+.-]*:/i.test(src) && !src.startsWith('//') && !src.startsWith('#');
+
 export class ImageWidget extends WidgetType {
   constructor(readonly src: string, readonly alt: string) {
     super();
@@ -20,7 +28,22 @@ export class ImageWidget extends WidgetType {
   eq(o: ImageWidget) {
     return o.src === this.src && o.alt === this.alt;
   }
-  toDOM() {
+  toDOM(view?: EditorView) {
+    const resolver = view?.state?.facet(imageResolverFacet) ?? null;
+    if (resolver && isRel(this.src)) {
+      const img = document.createElement('img');
+      img.className = 'cm-live-img';
+      img.alt = this.alt;
+      img.style.maxWidth = '100%';
+      Promise.resolve()
+        .then(() => resolver(this.src))
+        .then((out) => {
+          if (SAFE_SRC.test(out)) img.src = out;
+          else img.classList.add('img-broken');
+        })
+        .catch(() => img.classList.add('img-broken'));
+      return img;
+    }
     if (!SAFE_SRC.test(this.src)) {
       const s = document.createElement('span');
       s.className = 'cm-live-img-alt';
