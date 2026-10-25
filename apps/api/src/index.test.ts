@@ -193,4 +193,28 @@ describe('CORS on errors and passthrough', () => {
     expect(res.status).toBe(404)
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
   })
+
+  it('asset upload is wired to D1 (not 501)', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const stmt: any = {
+      bind: () => stmt,
+      first: async () => ({ n: 0, total: 0 }),
+      all: async () => ({ results: [] }),
+      run: async () => ({}),
+    }
+    const db = { prepare: () => stmt, batch: async () => [] } as unknown as Env['DB']
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}/assets`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${room.ownerToken}`, 'content-type': 'image/png' },
+        body: png,
+      }),
+      { DB: db } as Env,
+      { routeParty: ok, store },
+    )
+    expect(res.status).not.toBe(501)
+    expect(res.status).toBe(201)
+  })
 })
