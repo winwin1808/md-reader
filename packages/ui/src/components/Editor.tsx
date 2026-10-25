@@ -19,11 +19,14 @@ import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
 import { applyFormat } from './markdown-commands'
 import type { FormatAction } from './FormattingToolbar'
 import { blameGutter, type LineAuthor } from './blame'
+import type { ImageResolver } from '../Viewer'
+import { imageResolverFacet } from '../live/widgets'
 import { livePreview, createDefaultRenderers } from '../live'
 import type { BlockRenderers } from '../live'
 import '../theme/editor.css'
 import '../theme/live.css'
 
+export type { ImageResolver }
 export { livePreview, createDefaultRenderers }
 
 export const lereSachHighlight = HighlightStyle.define([
@@ -79,6 +82,7 @@ export interface EditorProps {
   blame?: Array<LineAuthor | null> | null
   variant?: 'source' | 'live'
   renderers?: BlockRenderers
+  resolveImage?: ImageResolver
   live?: { theme?: () => 'default' | 'dark' }
   editorViewRef?: React.RefObject<EditorView | null> | React.MutableRefObject<EditorView | null>
 }
@@ -97,6 +101,7 @@ export function Editor({
   variant = 'source',
   renderers,
   live: liveOpts,
+  resolveImage,
 }: EditorProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -106,6 +111,8 @@ export function Editor({
   blameRef.current = blame
   const liveThemeRef = useRef(liveOpts?.theme)
   liveThemeRef.current = liveOpts?.theme
+  const resolveImageRef = useRef(resolveImage)
+  resolveImageRef.current = resolveImage
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
 
@@ -133,6 +140,7 @@ export function Editor({
       live ? markdown({ base: markdownLanguage }) : markdown(),
       ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
       ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default' }) : []),
+      imageResolverFacet.of(resolveImage ? (src) => resolveImageRef.current!(src) : null),
       bracketMatching(),
       syntaxHighlighting(lereSachHighlight),
       Prec.high(
@@ -180,7 +188,7 @@ export function Editor({
         ;(editorViewRef as React.MutableRefObject<EditorView | null>).current = null
       }
     }
-  }, [yText, undoManager, awareness, variant, renderers])
+  }, [yText, undoManager, awareness, variant, renderers, !!resolveImage])
 
   if (variant === 'live') {
     return (
