@@ -25,6 +25,7 @@ export const vi = {
   'web.notFound': 'Không tìm thấy trang',
   'web.linkGone': 'Link này không còn hiệu lực',
   'web.viewWith': 'Xem bằng MD Reader',
+  'web.close': 'Đóng',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -54,4 +55,5 @@ export const en: Record<keyof typeof vi, string> = {
   'web.notFound': 'Page not found',
   'web.linkGone': 'This link is no longer valid',
   'web.viewWith': 'View with MD Reader',
+  'web.close': 'Close',
 }

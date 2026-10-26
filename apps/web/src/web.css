@@ -33,3 +33,13 @@ html, body { margin: 0; background: var(--surface); color: var(--ink); font-fami
 .web-footer { text-align: center; padding: 16px; font-size: 13px; }
 .web-footer a { color: var(--accent); }
 @media (max-width: 480px) { .web-sheet { margin: 12px; padding: 20px 16px; } }
+.web-notices {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: min(360px, calc(100vw - 32px));
+}
+.web-notice-item {
+  display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
+}
+.web-notice-item[data-kind="error"] { border-color: var(--accent); }
+.web-notice-item button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; margin-left: auto; }
