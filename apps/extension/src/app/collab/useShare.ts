@@ -3,7 +3,7 @@ import { useT } from '@md-reader/ui'
 import type { TFunction } from '@md-reader/ui'
 import { API_PATHS, INSTALL_HEADER, SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, CreateRoomResponse, RoomBinding, ShareLink } from '@md-reader/core'
-import { saveLinkToken, getLinkTokens, forgetLinkToken } from './link-cache'
+import { saveLinkToken, getLinkTokens, forgetLinkToken, forgetRoomTokens } from './link-cache'
 import { getInstallKey, limitMessage } from './tenancy'
 import { getRecord, touchRecord } from '../doc-registry'
 
@@ -203,5 +203,23 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     }
   }), [run, refresh])
 
-  return { binding, links, enable, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
+  const deleteRemote = useCallback(() => run(async (stale) => {
+    const b = need()
+    try {
+      await call<unknown>(t, `${b.serverUrl}${API_PATHS.room(b.roomId)}`, { method: 'DELETE', headers: auth(b) })
+    } catch (e) {
+      if ((e as { status?: number }).status !== 404) throw e
+    }
+    await forgetRoomTokens(b.roomId)
+    await touchRecord(docId as string, { room: undefined })
+    if (!stale()) {
+      bindingRef.current = null
+      tokens.current.clear()
+      session.current.clear()
+      setBinding(null)
+      setLinks([])
+    }
+  }), [run, docId])
+
+  return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
 }

@@ -78,6 +78,7 @@ export function wsHost(serverUrl: string): string {
 
 export const API_PATHS = {
   rooms: '/api/rooms',
+  room: (roomId: string) => `/api/rooms/${roomId}`,
   links: (roomId: string) => `/api/rooms/${roomId}/links`,
   revoke: (roomId: string, prefix: string) => `/api/rooms/${roomId}/links/${prefix}`,
   resolve: (token: string) => `/api/s/${token}`,
