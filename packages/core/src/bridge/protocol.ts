@@ -140,7 +140,7 @@ export function sanitizeClientName(raw: unknown): string {
   if (typeof raw !== 'string') return 'AI'
   const cleaned = raw
     .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
-    .replace(/[‪-‮⁦-⁩‎‏؜​-‍⁠﻿]/g, '')
+    .replace(/[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C\u200B-\u200D\u2060\uFEFF]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
   const cut = Array.from(cleaned).slice(0, BRIDGE_MAX_CLIENT).join('').trim()
