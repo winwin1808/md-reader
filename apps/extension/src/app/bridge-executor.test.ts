@@ -1,14 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import * as Y from 'yjs'
 import { createDoc, ensureDoc, getHistory, getSource, createCheckpointTracker } from '@md-reader/core'
 import { textHash, type BridgeRequest } from '@md-reader/core/bridge'
 import { createBridgeExecutor, type ExecSession } from './bridge-executor'
 
+const hashHook = vi.hoisted(() => ({ fn: null as null | (() => void) }))
+vi.mock('@md-reader/core/bridge', async (orig) => {
+  const m = await orig<typeof import('@md-reader/core/bridge')>()
+  return { ...m, textHash: async (t: string) => { const r = await m.textHash(t); const f = hashHook.fn; if (f) { hashHook.fn = null; f() } return r } }
+})
+
 const req = (tool: BridgeRequest['tool'], args: unknown): BridgeRequest => ({ type: 'req', id: 'r1', tool, args })
 function sess(md = '# Hi', over: Partial<ExecSession> = {}): ExecSession {
   const yText = new Y.Doc().getText('source')
   yText.insert(0, md)
-  return { docId: 'd1', title: 'T', yText, shared: true, synced: true, checkpoints: null, ...over }
+  return { docId: 'd1', title: 'T', yText, shared: true, synced: true, checkpoints: null, persisted: null, ...over }
 }
 
 describe('createBridgeExecutor', () => {
@@ -63,7 +69,7 @@ describe('createBridgeExecutor', () => {
       const yText = getSource(doc)
       yText.insert(0, md)
       const checkpoints = createCheckpointTracker(doc)
-      const s: ExecSession = { docId: 'd1', title: 'T', yText, shared: false, synced: true, checkpoints }
+      const s: ExecSession = { docId: 'd1', title: 'T', yText, shared: false, synced: true, checkpoints, persisted: null }
       return { doc, yText, s }
     }
     const upd = (markdown: string, baseHash: string) => req('update_doc', { docId: 'd1', markdown, baseHash })
@@ -101,6 +107,55 @@ describe('createBridgeExecutor', () => {
       expect(r).toMatchObject({ ok: false, error: { code: 'CONFLICT' } })
       expect((r as { error: { message: string } }).error.message).toContain(await textHash('abc'))
       expect(yText.toString()).toBe('abc')
+    })
+    it('text changed while hashing -> CONFLICT, interleaved edit intact', async () => {
+      const { yText, s } = real('abc')
+      const base = await textHash('abc')
+      hashHook.fn = () => { yText.insert(3, 'Z') }
+      const r = await createBridgeExecutor(() => s)(upd('xyz', base))
+      expect(r).toMatchObject({ ok: false, error: { code: 'CONFLICT' } })
+      expect((r as { error: { message: string } }).error.message).toContain(await textHash('abcZ'))
+      expect(yText.toString()).toBe('abcZ')
+    })
+    it('writes under an AI client id registered in meta.actors', async () => {
+      const { doc, yText, s } = real('hello world')
+      await createBridgeExecutor(() => s)(upd('hello WORLD', await textHash('hello world')))
+      const ids = new Set<number>()
+      for (let n = yText._start; n; n = n.right as typeof n) ids.add(n.id.client)
+      const ai = [...ids].filter((c) => c !== doc.clientID)
+      expect(ai.length).toBeGreaterThan(0)
+      const actors = doc.getMap('meta').get('actors') as Y.Map<string>
+      for (const c of ai) expect(actors.get(String(c))).toBe('AI')
+    })
+    it('waits for checkpoints then applies; never ready -> TIMEOUT', async () => {
+      const { doc, yText, s } = real('one')
+      let n = 0
+      const late = () => (++n > 2 ? s : { ...s, checkpoints: null })
+      const run = createBridgeExecutor(late, { waitMs: 1000, pollMs: 10, sleep: async () => {} })
+      expect(await run(upd('two', await textHash('one')))).toMatchObject({ ok: true })
+      expect(getHistory(doc).toArray().filter((h) => h.label === 'AI: cập nhật')).toHaveLength(1)
+      const { yText: y2, s: s2 } = real('one')
+      const never = createBridgeExecutor(() => ({ ...s2, checkpoints: null }), { waitMs: 50, pollMs: 10, sleep: async () => {} })
+      expect(await never(upd('two', await textHash('one')))).toMatchObject({ ok: false, error: { code: 'TIMEOUT' } })
+      expect(y2.toString()).toBe('one')
+      void yText
+    })
+    it('awaits persisted before responding; hung persisted -> returns after sleep(2000)', async () => {
+      const { s } = real('one')
+      let release!: () => void
+      const persisted = () => new Promise<void>((r) => { release = r })
+      let done = false
+      const run = createBridgeExecutor(() => ({ ...s, persisted }), { sleep: () => new Promise<void>(() => {}) })
+      const p = run(upd('two', await textHash('one'))).then((r) => { done = true; return r })
+      await new Promise((r) => setTimeout(r, 50))
+      expect(done).toBe(false)
+      release()
+      expect(await p).toMatchObject({ ok: true })
+      const { s: s2 } = real('one')
+      const sleeps: number[] = []
+      const run2 = createBridgeExecutor(() => ({ ...s2, persisted: () => new Promise<void>(() => {}) }), { sleep: async (ms) => { sleeps.push(ms) } })
+      expect(await run2(upd('two', await textHash('one')))).toMatchObject({ ok: true })
+      expect(sleeps).toContain(2000)
     })
     it('adds AI checkpoint only when changed', async () => {
       const { doc, s } = real('one')

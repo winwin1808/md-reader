@@ -1,10 +1,10 @@
 import type * as Y from 'yjs'
-import { applyTextChange, type CheckpointTracker } from '@md-reader/core'
+import { applyTextChangeAsActor, type CheckpointTracker } from '@md-reader/core'
 import { textHash, validateToolArgs, type BridgeRequest, type BridgeResponse, type BridgeErrorCode } from '@md-reader/core/bridge'
 
 export const ORIGIN_MCP = 'mcp'
 export const AI_CHECKPOINT_LABEL = 'AI: cập nhật'
-export interface ExecSession { docId: string; title: string; yText: Y.Text; shared: boolean; synced: boolean; checkpoints: CheckpointTracker | null }
+export interface ExecSession { docId: string; title: string; yText: Y.Text; shared: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null }
 
 const fail = (id: string, code: BridgeErrorCode, message: string): BridgeResponse => ({ type: 'res', id, ok: false, error: { code, message } })
 
@@ -23,7 +23,8 @@ export function createBridgeExecutor(
     let s = get()
     if (s && s.docId !== docId) return fail(req.id, 'NOT_FOUND', NOT_OPEN)
     let waited = 0
-    while (!s || !s.synced) {
+    const ready = (x: ExecSession | null) => !!x && x.synced && (req.tool !== 'update_doc' || x.checkpoints !== null)
+    while (!s || !ready(s)) {
       if (waited >= waitMs) return s ? fail(req.id, 'TIMEOUT', 'document is still loading') : fail(req.id, 'NOT_FOUND', NOT_OPEN)
       await sleep(pollMs)
       waited += pollMs
@@ -39,10 +40,15 @@ export function createBridgeExecutor(
       const cur = s.yText.toString()
       const curHash = await textHash(cur)
       if (curHash !== baseHash) return fail(req.id, 'CONFLICT', `document changed since baseHash; current hash ${curHash}`)
+      if (s.yText.toString() !== cur) return fail(req.id, 'CONFLICT', `document changed since baseHash; current hash ${await textHash(s.yText.toString())}`)
+      const doc = s.yText.doc
+      if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
       s.checkpoints?.flush('auto', 'Bạn')
-      const changed = applyTextChange(s.yText, markdown, ORIGIN_MCP)
+      const changed = applyTextChangeAsActor(doc, markdown, 'AI', ORIGIN_MCP)
       if (changed) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, 'AI', { force: true })
-      return { type: 'res', id: req.id, ok: true, result: { hash: await textHash(s.yText.toString()) } } as BridgeResponse
+      const yText = s.yText
+      await Promise.race([s.persisted?.() ?? Promise.resolve(), sleep(2000)])
+      return { type: 'res', id: req.id, ok: true, result: { hash: await textHash(yText.toString()) } } as BridgeResponse
     }
     return fail(req.id, 'INTERNAL', 'not implemented yet')
   }
