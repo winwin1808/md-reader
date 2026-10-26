@@ -401,4 +401,4 @@ SESSION_HANDOVER.
 - 10l: done      (publish/list trong SW qua createRecord+writeDocText; get/update/share luôn qua tab app page — mở nền nếu cần)
 - 10m: done   
 - 10n: done   
-- 10o: planned
+- 10o: done   
