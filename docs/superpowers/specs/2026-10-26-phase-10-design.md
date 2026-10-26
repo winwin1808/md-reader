@@ -46,7 +46,8 @@ minh trên gói Free, và không đếm được quota tích luỹ); đếm tron
 - **Số giới hạn mặc định** (hằng số trong `apps/api/src/limits.ts`, chỉnh được qua biến môi trường Worker không cần):
   - tạo phòng: 20/ngày/khoá bản cài · 50/ngày/IP · 500/ngày toàn máy chủ (giữ ≪ 100k request/ngày của Free, §5.6)
   - phòng còn sống mỗi khoá bản cài: 200
-  - upload ảnh: 100 ảnh/ngày/khoá bản cài · 200 MB tổng mỗi khoá bản cài (giữ 2 MiB/ảnh, 50 MB/phòng hiện có)
+  - upload ảnh: 100 ảnh/ngày/khoá bản cài · 200 MB tổng mỗi khoá bản cài (giữ 2 MiB/ảnh, 50 MB/phòng hiện có);
+    phòng không khoá (client ≤ 1.2.0): 100 ảnh và 200 MB mỗi ngày theo IP người upload (vá ở 10c.3)
   - báo cáo: 10/ngày/IP
   - request thiếu header `x-mdr-install` (client ≤ 1.2.0): chỉ áp giới hạn IP + toàn máy chủ.
   - "Ngày" = ngày UTC (`Math.floor(now / 86_400_000)`).
