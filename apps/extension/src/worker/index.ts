@@ -1,7 +1,7 @@
 import { MAX_RENDER_CHARS, renderMarkdownForPage } from './render-md'
 import { createBridge } from './bridge'
 import {
-  BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, nextScanDelayMin, parseBridgeSettings, readBridgeSettings,
+  BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
 import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry } from '../shared/md-url'
 
@@ -89,12 +89,15 @@ async function purgeStaleCache(): Promise<void> {
 const ALARM = 'mdr-bridge'
 const IDLE_KEY = 'mdr.bridgeIdle'
 
+const revokedUntil = new Map<string, number>()
+
 const bridge = createBridge({
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
-  requestPairing: ({ port, client }) => {
+  requestPairing: ({ port, client, keyHash }) => {
+    if ((revokedUntil.get(keyHash) ?? 0) > Date.now()) return
     void chrome.tabs.create({
-      url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client)),
+      url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client) + '&key=' + keyHash),
     })
   },
   execute: async (req) => ({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: 'not implemented yet' } }) as never,
@@ -144,9 +147,15 @@ chrome.alarms?.onAlarm?.addListener((a) => {
 chrome.storage?.onChanged?.addListener((changes, area) => {
   if (area !== 'local' || !changes[BRIDGE_STORAGE_KEY]) return
   const before = parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].oldValue).approved
-  const after = new Set(parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].newValue).approved.map((a) => a.keyHash))
-  for (const a of before) if (!after.has(a.keyHash)) bridge.revoke(a.keyHash)
-  void tick()
+  const next = parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].newValue)
+  const after = new Set(next.approved.map((a) => a.keyHash))
+  for (const a of before) {
+    if (!after.has(a.keyHash)) {
+      bridge.revoke(a.keyHash)
+      revokedUntil.set(a.keyHash, Date.now() + 60_000)
+    }
+  }
+  if (parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].oldValue).enabled !== next.enabled) void tick()
 })
 
 chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
@@ -158,8 +167,9 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
     if (type === BRIDGE_SCAN_MSG) {
       await setIdle(0)
       await tick()
-    } else if (typeof message.port === 'number' && typeof message.allow === 'boolean') {
-      await bridge.decide(message.port, message.allow, (c) => addApproved(chrome.storage.local, c))
+    } else if (parsePairDecision(message)) {
+      const d = parsePairDecision(message)!
+      await bridge.decide(d.port, d.allow, (c) => addApproved(chrome.storage.local, c), d.keyHash)
       if (sender.tab?.id !== undefined) {
         try { await chrome.tabs.remove(sender.tab.id) } catch { /* tab gone */ }
       }

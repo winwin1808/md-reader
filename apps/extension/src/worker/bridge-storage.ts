@@ -1,3 +1,4 @@
+import { BRIDGE_PORTS } from '@md-reader/core/bridge'
 import { IDLE_SCANS_BEFORE_BACKOFF, type ApprovedClient } from './bridge'
 
 export const BRIDGE_STORAGE_KEY = 'mdr.bridge'
@@ -50,4 +51,16 @@ export async function removeApproved(store: StoreLike, keyHash: string): Promise
 
 export function nextScanDelayMin(idleScans: number): number {
   return idleScans < IDLE_SCANS_BEFORE_BACKOFF ? 0.5 : 5
+}
+
+export interface PairDecisionMsg { type: typeof PAIR_DECISION_MSG; port: number; allow: boolean; keyHash: string }
+
+export function parsePairDecision(v: unknown): PairDecisionMsg | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  if (o.type !== PAIR_DECISION_MSG) return null
+  if (typeof o.port !== 'number' || !Number.isInteger(o.port) || !BRIDGE_PORTS.includes(o.port)) return null
+  if (typeof o.allow !== 'boolean') return null
+  if (typeof o.keyHash !== 'string' || !/^[0-9a-f]{64}$/.test(o.keyHash)) return null
+  return { type: PAIR_DECISION_MSG, port: o.port, allow: o.allow, keyHash: o.keyHash }
 }

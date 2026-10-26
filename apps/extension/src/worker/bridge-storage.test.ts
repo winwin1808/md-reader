@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  BRIDGE_STORAGE_KEY, parseBridgeSettings, readBridgeSettings, addApproved, removeApproved, nextScanDelayMin,
+  BRIDGE_STORAGE_KEY, parseBridgeSettings, readBridgeSettings, addApproved, removeApproved, nextScanDelayMin, parsePairDecision, PAIR_DECISION_MSG,
   type StoreLike,
 } from './bridge-storage'
 
@@ -44,5 +44,20 @@ describe('bridge-storage', () => {
     expect(nextScanDelayMin(9)).toBe(0.5)
     expect(nextScanDelayMin(10)).toBe(5)
     expect(nextScanDelayMin(50)).toBe(5)
+  })
+})
+
+describe('parsePairDecision', () => {
+  const k = 'a'.repeat(64)
+  const ok = { type: PAIR_DECISION_MSG, port: 0, allow: true, keyHash: k }
+  it('hợp lệ → object đúng; sai → null', async () => {
+    const { BRIDGE_PORTS } = await import('@md-reader/core/bridge')
+    const port = BRIDGE_PORTS[0]
+    expect(parsePairDecision({ ...ok, port })).toEqual({ type: PAIR_DECISION_MSG, port, allow: true, keyHash: k })
+    expect(parsePairDecision({ ...ok, port: 1 })).toBeNull()
+    expect(parsePairDecision({ ...ok, port, keyHash: 'xyz' })).toBeNull()
+    expect(parsePairDecision({ ...ok, port, keyHash: 'A'.repeat(64) })).toBeNull()
+    expect(parsePairDecision({ ...ok, port, allow: 'yes' })).toBeNull()
+    expect(parsePairDecision(null)).toBeNull()
   })
 })
