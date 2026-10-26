@@ -2,7 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import * as Y from 'yjs'
 import { createDoc, ensureDoc, getHistory, getSource, createCheckpointTracker } from '@md-reader/core'
 import { textHash, type BridgeRequest } from '@md-reader/core/bridge'
-import { createBridgeExecutor, type ExecSession } from './bridge-executor'
+import { buildShareUrl, type ShareLink } from '@md-reader/core'
+import { createBridgeExecutor as createRaw, DAY_MS, type ExecSession, type ExecShare } from './bridge-executor'
+
+const createBridgeExecutor = (get: Parameters<typeof createRaw>[0], opts?: Parameters<typeof createRaw>[1]) => {
+  const e = createRaw(get, opts)
+  return (r: BridgeRequest) => e(r, 'test')
+}
 
 const hashHook = vi.hoisted(() => ({ fn: null as null | (() => void) }))
 vi.mock('@md-reader/core/bridge', async (orig) => {
@@ -14,7 +20,7 @@ const req = (tool: BridgeRequest['tool'], args: unknown): BridgeRequest => ({ ty
 function sess(md = '# Hi', over: Partial<ExecSession> = {}): ExecSession {
   const yText = new Y.Doc().getText('source')
   yText.insert(0, md)
-  return { docId: 'd1', title: 'T', yText, shared: true, synced: true, checkpoints: null, persisted: null, ...over }
+  return { docId: 'd1', title: 'T', yText, shared: true, synced: true, checkpoints: null, persisted: null, share: null, confirm: null, ...over }
 }
 
 describe('createBridgeExecutor', () => {
@@ -31,9 +37,9 @@ describe('createBridgeExecutor', () => {
     const r = await createBridgeExecutor(() => null)(req('get_doc', { docId: 'd1' }))
     expect(r).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
   })
-  it('share_doc -> INTERNAL', async () => {
+  it('share_doc without share/confirm -> INTERNAL', async () => {
     const r = await createBridgeExecutor(() => sess())(req('share_doc', { docId: 'd1', role: 'view', expiresInDays: 7 }))
-    expect(r).toMatchObject({ ok: false, error: { code: 'INTERNAL' } })
+    expect(r).toMatchObject({ ok: false, error: { code: 'INTERNAL', message: 'sharing unavailable' } })
   })
   it('bad args -> INVALID_ARGS', async () => {
     const r = await createBridgeExecutor(() => sess())(req('get_doc', {}))
@@ -69,7 +75,7 @@ describe('createBridgeExecutor', () => {
       const yText = getSource(doc)
       yText.insert(0, md)
       const checkpoints = createCheckpointTracker(doc)
-      const s: ExecSession = { docId: 'd1', title: 'T', yText, shared: false, synced: true, checkpoints, persisted: null }
+      const s: ExecSession = { docId: 'd1', title: 'T', yText, shared: false, synced: true, checkpoints, persisted: null, share: null, confirm: null }
       return { doc, yText, s }
     }
     const upd = (markdown: string, baseHash: string) => req('update_doc', { docId: 'd1', markdown, baseHash })
@@ -176,5 +182,68 @@ describe('createBridgeExecutor', () => {
     expect(await run(req('get_doc', { docId: 'd1' }))).toMatchObject({ ok: true, result: { markdown: 'late' } })
     const never = createBridgeExecutor(() => null, { waitMs: 50, pollMs: 10, sleep: async () => {} })
     expect(await never(req('get_doc', { docId: 'd1' }))).toMatchObject({ ok: false, error: { code: 'NOT_FOUND', message: 'document is not open in this tab' } })
+  })
+
+  describe('sharing', () => {
+    const link = (over: Partial<ShareLink> = {}): ShareLink => ({ tokenPrefix: 'abcd12', role: 'view', label: 'x', createdAt: 1, expiresAt: null, revokedAt: null, token: 'SECRET', ...over } as ShareLink)
+    function mk(over: Partial<ExecShare> = {}, ok: boolean | Error = true, links: ShareLink[] = []) {
+      const share = {
+        serverUrl: 'https://s.example', bound: vi.fn(() => true), links: vi.fn(() => links), refresh: vi.fn(async () => {}),
+        enable: vi.fn(async () => {}), createLink: vi.fn(async () => link({ token: 'TOK', tokenPrefix: 'TOKPRE', expiresAt: 99 })), revoke: vi.fn(async () => {}),
+        ...over,
+      } as ExecShare & Record<string, ReturnType<typeof vi.fn>>
+      const confirm = vi.fn(async () => { if (ok instanceof Error) throw ok; return ok })
+      const run = createRaw(() => sess('# Hi', { share, confirm }))
+      return { share, confirm, run }
+    }
+    const shareReq = (days: number | null) => req('share_doc', { docId: 'd1', role: 'edit', expiresInDays: days })
+    it('list_links not shared -> []', async () => {
+      const { run, confirm } = mk({ bound: vi.fn(() => false) })
+      expect(await run(req('list_links', { docId: 'd1' }), 'c')).toMatchObject({ ok: true, result: { links: [] } })
+      expect(confirm).not.toHaveBeenCalled()
+    })
+    it('list_links maps without token', async () => {
+      const { run, share } = mk({}, true, [link({ label: 'L', expiresAt: 5 })])
+      const r = await run(req('list_links', { docId: 'd1' }), 'c')
+      expect(share.refresh).toHaveBeenCalled()
+      expect(r).toEqual({ type: 'res', id: 'r1', ok: true, result: { links: [{ tokenPrefix: 'abcd12', role: 'view', label: 'L', expiresAt: 5, revokedAt: null }] } })
+      expect(JSON.stringify(r)).not.toContain('SECRET')
+    })
+    it('share allow -> enable + createLink with expiresIn', async () => {
+      const { run, share, confirm } = mk()
+      const r = await run(shareReq(7), 'Claude')
+      expect(confirm).toHaveBeenCalledWith({ kind: 'share', docTitle: 'T', role: 'edit', expiresInDays: 7 }, 'Claude')
+      expect(share.enable).toHaveBeenCalled()
+      expect(share.createLink).toHaveBeenCalledWith({ role: 'edit', expiresIn: 7 * DAY_MS, label: 'AI · Claude' })
+      expect(r).toEqual({ type: 'res', id: 'r1', ok: true, result: { url: buildShareUrl('https://s.example', 'TOK'), tokenPrefix: 'TOKPRE', expiresAt: 99 } })
+      await run(shareReq(null), 'Claude')
+      expect(share.createLink).toHaveBeenLastCalledWith(expect.objectContaining({ expiresIn: null }))
+    })
+    it('share deny -> DENIED, no createLink', async () => {
+      const { run, share } = mk({}, false)
+      expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'DENIED', message: 'user declined' } })
+      expect(share.createLink).not.toHaveBeenCalled()
+    })
+    it('createLink throws -> SHARE_FAILED', async () => {
+      const { run } = mk({ createLink: vi.fn(async () => { throw new Error('429 slow down') }) })
+      expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'SHARE_FAILED', message: expect.stringContaining('429') } })
+    })
+    it('confirm timeout -> TIMEOUT', async () => {
+      const { run } = mk({}, new Error('timeout'))
+      expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'TIMEOUT', message: 'no answer from user' } })
+    })
+    it('revoke unknown prefix -> NOT_FOUND, no confirm', async () => {
+      const { run, confirm } = mk({}, true, [link()])
+      expect(await run(req('revoke_link', { docId: 'd1', tokenPrefix: 'zzzzzz' }), 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+      expect(confirm).not.toHaveBeenCalled()
+    })
+    it('revoke allow -> revoke called; deny -> DENIED', async () => {
+      const a = mk({}, true, [link()])
+      expect(await a.run(req('revoke_link', { docId: 'd1', tokenPrefix: 'abcd12' }), 'c')).toMatchObject({ ok: true, result: { revoked: true } })
+      expect(a.share.revoke).toHaveBeenCalledWith('abcd12')
+      const d = mk({}, false, [link()])
+      expect(await d.run(req('revoke_link', { docId: 'd1', tokenPrefix: 'abcd12' }), 'c')).toMatchObject({ ok: false, error: { code: 'DENIED' } })
+      expect(d.share.revoke).not.toHaveBeenCalled()
+    })
   })
 })
