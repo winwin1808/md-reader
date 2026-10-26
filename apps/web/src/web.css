@@ -43,3 +43,24 @@ html, body { margin: 0; background: var(--surface); color: var(--ink); font-fami
 }
 .web-notice-item[data-kind="error"] { border-color: var(--accent); }
 .web-notice-item button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; margin-left: auto; }
+
+.web-footer > button {
+  background: none; border: 0; padding: 0 4px; margin-left: 8px; font: inherit; font-size: 13px;
+  color: var(--pencil); text-decoration: underline; cursor: pointer;
+}
+.web-report {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  box-sizing: border-box; width: 100%; max-width: 32rem; margin: 8px auto 0; text-align: left;
+}
+.web-report textarea {
+  box-sizing: border-box; flex: 1 1 100%; width: 100%; min-height: 5rem; padding: 8px; resize: vertical;
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit;
+}
+.web-report button {
+  padding: 6px 12px; border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+}
+.web-report button:disabled { opacity: 0.5; cursor: not-allowed; }
+.web-footer > button:focus-visible, .web-report textarea:focus-visible, .web-report button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
