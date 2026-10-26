@@ -9,6 +9,7 @@ export interface TokenStore {
   listLinks(roomId: string): Promise<ShareLink[]>
   revoke(roomId: string, tokenPrefix: string): Promise<boolean>
   resolve(token: string): Promise<{ roomId: string; role: ShareRole } | null>
+  deleteRoom(roomId: string): Promise<boolean>
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -113,6 +114,11 @@ export class MemoryTokenStore implements TokenStore {
     if (!r || r.revokedAt !== null) return null
     if (r.expiresAt !== null && r.expiresAt <= this.now()) return null
     return { roomId: r.roomId, role: r.role }
+  }
+
+  async deleteRoom(roomId: string): Promise<boolean> {
+    for (const [h, r] of this.links) if (r.roomId === roomId) this.links.delete(h)
+    return this.rooms.delete(roomId)
   }
 
   private toLink(r: LinkRow, token: string): ShareLink {

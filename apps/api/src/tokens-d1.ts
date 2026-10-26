@@ -121,4 +121,12 @@ export class D1TokenStore implements TokenStore {
       .first<{ room_id: string; role: ShareRole }>()
     return link ? { roomId: link.room_id, role: link.role } : null
   }
+
+  async deleteRoom(roomId: string): Promise<boolean> {
+    const res = await this.db.batch([
+      this.db.prepare('DELETE FROM links WHERE room_id = ?').bind(roomId),
+      this.db.prepare('DELETE FROM rooms WHERE id = ?').bind(roomId),
+    ])
+    return (res[1]?.meta.changes ?? 0) > 0
+  }
 }
