@@ -2,6 +2,7 @@ export interface AssetStore {
   put(roomId: string, mime: string, bytes: Uint8Array): Promise<{ id: string; size: number }>
   get(id: string): Promise<{ mime: string; bytes: Uint8Array } | null>
   roomUsage(roomId: string): Promise<number>
+  deleteRoom(roomId: string): Promise<number>
 }
 
 export const CHUNK_BYTES = 1024 * 1024
@@ -30,6 +31,17 @@ export class MemoryAssetStore implements AssetStore {
   async roomUsage(roomId: string) {
     let n = 0
     for (const a of this.items.values()) if (a.roomId === roomId) n += a.bytes.byteLength
+    return n
+  }
+
+  async deleteRoom(roomId: string) {
+    let n = 0
+    for (const [id, a] of [...this.items]) {
+      if (a.roomId === roomId) {
+        this.items.delete(id)
+        n++
+      }
+    }
     return n
   }
 }
@@ -84,5 +96,16 @@ export class D1AssetStore implements AssetStore {
       .bind(roomId)
       .first<{ n: number }>()
     return r?.n ?? 0
+  }
+
+  async deleteRoom(roomId: string) {
+    const res = await this.db.prepare('SELECT id FROM assets WHERE room_id = ?').bind(roomId).all<{ id: string }>()
+    await this.db.batch([
+      this.db
+        .prepare('DELETE FROM asset_chunks WHERE asset_id IN (SELECT id FROM assets WHERE room_id = ?)')
+        .bind(roomId),
+      this.db.prepare('DELETE FROM assets WHERE room_id = ?').bind(roomId),
+    ])
+    return res.results.length
   }
 }

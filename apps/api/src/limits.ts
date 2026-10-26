@@ -23,6 +23,7 @@ export type LimitVerdict = null | { error: LimitErrorCode; retryAfter?: number }
 export interface LimitStore {
   check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict>
   record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void>
+  forgetRoom(roomId: string): Promise<void>
 }
 
 const DAY_MS = 86_400_000
@@ -112,6 +113,10 @@ export class MemoryLimitStore implements LimitStore {
     )
   }
 
+  async forgetRoom(roomId: string): Promise<void> {
+    this.rooms.delete(roomId)
+  }
+
   async record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void> {
     if (kind === 'room') {
       this.bump('global', '*', 'room')
@@ -173,6 +178,10 @@ export class D1LimitStore implements LimitStore {
       s,
       info,
     )
+  }
+
+  async forgetRoom(roomId: string): Promise<void> {
+    await this.db.prepare('DELETE FROM room_installs WHERE room_id = ?').bind(roomId).run()
   }
 
   async record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void> {

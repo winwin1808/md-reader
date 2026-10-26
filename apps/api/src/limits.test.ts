@@ -122,6 +122,35 @@ describe('LimitStore isolation and unlocked-room asset limits', () => {
   })
 })
 
+describe('LimitStore.forgetRoom', () => {
+  const X = { installHash: 'X', ipHash: 'ipX' }
+
+  it('frees a live-room slot', async () => {
+    let now = 0
+    const st = new MemoryLimitStore(() => now)
+    for (let i = 0; i < LIMITS.liveRoomsPerInstall; i++) {
+      await st.record('room', X, { roomId: `r${i}` })
+      if (i % 10 === 9) now += 86_400_000
+    }
+    now += 86_400_000
+    expect(await st.check('room', X)).toEqual({ error: 'QUOTA_EXCEEDED' })
+    await st.forgetRoom('r0')
+    expect(await st.check('room', X)).toBeNull()
+  })
+
+  it('returns room bytes but keeps the daily asset counter', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    await st.record('room', X, { roomId: 'r0' })
+    await st.record('room', X, { roomId: 'r1' })
+    await st.record('asset', X, { roomId: 'r0', bytes: 150 * MB })
+    expect(await st.check('asset', X, { roomId: 'r1', bytes: 100 * MB })).toEqual({ error: 'QUOTA_EXCEEDED' })
+    await st.forgetRoom('r0')
+    expect(await st.check('asset', X, { roomId: 'r1', bytes: 100 * MB })).toBeNull()
+    for (let i = 0; i < LIMITS.assetsPerInstallPerDay - 1; i++) await st.record('asset', X, { roomId: 'r1', bytes: 1 })
+    expect((await st.check('asset', X, { roomId: 'r1', bytes: 1 }))?.error).toBe('RATE_LIMITED')
+  })
+})
+
 describe('subjectFrom', () => {
   it('hashes install header (16..200) and ip', async () => {
     const r = new Request('https://x/', { headers: { 'x-mdr-install': 'a'.repeat(20), 'CF-Connecting-IP': '1.2.3.4' } })
