@@ -87,6 +87,9 @@ export const API_PATHS = {
   party: 'doc-room',
 } as const
 
+export const INSTALL_HEADER = 'x-mdr-install'
+export type LimitErrorCode = 'RATE_LIMITED' | 'QUOTA_EXCEEDED'
+
 export interface UploadAssetResponse {
   id: string
   url: string

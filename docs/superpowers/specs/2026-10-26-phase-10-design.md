@@ -46,7 +46,8 @@ minh trên gói Free, và không đếm được quota tích luỹ); đếm tron
 - **Số giới hạn mặc định** (hằng số trong `apps/api/src/limits.ts`, chỉnh được qua biến môi trường Worker không cần):
   - tạo phòng: 20/ngày/khoá bản cài · 50/ngày/IP · 500/ngày toàn máy chủ (giữ ≪ 100k request/ngày của Free, §5.6)
   - phòng còn sống mỗi khoá bản cài: 200
-  - upload ảnh: 100 ảnh/ngày/khoá bản cài · 200 MB tổng mỗi khoá bản cài (giữ 2 MiB/ảnh, 50 MB/phòng hiện có)
+  - upload ảnh: 100 ảnh/ngày/khoá bản cài · 200 MB tổng mỗi khoá bản cài (giữ 2 MiB/ảnh, 50 MB/phòng hiện có);
+    phòng không khoá (client ≤ 1.2.0): 100 ảnh và 200 MB mỗi ngày theo IP người upload (vá ở 10c.3)
   - báo cáo: 10/ngày/IP
   - request thiếu header `x-mdr-install` (client ≤ 1.2.0): chỉ áp giới hạn IP + toàn máy chủ.
   - "Ngày" = ngày UTC (`Math.floor(now / 86_400_000)`).
@@ -141,7 +142,8 @@ export const LIMITS = {
 export type LimitKind = 'room' | 'asset' | 'report'
 export interface LimitSubject { installHash: string | null; ipHash: string }
 export interface LimitStore {
-  check(kind: LimitKind, s: LimitSubject, bytes?: number): Promise<null | { error: LimitErrorCode; retryAfter?: number }>
+  check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }):
+    Promise<null | { error: LimitErrorCode; retryAfter?: number }>   // asset: quota theo khoá bản cài của CHỦ phòng (room_installs)
   record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void>
   forgetRoom(roomId: string): Promise<void>                // xoá room_installs, trả lại quota phòng sống + bytes
 }
@@ -332,7 +334,7 @@ bằng phím; executor với `confirm` giả (allow/deny/timeout) và share gi�
 AI, ghép cặp, prompt mẫu, giới hạn. ROADMAP (vi + en): v1.3 thành "MCP cục bộ" đã xong, thêm mục hoãn "Remote MCP + OAuth"
 (bản tự host trước, chỉ khi có nhu cầu). `docs/store/privacy-policy.md` + `listing.md`: khoá bản cài ẩn danh, báo cáo nội
 dung, xoá dữ liệu máy chủ, cầu nối chỉ localhost và mặc định tắt. Playwright: extension load-unpacked + bridge server thật
-từ `packages/mcp` → bật Kết nối AI, duyệt ghép cặp, `publish_doc` → tab hiện nội dung, `update_doc` → nội dung đổi. Version
+từ `packages/mcp` → bật Kết nối AI, duyệt ghép cặp, `publish_doc` → tab hiện nội dung, `update_doc` → nội dung đổi. Smoke qua `wrangler dev` chạm D1LimitStore thật (tạo phòng/upload ảnh có và không `x-mdr-install`, kiểm 429). Version
 1.3.0 (extension + mcp). Migration `0003` chạy remote + `ADMIN_SECRET` đặt bằng wrangler là bước người làm, ghi trong
 SESSION_HANDOVER.
 
@@ -378,7 +380,7 @@ SESSION_HANDOVER.
 ## Sub-phase queue
 - 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
 - 10b: done
-- 10c: pending
+- 10c: done      (LimitStore + 429; phòng không khoá giới hạn ảnh theo IP — 10c.3)
 - 10d: pending
 - 10e: pending
 - 10f: pending
