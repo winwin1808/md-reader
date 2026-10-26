@@ -172,7 +172,8 @@ interface TokenStore { ...hiện có; deleteRoom(roomId: string): Promise<boolea
 // assets.ts
 interface AssetStore { ...hiện có; deleteRoom(roomId: string): Promise<number> }    // xoá assets + asset_chunks; trả số ảnh
 // room.ts
-class DocRoom { ...; purge(): Promise<void> }   // đóng mọi kết nối (code 4410), ctx.storage.deleteAll()
+class DocRoom { ...; purge(): Promise<void> }   // đóng mọi kết nối (4410), ctx.storage.deleteAll(), rồi put('tombstone', 1):
+                                                // DO có tombstone từ chối mọi kết nối/ghi (chặn client cũ dựng lại phòng)
 // api.ts
 export async function deleteRoomEverywhere(roomId: string, d: { store: TokenStore; assets?: AssetStore;
   limits?: LimitStore; purge: (roomId: string) => Promise<void> }): Promise<boolean>
@@ -382,7 +383,7 @@ SESSION_HANDOVER.
 - 10b: done
 - 10c: done      (LimitStore + 429; phòng không khoá giới hạn ảnh theo IP — 10c.3)
 - 10d: done
-- 10e: pending
+- 10e: done      (purge + tombstone; mọi bước sau D1 không chặn purge — 10e.3)
 - 10f: pending
 - 10g: pending
 - 10h: pending

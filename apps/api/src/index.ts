@@ -51,6 +51,16 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
       return withCors((await handleApi(req, store, {
         assets: new D1AssetStore(env.DB),
         limits: new D1LimitStore(env.DB),
+        purge: (roomId) =>
+          deps
+            .routeParty(
+              new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/purge`, {
+                method: 'POST',
+                headers: { 'x-mdr-internal': '1' },
+              }),
+              env,
+            )
+            .then(() => undefined),
         snapshot: (roomId) =>
           deps.routeParty(
             new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
