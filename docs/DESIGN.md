@@ -440,6 +440,31 @@ Spec: `docs/superpowers/specs/2026-10-25-phase-9-design.md`.
 | 9e | E2E | Playwright live preview + copy link |
 | 9f | Ship | 1.2.0, listing |
 
+### Phase 10 — MCP cục bộ + gia cố multi-tenant
+
+Ship: *AI (Claude Desktop/Code, Cursor) đưa tài liệu thẳng vào MD Reader qua MCP cục bộ, chia sẻ chỉ khi người dùng
+duyệt; máy chủ chung có rate limit, quota, xoá dữ liệu, báo cáo/gỡ nội dung.*
+Spec: `docs/superpowers/specs/2026-10-26-phase-10-design.md`. Cầu nối: `@md-reader/mcp` mở WS trên `127.0.0.1:47821..47830`,
+service worker nối ra (mặc định tắt, ghép cặp do người dùng duyệt), thao tác tài liệu thực thi trong app page.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 10a | Spike cầu nối | SW MV3 ↔ WS localhost: quyền, vòng đời, alarms; bảng §5.7 + luật chọn WS/native messaging |
+| 10b | `core/bridge` | Kiểu message/tool, `parseBridgeMessage`, `validateToolArgs`, `textHash` |
+| 10c | Giới hạn | D1 `0003_tenancy`, `LimitStore`, 429 cho tạo phòng/upload theo khoá bản cài + IP + toàn cục |
+| 10d | Xoá phòng (store) | `deleteRoom` cho token/asset/limit store |
+| 10e | Xoá phòng (route) | `DELETE /api/rooms/:id`, `DocRoom.purge()` |
+| 10f | Báo cáo & gỡ | `POST /api/report`, takedown admin bằng `ADMIN_SECRET` |
+| 10g | Web | Nút báo cáo, `Notice` thay `window.alert`, trang đã gỡ |
+| 10h | Extension tenancy | Gửi `x-mdr-install`, thông báo 429, nút "Xoá dữ liệu trên máy chủ" |
+| 10i | MCP bridge server | `packages/mcp` scaffold, pairing, WS server, Origin check |
+| 10j | MCP tools | 7 tool trên `McpServer`, CLI stdio |
+| 10k | Cầu nối extension | Quét cổng, alarms, ghép cặp `PairDialog`, Settings "Kết nối AI" |
+| 10l | publish/list/get | Thực thi trong app page, mở tab nền |
+| 10m | `update_doc` | `baseHash` chống đè, `applyTextChange` |
+| 10n | Share qua xác nhận | `ConfirmAgentDialog`, `share_doc`/`list_links`/`revoke_link` |
+| 10o | Docs & ship | `docs/MCP.md`, ROADMAP, privacy/listing, e2e, 1.3.0 |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh

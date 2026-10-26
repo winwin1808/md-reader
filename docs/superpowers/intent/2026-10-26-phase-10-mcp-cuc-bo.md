@@ -1,5 +1,6 @@
 # Intent: Phase 10 — MCP cục bộ + gia cố multi-tenant cho chia sẻ
-Author: haonq. Status: draft. Phase: 10
+Author: haonq. Status: designed. Phase: 10
+Design: docs/superpowers/specs/2026-10-26-phase-10-design.md
 
 Nguồn: thảo luận với người dùng 2026-10-26 — mốc v1.3 "Chia sẻ cho AI (MCP)" trong `docs/ROADMAP.md`, đổi hướng:
 "cho tự config MCP vào Chrome rồi gọi qua đó — kiểu gọi offline, share thì mới cần đến lưu trữ". Bản trên store dùng
@@ -68,15 +69,4 @@ dashboard quản trị (gỡ nội dung bằng lệnh/endpoint admin là đủ);
 
 ## Sub-phases
 
-| # | Phase con | Phạm vi |
-|---|---|---|
-| 10a | Spike cầu nối | MCP ↔ extension MV3: native messaging vs WebSocket localhost, quyền cần, vòng đời service worker |
-| 10b | Danh tính bản cài + rate limit | api: khoá bản cài ẩn danh (lưu hash), rate limit `POST /api/rooms` và upload assets |
-| 10c | Quota + xoá phòng | api: quota số phòng/dung lượng theo bản cài; `DELETE /api/rooms/:id` xoá DO storage + D1 + assets |
-| 10d | Báo cáo & gỡ nội dung | api+web: báo cáo nội dung, gỡ phòng (admin); thay `window.alert` bằng thông báo trong UI |
-| 10e | Xoá dữ liệu từ extension | extension+ui: nút "Xoá dữ liệu trên máy chủ" trong ShareModal |
-| 10f | Gói `@md-reader/mcp` | packages/mcp: server stdio + client cầu nối, khai báo tool |
-| 10g | Phía nhận cầu nối | extension: ghép cặp do người dùng duyệt; `publish_doc` / `list_docs` / `get_doc` trên Y.Doc cục bộ |
-| 10h | `update_doc` | ghi delta nhỏ nhất vào `Y.Text "source"` |
-| 10i | Share qua xác nhận | `share_doc` / `create_link` / `revoke_link` qua hộp xác nhận trong extension |
-| 10j | Docs & phát hành | hướng dẫn cài Claude/Cursor, ROADMAP (Remote MCP hoãn), privacy, e2e, version 1.3.0 |
+Đã chia lại lúc design (sizing §4) thành 10a..10o — bảng chuẩn ở `docs/DESIGN.md` §4 Phase 10 và queue trong spec.
