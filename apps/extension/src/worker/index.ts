@@ -1,5 +1,8 @@
 import { MAX_RENDER_CHARS, renderMarkdownForPage } from './render-md'
 import { createBridge } from './bridge'
+import { createExecuteInApp } from './bridge-route'
+import { BRIDGE_READY_MSG } from '../shared/bridge-msg'
+import { createRecord, writeDocText, listRecent, getRecord, docQuery, ensureShortKey, docParam } from '../app/doc-registry'
 import {
   BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
@@ -91,6 +94,41 @@ const IDLE_KEY = 'mdr.bridgeIdle'
 
 const revokedUntil = new Map<string, number>()
 
+const readyWaiters = new Set<{ docId: string; tabId: number; done: () => void }>()
+
+const execute = createExecuteInApp({
+  createRecord,
+  writeDocText,
+  listRecent,
+  getRecord,
+  docUrl: async (docId) => chrome.runtime.getURL('app.html') + (await docQuery(docId)),
+  findTab: async (docId) => {
+    const rec = await getRecord(docId)
+    if (!rec) return null
+    const param = docParam(await ensureShortKey(docId))
+    const tabs = await chrome.tabs.query({ url: chrome.runtime.getURL('app.html') + '*' })
+    for (const t of tabs) {
+      if (t.id === undefined || !t.url) continue
+      try {
+        const q = new URL(t.url).searchParams
+        if (q.get('d') === param || q.get('doc') === docId) return t.id
+      } catch { /* ignore */ }
+    }
+    return null
+  },
+  openTab: async (url, active) => {
+    const t = await chrome.tabs.create({ url, active })
+    return t.id as number
+  },
+  closeTab: (id) => chrome.tabs.remove(id),
+  waitReady: (docId, tabId, ms) => new Promise<boolean>((resolve) => {
+    const w = { docId, tabId, done: () => { clearTimeout(timer); readyWaiters.delete(w); resolve(true) } }
+    const timer = setTimeout(() => { readyWaiters.delete(w); resolve(false) }, ms)
+    readyWaiters.add(w)
+  }),
+  sendToTab: (tabId, msg) => chrome.tabs.sendMessage(tabId, msg),
+})
+
 const bridge = createBridge({
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
@@ -100,7 +138,7 @@ const bridge = createBridge({
       url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client) + '&key=' + keyHash),
     })
   },
-  execute: async (req) => ({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: 'not implemented yet' } }) as never,
+  execute,
   // setInterval so the 20 s ping repeats; bridge clears the one-shot connect timer itself when it fires or the socket opens.
   setTimer: (fn, ms) => setInterval(fn, ms),
   clearTimer: (h) => clearInterval(h as ReturnType<typeof setInterval>),
@@ -177,6 +215,15 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
     sendResponse?.({ ok: true })
   })()
   return true
+})
+
+chrome.runtime?.onMessage?.addListener((message, sender) => {
+  if (message?.type !== BRIDGE_READY_MSG || typeof message.docId !== 'string') return
+  const appUrl = chrome.runtime.getURL('app.html')
+  if (sender?.id !== chrome.runtime.id || !sender?.url || !sender.url.startsWith(appUrl)) return
+  for (const w of [...readyWaiters]) {
+    if (w.tabId === sender.tab?.id && w.docId === message.docId) w.done()
+  }
 })
 
 export {}
