@@ -3,6 +3,7 @@ import {
   BRIDGE_PROTOCOL,
   parseBridgeMessage,
   textHash,
+  sanitizeClientName,
   type BridgeRequest,
   type BridgeResponse,
   type BridgeHello,
@@ -59,7 +60,7 @@ export function createBridge(deps: BridgeDeps) {
     const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
     const keyHash = await textHash(h.pairKey)
     if (!live()) return
-    e.conn.client = h.client
+    e.conn.client = sanitizeClientName(h.client)
     e.conn.keyHash = keyHash
     const list = await deps.approved()
     if (!live()) return
@@ -69,7 +70,7 @@ export function createBridge(deps: BridgeDeps) {
     } else {
       e.conn.state = 'pending'
       send(e.ws, { type: 'welcome', paired: false })
-      deps.requestPairing({ port: e.conn.port, client: h.client, keyHash })
+      deps.requestPairing({ port: e.conn.port, client: e.conn.client, keyHash })
     }
   }
 
