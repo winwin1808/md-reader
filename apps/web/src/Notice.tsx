@@ -45,7 +45,7 @@ export function NoticeStack(p: { items: NoticeItem[]; onDismiss(id: number): voi
       {p.items.map((n) => (
         <div key={n.id} className="web-notice-item" data-kind={n.kind}>
           <span>{n.text}</span>
-          <button type="button" aria-label={t('web.close')} onClick={() => p.onDismiss(n.id)}>×</button>
+          <button type="button" className="web-notice-close" aria-label={t('web.close')} onClick={() => p.onDismiss(n.id)}>×</button>
         </div>
       ))}
     </div>

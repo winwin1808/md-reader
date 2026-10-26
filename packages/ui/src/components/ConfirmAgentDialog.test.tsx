@@ -71,7 +71,20 @@ describe('ConfirmAgentDialog', () => {
         />
       </I18nProvider>,
     )
-    expect(screen.getByText('"Claude" wants to create a edit link expiring in 30 days for "Doc".')).toBeInTheDocument()
+    expect(screen.getByText('"Claude" wants to create a link (edit, expiring in 30 days) for "Doc".')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Deny' })).toBeInTheDocument()
+  })
+
+  it('Tab/Shift+Tab giữ focus trong hộp', () => {
+    render(
+      <ConfirmAgentDialog req={{ kind: 'revoke', docTitle: 'C', tokenPrefix: 'x' }} client="K" onAllow={vi.fn()} onDeny={vi.fn()} />,
+    )
+    const deny = screen.getByRole('button', { name: 'Từ chối' })
+    const allow = screen.getByRole('button', { name: 'Cho phép' })
+    allow.focus()
+    fireEvent.keyDown(allow, { key: 'Tab' })
+    expect(deny).toHaveFocus()
+    fireEvent.keyDown(deny, { key: 'Tab', shiftKey: true })
+    expect(allow).toHaveFocus()
   })
 })

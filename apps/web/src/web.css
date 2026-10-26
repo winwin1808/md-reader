@@ -42,7 +42,8 @@ html, body { margin: 0; background: var(--surface); color: var(--ink); font-fami
   background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
 }
 .web-notice-item[data-kind="error"] { border-color: var(--accent); }
-.web-notice-item button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; margin-left: auto; }
+.web-notice-close { min-width: 32px; min-height: 32px; margin: -6px -8px -6px auto; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.web-notice-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .web-footer > button {
   background: none; border: 0; padding: 0 4px; margin-left: 8px; font: inherit; font-size: 13px;
