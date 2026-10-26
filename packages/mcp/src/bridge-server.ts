@@ -46,7 +46,15 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>
 }
 
-function listen(port: number, allowed: (o: string) => boolean): Promise<WebSocketServer> {
+// Oldest open connection that is not the paired one (clients Set keeps insertion order).
+function findReplaceable(wss: WebSocketServer, paired: WebSocket | null, except?: WebSocket): WebSocket | undefined {
+  for (const c of wss.clients) {
+    if (c !== except && c !== paired && c.readyState === WebSocket.OPEN) return c
+  }
+  return undefined
+}
+
+function listen(port: number, allowed: (o: string) => boolean, getPaired: () => WebSocket | null): Promise<WebSocketServer> {
   return new Promise((resolve, reject) => {
     const wss = new WebSocketServer({
       host: '127.0.0.1',
@@ -55,7 +63,7 @@ function listen(port: number, allowed: (o: string) => boolean): Promise<WebSocke
       verifyClient: (info, cb) => {
         const origin = info.origin
         if (!origin || !allowed(origin)) cb(false, 403, 'Forbidden')
-        else if (wss.clients.size >= BRIDGE_MAX_CONNECTIONS) cb(false, 503, 'Too many connections')
+        else if (wss.clients.size >= BRIDGE_MAX_CONNECTIONS && !findReplaceable(wss, getPaired())) cb(false, 503, 'Too many connections')
         else cb(true)
       },
     })
@@ -82,10 +90,11 @@ export async function startBridgeServer(opts: {
   const connectWaitMs = opts.connectWaitMs ?? 35_000
   let client = opts.client
 
+  let paired: WebSocket | null = null
   let wss: WebSocketServer | null = null
   for (const p of opts.ports ?? BRIDGE_PORTS) {
     try {
-      wss = await listen(p, allowed)
+      wss = await listen(p, allowed, () => paired)
       break
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw e
@@ -96,7 +105,6 @@ export async function startBridgeServer(opts: {
   const addr = server.address()
   const port = typeof addr === 'object' && addr ? addr.port : 0
 
-  let paired: WebSocket | null = null
   let closing = false
   const pending = new Map<string, Pending>()
   const waiters = new Set<{ resolve: (ws: WebSocket) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>()
@@ -112,6 +120,10 @@ export async function startBridgeServer(opts: {
   }
 
   server.on('connection', (ws) => {
+    if (server.clients.size > BRIDGE_MAX_CONNECTIONS) {
+      const old = findReplaceable(server, paired, ws)
+      if (old) old.close(4000, 'replaced')
+    }
     ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, pairKey: opts.pairKey }))
     ws.on('message', (data) => {
       const msg = parseBridgeMessage(String(data))

@@ -393,7 +393,7 @@ SESSION_HANDOVER.
 - 10g: done
 - 10h: done
 - 10i: done      (pin ID extension `ojcemoafaibjfghljkbagnkbgljakbji`, maxPayload 16 MiB, ≤4 kết nối, pair file nguyên tử)
-- 10j: pending
+- 10j: done      (7 tool, CLI stdio chạy qua bin symlink, dist/cli.js 15.6 kB)
 - 10k: pending
 - 10l: pending
 - 10m: pending

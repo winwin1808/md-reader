@@ -221,10 +221,23 @@ describe('bridge server', () => {
     }
   })
 
-  it('refuses the 5th simultaneous connection', async () => {
+  it('5th connection replaces the oldest unpaired one (close 4000)', async () => {
     const s = await start()
-    for (let i = 0; i < 4; i++) await connect(s.port)
-    await expect(connect(s.port)).rejects.toThrow(/503/)
+    const first = await connect(s.port)
+    const firstClosed = new Promise<number>((r) => first.ws.once('close', (code) => r(code)))
+    for (let i = 0; i < 3; i++) await connect(s.port)
+    const fifth = await connect(s.port)
+    expect((await fifth.next()).type).toBe('hello')
+    expect(await firstClosed).toBe(4000)
+  })
+
+  it('closes the socket with 1009 on a frame over 16 MiB', async () => {
+    const s = await start()
+    const e = await connect(s.port)
+    await e.next((m) => m.type === 'hello')
+    const code = new Promise<number>((r) => e.ws.once('close', (c) => r(c)))
+    e.ws.send('x'.repeat(16 * 1024 * 1024 + 1))
+    expect(await code).toBe(1009)
   })
 
   it('never sends req to an unpaired socket', async () => {
