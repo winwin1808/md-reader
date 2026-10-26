@@ -51,6 +51,7 @@ async function prepareIdb(text: string, originText: string) {
 }
 
 function setup(remote: string) {
+  namesBefore = names.length
   vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => remote })))
   return renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
@@ -58,15 +59,16 @@ function setup(remote: string) {
 const LOAD_WAIT = { timeout: 5000 }
 // resolveSync is rebound by each IndexeddbPersistence; under CPU load the hook may not have
 // created it yet after a fixed delay, so wait for it before resolving (else it resolves a stale one).
+let namesBefore = 0
 const syncNow = async () => {
-  await waitFor(() => expect(names.length).toBeGreaterThan(0), LOAD_WAIT)
+  await waitFor(() => expect(names.length).toBeGreaterThan(namesBefore), LOAD_WAIT)
   await act(async () => { resolveSync() })
 }
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 60)) })
 
 describe('useDocSession safe load', () => {
   beforeEach(async () => {
-    idbUpdate = null; names = []; void emitSynced; vi.mocked(storeBase).mockClear()
+    idbUpdate = null; names = []; namesBefore = 0; void emitSynced; vi.mocked(storeBase).mockClear()
     await __resetForTests()
     await new Promise<void>((r) => { const q = indexedDB.deleteDatabase('md-reader'); q.onsuccess = () => r(); q.onerror = () => r(); q.onblocked = () => r() })
   })
@@ -162,6 +164,7 @@ describe('useDocSession safe load', () => {
     const rec = await createRecord({ title: 'n.md', originKind: 'drop', originPath: null, persistenceName: 'pname-1' })
     await prepareIdb('stored text', 'stored text')
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    namesBefore = names.length
     const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
     await flush()
     await syncNow()
@@ -188,6 +191,7 @@ describe('useDocSession safe load', () => {
     d.getMap('meta').set('size', 4)
     idbUpdate = Y.encodeStateAsUpdate(d)
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    namesBefore = names.length
     const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
     await flush()
     await syncNow()

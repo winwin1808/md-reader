@@ -125,7 +125,13 @@ test.describe('MCP CLI <-> extension', () => {
       expect(denied.isError).toBe(true)
       expect(denied.text).toContain('DENIED')
     } finally {
-      proc.kill()
+      if (proc.exitCode === null && proc.signalCode === null) {
+        const exited = new Promise<void>((r) => proc.once('exit', () => r()))
+        proc.kill()
+        const t = setTimeout(() => proc.kill('SIGKILL'), 5000)
+        await exited
+        clearTimeout(t)
+      }
       fs.rmSync(tmp, { recursive: true, force: true })
     }
   })

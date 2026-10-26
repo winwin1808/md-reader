@@ -18,10 +18,13 @@ mkdirSync(outDir, { recursive: true })
 rmSync(out, { force: true })
 // Store builds must not carry `key` (dev/e2e only); stage a copy and strip it.
 const stage = mkdtempSync(resolve(tmpdir(), 'md-reader-pkg-'))
-cpSync(dist, stage, { recursive: true })
-const m = JSON.parse(readFileSync(resolve(stage, 'manifest.json'), 'utf8'))
-delete m.key
-writeFileSync(resolve(stage, 'manifest.json'), JSON.stringify(m, null, 2) + '\n')
-execFileSync('zip', ['-r', '-q', '-X', out, '.'], { cwd: stage, stdio: 'inherit' })
-rmSync(stage, { recursive: true, force: true })
+try {
+  cpSync(dist, stage, { recursive: true })
+  const m = JSON.parse(readFileSync(resolve(stage, 'manifest.json'), 'utf8'))
+  delete m.key
+  writeFileSync(resolve(stage, 'manifest.json'), JSON.stringify(m, null, 2) + '\n')
+  execFileSync('zip', ['-r', '-q', '-X', out, '.'], { cwd: stage, stdio: 'inherit' })
+} finally {
+  rmSync(stage, { recursive: true, force: true })
+}
 console.log('package: wrote ' + out)
