@@ -334,7 +334,7 @@ bằng phím; executor với `confirm` giả (allow/deny/timeout) và share gi�
 AI, ghép cặp, prompt mẫu, giới hạn. ROADMAP (vi + en): v1.3 thành "MCP cục bộ" đã xong, thêm mục hoãn "Remote MCP + OAuth"
 (bản tự host trước, chỉ khi có nhu cầu). `docs/store/privacy-policy.md` + `listing.md`: khoá bản cài ẩn danh, báo cáo nội
 dung, xoá dữ liệu máy chủ, cầu nối chỉ localhost và mặc định tắt. Playwright: extension load-unpacked + bridge server thật
-từ `packages/mcp` → bật Kết nối AI, duyệt ghép cặp, `publish_doc` → tab hiện nội dung, `update_doc` → nội dung đổi. Version
+từ `packages/mcp` → bật Kết nối AI, duyệt ghép cặp, `publish_doc` → tab hiện nội dung, `update_doc` → nội dung đổi. Smoke qua `wrangler dev` chạm D1LimitStore thật (tạo phòng/upload ảnh có và không `x-mdr-install`, kiểm 429). Version
 1.3.0 (extension + mcp). Migration `0003` chạy remote + `ADMIN_SECRET` đặt bằng wrangler là bước người làm, ghi trong
 SESSION_HANDOVER.
 
@@ -380,7 +380,7 @@ SESSION_HANDOVER.
 ## Sub-phase queue
 - 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
 - 10b: done
-- 10c: planned
+- 10c: done      (LimitStore + 429; phòng không khoá giới hạn ảnh theo IP — 10c.3)
 - 10d: pending
 - 10e: pending
 - 10f: pending
