@@ -228,8 +228,8 @@ export function createBridgeExecutor(deps: { getDoc: (docId: string) => Y.Doc | 
   (req: BridgeRequest) => Promise<BridgeResponse>
 ```
 
-Storage: `chrome.storage.local` `mdr.bridge = { enabled: boolean; approved: string[] }` (`approved` = SHA-256 hex của
-pairKey), `mdr.installKey: string`.
+Storage: `chrome.storage.local` `mdr.bridge = { enabled: boolean; approved: Array<{ keyHash: string; client: string; at: number }> }`
+(`keyHash` = SHA-256 hex của pairKey; tên client để Cài đặt hiển thị — đổi ở plan 10k), `mdr.installKey: string`.
 
 ### `@md-reader/ui`
 
@@ -394,7 +394,7 @@ SESSION_HANDOVER.
 - 10h: done
 - 10i: done      (pin ID extension `ojcemoafaibjfghljkbagnkbgljakbji`, maxPayload 16 MiB, ≤4 kết nối, pair file nguyên tử)
 - 10j: done      (7 tool, CLI stdio chạy qua bin symlink, dist/cli.js 15.6 kB)
-- 10k: pending
+- 10k: planned
 - 10l: pending
 - 10m: pending
 - 10n: pending
