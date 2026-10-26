@@ -395,7 +395,7 @@ SESSION_HANDOVER.
 - 10i: done      (pin ID extension `ojcemoafaibjfghljkbagnkbgljakbji`, maxPayload 16 MiB, ≤4 kết nối, pair file nguyên tử)
 - 10j: done      (7 tool, CLI stdio chạy qua bin symlink, dist/cli.js 15.6 kB)
 - 10k: done      (cầu nối SW: quét đơn luồng, ping 20 s, alarms, PairDialog, Cài đặt Kết nối AI; execute còn là stub)
-- 10l: pending
+- 10l: planned   (publish/list trong SW qua createRecord+writeDocText; get/update/share luôn qua tab app page — mở nền nếu cần)
 - 10m: pending
 - 10n: pending
 - 10o: pending
