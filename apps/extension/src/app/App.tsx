@@ -56,7 +56,7 @@ import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
-import { BRIDGE_EXEC_MSG, BRIDGE_READY_MSG, type ExecMsg } from '../shared/bridge-msg'
+import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
 import { createBridgeExecutor, type ExecSession } from './bridge-executor'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
@@ -328,13 +328,7 @@ export function App(): React.JSX.Element {
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
   const execSessionRef = useRef<ExecSession | null>(null)
-  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding } : null
-  const readySentRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!session.docId || !session.synced || readySentRef.current === session.docId) return
-    readySentRef.current = session.docId
-    try { void Promise.resolve(chrome.runtime.sendMessage({ type: BRIDGE_READY_MSG, docId: session.docId })).catch(() => {}) } catch { /* ignore */ }
-  }, [session.docId, session.synced])
+  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced } : null
   useEffect(() => {
     const onMsg = chrome?.runtime?.onMessage
     if (!onMsg?.addListener) return

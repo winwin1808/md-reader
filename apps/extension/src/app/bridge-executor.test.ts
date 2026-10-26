@@ -7,7 +7,7 @@ const req = (tool: BridgeRequest['tool'], args: unknown): BridgeRequest => ({ ty
 function sess(md = '# Hi', over: Partial<ExecSession> = {}): ExecSession {
   const yText = new Y.Doc().getText('source')
   yText.insert(0, md)
-  return { docId: 'd1', title: 'T', yText, shared: true, ...over }
+  return { docId: 'd1', title: 'T', yText, shared: true, synced: true, ...over }
 }
 
 describe('createBridgeExecutor', () => {
@@ -31,5 +31,27 @@ describe('createBridgeExecutor', () => {
   it('bad args -> INVALID_ARGS', async () => {
     const r = await createBridgeExecutor(() => sess())(req('get_doc', {}))
     expect(r).toMatchObject({ ok: false, error: { code: 'INVALID_ARGS' } })
+  })
+  it('waits until synced and reads latest yText', async () => {
+    let calls = 0
+    const stale = sess('stale', { synced: false })
+    const fresh = sess('fresh', { synced: true })
+    const get = () => (++calls > 3 ? fresh : stale)
+    const run = createBridgeExecutor(get, { waitMs: 1000, pollMs: 10, sleep: async () => {} })
+    const r = await run(req('get_doc', { docId: 'd1' }))
+    expect(r).toMatchObject({ ok: true, result: { markdown: 'fresh' } })
+  })
+  it('never synced -> TIMEOUT', async () => {
+    let t = 0
+    const run = createBridgeExecutor(() => sess('x', { synced: false }), { waitMs: 50, pollMs: 10, sleep: async (ms) => { t += ms } })
+    const r = await run(req('get_doc', { docId: 'd1' }))
+    expect(r).toMatchObject({ ok: false, error: { code: 'TIMEOUT', message: 'document is still loading' } })
+    expect(t).toBeGreaterThanOrEqual(50)
+  })
+  it('docId changes while waiting -> NOT_FOUND', async () => {
+    let n = 0
+    const run = createBridgeExecutor(() => (++n > 2 ? sess('y', { docId: 'other' }) : sess('x', { synced: false })), { waitMs: 1000, pollMs: 10, sleep: async () => {} })
+    const r = await run(req('get_doc', { docId: 'd1' }))
+    expect(r).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
   })
 })
