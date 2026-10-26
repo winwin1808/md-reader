@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { pathToFileURL } from 'node:url'
+import { realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { startBridgeServer } from './bridge-server'
 import { loadOrCreatePairKey } from './pairing'
 import { registerTools } from './tools'
@@ -40,22 +41,32 @@ export async function main(
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().then(
-    (h) => {
-      let done = false
-      const stop = () => {
-        if (done) return
-        done = true
-        h.close().finally(() => process.exit(0))
-      }
-      process.on('SIGINT', stop)
-      process.on('SIGTERM', stop)
-      process.stdin.on('end', stop)
-    },
-    (e: unknown) => {
-      process.stderr.write(`md-reader-mcp: ${e instanceof Error ? e.message : String(e)}\n`)
-      process.exit(1)
-    },
-  )
+export function isDirectRun(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false
+  const self = fileURLToPath(moduleUrl)
+  try {
+    return realpathSync(argv1) === realpathSync(self)
+  } catch {
+    return argv1 === self
+  }
+}
+
+if (isDirectRun(import.meta.url, process.argv[1])) {
+  const running = main()
+  let done = false
+  const stop = () => {
+    if (done) return
+    done = true
+    running.then(
+      (h) => h.close().finally(() => process.exit(0)),
+      () => undefined,
+    )
+  }
+  process.on('SIGINT', stop)
+  process.on('SIGTERM', stop)
+  process.stdin.on('end', stop)
+  running.catch((e: unknown) => {
+    process.stderr.write(`md-reader-mcp: ${e instanceof Error ? e.message : String(e)}\n`)
+    process.exit(1)
+  })
 }
