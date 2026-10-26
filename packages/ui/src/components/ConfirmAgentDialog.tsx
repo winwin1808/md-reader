@@ -18,6 +18,7 @@ export function ConfirmAgentDialog(p: {
 }): React.JSX.Element {
   const t = useT()
   const titleId = useId()
+  const allowRef = useRef<HTMLButtonElement | null>(null)
   const denyRef = useRef<HTMLButtonElement | null>(null)
   const denyCb = useRef(p.onDeny)
   denyCb.current = p.onDeny
@@ -61,11 +62,25 @@ export function ConfirmAgentDialog(p: {
         </div>
         <div style={{ padding: '16px 20px' }}>
           <p style={{ margin: 0 }}>{body}</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+          <div
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return
+              const first = denyRef.current
+              const last = allowRef.current
+              if (!first || !last) return
+              if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first.focus()
+              } else if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last.focus()
+              }
+            }}
+            style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="conflict-btn" ref={denyRef} onClick={p.onDeny}>
               {t('agent.deny')}
             </button>
-            <button type="button" className="conflict-btn" onClick={p.onAllow}>
+            <button type="button" className="conflict-btn" ref={allowRef} onClick={p.onAllow}>
               {t('agent.allow')}
             </button>
           </div>

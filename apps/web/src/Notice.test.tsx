@@ -35,6 +35,21 @@ describe('Notice', () => {
     expect(screen.queryByText('lỗi ảnh')).toBeNull()
   })
 
+  it('unmount huỷ timer tự đóng', () => {
+    vi.useFakeTimers()
+    render(<Host />)
+    act(() => api.push('info', 'x'))
+    expect(vi.getTimerCount()).toBe(1)
+    cleanup()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('nút × có lớp riêng', () => {
+    render(<Host />)
+    act(() => api.push('error', 'e'))
+    expect(screen.getByRole('button').className).toContain('web-notice-close')
+  })
+
   it('EditPage không dùng window.alert', () => {
     expect(readFileSync(join(__dirname, 'EditPage.tsx'), 'utf8')).not.toContain('window.alert')
   })

@@ -17,42 +17,17 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 - [x] **P9 Edit on the page:** live preview, grid tables, images (paste/drag/relative paths), new share dialog.
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
-## v1.3 Share with AI (MCP)
+## v1.3 Local MCP (done)
 
-The next milestone. Target user: someone who asks an AI to write a Markdown document (report, proposal, technical doc) and then needs to send it to a colleague or client as a nicely rendered reading link, or a link to co-edit, without copying back and forth.
+Target user: someone who asks an AI to write a Markdown document (report, proposal, technical doc) and then needs to send it to a colleague or client as a nicely rendered reading link, or a link to co-edit, without copying back and forth.
 
-The `@md-reader/mcp` package, two ways to run:
+- [x] **Local bridge:** the AI (Claude Desktop / Claude Code / Cursor) talks to the extension through a bridge that listens only on `127.0.0.1`, off by default. Nothing is sent to the internet; a document goes to the server only when shared, after the user confirms.
+- [x] **7 MCP tools** to create, read and update documents and to share / list / revoke links. Sharing requires user confirmation.
+- [x] **Multi-tenant hardening:** anonymous install key, daily limits, deleting room data on the server, content reports on the view page.
 
-- **stdio:** runs locally (`npx`), configured in Claude Desktop / Claude Code / Cursor. Calls the user's own Worker server.
-- **Remote:** an MCP endpoint on the self-hosted Worker itself, for agents running in the cloud.
+## Deferred
 
-Planned tools:
-
-| Tool | What it does |
-|---|---|
-| `publish_doc` | Takes Markdown + a title, creates a document, returns a view link (and an edit link if requested). |
-| `get_doc` | Reads the current content of a shared document (including what others just edited). |
-| `update_doc` | Writes a new version or applies a change; writes as a delta so it doesn't overwrite others' edits. |
-| `list_docs` | Lists the owner's documents (id, title, last edited, active links). |
-| `create_link` | Creates a view or edit link, with an optional expiry. |
-| `revoke_link` | Revokes a link. |
-
-Addition: comments (`append_comment`) once the v1.5 comments feature is ready.
-
-Authentication and limits (planned design):
-
-- Authenticate with the Worker server's owner token; the token is stored only as a hash on the server, like links today.
-- By default an agent only creates view links; an edit link must be requested explicitly.
-- Limits on document size, document count and call rate per token (together with the v1.5 rate limit).
-
-To do:
-
-- [ ] Design the document management API in `apps/api`, shared by the extension and MCP
-- [ ] Owner token, revocation, rotation
-- [ ] `@md-reader/mcp` (stdio) with the 6 tools above
-- [ ] Remote MCP endpoint on the Worker
-- [ ] Setup docs for Claude, ChatGPT, Cursor; example prompts
-- [ ] Tool contract tests and e2e with wrangler dev
+- [ ] **Remote MCP + OAuth:** an MCP endpoint on the server for cloud agents. Self-hosted version first, and only if there is real demand.
 
 ## v1.4 Broader rendering and export
 
@@ -87,8 +62,8 @@ Look and performance:
 Collaboration:
 
 - [ ] Comments and suggested edits
-- [ ] Room-data deletion endpoint (revoking a link currently only blocks access)
-- [ ] Rate limit for the Worker
+- [x] Room-data deletion endpoint ("Delete data on server" button)
+- [x] Daily limits for the Worker (anonymous install key)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
 - [ ] Replace `window.alert` on the web page with in-UI notifications
 

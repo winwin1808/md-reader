@@ -164,7 +164,7 @@ export const en: Record<keyof typeof vi, string> = {
   'pair.deny': 'Deny',
   'pair.invalid': 'Invalid pairing request.',
   'agent.title': 'AI app is asking',
-  'agent.share': '"{client}" wants to create a {role} link {expiry} for "{title}".',
+  'agent.share': '"{client}" wants to create a link ({role}, {expiry}) for "{title}".',
   'agent.revoke': '"{client}" wants to revoke link {prefix}… of "{title}".',
   'agent.role.view': 'view',
   'agent.role.edit': 'edit',

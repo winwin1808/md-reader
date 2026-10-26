@@ -8,7 +8,8 @@
     "dev": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:tenancy": "node scripts/smoke-tenancy.mjs"
   },
   "dependencies": {
     "@md-reader/core": "workspace:*",

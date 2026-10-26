@@ -1,6 +1,6 @@
 {
   "name": "@md-reader/mcp",
-  "version": "0.1.0",
+  "version": "1.3.0",
   "type": "module",
   "license": "MIT",
   "description": "MCP server that lets AI apps publish Markdown into the MD Reader Chrome extension on this machine",

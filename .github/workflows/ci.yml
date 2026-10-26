@@ -20,6 +20,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm --filter @md-reader/mcp build
       - run: pnpm test
       - run: pnpm --filter @md-reader/extension build
 
@@ -36,6 +37,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @md-reader/extension exec playwright install --with-deps chromium
       # Fixtures launch Chromium with --headless=new; no xvfb needed.
+      - run: pnpm --filter @md-reader/mcp build
       - run: pnpm --filter @md-reader/extension e2e
       - uses: actions/upload-artifact@v4
         if: failure()
