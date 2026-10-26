@@ -115,3 +115,44 @@ describe('D1AssetStore', () => {
     expect(got!.bytes).toEqual(data)
   })
 })
+
+describe('AssetStore.deleteRoom', () => {
+  it('memory: removes only that room, returns count', async () => {
+    const st = new MemoryAssetStore()
+    const a1 = await st.put('A', 'image/png', new Uint8Array(PNG))
+    const a2 = await st.put('A', 'image/png', new Uint8Array(PNG))
+    const b = await st.put('B', 'image/png', new Uint8Array(PNG))
+    expect(await st.deleteRoom('A')).toBe(2)
+    expect(await st.get(a1.id)).toBeNull()
+    expect(await st.get(a2.id)).toBeNull()
+    expect(await st.roomUsage('A')).toBe(0)
+    expect(await st.get(b.id)).not.toBeNull()
+    expect(await st.deleteRoom('none')).toBe(0)
+  })
+
+  it('d1: selects ids then batches two deletes', async () => {
+    const calls: { sql: string; args: unknown[] }[] = []
+    let batched: string[] = []
+    const stmt = (sql: string, args: unknown[] = []) => ({
+      bind: (...a: unknown[]) => stmt(sql, a),
+      all: async () => ({ results: sql.startsWith('SELECT id') ? [{ id: 'x' }, { id: 'y' }] : [] }),
+      run: async () => {
+        calls.push({ sql, args })
+      },
+    })
+    const db = {
+      prepare: (sql: string) => stmt(sql),
+      batch: async (ss: { run: () => Promise<void> }[]) => {
+        batched = []
+        for (const s of ss) await s.run()
+        batched = calls.map((c) => c.sql)
+        return []
+      },
+    } as unknown as D1Database
+    expect(await new D1AssetStore(db).deleteRoom('A')).toBe(2)
+    expect(batched.length).toBe(2)
+    expect(batched[0]).toContain('DELETE FROM asset_chunks')
+    expect(batched[1]).toContain('DELETE FROM assets')
+    expect(calls[0]?.args).toEqual(['A'])
+  })
+})
