@@ -141,7 +141,8 @@ export const LIMITS = {
 export type LimitKind = 'room' | 'asset' | 'report'
 export interface LimitSubject { installHash: string | null; ipHash: string }
 export interface LimitStore {
-  check(kind: LimitKind, s: LimitSubject, bytes?: number): Promise<null | { error: LimitErrorCode; retryAfter?: number }>
+  check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }):
+    Promise<null | { error: LimitErrorCode; retryAfter?: number }>   // asset: quota theo khoá bản cài của CHỦ phòng (room_installs)
   record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void>
   forgetRoom(roomId: string): Promise<void>                // xoá room_installs, trả lại quota phòng sống + bytes
 }
@@ -378,7 +379,7 @@ SESSION_HANDOVER.
 ## Sub-phase queue
 - 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
 - 10b: done
-- 10c: pending
+- 10c: planned
 - 10d: pending
 - 10e: pending
 - 10f: pending
