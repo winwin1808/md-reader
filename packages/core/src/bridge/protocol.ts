@@ -3,6 +3,13 @@ export const BRIDGE_PROTOCOL = 1
 export const BRIDGE_PORTS: readonly number[] = Array.from({ length: 10 }, (_, i) => 47821 + i)
 export const BRIDGE_MAX_MARKDOWN = 2_000_000
 export const BRIDGE_MAX_TITLE = 200
+export const BRIDGE_MAX_PAYLOAD = 16 * 1024 * 1024
+export const BRIDGE_MAX_CONNECTIONS = 4
+export const KNOWN_EXTENSION_IDS: readonly string[] = ['ojcemoafaibjfghljkbagnkbgljakbji'] // ID store thêm ở 10o
+
+export function isAllowedExtensionOrigin(origin: string, ids: readonly string[] = KNOWN_EXTENSION_IDS): boolean {
+  return ids.some((id) => origin === `chrome-extension://${id}`)
+}
 
 export type BridgeTool = 'publish_doc' | 'list_docs' | 'get_doc' | 'update_doc' | 'share_doc' | 'list_links' | 'revoke_link'
 export const BRIDGE_TOOLS: readonly BridgeTool[] = ['publish_doc', 'list_docs', 'get_doc', 'update_doc', 'share_doc', 'list_links', 'revoke_link']
