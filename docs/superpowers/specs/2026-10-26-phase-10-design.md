@@ -377,7 +377,7 @@ SESSION_HANDOVER.
 
 ## Sub-phase queue
 - 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
-- 10b: planned
+- 10b: done
 - 10c: pending
 - 10d: pending
 - 10e: pending
