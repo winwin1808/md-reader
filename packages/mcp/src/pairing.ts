@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -23,19 +23,62 @@ export function newPairKey(): string {
   return randomBytes(32).toString('base64url');
 }
 
-export async function loadOrCreatePairKey(path: string = defaultPairPath()): Promise<string> {
+function validKey(raw: string): string | null {
   try {
-    const parsed = JSON.parse(await readFile(path, 'utf8')) as Partial<PairFile>;
-    const k = parsed?.pairKey;
-    if (typeof k === 'string' && k.length >= 16 && k.length <= 200) return k;
+    const k = (JSON.parse(raw) as Partial<PairFile> | null)?.pairKey;
+    return typeof k === 'string' && k.length >= 16 && k.length <= 200 ? k : null;
   } catch {
-    // missing or corrupt: fall through and regenerate
+    return null;
   }
-  const key = newPairKey();
+}
+
+async function tighten(path: string): Promise<void> {
+  if (process.platform === 'win32') return;
+  const dir = dirname(path);
+  try {
+    if (((await stat(dir)).mode & 0o777) & 0o077) await chmod(dir, 0o700);
+  } catch {
+    // ignore
+  }
+  if (((await stat(path)).mode & 0o777) !== 0o600) await chmod(path, 0o600);
+}
+
+export async function loadOrCreatePairKey(path: string = defaultPairPath()): Promise<string> {
+  let exists = false;
+  try {
+    const k = validKey(await readFile(path, 'utf8'));
+    exists = true;
+    if (k) {
+      await tighten(path);
+      return k;
+    }
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+  }
   const dir = dirname(path);
   await mkdir(dir, { recursive: true, mode: 0o700 });
+  const key = newPairKey();
   const tmp = join(dir, `.mcp-${process.pid}-${randomBytes(4).toString('hex')}.tmp`);
-  await writeFile(tmp, JSON.stringify({ pairKey: key } satisfies PairFile), { mode: 0o600 });
-  await rename(tmp, path);
+  try {
+    await writeFile(tmp, JSON.stringify({ pairKey: key } satisfies PairFile), { mode: 0o600 });
+    if (exists) {
+      await rename(tmp, path);
+    } else {
+      try {
+        await link(tmp, path);
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+        const other = validKey(await readFile(path, 'utf8'));
+        if (other) {
+          await tighten(path);
+          return other;
+        }
+        await rename(tmp, path);
+      }
+    }
+  } finally {
+    await rm(tmp, { force: true });
+  }
+  await tighten(path);
   return key;
 }
