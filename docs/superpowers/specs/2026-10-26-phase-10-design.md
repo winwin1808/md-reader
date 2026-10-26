@@ -396,6 +396,6 @@ SESSION_HANDOVER.
 - 10j: done      (7 tool, CLI stdio chạy qua bin symlink, dist/cli.js 15.6 kB)
 - 10k: done      (cầu nối SW: quét đơn luồng, ping 20 s, alarms, PairDialog, Cài đặt Kết nối AI; execute còn là stub)
 - 10l: done      (publish/list trong SW qua createRecord+writeDocText; get/update/share luôn qua tab app page — mở nền nếu cần)
-- 10m: planned
+- 10m: done   
 - 10n: pending
 - 10o: pending
