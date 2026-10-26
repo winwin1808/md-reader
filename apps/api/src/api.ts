@@ -49,6 +49,7 @@ export interface ApiDeps {
   snapshot?: (roomId: string) => Promise<Response>
   assets?: AssetStore
   limits?: LimitStore
+  purge?: (roomId: string) => Promise<void>
 }
 
 function limited(v: NonNullable<LimitVerdict>): Response {
@@ -87,6 +88,20 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
   }
 
   const badPath = () => json({ error: 'bad path' }, 400)
+  const del = /^\/api\/rooms\/([^/]+)$/.exec(path)
+  if (del && method === 'DELETE') {
+    const roomId = safeDecode(del[1]!)
+    if (roomId === null) return badPath()
+    if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
+    const ok = await deleteRoomEverywhere(roomId, {
+      store,
+      ...(deps.assets ? { assets: deps.assets } : {}),
+      ...(deps.limits ? { limits: deps.limits } : {}),
+      ...(deps.purge ? { purge: deps.purge } : {}),
+    })
+    return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+  }
+
   const links = /^\/api\/rooms\/([^/]+)\/links$/.exec(path)
   if (links) {
     const roomId = safeDecode(links[1]!)
@@ -240,4 +255,20 @@ export async function authorizeWs(
     authCache.set(key, entry)
   }
   return entry.value ?? json({ error: 'link expired or revoked' }, 410)
+}
+
+export async function deleteRoomEverywhere(
+  roomId: string,
+  d: { store: TokenStore; assets?: AssetStore; limits?: LimitStore; purge?: (roomId: string) => Promise<void> },
+): Promise<boolean> {
+  const ok = await d.store.deleteRoom(roomId)
+  for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
+  await d.assets?.deleteRoom(roomId)
+  await d.limits?.forgetRoom(roomId)
+  try {
+    await d.purge?.(roomId)
+  } catch {
+    console.error('purge failed', roomId)
+  }
+  return ok
 }

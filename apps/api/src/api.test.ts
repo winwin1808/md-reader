@@ -374,3 +374,59 @@ describe('handleApi limits', () => {
     expect(r.headers.get('retry-after')).toBeTruthy()
   })
 })
+
+describe('DELETE /api/rooms/:roomId (10e.2)', () => {
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryAssetStore } = await import('./assets.js')
+    return { limits: new MemoryLimitStore(now), assets: new MemoryAssetStore() }
+  }
+
+  it('owner deletes: 204, links die, other room intact, purge called', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const other = await store.createRoom()
+    const edit = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const view = await store.createLink(roomId, { role: 'view', expiresIn: null })
+    const purge = vi.fn(async () => {})
+    const deps = { ...(await mk()), purge }
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, deps))!
+    expect(res.status).toBe(204)
+    expect(purge).toHaveBeenCalledWith(roomId)
+    expect((await handleApi(req('GET', `/api/s/${view.token}`), store))!.status).toBe(410)
+    expect(
+      (await handleApi(req('POST', `/api/rooms/${roomId}/links`, { bearer: ownerToken, body: { role: 'view', expiresIn: null } }), store))!.status,
+    ).toBe(401)
+    expect((await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: edit.token }), store))!.status).toBe(401)
+    expect((await handleApi(req('GET', `/api/rooms/${other.roomId}/links`, { bearer: other.ownerToken }), store))!.status).toBe(200)
+  })
+
+  it('edit/view link cannot delete; unknown room 401', async () => {
+    const { store, roomId } = await setup()
+    const edit = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const purge = vi.fn(async () => {})
+    expect((await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: edit.token }), store, { purge }))!.status).toBe(401)
+    expect((await handleApi(req('DELETE', '/api/rooms/nope', { bearer: 'x' }), store, { purge }))!.status).toBe(401)
+    expect(purge).not.toHaveBeenCalled()
+  })
+
+  it('purge failure still 204', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const purge = vi.fn(async () => { throw new Error('boom') })
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { purge }))!
+    expect(res.status).toBe(204)
+    err.mockRestore()
+  })
+
+  it('clears authCache entries so old token is 410 immediately', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const link = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const wsReq = new Request(`http://x/parties/doc-room/${roomId}?token=${link.token}`)
+    const first = await authorizeWs(wsReq, store, now)
+    expect(first).toMatchObject({ roomId })
+    expect(_authCacheSize()).toBe(1)
+    await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store)
+    expect(_authCacheSize()).toBe(0)
+    expect(((await authorizeWs(wsReq, store, now)) as Response).status).toBe(410)
+  })
+})

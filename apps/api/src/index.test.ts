@@ -218,3 +218,34 @@ describe('CORS on errors and passthrough', () => {
     expect(res.status).toBe(201)
   })
 })
+
+describe('DELETE /api/rooms/:roomId', () => {
+  it('purges the DO via internal POST route', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const stmt = {
+      bind: () => stmt,
+      run: async () => ({}),
+      all: async () => ({ results: [] }),
+    }
+    const db = { prepare: () => stmt, batch: async () => [] }
+    const seen: Request[] = []
+    const routeParty = vi.fn(async (r: Request) => {
+      seen.push(r)
+      return new Response(null, { status: 204 })
+    })
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      { DB: db } as unknown as Env,
+      { routeParty: routeParty as never, store },
+    )
+    expect(res.status).toBe(204)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]!.method).toBe('POST')
+    expect(seen[0]!.headers.get('x-mdr-internal')).toBe('1')
+    expect(new URL(seen[0]!.url).pathname).toBe(`/parties/doc-room/${room.roomId}/purge`)
+  })
+})
