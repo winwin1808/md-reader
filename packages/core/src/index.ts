@@ -25,6 +25,7 @@ export {
   ensureDoc,
 } from './doc/doc.js'
 export * from './doc/apply.js'
+export { applyTextChangeAsActor } from './doc/apply-as.js'
 export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
 
 export { defaultFormatOptions, formatMarkdown } from './format/index.js'
