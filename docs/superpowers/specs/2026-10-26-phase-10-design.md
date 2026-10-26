@@ -376,7 +376,7 @@ SESSION_HANDOVER.
 - Firefox cho cầu nối (Firefox MV3 background khác vòng đời — chưa test).
 
 ## Sub-phase queue
-- 10a: built
+- 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
 - 10b: pending
 - 10c: pending
 - 10d: pending
