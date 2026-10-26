@@ -359,6 +359,32 @@ describe('useShare', () => {
         expect((await getRecord(docId))?.room).toBeUndefined()
       })
     }
+    it('401 + resolve 410 unbinds as if deleted', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 410 })))
+      await act(async () => { await h.result.current.deleteRemote() })
+      expect(fetchMock.mock.calls[3][0]).toBe(`${SERVER}/api/s/own`)
+      expect(h.result.current.binding).toBeNull()
+      expect(store['mdr.links.r1']).toBeUndefined()
+      expect((await getRecord(docId))?.room).toBeUndefined()
+    })
+    it('401 + resolve 200 throws and keeps binding', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 200 })))
+      await act(async () => { await expect(h.result.current.deleteRemote()).rejects.toThrow() })
+      expect(h.result.current.binding?.roomId).toBe('r1')
+      expect(store['mdr.links.r1']).toBeTruthy()
+    })
+    it('401 + resolve network error throws and keeps binding', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.reject(new TypeError('net')))
+      await act(async () => { await expect(h.result.current.deleteRemote()).rejects.toThrow() })
+      expect(h.result.current.binding?.roomId).toBe('r1')
+      expect(store['mdr.links.r1']).toBeTruthy()
+    })
     it('401 throws and keeps binding', async () => {
       const h = await boundWithLink()
       fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))

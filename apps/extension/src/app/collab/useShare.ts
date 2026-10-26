@@ -17,7 +17,7 @@ async function call<T>(t: TFunction, url: string, init: RequestInit): Promise<T>
   } catch {
     throw new Error(t('ext.share.unreachable'))
   }
-  if (res.status === 401) throw new Error(t('ext.share.forbidden'))
+  if (res.status === 401) throw Object.assign(new Error(t('ext.share.forbidden')), { status: 401 })
   if (res.status === 429) {
     let body: unknown = null
     try { body = await res.json() } catch { /* ignore */ }
@@ -208,7 +208,15 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     try {
       await call<unknown>(t, `${b.serverUrl}${API_PATHS.room(b.roomId)}`, { method: 'DELETE', headers: auth(b) })
     } catch (e) {
-      if ((e as { status?: number }).status !== 404) throw e
+      const st = (e as { status?: number }).status
+      if (st === 401) {
+        let gone = false
+        try {
+          const r = await fetch(`${b.serverUrl}${API_PATHS.resolve(b.ownerToken)}`)
+          gone = r.status === 410 || r.status === 404
+        } catch { /* mạng lỗi: coi như chưa rõ */ }
+        if (!gone) throw e
+      } else if (st !== 404) throw e
     }
     await forgetRoomTokens(b.roomId)
     await touchRecord(docId as string, { room: undefined })
