@@ -22,9 +22,11 @@ function mk(over: Partial<RouteDeps> = {}) {
     sleep: vi.fn(async () => {}),
     now: vi.fn(() => 0),
     sendToTab: vi.fn(async () => ({ type: 'res', id: 'r1', ok: true, result: { hi: 1 } }) as never),
+    focusTab: vi.fn(async () => {}),
     ...over,
   } satisfies RouteDeps
-  return { deps, run: createExecuteInApp(deps as RouteDeps) }
+  const exec = createExecuteInApp(deps as RouteDeps)
+  return { deps, run: (r: BridgeRequest, client = 'Claude') => exec(r, client) }
 }
 
 describe('createExecuteInApp', () => {
@@ -73,7 +75,7 @@ describe('createExecuteInApp', () => {
     const r = await run(req('get_doc', { docId: 'd1' })) as any
     expect(deps.openTab).not.toHaveBeenCalled()
     expect(deps.closeTab).not.toHaveBeenCalled()
-    expect(deps.sendToTab).toHaveBeenCalledWith(3, { type: 'mdr-bridge-exec', req: req('get_doc', { docId: 'd1' }) })
+    expect(deps.sendToTab).toHaveBeenCalledWith(3, { type: 'mdr-bridge-exec', req: req('get_doc', { docId: 'd1' }), client: 'Claude' })
     expect(r.result).toEqual({ hi: 1 })
   })
   it('no tab: opens background, sends, closes', async () => {
@@ -129,6 +131,33 @@ describe('createExecuteInApp', () => {
     const { deps, run } = mk()
     await run(req('update_doc', { docId: 'd1', markdown: 'x', baseHash: 'a'.repeat(64) }))
     expect(deps.closeTab).toHaveBeenCalledWith(7)
+  })
+  it('share_doc existing tab: focuses it, message carries client', async () => {
+    const { deps, run } = mk({ findTab: vi.fn(async () => 3) })
+    await run(req('share_doc', { docId: 'd1' }), 'Cursor')
+    expect(deps.focusTab).toHaveBeenCalledWith(3)
+    expect(deps.sendToTab).toHaveBeenCalledWith(3, expect.objectContaining({ client: 'Cursor' }))
+  })
+  it('revoke_link with self-opened tab: focus then close after', async () => {
+    const order: string[] = []
+    const { deps, run } = mk({
+      focusTab: vi.fn(async () => { order.push('focus') }),
+      closeTab: vi.fn(async () => { order.push('close') }),
+    })
+    await run(req('revoke_link', { docId: 'd1', tokenPrefix: 'abcd12' }))
+    expect(deps.focusTab).toHaveBeenCalledWith(7)
+    expect(order).toEqual(['focus', 'close'])
+  })
+  it('get_doc does not focus', async () => {
+    const { deps, run } = mk({ findTab: vi.fn(async () => 3) })
+    await run(req('get_doc', { docId: 'd1' }))
+    expect(deps.focusTab).not.toHaveBeenCalled()
+  })
+  it('focusTab throwing still sends', async () => {
+    const { deps, run } = mk({ findTab: vi.fn(async () => 3), focusTab: vi.fn(async () => { throw new Error('no window') }) })
+    const r = await run(req('share_doc', { docId: 'd1' })) as any
+    expect(r.ok).toBe(true)
+    expect(deps.sendToTab).toHaveBeenCalledTimes(1)
   })
   it('invalid args -> INVALID_ARGS', async () => {
     const { run } = mk()

@@ -16,6 +16,7 @@ export interface RouteDeps {
   sleep(ms: number): Promise<void>
   now(): number
   sendToTab(tabId: number, msg: ExecMsg): Promise<BridgeResponse>
+  focusTab(tabId: number): Promise<void>
 }
 
 const ok = (id: string, result: unknown): BridgeResponse => ({ type: 'res', id, ok: true, result })
@@ -26,8 +27,8 @@ export function isNoReceiver(err: unknown): boolean {
   return m.includes('Receiving end does not exist') || m.includes('Could not establish connection')
 }
 
-export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Promise<BridgeResponse> {
-  return async (req) => {
+export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest, client: string) => Promise<BridgeResponse> {
+  return async (req, client) => {
     const v = validateToolArgs(req.tool, req.args)
     if (!v.ok) return fail(req.id, 'INVALID_ARGS', v.message)
 
@@ -73,7 +74,10 @@ export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Pro
           tab = await deps.openTab(await deps.docUrl(docId), false)
           opened = true
         }
-        const msg: ExecMsg = { type: BRIDGE_EXEC_MSG, req }
+        const msg: ExecMsg = { type: BRIDGE_EXEC_MSG, req, client }
+        if (req.tool === 'share_doc' || req.tool === 'revoke_link') {
+          try { await deps.focusTab(tab) } catch { /* focusing is best effort */ }
+        }
         const deadline = deps.now() + 10_000
         for (;;) {
           try {

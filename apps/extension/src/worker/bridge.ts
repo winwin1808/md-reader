@@ -27,7 +27,7 @@ export interface BridgeDeps {
   connect(url: string): WsLike
   approved(): Promise<ApprovedClient[]>
   requestPairing(c: { port: number; client: string; keyHash: string }): void
-  execute(req: BridgeRequest): Promise<BridgeResponse>
+  execute(req: BridgeRequest, client: string): Promise<BridgeResponse>
   setTimer(fn: () => void, ms: number): unknown
   clearTimer(h: unknown): void
 }
@@ -77,7 +77,7 @@ export function createBridge(deps: BridgeDeps) {
     if (e.conn.state !== 'paired') return
     let res: BridgeResponse
     try {
-      res = await deps.execute(req)
+      res = await deps.execute(req, e.conn.client)
     } catch (err) {
       res = { type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: err instanceof Error ? err.message : String(err) } }
     }
