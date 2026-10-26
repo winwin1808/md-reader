@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN } from './protocol.js'
+import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS } from './protocol.js'
 import { hashText } from '../doc/hash.js'
 
 const p = (o: unknown) => parseBridgeMessage(JSON.stringify(o))
@@ -87,5 +87,22 @@ describe('validateToolArgs', () => {
   })
   it('textHash equals hashText', async () => {
     expect(await textHash('héllo')).toBe(await hashText('héllo'))
+  })
+})
+
+describe('isAllowedExtensionOrigin', () => {
+  const id = KNOWN_EXTENSION_IDS[0]!
+  it('accepts only exact known id', () => {
+    expect(isAllowedExtensionOrigin(`chrome-extension://${id}`)).toBe(true)
+    expect(isAllowedExtensionOrigin('chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe(false)
+    expect(isAllowedExtensionOrigin(`moz-extension://${id}`)).toBe(false)
+    expect(isAllowedExtensionOrigin('https://example.com')).toBe(false)
+    expect(isAllowedExtensionOrigin(`chrome-extension://${id}x`)).toBe(false)
+    expect(isAllowedExtensionOrigin(`chrome-extension://${id}/`)).toBe(false)
+    expect(isAllowedExtensionOrigin('chrome-extension://zzz', ['zzz'])).toBe(true)
+  })
+  it('limits', () => {
+    expect(BRIDGE_MAX_PAYLOAD).toBe(16 * 1024 * 1024)
+    expect(BRIDGE_MAX_CONNECTIONS).toBe(4)
   })
 })

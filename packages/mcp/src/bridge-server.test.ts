@@ -1,12 +1,21 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import net from 'node:net'
 import WebSocket from 'ws'
+import { KNOWN_EXTENSION_IDS } from '@md-reader/core/bridge'
 import { BridgeCallError, startBridgeServer, type BridgeServer } from './bridge-server'
 
 const KEY = 'k'.repeat(43)
-const ORIGIN = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'
-let nextPort = 30000 + Math.floor(Math.random() * 20000)
-const freePort = () => nextPort++
+const ORIGIN = `chrome-extension://${KNOWN_EXTENSION_IDS[0]}`
+const FOREIGN = 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+const freePort = (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const srv = net.createServer()
+    srv.once('error', reject)
+    srv.listen(0, '127.0.0.1', () => {
+      const p = (srv.address() as net.AddressInfo).port
+      srv.close(() => resolve(p))
+    })
+  })
 
 const servers: BridgeServer[] = []
 const sockets: WebSocket[] = []
@@ -16,7 +25,7 @@ afterEach(async () => {
 })
 
 async function start(opts: { connectWaitMs?: number; ports?: number[] } = {}) {
-  const ports = opts.ports ?? [freePort()]
+  const ports = opts.ports ?? [await freePort()]
   const s = await startBridgeServer({ pairKey: KEY, client: 'test-client', ports, connectWaitMs: opts.connectWaitMs ?? 2000 })
   servers.push(s)
   return s
@@ -117,11 +126,11 @@ describe('bridge server', () => {
   })
 
   it('falls through to the next port when the first is busy', async () => {
-    const busy = freePort()
+    const busy = await freePort()
     const blocker = net.createServer()
     await new Promise<void>((r) => blocker.listen(busy, '127.0.0.1', r))
     try {
-      const next = freePort()
+      const next = await freePort()
       const s = await start({ ports: [busy, next] })
       expect(s.port).toBe(next)
     } finally {
@@ -130,7 +139,7 @@ describe('bridge server', () => {
   })
 
   it('rejects when no port is free', async () => {
-    const busy = freePort()
+    const busy = await freePort()
     const blocker = net.createServer()
     await new Promise<void>((r) => blocker.listen(busy, '127.0.0.1', r))
     try {
@@ -195,5 +204,35 @@ describe('bridge server', () => {
     await e.next((m) => m.type === 'req')
     await s.close()
     expect((await settled).code).toBe('NOT_CONNECTED')
+  })
+
+  it('refuses a foreign extension id by default; MDR_EXTENSION_ID allows it', async () => {
+    const s = await start()
+    await expect(connect(s.port, FOREIGN)).rejects.toThrow(/403/)
+    const prev = process.env.MDR_EXTENSION_ID
+    process.env.MDR_EXTENSION_ID = ` ${FOREIGN.slice('chrome-extension://'.length)} ,`
+    try {
+      const s2 = await start()
+      const e = await connect(s2.port, FOREIGN)
+      expect((await e.next()).type).toBe('hello')
+    } finally {
+      if (prev === undefined) delete process.env.MDR_EXTENSION_ID
+      else process.env.MDR_EXTENSION_ID = prev
+    }
+  })
+
+  it('refuses the 5th simultaneous connection', async () => {
+    const s = await start()
+    for (let i = 0; i < 4; i++) await connect(s.port)
+    await expect(connect(s.port)).rejects.toThrow(/503/)
+  })
+
+  it('never sends req to an unpaired socket', async () => {
+    const s = await start({ connectWaitMs: 150 })
+    const e = await connect(s.port)
+    await e.next((m) => m.type === 'hello')
+    e.ws.send(JSON.stringify({ type: 'welcome', paired: false }))
+    await expect(s.call('get_doc', { docId: 'x' })).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
+    expect(e.msgs.some((m) => m.type === 'req')).toBe(false)
   })
 })

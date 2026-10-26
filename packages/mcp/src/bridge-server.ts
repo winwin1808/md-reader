@@ -1,7 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { randomBytes } from 'node:crypto'
 import {
+  BRIDGE_MAX_CONNECTIONS,
+  BRIDGE_MAX_PAYLOAD,
   BRIDGE_PORTS,
+  KNOWN_EXTENSION_IDS,
+  isAllowedExtensionOrigin,
   BRIDGE_PROTOCOL,
   parseBridgeMessage,
   type BridgeArgsMap,
@@ -28,9 +32,11 @@ const NOT_CONNECTED_MSG = 'Open Chrome with MD Reader and turn on Settings → A
 const LONG_TOOLS: readonly BridgeTool[] = ['share_doc', 'revoke_link']
 
 function defaultAllowedOrigin(origin: string): boolean {
-  const id = process.env.MDR_EXTENSION_ID
-  if (id) return origin === `chrome-extension://${id}`
-  return origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')
+  const env = (process.env.MDR_EXTENSION_ID ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+  return isAllowedExtensionOrigin(origin, env.length ? env : KNOWN_EXTENSION_IDS)
 }
 
 interface Pending {
@@ -45,10 +51,12 @@ function listen(port: number, allowed: (o: string) => boolean): Promise<WebSocke
     const wss = new WebSocketServer({
       host: '127.0.0.1',
       port,
+      maxPayload: BRIDGE_MAX_PAYLOAD,
       verifyClient: (info, cb) => {
         const origin = info.origin
-        if (origin && allowed(origin)) cb(true)
-        else cb(false, 403, 'Forbidden')
+        if (!origin || !allowed(origin)) cb(false, 403, 'Forbidden')
+        else if (wss.clients.size >= BRIDGE_MAX_CONNECTIONS) cb(false, 503, 'Too many connections')
+        else cb(true)
       },
     })
     const onError = (err: Error) => {
