@@ -1,6 +1,6 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-26. Branch: `phase-10` — **phase 10 đã ship**, MR https://github.com/winwin1808/md-reader/pull/7 (`phase-10` → `main`) **đang mở, chưa merge**.
+Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
 ## Phase 10 — MCP cục bộ + gia cố multi-tenant (v1.3.0)
 
@@ -25,7 +25,7 @@ version                    1.3.0 (extension + @md-reader/mcp)
 ```
 
 ### Việc người làm trước khi phát hành 1.3.0
-1. Duyệt + merge MR #7.
+1. ~~Duyệt + merge MR #7~~ — đã merge 2026-10-26 (`28c06c5`), CI check + e2e xanh.
 2. Máy chủ: `set -a; . ~/.config/md-reader/cloudflare.env` rồi `wrangler d1 migrations apply <DB> --remote` (migration `0003_tenancy`),
    `wrangler secret put ADMIN_SECRET`, `pnpm deploy:api`; chạy `scripts/smoke.mjs` với URL thật. Gỡ nội dung: `apps/api/scripts/takedown.mjs`.
 3. `npm publish` `@md-reader/mcp@1.3.0` (cần `pnpm --filter @md-reader/mcp build` trước).
