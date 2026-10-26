@@ -1,0 +1,196 @@
+import type { LimitErrorCode } from '@md-reader/core'
+import { hashToken } from './tokens.js'
+
+export const LIMITS = {
+  roomsPerInstallPerDay: 20,
+  roomsPerIpPerDay: 50,
+  roomsGlobalPerDay: 500,
+  liveRoomsPerInstall: 200,
+  assetsPerInstallPerDay: 100,
+  assetBytesPerInstall: 200 * 1024 * 1024,
+  reportsPerIpPerDay: 10,
+} as const
+
+export type LimitKind = 'room' | 'asset' | 'report'
+export interface LimitSubject {
+  installHash: string | null
+  ipHash: string
+}
+export type LimitVerdict = null | { error: LimitErrorCode; retryAfter?: number }
+
+export interface LimitStore {
+  check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict>
+  record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void>
+}
+
+const DAY_MS = 86_400_000
+export function dayOf(now: number): number {
+  return Math.floor(now / DAY_MS)
+}
+export function secondsToNextDay(now: number): number {
+  return Math.ceil(((dayOf(now) + 1) * DAY_MS - now) / 1000)
+}
+
+export async function subjectFrom(req: Request): Promise<LimitSubject> {
+  const inst = req.headers.get('x-mdr-install')
+  const installHash = inst && inst.length >= 16 && inst.length <= 200 ? await hashToken(inst) : null
+  const ipHash = await hashToken(req.headers.get('CF-Connecting-IP') || 'unknown')
+  return { installHash, ipHash }
+}
+
+type Scope = 'global' | 'ip' | 'install'
+
+/** Shared decision logic over abstract counters. */
+interface Counters {
+  count(scope: Scope, subject: string, kind: string): Promise<number>
+  liveRooms(installHash: string): Promise<number>
+  roomInstall(roomId: string): Promise<string | null>
+  installBytes(installHash: string): Promise<number>
+}
+
+async function decide(
+  c: Counters,
+  now: number,
+  kind: LimitKind,
+  s: LimitSubject,
+  info?: { roomId?: string; bytes?: number },
+): Promise<LimitVerdict> {
+  const rate = (): LimitVerdict => ({ error: 'RATE_LIMITED', retryAfter: secondsToNextDay(now) })
+  if (kind === 'room') {
+    if ((await c.count('global', '*', 'room')) >= LIMITS.roomsGlobalPerDay) return rate()
+    if ((await c.count('ip', s.ipHash, 'room')) >= LIMITS.roomsPerIpPerDay) return rate()
+    if (s.installHash) {
+      if ((await c.count('install', s.installHash, 'room')) >= LIMITS.roomsPerInstallPerDay) return rate()
+      if ((await c.liveRooms(s.installHash)) >= LIMITS.liveRoomsPerInstall) return { error: 'QUOTA_EXCEEDED' }
+    }
+    return null
+  }
+  if (kind === 'asset') {
+    if (!info?.roomId) return null
+    const owner = await c.roomInstall(info.roomId)
+    if (!owner) return null
+    if ((await c.count('install', owner, 'asset')) >= LIMITS.assetsPerInstallPerDay) return rate()
+    if ((await c.installBytes(owner)) + (info.bytes ?? 0) > LIMITS.assetBytesPerInstall) return { error: 'QUOTA_EXCEEDED' }
+    return null
+  }
+  if ((await c.count('ip', s.ipHash, 'report')) >= LIMITS.reportsPerIpPerDay) return rate()
+  return null
+}
+
+export class MemoryLimitStore implements LimitStore {
+  private usage = new Map<string, number>()
+  private rooms = new Map<string, { install: string; bytes: number }>()
+  constructor(private now: () => number = Date.now) {}
+
+  private key(scope: Scope, subject: string, kind: string): string {
+    return `${scope}|${subject}|${dayOf(this.now())}|${kind}`
+  }
+  private bump(scope: Scope, subject: string, kind: string): void {
+    const k = this.key(scope, subject, kind)
+    this.usage.set(k, (this.usage.get(k) ?? 0) + 1)
+  }
+
+  check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict> {
+    return decide(
+      {
+        count: async (scope, subject, k) => this.usage.get(this.key(scope, subject, k)) ?? 0,
+        liveRooms: async (h) => [...this.rooms.values()].filter((r) => r.install === h).length,
+        roomInstall: async (id) => this.rooms.get(id)?.install ?? null,
+        installBytes: async (h) =>
+          [...this.rooms.values()].filter((r) => r.install === h).reduce((a, r) => a + r.bytes, 0),
+      },
+      this.now(),
+      kind,
+      s,
+      info,
+    )
+  }
+
+  async record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void> {
+    if (kind === 'room') {
+      this.bump('global', '*', 'room')
+      this.bump('ip', s.ipHash, 'room')
+      if (s.installHash) {
+        this.bump('install', s.installHash, 'room')
+        this.rooms.set(info.roomId, { install: s.installHash, bytes: 0 })
+      }
+    } else if (kind === 'asset') {
+      const r = this.rooms.get(info.roomId)
+      if (r) {
+        this.bump('install', r.install, 'asset')
+        r.bytes += info.bytes ?? 0
+      }
+    } else {
+      this.bump('ip', s.ipHash, 'report')
+    }
+  }
+}
+
+const UPSERT =
+  'INSERT INTO usage_daily (scope,subject,day,kind,n) VALUES (?,?,?,?,1) ON CONFLICT(scope,subject,day,kind) DO UPDATE SET n = n + 1'
+
+export class D1LimitStore implements LimitStore {
+  constructor(
+    private db: D1Database,
+    private now: () => number = Date.now,
+  ) {}
+
+  private async num(sql: string, ...args: unknown[]): Promise<number> {
+    const row = await this.db.prepare(sql).bind(...args).first<{ v: number | null }>()
+    return row?.v ?? 0
+  }
+  private bump(scope: Scope, subject: string, kind: string): D1PreparedStatement {
+    return this.db.prepare(UPSERT).bind(scope, subject, dayOf(this.now()), kind)
+  }
+
+  check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict> {
+    const day = dayOf(this.now())
+    return decide(
+      {
+        count: (scope, subject, k) =>
+          this.num('SELECT n AS v FROM usage_daily WHERE scope=? AND subject=? AND day=? AND kind=?', scope, subject, day, k),
+        liveRooms: (h) => this.num('SELECT COUNT(*) AS v FROM room_installs WHERE install_hash=?', h),
+        roomInstall: async (id) => {
+          const r = await this.db
+            .prepare('SELECT install_hash AS h FROM room_installs WHERE room_id=?')
+            .bind(id)
+            .first<{ h: string }>()
+          return r?.h ?? null
+        },
+        installBytes: (h) => this.num('SELECT SUM(bytes) AS v FROM room_installs WHERE install_hash=?', h),
+      },
+      this.now(),
+      kind,
+      s,
+      info,
+    )
+  }
+
+  async record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void> {
+    const stmts: D1PreparedStatement[] = []
+    if (kind === 'room') {
+      stmts.push(this.bump('global', '*', 'room'), this.bump('ip', s.ipHash, 'room'))
+      if (s.installHash) {
+        stmts.push(
+          this.bump('install', s.installHash, 'room'),
+          this.db
+            .prepare('INSERT OR IGNORE INTO room_installs (room_id, install_hash, bytes) VALUES (?,?,0)')
+            .bind(info.roomId, s.installHash),
+        )
+      }
+    } else if (kind === 'asset') {
+      const r = await this.db
+        .prepare('SELECT install_hash AS h FROM room_installs WHERE room_id=?')
+        .bind(info.roomId)
+        .first<{ h: string }>()
+      if (!r) return
+      stmts.push(
+        this.bump('install', r.h, 'asset'),
+        this.db.prepare('UPDATE room_installs SET bytes = bytes + ? WHERE room_id=?').bind(info.bytes ?? 0, info.roomId),
+      )
+    } else {
+      stmts.push(this.bump('ip', s.ipHash, 'report'))
+    }
+    if (stmts.length) await this.db.batch(stmts)
+  }
+}
