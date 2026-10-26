@@ -8,6 +8,8 @@ export const LIMITS = {
   liveRoomsPerInstall: 200,
   assetsPerInstallPerDay: 100,
   assetBytesPerInstall: 200 * 1024 * 1024,
+  assetsPerIpPerDay: 100,
+  assetBytesPerIpPerDay: 200 * 1024 * 1024,
   reportsPerIpPerDay: 10,
 } as const
 
@@ -68,7 +70,11 @@ async function decide(
   if (kind === 'asset') {
     if (!info?.roomId) return null
     const owner = await c.roomInstall(info.roomId)
-    if (!owner) return null
+    if (!owner) {
+      if ((await c.count('ip', s.ipHash, 'asset')) >= LIMITS.assetsPerIpPerDay) return rate()
+      if ((await c.count('ip', s.ipHash, 'asset_bytes')) + (info.bytes ?? 0) > LIMITS.assetBytesPerIpPerDay) return rate()
+      return null
+    }
     if ((await c.count('install', owner, 'asset')) >= LIMITS.assetsPerInstallPerDay) return rate()
     if ((await c.installBytes(owner)) + (info.bytes ?? 0) > LIMITS.assetBytesPerInstall) return { error: 'QUOTA_EXCEEDED' }
     return null
@@ -85,9 +91,9 @@ export class MemoryLimitStore implements LimitStore {
   private key(scope: Scope, subject: string, kind: string): string {
     return `${scope}|${subject}|${dayOf(this.now())}|${kind}`
   }
-  private bump(scope: Scope, subject: string, kind: string): void {
+  private bump(scope: Scope, subject: string, kind: string, n = 1): void {
     const k = this.key(scope, subject, kind)
-    this.usage.set(k, (this.usage.get(k) ?? 0) + 1)
+    this.usage.set(k, (this.usage.get(k) ?? 0) + n)
   }
 
   check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict> {
@@ -119,6 +125,9 @@ export class MemoryLimitStore implements LimitStore {
       if (r) {
         this.bump('install', r.install, 'asset')
         r.bytes += info.bytes ?? 0
+      } else {
+        this.bump('ip', s.ipHash, 'asset')
+        this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0)
       }
     } else {
       this.bump('ip', s.ipHash, 'report')
@@ -127,7 +136,7 @@ export class MemoryLimitStore implements LimitStore {
 }
 
 const UPSERT =
-  'INSERT INTO usage_daily (scope,subject,day,kind,n) VALUES (?,?,?,?,1) ON CONFLICT(scope,subject,day,kind) DO UPDATE SET n = n + 1'
+  'INSERT INTO usage_daily (scope,subject,day,kind,n) VALUES (?,?,?,?,?) ON CONFLICT(scope,subject,day,kind) DO UPDATE SET n = n + excluded.n'
 
 export class D1LimitStore implements LimitStore {
   constructor(
@@ -139,8 +148,8 @@ export class D1LimitStore implements LimitStore {
     const row = await this.db.prepare(sql).bind(...args).first<{ v: number | null }>()
     return row?.v ?? 0
   }
-  private bump(scope: Scope, subject: string, kind: string): D1PreparedStatement {
-    return this.db.prepare(UPSERT).bind(scope, subject, dayOf(this.now()), kind)
+  private bump(scope: Scope, subject: string, kind: string, n = 1): D1PreparedStatement {
+    return this.db.prepare(UPSERT).bind(scope, subject, dayOf(this.now()), kind, n)
   }
 
   check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict> {
@@ -183,11 +192,14 @@ export class D1LimitStore implements LimitStore {
         .prepare('SELECT install_hash AS h FROM room_installs WHERE room_id=?')
         .bind(info.roomId)
         .first<{ h: string }>()
-      if (!r) return
-      stmts.push(
-        this.bump('install', r.h, 'asset'),
-        this.db.prepare('UPDATE room_installs SET bytes = bytes + ? WHERE room_id=?').bind(info.bytes ?? 0, info.roomId),
-      )
+      if (r) {
+        stmts.push(
+          this.bump('install', r.h, 'asset'),
+          this.db.prepare('UPDATE room_installs SET bytes = bytes + ? WHERE room_id=?').bind(info.bytes ?? 0, info.roomId),
+        )
+      } else {
+        stmts.push(this.bump('ip', s.ipHash, 'asset'), this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0))
+      }
     } else {
       stmts.push(this.bump('ip', s.ipHash, 'report'))
     }

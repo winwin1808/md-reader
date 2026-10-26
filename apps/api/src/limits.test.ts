@@ -45,7 +45,7 @@ describe('LimitStore (memory)', () => {
 
   it('asset: unknown room passes; bytes quota; daily count', async () => {
     const st = new MemoryLimitStore(() => 0)
-    expect(await st.check('asset', S, { roomId: 'nope', bytes: 999 * MB })).toBeNull()
+    expect(await st.check('asset', S, { roomId: 'nope', bytes: 1 * MB })).toBeNull()
     await st.record('room', S, { roomId: 'r1' })
     await st.record('asset', S, { roomId: 'r1', bytes: 150 * MB })
     expect(await st.check('asset', S, { roomId: 'r1', bytes: 50 * MB })).toBeNull()
@@ -61,6 +61,64 @@ describe('LimitStore (memory)', () => {
     for (let i = 0; i < LIMITS.reportsPerIpPerDay; i++) await st.record('report', S, { roomId: 'r' })
     expect((await st.check('report', S))?.error).toBe('RATE_LIMITED')
     expect(await st.check('report', { installHash: null, ipHash: 'other' })).toBeNull()
+  })
+})
+
+describe('LimitStore isolation and unlocked-room asset limits', () => {
+  const A = { installHash: 'A', ipHash: 'ipA' }
+  const B = { installHash: 'B', ipHash: 'ipB' }
+
+  it('(a) uploader B into room of A spends the quota of A', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    await st.record('room', A, { roomId: 'ra' })
+    await st.record('room', B, { roomId: 'rb' })
+    for (let i = 0; i < LIMITS.assetsPerInstallPerDay; i++) await st.record('asset', B, { roomId: 'ra', bytes: 1 })
+    expect((await st.check('asset', B, { roomId: 'ra', bytes: 1 }))?.error).toBe('RATE_LIMITED')
+    expect(await st.check('asset', B, { roomId: 'rb', bytes: 1 })).toBeNull()
+  })
+
+  it('(b) install A hitting daily and live limits does not affect install B', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    for (let i = 0; i < LIMITS.roomsPerInstallPerDay; i++) await st.record('room', A, { roomId: `a${i}` })
+    expect((await st.check('room', A))?.error).toBe('RATE_LIMITED')
+    expect(await st.check('room', B)).toBeNull()
+    let now = 0
+    const lv = new MemoryLimitStore(() => now)
+    for (let i = 0; i < LIMITS.liveRoomsPerInstall; i++) {
+      await lv.record('room', A, { roomId: `l${i}` })
+      if (i % 10 === 9) now += 86_400_000
+    }
+    now += 86_400_000
+    expect(await lv.check('room', A)).toEqual({ error: 'QUOTA_EXCEEDED' })
+    expect(await lv.check('room', B)).toBeNull()
+  })
+
+  it('(c) IP a hitting 50 rooms/day does not affect IP b', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    const a = { installHash: null, ipHash: 'a' }
+    for (let i = 0; i < LIMITS.roomsPerIpPerDay; i++) await st.record('room', a, { roomId: `r${i}` })
+    expect((await st.check('room', a))?.error).toBe('RATE_LIMITED')
+    expect(await st.check('room', { installHash: null, ipHash: 'b' })).toBeNull()
+  })
+
+  it('(d) unlocked room: 100 assets/day per IP, other IP free, bytes cap per IP', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    const a = { installHash: null, ipHash: 'a' }
+    const b = { installHash: null, ipHash: 'b' }
+    for (let i = 0; i < LIMITS.assetsPerIpPerDay; i++) {
+      expect(await st.check('asset', a, { roomId: 'free', bytes: 1 })).toBeNull()
+      await st.record('asset', a, { roomId: 'free', bytes: 1 })
+    }
+    const v = await st.check('asset', a, { roomId: 'free', bytes: 1 })
+    expect(v?.error).toBe('RATE_LIMITED')
+    expect(v?.retryAfter).toBeGreaterThan(0)
+    expect(await st.check('asset', b, { roomId: 'free', bytes: 1 })).toBeNull()
+    const c = new MemoryLimitStore(() => 0)
+    await c.record('asset', a, { roomId: 'free', bytes: 150 * MB })
+    expect(await c.check('asset', a, { roomId: 'free', bytes: 50 * MB })).toBeNull()
+    const over = await c.check('asset', a, { roomId: 'free', bytes: 50 * MB + 1 })
+    expect(over?.error).toBe('RATE_LIMITED')
+    expect(over?.retryAfter).toBeGreaterThan(0)
   })
 })
 
