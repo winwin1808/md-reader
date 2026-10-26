@@ -93,9 +93,12 @@ export function createBridgeExecutor(
         const share2 = s2.share
         try {
           await share2.enable()
-          const l = await share2.createLink({ role, expiresIn: expiresInDays === null ? null : expiresInDays * DAY_MS, label: `AI · ${client}`.slice(0, 60) })
+          const s3 = get()
+          if (!s3 || s3.docId !== s.docId || !s3.share || !s3.share.bound()) return fail(req.id, 'NOT_FOUND', CHANGED)
+          // no await between this check and createLink: it reads the binding synchronously
+          const l = await s3.share.createLink({ role, expiresIn: expiresInDays === null ? null : expiresInDays * DAY_MS, label: `AI · ${client}`.slice(0, 60) })
           if (!l.token) return fail(req.id, 'SHARE_FAILED', 'no token returned')
-          return ok({ url: buildShareUrl(share2.serverUrl, l.token), tokenPrefix: l.tokenPrefix, expiresAt: l.expiresAt })
+          return ok({ url: buildShareUrl(s3.share.serverUrl, l.token), tokenPrefix: l.tokenPrefix, expiresAt: l.expiresAt })
         } catch (e) { return fail(req.id, 'SHARE_FAILED', msg(e)) }
       }
       const { tokenPrefix } = v.args as { tokenPrefix: string }

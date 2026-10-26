@@ -259,6 +259,29 @@ describe('createBridgeExecutor', () => {
         expect(await run(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
         expect(share.revoke).not.toHaveBeenCalled()
       })
+      it('share: session swapped during enable() -> NOT_FOUND, no createLink on old or new share', async () => {
+        let swapped = false
+        let share2: ExecShare | null = null
+        const enable = vi.fn(async () => { swapped = true })
+        const { share, run, r } = setup(() => null, 'share_doc', { enable })
+        share2 = { ...share, createLink: vi.fn(async () => link({ token: 'T2' })) } as unknown as ExecShare
+        const other = sess('x', { docId: 'other', share: share2, confirm: async () => true })
+        const first = sess('# Hi', { share, confirm: async () => true })
+        const run2 = createRaw(() => (swapped ? other : first))
+        expect(await run2(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND', message: 'document changed in tab before approval' } })
+        expect(share.createLink).not.toHaveBeenCalled()
+        expect(share2.createLink).not.toHaveBeenCalled()
+        void run
+      })
+      it('share: get() null after enable() -> NOT_FOUND, no createLink', async () => {
+        let gone = false
+        const enable = vi.fn(async () => { gone = true })
+        const { share, r } = setup(() => null, 'share_doc', { enable })
+        const first = sess('# Hi', { share, confirm: async () => true })
+        const run2 = createRaw(() => (gone ? null : first))
+        expect(await run2(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+        expect(share.createLink).not.toHaveBeenCalled()
+      })
       it('uses newest share after confirm', async () => {
         let cur: ExecSession | null = null
         const { share, run, r } = setup(() => cur, 'share_doc')
