@@ -1,3 +1,4 @@
+import { hashText } from '../doc/hash.js'
 export const BRIDGE_PROTOCOL = 1
 export const BRIDGE_PORTS: readonly number[] = Array.from({ length: 10 }, (_, i) => 47821 + i)
 export const BRIDGE_MAX_MARKDOWN = 2_000_000
@@ -73,5 +74,55 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
     }
     default:
       return null
+  }
+}
+
+type Validated<T extends BridgeTool> = { ok: true; args: BridgeArgsMap[T] } | { ok: false; message: string }
+
+export function textHash(text: string): Promise<string> {
+  return hashText(text)
+}
+
+export function validateToolArgs<T extends BridgeTool>(tool: T, args: unknown): Validated<T> {
+  const fail = (message: string): Validated<T> => ({ ok: false, message })
+  const ok = (a: unknown): Validated<T> => ({ ok: true, args: a as BridgeArgsMap[T] })
+  if (typeof args !== 'object' || args === null || Array.isArray(args)) return fail('args must be an object')
+  const o = args as Record<string, unknown>
+  const docIdOk = str(o.docId, 1, 64)
+  const mdOk = str(o.markdown, 0, BRIDGE_MAX_MARKDOWN)
+  switch (tool) {
+    case 'publish_doc': {
+      if (typeof o.title !== 'string' || !str(o.title.trim(), 1, BRIDGE_MAX_TITLE)) return fail(`title must be 1..${BRIDGE_MAX_TITLE} characters`)
+      if (!mdOk) return fail(`markdown must be a string up to ${BRIDGE_MAX_MARKDOWN} characters`)
+      if (o.open !== undefined && typeof o.open !== 'boolean') return fail('open must be a boolean')
+      const r: PublishDocArgs = { title: o.title.trim(), markdown: o.markdown as string }
+      if (o.open !== undefined) r.open = o.open
+      return ok(r)
+    }
+    case 'list_docs':
+      return ok({})
+    case 'get_doc':
+    case 'list_links':
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      return ok({ docId: o.docId })
+    case 'update_doc':
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      if (!mdOk) return fail(`markdown must be a string up to ${BRIDGE_MAX_MARKDOWN} characters`)
+      if (typeof o.baseHash !== 'string' || !/^[0-9a-f]{64}$/.test(o.baseHash)) return fail('baseHash must be 64 lowercase hex characters')
+      return ok({ docId: o.docId, markdown: o.markdown, baseHash: o.baseHash })
+    case 'share_doc': {
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      const role = o.role === undefined ? 'view' : o.role
+      if (role !== 'view' && role !== 'edit') return fail("role must be 'view' or 'edit'")
+      const exp = o.expiresInDays === undefined ? 7 : o.expiresInDays
+      if (exp !== 7 && exp !== 30 && exp !== null) return fail('expiresInDays must be 7, 30 or null')
+      return ok({ docId: o.docId, role, expiresInDays: exp })
+    }
+    case 'revoke_link':
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      if (!str(o.tokenPrefix, 6, 6)) return fail('tokenPrefix must be 6 characters')
+      return ok({ docId: o.docId, tokenPrefix: o.tokenPrefix })
+    default:
+      return fail('unknown tool')
   }
 }

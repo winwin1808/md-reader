@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS } from './protocol.js'
+import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN } from './protocol.js'
+import { hashText } from '../doc/hash.js'
 
 const p = (o: unknown) => parseBridgeMessage(JSON.stringify(o))
 const key = 'k'.repeat(16)
@@ -44,5 +45,47 @@ describe('parseBridgeMessage', () => {
     expect(p({ type: 'res', id: 'a', ok: false, error: { code: 'BAD', message: 'm' } })).toBeNull()
     expect(p({ type: 'res', id: 'a', ok: false })).toBeNull()
     expect(p({ type: 'res', id: 'a', ok: 'x' })).toBeNull()
+  })
+})
+
+describe('validateToolArgs', () => {
+  const h = 'a'.repeat(64)
+  const bad = (t: any, a: unknown) => { const r = validateToolArgs(t, a); expect(r.ok).toBe(false); return r as { ok: false; message: string } }
+  it('rejects non-objects', () => {
+    for (const a of [null, 1, 'x', undefined]) bad('get_doc', a)
+  })
+  it('publish_doc', () => {
+    expect(validateToolArgs('publish_doc', { title: 'T', markdown: '# x', extra: 1 })).toEqual({ ok: true, args: { title: 'T', markdown: '# x' } })
+    expect(validateToolArgs('publish_doc', { title: 'T', markdown: '', open: true })).toEqual({ ok: true, args: { title: 'T', markdown: '', open: true } })
+    expect(bad('publish_doc', { title: '   ', markdown: '' }).message).toBe('title must be 1..200 characters')
+    bad('publish_doc', { title: 'x'.repeat(BRIDGE_MAX_TITLE + 1), markdown: '' })
+    bad('publish_doc', { title: 'T', markdown: 'x'.repeat(BRIDGE_MAX_MARKDOWN + 1) })
+    bad('publish_doc', { title: 'T', markdown: '', open: 'yes' })
+  })
+  it('list_docs', () => {
+    expect(validateToolArgs('list_docs', { a: 1 })).toEqual({ ok: true, args: {} })
+  })
+  it('get_doc / list_links', () => {
+    expect(validateToolArgs('get_doc', { docId: 'd' })).toEqual({ ok: true, args: { docId: 'd' } })
+    bad('list_links', { docId: '' })
+    bad('get_doc', { docId: 'x'.repeat(65) })
+  })
+  it('update_doc', () => {
+    expect(validateToolArgs('update_doc', { docId: 'd', markdown: 'm', baseHash: h })).toEqual({ ok: true, args: { docId: 'd', markdown: 'm', baseHash: h } })
+    bad('update_doc', { docId: 'd', markdown: 'm', baseHash: 'A'.repeat(64) })
+    bad('update_doc', { docId: 'd', markdown: 1, baseHash: h })
+  })
+  it('share_doc defaults', () => {
+    expect(validateToolArgs('share_doc', { docId: 'd' })).toEqual({ ok: true, args: { docId: 'd', role: 'view', expiresInDays: 7 } })
+    expect(validateToolArgs('share_doc', { docId: 'd', role: 'edit', expiresInDays: null })).toEqual({ ok: true, args: { docId: 'd', role: 'edit', expiresInDays: null } })
+    bad('share_doc', { docId: 'd', role: 'admin' })
+    bad('share_doc', { docId: 'd', expiresInDays: 5 })
+  })
+  it('revoke_link', () => {
+    expect(validateToolArgs('revoke_link', { docId: 'd', tokenPrefix: 'abcdef' })).toEqual({ ok: true, args: { docId: 'd', tokenPrefix: 'abcdef' } })
+    bad('revoke_link', { docId: 'd', tokenPrefix: 'abc' })
+  })
+  it('textHash equals hashText', async () => {
+    expect(await textHash('héllo')).toBe(await hashText('héllo'))
   })
 })
