@@ -1,5 +1,5 @@
 # Design: Phase 10 — MCP cục bộ + gia cố multi-tenant cho chia sẻ
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 10
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 10
 Intent: docs/superpowers/intent/2026-10-26-phase-10-mcp-cuc-bo.md
 
 ## Approach chosen
