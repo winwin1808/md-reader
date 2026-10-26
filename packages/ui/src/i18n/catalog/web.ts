@@ -23,8 +23,16 @@ export const vi = {
   'web.loadingDoc': 'Đang tải tài liệu…',
   'web.loading': 'Đang tải…',
   'web.notFound': 'Không tìm thấy trang',
-  'web.linkGone': 'Link này không còn hiệu lực',
+  'web.linkGone': 'Tài liệu này đã bị gỡ hoặc link không còn hiệu lực',
   'web.viewWith': 'Xem bằng MD Reader',
+  'web.close': 'Đóng',
+  'web.reportLink': 'Báo cáo nội dung',
+  'web.reportReason': 'Lý do báo cáo',
+  'web.reportSend': 'Gửi báo cáo',
+  'web.reportCancel': 'Huỷ',
+  'web.reportSent': 'Đã gửi báo cáo. Cảm ơn bạn.',
+  'web.reportLimited': 'Bạn đã gửi quá nhiều báo cáo hôm nay',
+  'web.reportFailed': 'Không gửi được báo cáo',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -52,6 +60,14 @@ export const en: Record<keyof typeof vi, string> = {
   'web.loadingDoc': 'Loading document…',
   'web.loading': 'Loading…',
   'web.notFound': 'Page not found',
-  'web.linkGone': 'This link is no longer valid',
+  'web.linkGone': 'This document was removed or the link is no longer valid',
   'web.viewWith': 'View with MD Reader',
+  'web.close': 'Close',
+  'web.reportLink': 'Report content',
+  'web.reportReason': 'Reason',
+  'web.reportSend': 'Send report',
+  'web.reportCancel': 'Cancel',
+  'web.reportSent': 'Report sent. Thank you.',
+  'web.reportLimited': 'Too many reports today',
+  'web.reportFailed': 'Could not send the report',
 }

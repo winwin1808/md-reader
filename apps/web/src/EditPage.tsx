@@ -6,6 +6,7 @@ import type { TFunction } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
+import { NoticeStack, useNotices } from './Notice'
 
 export async function uploadImage(serverUrl: string, room: string, token: string, file: File, t: TFunction = createT('vi')): Promise<UploadAssetResponse> {
   let res: Response
@@ -138,6 +139,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const [, setTick] = useState(0)
   const [mode, setMode] = useState<'edit' | 'view'>('edit')
   const resolved = useResolvedTheme()
+  const { items: notices, push, dismiss } = useNotices()
   const t = useT()
   const locale = useLocale()
   const editorViewRef = useRef<EditorView | null>(null)
@@ -261,7 +263,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
                 awareness={session.conn.awareness}
                 editorViewRef={editorViewRef}
                 saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file, t)).url })}
-                onImageMessage={(m) => window.alert(m)}
+                onImageMessage={(m) => push('error', m)}
               />
             </Suspense>
           </div>
@@ -271,6 +273,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
           <Viewer html={html} isAppPage={false} />
         </div>
       )}
+      {notices.length > 0 && <NoticeStack items={notices} onDismiss={dismiss} />}
     </div>
   )
 }

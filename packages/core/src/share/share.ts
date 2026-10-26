@@ -84,8 +84,11 @@ export const API_PATHS = {
   snapshot: (token: string) => `/api/s/${token}/snapshot`,
   assets: (roomId: string) => `/api/rooms/${roomId}/assets`,
   asset: (id: string) => `/api/a/${id}`,
+  report: '/api/report',
   party: 'doc-room',
 } as const
+
+export interface ReportRequest { token: string; reason: string }
 
 export const INSTALL_HEADER = 'x-mdr-install'
 export type LimitErrorCode = 'RATE_LIMITED' | 'QUOTA_EXCEEDED'
