@@ -55,6 +55,13 @@ function setup(remote: string) {
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => remote })))
   return renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
 }
+const LOAD_WAIT = { timeout: 5000 }
+// resolveSync is rebound by each IndexeddbPersistence; under CPU load the hook may not have
+// created it yet after a fixed delay, so wait for it before resolving (else it resolves a stale one).
+const syncNow = async () => {
+  await waitFor(() => expect(names.length).toBeGreaterThan(0), LOAD_WAIT)
+  await act(async () => { resolveSync() })
+}
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 60)) })
 
 describe('useDocSession safe load', () => {
@@ -68,18 +75,19 @@ describe('useDocSession safe load', () => {
     await prepareIdb('old + my edits', 'old')
     const { result } = setup('old')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
+    await waitFor(() => expect(storeBase).toHaveBeenCalledWith(result.current.docId, 'old'), LOAD_WAIT)
+    await waitFor(() => expect(result.current.isDirty).toBe(true), LOAD_WAIT)
     expect(result.current.yText.toString()).toBe('old + my edits')
     expect(result.current.externalChange).toBeNull()
-    expect(result.current.isDirty).toBe(true)
   })
 
   it('flags external change when remote differs and local edited; accept applies', async () => {
     await prepareIdb('old + my edits', 'old')
     const { result } = setup('new')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await waitFor(() => expect(result.current.externalChange?.remoteText).toBe('new'))
     expect(result.current.yText.toString()).toBe('old + my edits')
     expect(result.current.isDirty).toBe(true)
@@ -92,7 +100,7 @@ describe('useDocSession safe load', () => {
   it('imports remote into empty IDB', async () => {
     const { result } = setup('hello')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await waitFor(() => expect(result.current.yText.toString()).toBe('hello'))
     expect(result.current.externalChange).toBeNull()
   })
@@ -101,7 +109,7 @@ describe('useDocSession safe load', () => {
     await prepareIdb('old', 'old')
     const { result } = setup('new')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await waitFor(() => expect(result.current.yText.toString()).toBe('new'))
     expect(result.current.externalChange).toBeNull()
     expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('new'))
@@ -111,7 +119,7 @@ describe('useDocSession safe load', () => {
     await prepareIdb('', 'old')
     const { result } = setup('old')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     expect(result.current.yText.toString()).toBe('')
     expect(result.current.externalChange).toBeNull()
@@ -123,10 +131,11 @@ describe('useDocSession safe load', () => {
     idbUpdate = Y.encodeStateAsUpdate(d)
     const { result } = setup('same')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
+    const same = await hashText('same')
+    await waitFor(() => expect(result.current.doc.getMap('meta').get('originHash')).toBe(same), LOAD_WAIT)
     expect(result.current.externalChange).toBeNull()
-    expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('same'))
     expect(result.current.isDirty).toBe(false)
   })
 
@@ -134,12 +143,12 @@ describe('useDocSession safe load', () => {
     const spy = vi.spyOn(window.history, 'replaceState')
     const first = setup('x')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     first.unmount()
     const second = setup('x')
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     const all = await listRecent(10)
     expect(all).toHaveLength(1)
@@ -155,7 +164,7 @@ describe('useDocSession safe load', () => {
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
     const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     expect(names).toContain('pname-1')
     expect(result.current.yText.toString()).toBe('stored text')
@@ -181,7 +190,7 @@ describe('useDocSession safe load', () => {
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
     const { result } = renderHook(() => useDocSession({ docId: rec.docId, fileUrl: null }))
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     await waitFor(() => expect(result.current.title).toContain('old-name'))
   })
@@ -196,7 +205,7 @@ describe('useDocSession safe load', () => {
       const r = renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }))
       await flush()
       if (!expired) expect(remove).not.toHaveBeenCalled()
-      await act(async () => { resolveSync() })
+      await syncNow()
       await flush()
       return { r, remove, fetchMock }
     }
@@ -222,7 +231,7 @@ describe('useDocSession safe load', () => {
     const run = async (remote: string) => {
       const r = setup(remote)
       await flush()
-      await act(async () => { resolveSync() })
+      await syncNow()
       await flush()
       return r
     }
@@ -230,22 +239,26 @@ describe('useDocSession safe load', () => {
 
     it('fresh import (d) stores base', async () => {
       await run('hello')
-      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'hello')
+      const id = await idOf()
+      await waitFor(() => expect(storeBase).toHaveBeenCalledWith(id, 'hello'), LOAD_WAIT)
     })
     it('local equals remote (e) stores base', async () => {
       await prepareIdb('same', 'same')
       await run('same')
-      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'same')
+      const id = await idOf()
+      await waitFor(() => expect(storeBase).toHaveBeenCalledWith(id, 'same'), LOAD_WAIT)
     })
     it('apply remote (g) stores base', async () => {
       await prepareIdb('old', 'old')
       await run('new')
-      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
+      const id = await idOf()
+      await waitFor(() => expect(storeBase).toHaveBeenCalledWith(id, 'new'), LOAD_WAIT)
     })
     it('disk unchanged with local edits (f) stores base', async () => {
       await prepareIdb('old + my edits', 'old')
       await run('old')
-      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'old')
+      const id = await idOf()
+      await waitFor(() => expect(storeBase).toHaveBeenCalledWith(id, 'old'), LOAD_WAIT)
     })
     it('diverged (h) does not store base; acceptExternal does', async () => {
       await prepareIdb('old + my edits', 'old')
@@ -253,7 +266,8 @@ describe('useDocSession safe load', () => {
       expect(result.current.externalChange?.remoteText).toBe('new')
       expect(storeBase).not.toHaveBeenCalled()
       act(() => result.current.acceptExternal())
-      expect(storeBase).toHaveBeenCalledWith(await idOf(), 'new')
+      const id = await idOf()
+      await waitFor(() => expect(storeBase).toHaveBeenCalledWith(id, 'new'), LOAD_WAIT)
     })
   })
 })
@@ -274,7 +288,7 @@ describe('useDocSession separate URL and disk baselines', () => {
   const run = async (remote: string) => {
     const r = setup(remote)
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     return r
   }
@@ -282,6 +296,7 @@ describe('useDocSession separate URL and disk baselines', () => {
   it('saved edits survive reload when remote is unchanged (no banner)', async () => {
     await prepareSaved('edited', 'orig', 'edited')
     const { result } = await run('orig')
+    await waitFor(() => expect(storeBase).toHaveBeenCalled(), LOAD_WAIT)
     expect(result.current.yText.toString()).toBe('edited')
     expect(result.current.externalChange).toBeNull()
     expect(result.current.isDirty).toBe(false)
@@ -323,6 +338,7 @@ describe('useDocSession separate URL and disk baselines', () => {
     await withHandle()
     await prepareSaved('same', 'old', 'DISK')
     const { result } = await run('same')
+    await waitFor(() => expect(storeBase).toHaveBeenCalled(), LOAD_WAIT)
     expect(result.current.externalChange).toBeNull()
     expect(result.current.doc.getMap('meta').get('originHash')).toBe(await hashText('DISK'))
     expect(result.current.doc.getMap('meta').get('remoteHash')).toBe(await hashText('same'))
@@ -333,7 +349,7 @@ describe('useDocSession separate URL and disk baselines', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => 'hi' })))
     const { result } = renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/%E0.md' }))
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     expect(result.current.error).toBeNull()
     await waitFor(() => expect(result.current.title).toBe('%E0'))
@@ -350,13 +366,13 @@ describe('useDocSession separate URL and disk baselines', () => {
 
 describe('useDocSession debounce', () => {
   it('debounces user edits and flushes ORIGIN_LOAD immediately', async () => {
-    idbUpdate = null
+    idbUpdate = null; names = []
     const rec = await createRecord({ title: 'd.md', originKind: 'drop', originPath: null, persistenceName: 'pname-d' })
     vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
     const seen: string[] = []
     const { result } = renderHook(() => { const r = useDocSession({ docId: rec.docId, fileUrl: null }); seen.push(r.content); return r })
     await flush()
-    await act(async () => { resolveSync() })
+    await syncNow()
     await flush()
     vi.useFakeTimers()
     try {
@@ -410,7 +426,7 @@ describe('useDocSession room binding', () => {
 
   it('no room -> never binds, status off', async () => {
     const { result } = mount({ room: null })
-    await flush(); await act(async () => { resolveSync() }); await flush()
+    await flush(); await syncNow(); await flush()
     expect(bindRoom).not.toHaveBeenCalled()
     expect(result.current.syncStatus).toBe('off')
     expect(result.current.awareness).toBeNull()
@@ -420,7 +436,7 @@ describe('useDocSession room binding', () => {
     const { result } = mount({ room })
     await flush()
     expect(bindRoom).not.toHaveBeenCalled()
-    await act(async () => { resolveSync() }); await flush()
+    await syncNow(); await flush()
     expect(bindRoom).toHaveBeenCalledTimes(1)
     expect(bind.calls[0][1]).toEqual({ serverUrl: 'https://s.test', roomId: 'r1', token: 'tok', name: 'Bạn' })
     expect(result.current.syncStatus).toBe('connecting')
@@ -431,7 +447,7 @@ describe('useDocSession room binding', () => {
 
   it('room becoming null destroys the connection', async () => {
     const { result, rerender } = mount({ room })
-    await flush(); await act(async () => { resolveSync() }); await flush()
+    await flush(); await syncNow(); await flush()
     rerender({ room: null })
     await flush()
     expect(bind.conns[0].destroy).toHaveBeenCalled()
@@ -443,13 +459,13 @@ describe('useDocSession room binding', () => {
     const { unmount } = mount({ room })
     await flush()
     unmount()
-    await act(async () => { resolveSync() }); await flush()
+    await syncNow(); await flush()
     expect(bindRoom).not.toHaveBeenCalled()
   })
 
   it('displayName change updates awareness without a new provider', async () => {
     const { rerender } = mount({ room })
-    await flush(); await act(async () => { resolveSync() }); await flush()
+    await flush(); await syncNow(); await flush()
     rerender({ room, displayName: 'Lan' })
     await flush()
     expect(bindRoom).toHaveBeenCalledTimes(1)
