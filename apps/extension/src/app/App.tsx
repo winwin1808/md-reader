@@ -54,6 +54,8 @@ import { useExport } from './hooks/useExport'
 import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
+import { useBridgeSettings } from './hooks/useBridgeSettings'
+import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
 import { createImageSaver } from './image-saver'
@@ -98,6 +100,10 @@ const SELF_HOST_GUIDE_URL = 'https://github.com/winwin1808/md-reader/blob/main/d
 export function App(): React.JSX.Element {
   const t = useT()
   const locale = useLocale()
+  const bridge = useBridgeSettings()
+  useEffect(() => {
+    try { void Promise.resolve(chrome.runtime.sendMessage({ type: BRIDGE_SCAN_MSG })).catch(() => {}) } catch { /* ignore */ }
+  }, [])
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocRailOpen, setTocRailOpen] = useState<boolean>(true)
@@ -782,7 +788,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
         </>
         {isReadingMode && (
           <button
