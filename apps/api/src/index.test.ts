@@ -120,7 +120,7 @@ describe('CORS', () => {
     expect(res.status).toBe(204)
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, POST, DELETE, OPTIONS')
-    expect(res.headers.get('access-control-allow-headers')).toBe('authorization, content-type')
+    expect(res.headers.get('access-control-allow-headers')).toBe('authorization, content-type, x-mdr-install')
     expect(res.headers.get('access-control-max-age')).toBe('86400')
     expect(res.headers.get('access-control-allow-credentials')).toBeNull()
     expect(spy).not.toHaveBeenCalled()
@@ -133,7 +133,7 @@ describe('CORS', () => {
       store: new MemoryTokenStore(),
     })
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
-    expect(res.headers.get('access-control-expose-headers')).toBe('content-type')
+    expect(res.headers.get('access-control-expose-headers')).toBe('content-type, retry-after')
   })
 
   it('401 from GET links carries ACAO *', async () => {

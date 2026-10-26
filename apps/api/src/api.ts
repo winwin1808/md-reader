@@ -1,6 +1,7 @@
 import type { CreateLinkRequest, ResolveTokenResponse, ShareRole } from '@md-reader/core'
 import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAssetResponse } from '@md-reader/core'
 import type { AssetStore } from './assets.js'
+import { subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
 import { RoomNotFoundError, hashToken, type TokenStore } from './tokens.js'
 
 function json(body: unknown, status = 200): Response {
@@ -47,6 +48,13 @@ function parseLinkRequest(body: unknown): CreateLinkRequest | null {
 export interface ApiDeps {
   snapshot?: (roomId: string) => Promise<Response>
   assets?: AssetStore
+  limits?: LimitStore
+}
+
+function limited(v: NonNullable<LimitVerdict>): Response {
+  const res = json(v, 429)
+  if (v.retryAfter !== undefined) res.headers.set('retry-after', String(v.retryAfter))
+  return res
 }
 
 function sniffOk(mime: string, b: Uint8Array): boolean {
@@ -68,7 +76,15 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
 
   if (path === '/api/health' && method === 'GET') return json({ ok: true })
 
-  if (path === '/api/rooms' && method === 'POST') return json(await store.createRoom(), 201)
+  if (path === '/api/rooms' && method === 'POST') {
+    if (!deps.limits) return json(await store.createRoom(), 201)
+    const subj = await subjectFrom(req)
+    const v = await deps.limits.check('room', subj)
+    if (v) return limited(v)
+    const room = await store.createRoom()
+    await deps.limits.record('room', subj, { roomId: room.roomId })
+    return json(room, 201)
+  }
 
   const badPath = () => json({ error: 'bad path' }, 400)
   const links = /^\/api\/rooms\/([^/]+)\/links$/.exec(path)
@@ -133,7 +149,13 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (bytes.byteLength > MAX_ASSET_BYTES) return json({ error: 'too_large' }, 413)
     if (!sniffOk(mime, bytes)) return json({ error: 'unsupported_type' }, 415)
     if ((await deps.assets.roomUsage(roomId)) + bytes.byteLength > ROOM_ASSET_QUOTA) return json({ error: 'quota' }, 413)
+    const subj = deps.limits ? await subjectFrom(req) : null
+    if (deps.limits && subj) {
+      const v = await deps.limits.check('asset', subj, { roomId, bytes: bytes.byteLength })
+      if (v) return limited(v)
+    }
     const { id, size } = await deps.assets.put(roomId, mime, bytes)
+    if (deps.limits && subj) await deps.limits.record('asset', subj, { roomId, bytes: size })
     const out: UploadAssetResponse = { id, url: url.origin + API_PATHS.asset(id), size, mime }
     return json(out, 201)
   }

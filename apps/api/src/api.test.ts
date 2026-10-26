@@ -327,3 +327,50 @@ describe('hardening (8a2.5)', () => {
     })
   })
 })
+
+describe('handleApi limits', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4])
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryAssetStore } = await import('./assets.js')
+    return { store: new MemoryTokenStore(now), limits: new MemoryLimitStore(now), assets: new MemoryAssetStore() }
+  }
+  const post = (headers: Record<string, string> = {}) =>
+    new Request('http://x/api/rooms', { method: 'POST', headers })
+
+  it('21st room from one install is 429 with retry-after', async () => {
+    const { store, limits } = await mk()
+    const h = { 'x-mdr-install': 'i'.repeat(20) }
+    for (let i = 0; i < 20; i++) expect((await handleApi(post(h), store, { limits }))!.status).toBe(201)
+    const r = (await handleApi(post(h), store, { limits }))!
+    expect(r.status).toBe(429)
+    expect(r.headers.get('retry-after')).toBeTruthy()
+    const b = (await r.json()) as { error: string; retryAfter: number }
+    expect(b.error).toBe('RATE_LIMITED')
+    expect(b.retryAfter).toBeGreaterThan(0)
+  })
+
+  it('51st room from one IP without install header is 429', async () => {
+    const { store, limits } = await mk()
+    const h = { 'CF-Connecting-IP': '1.2.3.4' }
+    for (let i = 0; i < 50; i++) expect((await handleApi(post(h), store, { limits }))!.status).toBe(201)
+    expect((await handleApi(post(h), store, { limits }))!.status).toBe(429)
+  })
+
+  it('asset upload 429 after 100/day; 403 does not consume quota', async () => {
+    const { store, limits, assets } = await mk()
+    const h = { 'x-mdr-install': 'j'.repeat(20) }
+    const room = (await (await handleApi(post(h), store, { limits }))!.json()) as { roomId: string; ownerToken: string }
+    const up = (bearer: string) =>
+      new Request(`http://x/api/rooms/${room.roomId}/assets`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${bearer}`, 'content-type': 'image/png', ...h },
+        body: PNG,
+      })
+    for (let i = 0; i < 5; i++) expect((await handleApi(up('bad'), store, { limits, assets }))!.status).toBe(403)
+    for (let i = 0; i < 100; i++) expect((await handleApi(up(room.ownerToken), store, { limits, assets }))!.status).toBe(201)
+    const r = (await handleApi(up(room.ownerToken), store, { limits, assets }))!
+    expect(r.status).toBe(429)
+    expect(r.headers.get('retry-after')).toBeTruthy()
+  })
+})
