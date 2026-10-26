@@ -2,6 +2,7 @@ import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
 import { D1LimitStore } from './limits.js'
 import { authorizeWs, handleApi, safeDecode } from './api.js'
+import { D1ModerationStore } from './moderation.js'
 import { D1AssetStore } from './assets.js'
 import { D1TokenStore } from './tokens-d1.js'
 import type { TokenStore } from './tokens.js'
@@ -51,6 +52,8 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
       return withCors((await handleApi(req, store, {
         assets: new D1AssetStore(env.DB),
         limits: new D1LimitStore(env.DB),
+        moderation: new D1ModerationStore(env.DB),
+        ...(env.ADMIN_SECRET ? { adminSecret: env.ADMIN_SECRET } : {}),
         purge: (roomId) =>
           deps
             .routeParty(
