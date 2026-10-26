@@ -21,6 +21,11 @@ export interface RouteDeps {
 const ok = (id: string, result: unknown): BridgeResponse => ({ type: 'res', id, ok: true, result })
 const fail = (id: string, code: BridgeErrorCode, message: string): BridgeResponse => ({ type: 'res', id, ok: false, error: { code, message } })
 
+export function isNoReceiver(err: unknown): boolean {
+  const m = typeof err === 'string' ? err : String((err as Error)?.message ?? '')
+  return m.includes('Receiving end does not exist') || m.includes('Could not establish connection')
+}
+
 export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Promise<BridgeResponse> {
   return async (req) => {
     const v = validateToolArgs(req.tool, req.args)
@@ -73,7 +78,8 @@ export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Pro
         for (;;) {
           try {
             return await deps.sendToTab(tab, msg)
-          } catch {
+          } catch (err) {
+            if (!isNoReceiver(err)) return fail(req.id, 'INTERNAL', String((err as Error)?.message ?? err))
             if (deps.now() >= deadline) return fail(req.id, 'TIMEOUT', 'MD Reader tab did not load the document in time')
             await deps.sleep(250)
           }
