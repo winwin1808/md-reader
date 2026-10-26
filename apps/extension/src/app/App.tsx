@@ -328,7 +328,7 @@ export function App(): React.JSX.Element {
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
   const execSessionRef = useRef<ExecSession | null>(null)
-  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced } : null
+  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null } : null
   useEffect(() => {
     const onMsg = chrome?.runtime?.onMessage
     if (!onMsg?.addListener) return
@@ -337,7 +337,8 @@ export function App(): React.JSX.Element {
       const m = msg as Partial<ExecMsg> | null
       if (!m || m.type !== BRIDGE_EXEC_MSG || !m.req) return undefined
       if (sender.id !== chrome.runtime.id || sender.tab) return undefined
-      void exec(m.req).then(sendResponse)
+      const req = m.req
+      void exec(req).then(sendResponse, (err) => sendResponse({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: String(err) } }))
       return true
     }
     onMsg.addListener(listener)

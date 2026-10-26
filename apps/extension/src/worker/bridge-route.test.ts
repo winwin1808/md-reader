@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createExecuteInApp, type RouteDeps } from './bridge-route'
+import { createExecuteInApp, isNoReceiver, type RouteDeps } from './bridge-route'
 import type { DocRecord } from '../app/doc-registry'
 import type { BridgeRequest } from '@md-reader/core/bridge'
 
@@ -96,10 +96,34 @@ describe('createExecuteInApp', () => {
   })
   it('send keeps failing past deadline -> TIMEOUT and closes opened tab', async () => {
     let t = 0
-    const { deps, run } = mk({ sendToTab: vi.fn(async () => { throw new Error('nope') }), now: vi.fn(() => (t += 6000)) })
+    const { deps, run } = mk({ sendToTab: vi.fn(async () => { throw new Error('Could not establish connection. Receiving end does not exist.') }), now: vi.fn(() => (t += 6000)) })
     const r = await run(req('get_doc', { docId: 'd1' })) as any
     expect(r.error.code).toBe('TIMEOUT')
     expect(deps.closeTab).toHaveBeenCalledWith(7)
+  })
+  it('retries 2x on no-receiver then forwards; 3 calls', async () => {
+    const e = new Error('Could not establish connection. Receiving end does not exist.')
+    const send = vi.fn().mockRejectedValueOnce(e).mockRejectedValueOnce(e)
+      .mockResolvedValueOnce({ type: 'res', id: 'r1', ok: true, result: { hi: 1 } })
+    const { run } = mk({ sendToTab: send as never })
+    const r = await run(req('get_doc', { docId: 'd1' })) as any
+    expect(r.result).toEqual({ hi: 1 })
+    expect(send).toHaveBeenCalledTimes(3)
+  })
+  it('other send error -> INTERNAL, single send, opened tab closed', async () => {
+    const send = vi.fn(async () => { throw new Error('The message port closed before a response was received.') })
+    const { deps, run } = mk({ sendToTab: send as never })
+    const r = await run(req('update_doc', { docId: 'd1', markdown: 'x', baseHash: 'a'.repeat(64) })) as any
+    expect(r.error.code).toBe('INTERNAL')
+    expect(r.error.message).toContain('message port closed')
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(deps.closeTab).toHaveBeenCalledWith(7)
+  })
+  it('isNoReceiver', () => {
+    expect(isNoReceiver(new Error('Could not establish connection.'))).toBe(true)
+    expect(isNoReceiver('Receiving end does not exist')).toBe(true)
+    expect(isNoReceiver(new Error('other'))).toBe(false)
+    expect(isNoReceiver(undefined)).toBe(false)
   })
   it('update_doc with opened tab still closes it', async () => {
     const { deps, run } = mk()
