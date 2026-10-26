@@ -43,7 +43,10 @@ Trình bày
 Chia sẻ
 • Gửi link xem hoặc link sửa cho người khác (mở lại hộp Chia sẻ vẫn bấm Sao chép được link đã tạo), cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
 • Xem ai đã viết dòng nào.
-• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ đồng bộ do chính bạn dựng (Cloudflare Workers, gói miễn phí); MD Reader không kèm máy chủ nào. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập, không xoá dữ liệu đã lưu.
+• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ đồng bộ do chính bạn dựng (Cloudflare Workers, gói miễn phí); MD Reader không kèm máy chủ nào. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập; muốn xoá hẳn thì dùng nút "Xoá dữ liệu trên máy chủ".
+
+Kết nối AI cục bộ (MCP)
+• Cho Claude, Cursor… tạo và chia sẻ tài liệu qua cầu nối chỉ nghe ở 127.0.0.1, mặc định tắt. Không gửi gì ra internet; chia sẻ chỉ diễn ra sau khi bạn xác nhận.
 
 Xuất
 • HTML một file, PDF (in từ trình duyệt), Word (.docx), PDF slide khổ ngang.
@@ -77,7 +80,10 @@ Present
 Share
 • Send a view link or an edit link, edit together live and see each other's names and cursors.  Reopen the Share dialog and Copy still works for links you created.
 • See who wrote which line.
-• Sharing is optional and off by default; only documents you choose to share are sent, to a sync server you host yourself (Cloudflare Workers, free tier); MD Reader ships with no server. Turning sharing off or revoking a link only stops access; it does not delete stored data.
+• Sharing is optional and off by default; only documents you choose to share are sent, to a sync server you host yourself (Cloudflare Workers, free tier); MD Reader ships with no server. Turning sharing off or revoking a link only stops access; to delete for good use the "Delete data on server" button.
+
+Local AI connection (MCP)
+• Lets Claude, Cursor and similar tools create and share documents through a bridge that listens only on 127.0.0.1, off by default. Nothing goes to the internet; sharing happens only after you confirm.
 
 Export
 • Single-file HTML, PDF (browser print), Word (.docx), landscape slide PDF.
@@ -100,6 +106,7 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 | `storage` | Saves the user's reading settings (palette, font size, page width) and the widget's collapsed state. Document content is not sent anywhere by this permission. |
 | `activeTab` | Opens the Markdown document in the current tab in the reader page when the user clicks the extension. |
 | Content script on `.md` URLs (host access) | Detects raw Markdown pages (.md / .markdown) and shows a small "Read in MD Reader" tab. It reads the page text only to open it in the reader; nothing is transmitted unless you turn on sharing for that document. |
+| `alarms` | Wakes the optional local AI bridge (127.0.0.1, off by default) periodically so the extension service worker can keep it connected. No data is sent anywhere by this permission. |
 | Remote code | **No** — all code is bundled in the package. |
 
 ## Data usage (tab Privacy practices)

@@ -17,42 +17,17 @@
 - [x] **P9 Sửa thẳng trên trang:** live preview, bảng dạng lưới, ảnh (dán/kéo/đường dẫn tương đối), hộp thoại chia sẻ mới.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
-## v1.3 Chia sẻ cho AI (MCP)
+## v1.3 MCP cục bộ (đã xong)
 
-Mốc kế tiếp. Người dùng mục tiêu: người nhờ AI viết tài liệu Markdown (báo cáo, đề xuất, tài liệu kỹ thuật) rồi cần gửi cho đồng nghiệp hoặc khách hàng dưới dạng link đọc đẹp, hoặc link để cùng chỉnh sửa, mà không phải copy qua lại.
+Người dùng mục tiêu: người nhờ AI viết tài liệu Markdown (báo cáo, đề xuất, tài liệu kỹ thuật) rồi cần gửi cho đồng nghiệp hoặc khách hàng dưới dạng link đọc đẹp, hoặc link để cùng chỉnh sửa, mà không phải copy qua lại.
 
-Gói `@md-reader/mcp`, hai kiểu chạy:
+- [x] **Cầu nối cục bộ:** AI (Claude Desktop / Claude Code / Cursor) nói chuyện với extension qua cầu nối chỉ nghe ở `127.0.0.1`, mặc định tắt. Không gửi gì ra internet; chỉ khi chia sẻ (sau khi người dùng xác nhận) tài liệu mới lên máy chủ.
+- [x] **7 tool MCP** để tạo, đọc, cập nhật tài liệu và chia sẻ / liệt kê / thu hồi link. Chia sẻ phải được người dùng xác nhận.
+- [x] **Gia cố multi-tenant:** khoá bản cài ẩn danh, giới hạn theo ngày, xoá dữ liệu phòng trên máy chủ, báo cáo nội dung trên trang xem.
 
-- **stdio:** chạy cục bộ (`npx`), cấu hình trong Claude Desktop / Claude Code / Cursor. Gọi máy chủ Worker của chính người dùng.
-- **Remote:** endpoint MCP trên chính Worker tự host, để dùng với agent chạy trên đám mây.
+## Đã hoãn
 
-Công cụ dự kiến:
-
-| Tool | Việc làm |
-|---|---|
-| `publish_doc` | Nhận Markdown + tiêu đề, tạo tài liệu, trả về link xem (và link sửa nếu yêu cầu). |
-| `get_doc` | Đọc nội dung hiện tại của một tài liệu đã chia sẻ (kể cả phần người khác vừa sửa). |
-| `update_doc` | Ghi bản mới hoặc áp một thay đổi; ghi theo delta để không đè chỉnh sửa của người khác. |
-| `list_docs` | Liệt kê tài liệu của chủ sở hữu (id, tiêu đề, thời điểm sửa, link đang hoạt động). |
-| `create_link` | Tạo link xem hoặc link sửa, có thể đặt hạn. |
-| `revoke_link` | Thu hồi một link. |
-
-Bổ sung: thêm bình luận (`append_comment`) khi tính năng bình luận ở v1.5 sẵn sàng.
-
-Xác thực và giới hạn (thiết kế dự kiến):
-
-- Xác thực bằng token chủ sở hữu của máy chủ Worker; token chỉ lưu dạng băm ở máy chủ, giống link hiện nay.
-- Mặc định agent chỉ tạo link xem; link sửa cần yêu cầu rõ.
-- Giới hạn kích thước tài liệu, số tài liệu và tốc độ gọi theo từng token (đi cùng rate limit ở v1.5).
-
-Việc cần làm:
-
-- [ ] Thiết kế API quản lý tài liệu ở `apps/api` dùng chung cho extension và MCP
-- [ ] Token chủ sở hữu, thu hồi, xoay
-- [ ] `@md-reader/mcp` (stdio) với 6 tool trên
-- [ ] Endpoint MCP remote trên Worker
-- [ ] Tài liệu cài đặt cho Claude, ChatGPT, Cursor; ví dụ prompt
-- [ ] Test hợp đồng tool và e2e với wrangler dev
+- [ ] **Remote MCP + OAuth:** endpoint MCP trên máy chủ cho agent chạy trên đám mây. Làm bản tự host trước, và chỉ khi có nhu cầu thật.
 
 ## v1.4 Hiển thị và xuất bản mở rộng
 
@@ -87,8 +62,8 @@ Giao diện và hiệu năng:
 Cộng tác:
 
 - [ ] Bình luận và đề xuất chỉnh sửa (suggestions)
-- [ ] Endpoint xoá dữ liệu phòng (thu hồi link hiện chỉ chặn truy cập)
-- [ ] Rate limit cho Worker
+- [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ")
+- [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh)
 - [ ] Deploy một chạm lên Cloudflare (nút "Deploy to Cloudflare")
 - [ ] Thay `window.alert` ở trang web bằng thông báo trong giao diện
 
