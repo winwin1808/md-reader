@@ -1,8 +1,7 @@
 import { MAX_RENDER_CHARS, renderMarkdownForPage } from './render-md'
 import { createBridge } from './bridge'
 import { createExecuteInApp } from './bridge-route'
-import { BRIDGE_READY_MSG } from '../shared/bridge-msg'
-import { createRecord, writeDocText, listRecent, getRecord, docQuery, ensureShortKey, docParam } from '../app/doc-registry'
+import { createRecord, writeDocText, deleteRecord, listRecent, getRecord, docQuery, ensureShortKey, docParam } from '../app/doc-registry'
 import {
   BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
@@ -94,8 +93,6 @@ const IDLE_KEY = 'mdr.bridgeIdle'
 
 const revokedUntil = new Map<string, number>()
 
-const readyWaiters = new Set<{ docId: string; tabId: number; done: () => void }>()
-
 const execute = createExecuteInApp({
   createRecord,
   writeDocText,
@@ -121,11 +118,9 @@ const execute = createExecuteInApp({
     return t.id as number
   },
   closeTab: (id) => chrome.tabs.remove(id),
-  waitReady: (docId, tabId, ms) => new Promise<boolean>((resolve) => {
-    const w = { docId, tabId, done: () => { clearTimeout(timer); readyWaiters.delete(w); resolve(true) } }
-    const timer = setTimeout(() => { readyWaiters.delete(w); resolve(false) }, ms)
-    readyWaiters.add(w)
-  }),
+  deleteRecord,
+  sleep: (ms) => new Promise<void>((r) => setTimeout(r, ms)),
+  now: () => Date.now(),
   sendToTab: (tabId, msg) => chrome.tabs.sendMessage(tabId, msg),
 })
 
@@ -215,15 +210,6 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
     sendResponse?.({ ok: true })
   })()
   return true
-})
-
-chrome.runtime?.onMessage?.addListener((message, sender) => {
-  if (message?.type !== BRIDGE_READY_MSG || typeof message.docId !== 'string') return
-  const appUrl = chrome.runtime.getURL('app.html')
-  if (sender?.id !== chrome.runtime.id || !sender?.url || !sender.url.startsWith(appUrl)) return
-  for (const w of [...readyWaiters]) {
-    if (w.tabId === sender.tab?.id && w.docId === message.docId) w.done()
-  }
 })
 
 export {}

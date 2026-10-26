@@ -12,7 +12,9 @@ export interface RouteDeps {
   findTab(docId: string): Promise<number | null>
   openTab(url: string, active: boolean): Promise<number>
   closeTab(id: number): Promise<void>
-  waitReady(docId: string, tabId: number, ms: number): Promise<boolean>
+  deleteRecord(docId: string): Promise<void>
+  sleep(ms: number): Promise<void>
+  now(): number
   sendToTab(tabId: number, msg: ExecMsg): Promise<BridgeResponse>
 }
 
@@ -29,7 +31,12 @@ export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Pro
       let docId: string
       try {
         const rec = await deps.createRecord({ title: a.title, originKind: 'drop', originPath: null })
-        await deps.writeDocText(rec, a.markdown, 'replace')
+        try {
+          await deps.writeDocText(rec, a.markdown, 'replace')
+        } catch (err) {
+          try { await deps.deleteRecord(rec.docId) } catch { /* ignore */ }
+          throw err
+        }
         docId = rec.docId
       } catch (err) {
         return fail(req.id, 'INTERNAL', String((err as Error)?.message ?? err))
@@ -60,13 +67,21 @@ export function createExecuteInApp(deps: RouteDeps): (req: BridgeRequest) => Pro
         if (tab === null) {
           tab = await deps.openTab(await deps.docUrl(docId), false)
           opened = true
-          if (!(await deps.waitReady(docId, tab, 10_000))) return fail(req.id, 'TIMEOUT', 'MD Reader tab did not load the document in time')
         }
-        return await deps.sendToTab(tab, { type: BRIDGE_EXEC_MSG, req })
+        const msg: ExecMsg = { type: BRIDGE_EXEC_MSG, req }
+        const deadline = deps.now() + 10_000
+        for (;;) {
+          try {
+            return await deps.sendToTab(tab, msg)
+          } catch {
+            if (deps.now() >= deadline) return fail(req.id, 'TIMEOUT', 'MD Reader tab did not load the document in time')
+            await deps.sleep(250)
+          }
+        }
       } catch (err) {
         return fail(req.id, 'INTERNAL', String((err as Error)?.message ?? err))
       } finally {
-        if (opened && tab !== null && (req.tool === 'get_doc' || req.tool === 'list_links')) {
+        if (opened && tab !== null) {
           try { await deps.closeTab(tab) } catch { /* ignore */ }
         }
       }

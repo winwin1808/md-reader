@@ -18,7 +18,9 @@ function mk(over: Partial<RouteDeps> = {}) {
     findTab: vi.fn(async () => null as number | null),
     openTab: vi.fn(async () => 7),
     closeTab: vi.fn(async () => {}),
-    waitReady: vi.fn(async () => true),
+    deleteRecord: vi.fn(async () => {}),
+    sleep: vi.fn(async () => {}),
+    now: vi.fn(() => 0),
     sendToTab: vi.fn(async () => ({ type: 'res', id: 'r1', ok: true, result: { hi: 1 } }) as never),
     ...over,
   } satisfies RouteDeps
@@ -59,34 +61,50 @@ describe('createExecuteInApp', () => {
     const r = await run(req('get_doc', { docId: 'zz' })) as any
     expect(r.error.code).toBe('NOT_FOUND')
   })
-  it('existing tab: no open/close/wait, forwards response', async () => {
+  it('write failure deletes record', async () => {
+    const { deps, run } = mk({ writeDocText: vi.fn(async () => { throw new Error('boom') }), deleteRecord: vi.fn(async () => { throw new Error('x') }) })
+    const r = await run(req('publish_doc', { title: 'H', markdown: 'x' })) as any
+    expect(deps.deleteRecord).toHaveBeenCalledWith('d1')
+    expect(r.error.code).toBe('INTERNAL')
+    expect(deps.openTab).not.toHaveBeenCalled()
+  })
+  it('existing tab: no open/close, forwards response', async () => {
     const { deps, run } = mk({ findTab: vi.fn(async () => 3) })
     const r = await run(req('get_doc', { docId: 'd1' })) as any
     expect(deps.openTab).not.toHaveBeenCalled()
     expect(deps.closeTab).not.toHaveBeenCalled()
-    expect(deps.waitReady).not.toHaveBeenCalled()
     expect(deps.sendToTab).toHaveBeenCalledWith(3, { type: 'mdr-bridge-exec', req: req('get_doc', { docId: 'd1' }) })
     expect(r.result).toEqual({ hi: 1 })
   })
-  it('no tab: opens background, waits, sends, closes', async () => {
+  it('no tab: opens background, sends, closes', async () => {
     const { deps, run } = mk()
     const r = await run(req('get_doc', { docId: 'd1' })) as any
     expect(deps.openTab).toHaveBeenCalledWith(expect.any(String), false)
-    expect(deps.waitReady).toHaveBeenCalledWith('d1', 7, 10_000)
     expect(deps.closeTab).toHaveBeenCalledWith(7)
     expect(r.ok).toBe(true)
   })
-  it('ready timeout -> TIMEOUT and still closes opened tab', async () => {
-    const { deps, run } = mk({ waitReady: vi.fn(async () => false) })
+  it('retries sendToTab until it succeeds', async () => {
+    const send = vi.fn()
+      .mockRejectedValueOnce(new Error('Receiving end does not exist'))
+      .mockRejectedValueOnce(new Error('Receiving end does not exist'))
+      .mockResolvedValueOnce({ type: 'res', id: 'r1', ok: true, result: { hi: 1 } })
+    const { deps, run } = mk({ sendToTab: send as never })
+    const r = await run(req('get_doc', { docId: 'd1' })) as any
+    expect(r.result).toEqual({ hi: 1 })
+    expect(deps.sleep).toHaveBeenCalledTimes(2)
+    expect(deps.sleep).toHaveBeenCalledWith(250)
+  })
+  it('send keeps failing past deadline -> TIMEOUT and closes opened tab', async () => {
+    let t = 0
+    const { deps, run } = mk({ sendToTab: vi.fn(async () => { throw new Error('nope') }), now: vi.fn(() => (t += 6000)) })
     const r = await run(req('get_doc', { docId: 'd1' })) as any
     expect(r.error.code).toBe('TIMEOUT')
-    expect(deps.sendToTab).not.toHaveBeenCalled()
     expect(deps.closeTab).toHaveBeenCalledWith(7)
   })
-  it('sendToTab failure -> INTERNAL', async () => {
-    const { run } = mk({ findTab: vi.fn(async () => 3), sendToTab: vi.fn(async () => { throw new Error('x') }) })
-    const r = await run(req('get_doc', { docId: 'd1' })) as any
-    expect(r.error.code).toBe('INTERNAL')
+  it('update_doc with opened tab still closes it', async () => {
+    const { deps, run } = mk()
+    await run(req('update_doc', { docId: 'd1', markdown: 'x', baseHash: 'a'.repeat(64) }))
+    expect(deps.closeTab).toHaveBeenCalledWith(7)
   })
   it('invalid args -> INVALID_ARGS', async () => {
     const { run } = mk()
