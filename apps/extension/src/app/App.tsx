@@ -56,6 +56,8 @@ import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
+import { BRIDGE_EXEC_MSG, BRIDGE_READY_MSG, type ExecMsg } from '../shared/bridge-msg'
+import { createBridgeExecutor, type ExecSession } from './bridge-executor'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
 import { createImageSaver } from './image-saver'
@@ -325,6 +327,28 @@ export function App(): React.JSX.Element {
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
+  const execSessionRef = useRef<ExecSession | null>(null)
+  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding } : null
+  const readySentRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!session.docId || !session.synced || readySentRef.current === session.docId) return
+    readySentRef.current = session.docId
+    try { void Promise.resolve(chrome.runtime.sendMessage({ type: BRIDGE_READY_MSG, docId: session.docId })).catch(() => {}) } catch { /* ignore */ }
+  }, [session.docId, session.synced])
+  useEffect(() => {
+    const onMsg = chrome?.runtime?.onMessage
+    if (!onMsg?.addListener) return
+    const exec = createBridgeExecutor(() => execSessionRef.current)
+    const listener = (msg: unknown, sender: { id?: string; tab?: unknown }, sendResponse: (r: unknown) => void): boolean | undefined => {
+      const m = msg as Partial<ExecMsg> | null
+      if (!m || m.type !== BRIDGE_EXEC_MSG || !m.req) return undefined
+      if (sender.id !== chrome.runtime.id || sender.tab) return undefined
+      void exec(m.req).then(sendResponse)
+      return true
+    }
+    onMsg.addListener(listener)
+    return () => onMsg.removeListener(listener)
+  }, [])
   const shareServer = !serverUrl
     ? ({ state: 'missing' } as const)
     : share.error === t('ext.share.unreachable')
