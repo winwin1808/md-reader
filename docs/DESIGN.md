@@ -707,3 +707,21 @@ phút hai người. Không stage nào được ship 8c trước khi bảng này 
 | (5) `onConnect` đọc header upgrade | Có: đọc được `x-mdr-role=view` từ `ctx.request.headers`; phải gọi `super.onConnect(conn, ctx)` | 8a0.1 |
 
 Kết luận theo luật quyết định của spec 8a0: hội tụ = yes; Free nhận SQLite DO = yes; mức dùng 5,37 % ≥ 5 % nên batching update phía client được đưa vào Deferred 8c. R2 chưa bật trên tài khoản (lỗi 10042) nên 8a3 phải chờ bật R2.
+
+### 5.7 Cầu nối MCP ↔ extension — đã đo 2026-10-26
+
+Spike 10a (`docs/superpowers/plans/2026-10-26-phase-10-10a-plan.md`), Chromium unbranded 1726815 `--headless=new`,
+load-unpacked, WS server `ws` trên `127.0.0.1`.
+
+| Câu hỏi | Kết quả quan sát | Nguồn (task) |
+|---|---|---|
+| (1) SW MV3 mở `ws://127.0.0.1` không cần host permission? | Có, không lỗi; manifest chỉ `alarms` + `storage`. Server thấy `Origin: chrome-extension://<id>` | 10a.1 |
+| (2) Kết nối giữ SW sống khi nhàn rỗi? | Không: SW bị dừng 30 s sau message cuối (CLOSE 1001, 2/2 lượt). Ping 20 s giữ sống trọn 6 phút (17 ping, 1 lần start) | 10a.1 |
+| (3) Alarm 30 s đánh thức SW đã dừng và nối lại? | Có: 26.1 · 29.9 · 29.9 s. Chỉ khi không có debugger gắn vào SW | 10a.2 |
+| (4) Quét 10 cổng | 7–28 ms (dừng ở cổng mở), 104 ms khi đóng hết; mỗi cổng bị từ chối sinh log `net::ERR_CONNECTION_REFUSED` mức error | 10a.2 |
+
+**Kết luận:** (1) có và ping giữ được → **giữ WebSocket localhost**, không host permission, không native messaging.
+Bắt buộc: ping `{type:'ping'}` mỗi 20 s từ extension khi đã nối; `chrome.alarms` 0.5 phút để sống lại sau khi SW bị
+dừng (độ trễ nối lại ≤ ~30 s, nên `connectWaitMs` 35 s của MCP đủ). E2E không được giữ handle CDP trên SW.
+Log lỗi cổng đóng chỉ phát sinh khi người dùng đã bật Kết nối AI (mặc định tắt); 10k giảm tiếng ồn bằng cách sau 10 lượt
+quét trắng liên tiếp chỉ quét mỗi 5 phút, và quét ngay khi app page mở hoặc khi bật lại trong Cài đặt.

@@ -35,7 +35,7 @@ minh trên gói Free, và không đếm được quota tích luỹ); đếm tron
 
 ## Decisions on the intent's open questions
 
-- **Cầu nối:** WS localhost như trên; spike 10a xác nhận. Không thêm host permission; thêm quyền `alarms` (không có cảnh báo
+- **Cầu nối:** WS localhost như trên; spike 10a đã xác nhận (DESIGN §5.7: không cần host permission, ping 20 s, alarm nối lại ≤30 s). Không thêm host permission; thêm quyền `alarms` (không có cảnh báo
   khi cài). Nếu 10a cho thấy cần host permission cho `127.0.0.1` thì khai báo nó ở `optional_host_permissions` và xin lúc
   người dùng bật Kết nối AI.
 - **Chrome đóng / chưa bật Kết nối AI:** tool trả lỗi ngay sau 35 s chờ kết nối, mã `NOT_CONNECTED`, thông điệp
@@ -111,7 +111,8 @@ export type BridgeResponse =
   | { type: 'res'; id: string; ok: true; result: unknown }
   | { type: 'res'; id: string; ok: false; error: { code: BridgeErrorCode; message: string } }
 
-export type BridgeMessage = BridgeHello | BridgeRequest | BridgeWelcome | BridgeReject | BridgeResponse
+export interface BridgePing { type: 'ping' }                              // extension → server mỗi 20 s (§5.7)
+export type BridgeMessage = BridgeHello | BridgeRequest | BridgeWelcome | BridgeReject | BridgeResponse | BridgePing
 
 export function parseBridgeMessage(raw: string): BridgeMessage | null      // JSON + kiểm hình dạng; sai → null
 export function validateToolArgs<T extends BridgeTool>(tool: T, args: unknown):
@@ -300,9 +301,10 @@ bấm đồng ý. `BridgeCallError` → kết quả tool `isError: true` với t
 của SDK với bridge giả, đúng mapping lỗi và kết quả.
 
 ### 10k — Extension: cầu nối trong service worker + bật/tắt + ghép cặp
-`worker/bridge.ts` (quét cổng, `chrome.alarms` 30 s khi bật, mỗi cổng ≤1 kết nối, nhận `hello` → so `sha256(pairKey)` với
+`worker/bridge.ts` (quét cổng, `chrome.alarms` 30 s khi bật — sau 10 lượt quét trắng liên tiếp chỉ quét mỗi 5 phút, quét
+ngay khi app page mở hoặc bật lại; ping `{type:'ping'}` mỗi 20 s trên mỗi kết nối để SW không bị dừng (§5.7); mỗi cổng ≤1 kết nối, nhận `hello` → so `sha256(pairKey)` với
 `approved` → `welcome{paired:true}` hoặc mở app page `?pair=<port>` hiện `PairDialog` → duyệt thì thêm vào `approved`,
-từ chối thì `reject{DENIED}`), manifest thêm `alarms` (+ optional host permission nếu 10a yêu cầu), Settings tab "Kết nối AI":
+từ chối thì `reject{DENIED}`), manifest thêm `alarms` (không host permission — §5.7), Settings tab "Kết nối AI":
 bật/tắt, danh sách client đã duyệt + "Thu hồi" (xoá khỏi `approved`, đóng kết nối). Mặc định **tắt**. Test logic thuần:
 quyết định paired/pending/denied từ (hello, approved), danh sách cổng quét.
 
@@ -374,7 +376,7 @@ SESSION_HANDOVER.
 - Firefox cho cầu nối (Firefox MV3 background khác vòng đời — chưa test).
 
 ## Sub-phase queue
-- 10a: planned
+- 10a: built
 - 10b: pending
 - 10c: pending
 - 10d: pending
