@@ -68,12 +68,14 @@ export function createBridgeExecutor(
     if (req.tool === 'share_doc' || req.tool === 'list_links' || req.tool === 'revoke_link') {
       const { share, confirm } = s
       if (!share || !confirm) return fail(req.id, 'INTERNAL', 'sharing unavailable')
+      const CHANGED = 'document changed in tab before approval'
       const ok = (result: unknown) => ({ type: 'res', id: req.id, ok: true, result }) as BridgeResponse
       const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
       const ask = async (c: ConfirmRequest): Promise<BridgeResponse | null> => {
         try {
           return (await confirm(c, client)) ? null : fail(req.id, 'DENIED', 'user declined')
         } catch (e) {
+          if (msg(e) === 'busy') return fail(req.id, 'DENIED', 'another request is waiting for the user')
           return msg(e) === 'timeout' ? fail(req.id, 'TIMEOUT', 'no answer from user') : fail(req.id, 'INTERNAL', msg(e))
         }
       }
@@ -86,11 +88,14 @@ export function createBridgeExecutor(
         const { role, expiresInDays } = v.args as { role: 'view' | 'edit'; expiresInDays: 7 | 30 | null }
         const denied = await ask({ kind: 'share', docTitle: s.title, role, expiresInDays })
         if (denied) return denied
+        const s2 = get()
+        if (!s2 || s2.docId !== s.docId || !s2.share) return fail(req.id, 'NOT_FOUND', CHANGED)
+        const share2 = s2.share
         try {
-          await share.enable()
-          const l = await share.createLink({ role, expiresIn: expiresInDays === null ? null : expiresInDays * DAY_MS, label: `AI · ${client}`.slice(0, 60) })
+          await share2.enable()
+          const l = await share2.createLink({ role, expiresIn: expiresInDays === null ? null : expiresInDays * DAY_MS, label: `AI · ${client}`.slice(0, 60) })
           if (!l.token) return fail(req.id, 'SHARE_FAILED', 'no token returned')
-          return ok({ url: buildShareUrl(share.serverUrl, l.token), tokenPrefix: l.tokenPrefix, expiresAt: l.expiresAt })
+          return ok({ url: buildShareUrl(share2.serverUrl, l.token), tokenPrefix: l.tokenPrefix, expiresAt: l.expiresAt })
         } catch (e) { return fail(req.id, 'SHARE_FAILED', msg(e)) }
       }
       const { tokenPrefix } = v.args as { tokenPrefix: string }
@@ -100,7 +105,9 @@ export function createBridgeExecutor(
       if (!share.links().some((l) => l.tokenPrefix === tokenPrefix && !l.revokedAt)) return fail(req.id, 'NOT_FOUND', 'link not found')
       const denied = await ask({ kind: 'revoke', docTitle: s.title, tokenPrefix })
       if (denied) return denied
-      try { await share.revoke(tokenPrefix) } catch (e) { return fail(req.id, 'SHARE_FAILED', msg(e)) }
+      const s2 = get()
+      if (!s2 || s2.docId !== s.docId || !s2.share || !s2.share.bound()) return fail(req.id, 'NOT_FOUND', CHANGED)
+      try { await s2.share.revoke(tokenPrefix) } catch (e) { return fail(req.id, 'SHARE_FAILED', msg(e)) }
       return ok({ revoked: true })
     }
     return fail(req.id, 'INTERNAL', 'not implemented yet')

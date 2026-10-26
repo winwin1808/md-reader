@@ -29,7 +29,10 @@ describe('useAgentConfirm', () => {
     let p!: Promise<boolean>
     act(() => { p = result.current.confirm(REQ, 'AI') })
     const assertion = expect(p).rejects.toThrow('timeout')
-    act(() => { vi.advanceTimersByTime(AGENT_CONFIRM_MS) })
+    expect(AGENT_CONFIRM_MS).toBe(100_000)
+    act(() => { vi.advanceTimersByTime(99_000) })
+    expect(result.current.pending).not.toBeNull()
+    act(() => { vi.advanceTimersByTime(1_000) })
     await assertion
     expect(result.current.pending).toBeNull()
   })

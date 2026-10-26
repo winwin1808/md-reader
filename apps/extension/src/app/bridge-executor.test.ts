@@ -228,6 +228,51 @@ describe('createBridgeExecutor', () => {
       const { run } = mk({ createLink: vi.fn(async () => { throw new Error('429 slow down') }) })
       expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'SHARE_FAILED', message: expect.stringContaining('429') } })
     })
+    describe('re-check after approval', () => {
+      const setup = (after: () => ExecSession | null, tool: 'share_doc' | 'revoke_link', shareOver: Partial<ExecShare> = {}) => {
+        const share = {
+          serverUrl: 'https://s.example', bound: vi.fn(() => true), links: vi.fn(() => [link()]), refresh: vi.fn(async () => {}),
+          enable: vi.fn(async () => {}), createLink: vi.fn(async () => link({ token: 'TOK' })), revoke: vi.fn(async () => {}), ...shareOver,
+        } as ExecShare & Record<string, ReturnType<typeof vi.fn>>
+        let approved = false
+        const confirm = vi.fn(async () => { approved = true; return true })
+        const first = sess('# Hi', { share, confirm })
+        const run = createRaw(() => (approved ? after() : first))
+        const r = tool === 'share_doc' ? shareReq(7) : req('revoke_link', { docId: 'd1', tokenPrefix: 'abcd12' })
+        return { share, run, r }
+      }
+      it('share: docId changed after confirm -> NOT_FOUND, no createLink', async () => {
+        const { share, run, r } = setup(() => sess('x', { docId: 'other', share: {} as ExecShare, confirm: async () => true }), 'share_doc')
+        expect(await run(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND', message: 'document changed in tab before approval' } })
+        expect(share.createLink).not.toHaveBeenCalled()
+      })
+      it('share: null after confirm -> NOT_FOUND', async () => {
+        const { share, run, r } = setup(() => null, 'share_doc')
+        expect(await run(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+        expect(share.createLink).not.toHaveBeenCalled()
+      })
+      it('revoke: bound() false after confirm -> NOT_FOUND, no revoke', async () => {
+        const bound = vi.fn().mockReturnValueOnce(true).mockReturnValue(false)
+        let cur: ExecSession | null = null
+        const { share, run, r } = setup(() => cur, 'revoke_link', { bound })
+        cur = sess('# Hi', { share, confirm: async () => true })
+        expect(await run(r, 'c')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+        expect(share.revoke).not.toHaveBeenCalled()
+      })
+      it('uses newest share after confirm', async () => {
+        let cur: ExecSession | null = null
+        const { share, run, r } = setup(() => cur, 'share_doc')
+        const share2 = { ...share, enable: vi.fn(async () => {}), createLink: vi.fn(async () => link({ token: 'T2', tokenPrefix: 'P2' })) } as unknown as ExecShare
+        cur = sess('# Hi', { share: share2, confirm: async () => true })
+        expect(await run(r, 'c')).toMatchObject({ ok: true })
+        expect(share.createLink).not.toHaveBeenCalled()
+        expect(share2.createLink).toHaveBeenCalled()
+      })
+    })
+    it('confirm busy -> DENIED', async () => {
+      const { run } = mk({}, new Error('busy'))
+      expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'DENIED', message: 'another request is waiting for the user' } })
+    })
     it('confirm timeout -> TIMEOUT', async () => {
       const { run } = mk({}, new Error('timeout'))
       expect(await run(shareReq(7), 'c')).toMatchObject({ ok: false, error: { code: 'TIMEOUT', message: 'no answer from user' } })

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ConfirmRequest } from '@md-reader/ui'
 
-export const AGENT_CONFIRM_MS = 110_000
+export const AGENT_CONFIRM_MS = 100_000
 
 interface Waiter { resolve(v: boolean): void; reject(e: Error): void; timer: ReturnType<typeof setTimeout> }
 
