@@ -55,7 +55,10 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const session = useRef(new Map<string, ShareLink>())
   const gen = useRef(0)
   const linksRef = useRef<ShareLink[]>([])
-  linksRef.current = links
+  const put = (next: ShareLink[] | ((cur: ShareLink[]) => ShareLink[])) => {
+    linksRef.current = typeof next === 'function' ? next(linksRef.current) : next
+    setLinks(linksRef.current)
+  }
   const enabling = useRef<Promise<RoomBinding> | null>(null)
 
   useEffect(() => {
@@ -66,7 +69,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     tokens.current.clear()
     session.current.clear()
     setBinding(null)
-    setLinks([])
+    put([])
     if (docId) {
       getRecord(docId).then((r) => {
         if (cancelled || !r?.room) return
@@ -130,7 +133,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     const server = list.map((l) => ({ ...l, token: l.token || tokens.current.get(l.tokenPrefix) || cached[l.tokenPrefix] || '' }))
     const seen = new Set(server.map((l) => l.tokenPrefix))
     const kept = [...session.current.values()].filter((l) => !seen.has(l.tokenPrefix))
-    setLinks([...kept.reverse(), ...server])
+    put([...kept.reverse(), ...server])
   }), [run])
 
   const createLink = useCallback((req: CreateLinkRequest) => run(async (stale) => {
@@ -145,7 +148,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     if (stale()) return l
     tokens.current.set(l.tokenPrefix, l.token)
     if (l.token !== '') session.current.set(l.tokenPrefix, l)
-    setLinks((cur) => [l, ...cur])
+    put((cur) => [l, ...cur])
     return l
   }), [run])
 
@@ -156,7 +159,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     if (stale()) return
     tokens.current.delete(prefix)
     session.current.delete(prefix)
-    setLinks((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
+    put((cur) => cur.filter((l) => l.tokenPrefix !== prefix))
   }), [run])
 
   const recreate = useCallback(async (link: ShareLink): Promise<void> => {
@@ -193,7 +196,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
       tokens.current.delete(prefix)
       session.current.delete(prefix)
       const now = Date.now()
-      setLinks((cur) => cur.map((l) => (l.tokenPrefix === prefix ? { ...l, revokedAt: now } : l)))
+      put((cur) => cur.map((l) => (l.tokenPrefix === prefix ? { ...l, revokedAt: now } : l)))
     }
     if (stale()) return
     try { await refresh() } catch { /* local marks stand */ }
@@ -225,9 +228,11 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
       tokens.current.clear()
       session.current.clear()
       setBinding(null)
-      setLinks([])
+      put([])
     }
   }), [run, docId])
 
-  return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
+  return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error,
+    currentLinks: (): ShareLink[] => linksRef.current,
+    currentBinding: (): RoomBinding | null => bindingRef.current }
 }

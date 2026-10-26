@@ -22,6 +22,7 @@ import {
   Logo,
   HistoryTimeline,
   historyLabel,
+  ConfirmAgentDialog,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
@@ -51,6 +52,7 @@ import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useHistory } from './hooks/useHistory'
 import { useExport } from './hooks/useExport'
+import { useAgentConfirm } from './hooks/useAgentConfirm'
 import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
@@ -328,7 +330,20 @@ export function App(): React.JSX.Element {
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
   const execSessionRef = useRef<ExecSession | null>(null)
-  execSessionRef.current = session.docId && yText ? { docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null } : null
+  const agentConfirm = useAgentConfirm()
+  execSessionRef.current = session.docId && yText ? {
+    docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null,
+    share: {
+      serverUrl: share.binding?.serverUrl ?? serverUrl ?? '',
+      enable: share.enable,
+      createLink: share.createLink,
+      revoke: share.revoke,
+      refresh: share.refresh,
+      links: () => share.currentLinks(),
+      bound: () => share.currentBinding() !== null,
+    },
+    confirm: agentConfirm.confirm,
+  } : null
   useEffect(() => {
     const onMsg = chrome?.runtime?.onMessage
     if (!onMsg?.addListener) return
@@ -338,7 +353,8 @@ export function App(): React.JSX.Element {
       if (!m || m.type !== BRIDGE_EXEC_MSG || !m.req) return undefined
       if (sender.id !== chrome.runtime.id || sender.tab) return undefined
       const req = m.req
-      void exec(req).then(sendResponse, (err) => sendResponse({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: String(err) } }))
+      const client = typeof m.client === 'string' && m.client ? m.client : 'AI'
+      void exec(req, client).then(sendResponse, (err) => sendResponse({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: String(err) } }))
       return true
     }
     onMsg.addListener(listener)
@@ -788,6 +804,9 @@ export function App(): React.JSX.Element {
           onShare={session.docId ? () => setShareOpen(true) : undefined}
         />
         <>
+          {agentConfirm.pending && (
+            <ConfirmAgentDialog req={agentConfirm.pending.req} client={agentConfirm.pending.client} onAllow={agentConfirm.allow} onDeny={agentConfirm.deny} />
+          )}
           <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
           <ShareModal
             open={shareOpen}

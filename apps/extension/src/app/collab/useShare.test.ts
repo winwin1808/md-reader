@@ -243,6 +243,28 @@ describe('useShare', () => {
     expect(h.result.current.binding?.roomId).toBe('r1')
   })
 
+  describe('current* sync reads', () => {
+    it('currentLinks right after await refresh/revoke; currentBinding after enable', async () => {
+      fetchMock.mockReturnValueOnce(json({ roomId: 'r1', ownerToken: 'own' }))
+      const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
+      const api = h.result.current as any
+      let b: unknown, l1: unknown[] = [], l2: unknown[] = []
+      await act(async () => {
+        await api.enable()
+        b = api.currentBinding()
+        fetchMock.mockReturnValueOnce(json([link('', 'aaaa'), link('', 'bbbb')]))
+        await api.refresh()
+        l1 = api.currentLinks()
+        fetchMock.mockReturnValueOnce(Promise.resolve(new Response(null, { status: 204 })))
+        await api.revoke('aaaa')
+        l2 = api.currentLinks()
+      })
+      expect(b).not.toBeNull()
+      expect(l1).toHaveLength(2)
+      expect((l2 as any[]).map((l) => l.tokenPrefix)).toEqual(['bbbb'])
+    })
+  })
+
   describe('revokeAll', () => {
     const noContent = () => Promise.resolve(new Response(null, { status: 204 }))
     async function withLinks() {

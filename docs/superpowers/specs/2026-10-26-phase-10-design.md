@@ -334,6 +334,9 @@ Executor gọi `confirm` → app focus tab (`chrome.tabs.update({active:true})` 
 chia sẻ nếu chưa, tạo link, cache token như 9a1) → `ShareDocResult`. Từ chối → `DENIED`; 110 s không bấm → đóng hộp,
 `TIMEOUT`. Lỗi máy chủ (kể cả 429) → `SHARE_FAILED` kèm thông điệp. `list_links` không cần xác nhận. Test: dialog render/đi
 bằng phím; executor với `confirm` giả (allow/deny/timeout) và share giả.
+_Đã làm (plan 10n):_ tên client đi kèm request (`execute(req, client)` → `ExecMsg.client`), được làm sạch bằng `sanitizeClientName` (≤40 ký tự,
+bỏ điều khiển/bidi/zero-width) ngay khi hello. Hộp tự đóng sau **100 s** (không phải 110 s) để còn dư so với 120 s phía MCP. Sau khi người dùng
+đồng ý, executor đọc lại session và từ chối (`NOT_FOUND`) nếu tab đã chuyển tài liệu; `busy` (đang có hộp khác) → `DENIED`.
 
 ### 10o — Docs, E2E, phát hành
 `docs/MCP.md` (+ `docs/MCP.en.md`): cài `npx -y @md-reader/mcp`, cấu hình Claude Desktop / Claude Code / Cursor, bật Kết nối
@@ -397,5 +400,5 @@ SESSION_HANDOVER.
 - 10k: done      (cầu nối SW: quét đơn luồng, ping 20 s, alarms, PairDialog, Cài đặt Kết nối AI; execute còn là stub)
 - 10l: done      (publish/list trong SW qua createRecord+writeDocText; get/update/share luôn qua tab app page — mở nền nếu cần)
 - 10m: done   
-- 10n: pending
+- 10n: done   
 - 10o: pending

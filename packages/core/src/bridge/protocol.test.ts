@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS } from './protocol.js'
+import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS, sanitizeClientName, BRIDGE_MAX_CLIENT } from './protocol.js'
 import { hashText } from '../doc/hash.js'
 
 const p = (o: unknown) => parseBridgeMessage(JSON.stringify(o))
@@ -104,5 +104,19 @@ describe('isAllowedExtensionOrigin', () => {
   it('limits', () => {
     expect(BRIDGE_MAX_PAYLOAD).toBe(16 * 1024 * 1024)
     expect(BRIDGE_MAX_CONNECTIONS).toBe(4)
+  })
+})
+
+describe('sanitizeClientName', () => {
+  it('cleans names', () => {
+    expect(BRIDGE_MAX_CLIENT).toBe(40)
+    expect(sanitizeClientName('  Claude\n\nDesktop ')).toBe('Claude Desktop')
+    expect(sanitizeClientName('A\u202EB\u200BC')).toBe('ABC')
+    expect(sanitizeClientName('x'.repeat(100))).toBe('x'.repeat(40))
+    const e = 'a'.repeat(39) + '😀' + 'zzz'
+    expect(sanitizeClientName(e)).toBe('a'.repeat(39) + '😀')
+    expect(sanitizeClientName('')).toBe('AI')
+    expect(sanitizeClientName('\u200B')).toBe('AI')
+    expect(sanitizeClientName(42)).toBe('AI')
   })
 })

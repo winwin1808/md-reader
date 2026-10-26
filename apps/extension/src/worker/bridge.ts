@@ -3,6 +3,7 @@ import {
   BRIDGE_PROTOCOL,
   parseBridgeMessage,
   textHash,
+  sanitizeClientName,
   type BridgeRequest,
   type BridgeResponse,
   type BridgeHello,
@@ -27,7 +28,7 @@ export interface BridgeDeps {
   connect(url: string): WsLike
   approved(): Promise<ApprovedClient[]>
   requestPairing(c: { port: number; client: string; keyHash: string }): void
-  execute(req: BridgeRequest): Promise<BridgeResponse>
+  execute(req: BridgeRequest, client: string): Promise<BridgeResponse>
   setTimer(fn: () => void, ms: number): unknown
   clearTimer(h: unknown): void
 }
@@ -59,7 +60,7 @@ export function createBridge(deps: BridgeDeps) {
     const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
     const keyHash = await textHash(h.pairKey)
     if (!live()) return
-    e.conn.client = h.client
+    e.conn.client = sanitizeClientName(h.client)
     e.conn.keyHash = keyHash
     const list = await deps.approved()
     if (!live()) return
@@ -69,7 +70,7 @@ export function createBridge(deps: BridgeDeps) {
     } else {
       e.conn.state = 'pending'
       send(e.ws, { type: 'welcome', paired: false })
-      deps.requestPairing({ port: e.conn.port, client: h.client, keyHash })
+      deps.requestPairing({ port: e.conn.port, client: e.conn.client, keyHash })
     }
   }
 
@@ -77,7 +78,7 @@ export function createBridge(deps: BridgeDeps) {
     if (e.conn.state !== 'paired') return
     let res: BridgeResponse
     try {
-      res = await deps.execute(req)
+      res = await deps.execute(req, e.conn.client)
     } catch (err) {
       res = { type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: err instanceof Error ? err.message : String(err) } }
     }

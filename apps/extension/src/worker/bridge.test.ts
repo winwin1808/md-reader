@@ -70,6 +70,15 @@ describe('bridge', () => {
     expect(deps.requestPairing).not.toHaveBeenCalled()
   })
 
+  it('sanitizes client name', async () => {
+    const { bridge, sockets, deps } = setup()
+    await bridge.scan([47821])
+    sockets[0]!.recv({ ...hello, client: '\u202EevilName\n' })
+    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
+    expect(bridge.conns()[0]!.client).toBe('evilName')
+    expect(deps.requestPairing.mock.calls[0]![0].client).toBe('evilName')
+  })
+
   it('unknown hello -> welcome paired:false + requestPairing', async () => {
     const { bridge, sockets, deps } = setup()
     await bridge.scan([47821])

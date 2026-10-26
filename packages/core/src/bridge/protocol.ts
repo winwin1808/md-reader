@@ -3,6 +3,7 @@ export const BRIDGE_PROTOCOL = 1
 export const BRIDGE_PORTS: readonly number[] = Array.from({ length: 10 }, (_, i) => 47821 + i)
 export const BRIDGE_MAX_MARKDOWN = 2_000_000
 export const BRIDGE_MAX_TITLE = 200
+export const BRIDGE_MAX_CLIENT = 40
 export const BRIDGE_MAX_PAYLOAD = 16 * 1024 * 1024
 export const BRIDGE_MAX_CONNECTIONS = 4
 export const KNOWN_EXTENSION_IDS: readonly string[] = ['ojcemoafaibjfghljkbagnkbgljakbji'] // ID store thêm ở 10o
@@ -132,4 +133,16 @@ export function validateToolArgs<T extends BridgeTool>(tool: T, args: unknown): 
     default:
       return fail('unknown tool')
   }
+}
+
+/** Tên client là dữ liệu không tin cậy: bỏ ký tự điều khiển/bidi/zero-width, gộp khoảng trắng, cắt 40 code point. */
+export function sanitizeClientName(raw: unknown): string {
+  if (typeof raw !== 'string') return 'AI'
+  const cleaned = raw
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .replace(/[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const cut = Array.from(cleaned).slice(0, BRIDGE_MAX_CLIENT).join('').trim()
+  return cut || 'AI'
 }

@@ -122,6 +122,10 @@ const execute = createExecuteInApp({
   sleep: (ms) => new Promise<void>((r) => setTimeout(r, ms)),
   now: () => Date.now(),
   sendToTab: (tabId, msg) => chrome.tabs.sendMessage(tabId, msg),
+  focusTab: async (id) => {
+    const t = await chrome.tabs.update(id, { active: true })
+    if (t?.windowId !== undefined) await chrome.windows.update(t.windowId, { focused: true })
+  },
 })
 
 const bridge = createBridge({
