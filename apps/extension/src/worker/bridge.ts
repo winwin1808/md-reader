@@ -41,6 +41,8 @@ interface Entry {
 
 export function createBridge(deps: BridgeDeps) {
   const entries = new Map<number, Entry>()
+  const connecting = new Set<number>()
+  let scanning: Promise<number> | null = null
 
   function drop(port: number, e: Entry) {
     if (entries.get(port) === e) entries.delete(port)
@@ -54,10 +56,13 @@ export function createBridge(deps: BridgeDeps) {
   async function onHello(e: Entry, h: BridgeHello) {
     if (e.hello) return
     e.hello = true
+    const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
     const keyHash = await textHash(h.pairKey)
+    if (!live()) return
     e.conn.client = h.client
     e.conn.keyHash = keyHash
     const list = await deps.approved()
+    if (!live()) return
     if (list.some((a) => a.keyHash === keyHash)) {
       e.conn.state = 'paired'
       send(e.ws, { type: 'welcome', paired: true })
@@ -80,15 +85,18 @@ export function createBridge(deps: BridgeDeps) {
   }
 
   function tryConnect(port: number): Promise<void> {
+    if (connecting.has(port) || entries.has(port)) return Promise.resolve()
+    connecting.add(port)
     return new Promise((resolve) => {
       let ws: WsLike
-      try { ws = deps.connect(`ws://127.0.0.1:${port}`) } catch { resolve(); return }
+      try { ws = deps.connect(`ws://127.0.0.1:${port}`) } catch { connecting.delete(port); resolve(); return }
       const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending' }, hello: false, pingTimer: undefined }
       let settled = false
       let timeout: unknown
       const settle = () => {
         if (settled) return
         settled = true
+        connecting.delete(port)
         deps.clearTimer(timeout)
         resolve()
       }
@@ -120,13 +128,21 @@ export function createBridge(deps: BridgeDeps) {
   }
 
   return {
-    async scan(ports: readonly number[] = BRIDGE_PORTS): Promise<number> {
-      await Promise.all(ports.filter((p) => !entries.has(p)).map(tryConnect))
-      return entries.size
+    scan(ports: readonly number[] = BRIDGE_PORTS): Promise<number> {
+      if (scanning) return scanning
+      const p = (async () => {
+        await Promise.all(ports.filter((x) => !entries.has(x) && !connecting.has(x)).map(tryConnect))
+        return entries.size
+      })()
+      scanning = p
+      const clear = () => { if (scanning === p) scanning = null }
+      p.then(clear, clear)
+      return p
     },
-    async decide(port: number, allow: boolean, add?: (c: ApprovedClient) => Promise<void>): Promise<void> {
+    async decide(port: number, allow: boolean, add?: (c: ApprovedClient) => Promise<void>, keyHash?: string): Promise<void> {
       const e = entries.get(port)
       if (!e || e.conn.state !== 'pending' || !e.conn.keyHash) return
+      if (keyHash !== undefined && keyHash !== e.conn.keyHash) return
       if (allow) {
         await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now() })
         e.conn.state = 'paired'
