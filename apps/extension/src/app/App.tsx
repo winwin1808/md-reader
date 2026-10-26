@@ -331,10 +331,6 @@ export function App(): React.JSX.Element {
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
   const execSessionRef = useRef<ExecSession | null>(null)
   const agentConfirm = useAgentConfirm()
-  const shareLinksRef = useRef(share.links)
-  shareLinksRef.current = share.links
-  const shareBindingRef = useRef(share.binding)
-  shareBindingRef.current = share.binding
   execSessionRef.current = session.docId && yText ? {
     docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null,
     share: {
@@ -343,8 +339,8 @@ export function App(): React.JSX.Element {
       createLink: share.createLink,
       revoke: share.revoke,
       refresh: share.refresh,
-      links: () => shareLinksRef.current,
-      bound: () => !!shareBindingRef.current,
+      links: () => share.currentLinks(),
+      bound: () => share.currentBinding() !== null,
     },
     confirm: agentConfirm.confirm,
   } : null
