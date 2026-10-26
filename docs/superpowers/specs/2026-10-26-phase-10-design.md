@@ -374,7 +374,7 @@ SESSION_HANDOVER.
 - Firefox cho cầu nối (Firefox MV3 background khác vòng đời — chưa test).
 
 ## Sub-phase queue
-- 10a: pending
+- 10a: planned
 - 10b: pending
 - 10c: pending
 - 10d: pending
