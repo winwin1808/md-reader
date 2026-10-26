@@ -381,7 +381,7 @@ SESSION_HANDOVER.
 - 10a: done      (WS localhost, không host permission, ping 20 s, alarm 0.5 phút — DESIGN §5.7)
 - 10b: done
 - 10c: done      (LimitStore + 429; phòng không khoá giới hạn ảnh theo IP — 10c.3)
-- 10d: pending
+- 10d: planned
 - 10e: pending
 - 10f: pending
 - 10g: pending
