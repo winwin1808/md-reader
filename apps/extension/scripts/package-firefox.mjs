@@ -15,6 +15,7 @@ cpSync(dist, out, { recursive: true })
 // Firefox MV3 has no service_worker background; it uses an event page.
 const sw = manifest.background?.service_worker
 if (sw) manifest.background = { scripts: [sw], type: 'module' }
+delete manifest.key
 manifest.browser_specific_settings = {
   gecko: {
     id: 'md-reader@winwin1808',

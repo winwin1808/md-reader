@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,5 +16,12 @@ if (spawnSync('zip', ['-v'], { stdio: 'ignore' }).error) {
 }
 mkdirSync(outDir, { recursive: true })
 rmSync(out, { force: true })
-execFileSync('zip', ['-r', '-q', '-X', out, '.'], { cwd: dist, stdio: 'inherit' })
+// Store builds must not carry `key` (dev/e2e only); stage a copy and strip it.
+const stage = mkdtempSync(resolve(tmpdir(), 'md-reader-pkg-'))
+cpSync(dist, stage, { recursive: true })
+const m = JSON.parse(readFileSync(resolve(stage, 'manifest.json'), 'utf8'))
+delete m.key
+writeFileSync(resolve(stage, 'manifest.json'), JSON.stringify(m, null, 2) + '\n')
+execFileSync('zip', ['-r', '-q', '-X', out, '.'], { cwd: stage, stdio: 'inherit' })
+rmSync(stage, { recursive: true, force: true })
 console.log('package: wrote ' + out)
