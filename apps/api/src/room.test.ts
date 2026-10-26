@@ -101,3 +101,82 @@ describe('DocRoom.handleMessage', () => {
     expect(room.droppedWrites).toBe(1)
   })
 })
+
+function fakeStorage(init: Record<string, unknown> = {}) {
+  const m = new Map<string, unknown>(Object.entries(init))
+  return {
+    m,
+    get: async (k: string) => m.get(k),
+    put: async (k: string, v: unknown) => void m.set(k, v),
+    delete: async (k: string) => m.delete(k),
+    list: async (o: { prefix?: string } = {}) =>
+      new Map([...m].filter(([k]) => k.startsWith(o.prefix ?? ''))),
+    deleteAll: async () => void m.clear(),
+  }
+}
+function makePurgeRoom(storage = fakeStorage(), conns: Array<ReturnType<typeof fakeConn>> = []) {
+  const room = makeRoom()
+  Object.defineProperty(room, 'ctx', { value: { storage } })
+  ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => conns
+  ;(room as unknown as { queue: Promise<unknown> }).queue = Promise.resolve()
+  ;(room as unknown as { stats: unknown }).stats = { updates: 0, bytes: 0 }
+  return room
+}
+function fakeConn() {
+  return { id: 'c', state: { role: 'edit' }, close: vi.fn(), setState: vi.fn(), send: () => undefined }
+}
+const ctxReq = () => ({ request: new Request('http://x/', { headers: { 'x-mdr-role': 'edit' } }) }) as never
+
+describe('DocRoom.purge', () => {
+  it('closes open connections with 4410 and leaves only the tombstone', async () => {
+    const st = fakeStorage({ 'u:1': 'a', snap: 'b' })
+    const c1 = fakeConn()
+    const c2 = fakeConn()
+    const room = makePurgeRoom(st, [c1, c2])
+    await room.purge()
+    expect(c1.close).toHaveBeenCalledWith(4410, 'deleted')
+    expect(c2.close).toHaveBeenCalledWith(4410, 'deleted')
+    expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
+  it('closes new connections after purge', async () => {
+    const room = makePurgeRoom()
+    await room.purge()
+    const c = fakeConn()
+    room.onConnect(c as never, ctxReq())
+    expect(c.close).toHaveBeenCalledWith(4410, 'deleted')
+    expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('ignores messages after purge', async () => {
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    await room.purge()
+    const spy = spyOnSuper(false)
+    room.handleMessage(conn({ role: 'edit' }), updateMsg())
+    room.handleMessage(conn({ role: 'edit' }), 'str')
+    expect(spy).not.toHaveBeenCalled()
+    expect([...st.m.keys()]).toEqual(['tombstone'])
+    spy.mockRestore()
+  })
+  it('returns 410 for snapshot after purge and 204 for internal purge request', async () => {
+    const st = fakeStorage({ 'u:1': 'a' })
+    const room = makePurgeRoom(st)
+    const r = await room.onRequest(
+      new Request('http://x/parties/doc-room/r/purge', { method: 'POST', headers: { 'x-mdr-internal': '1' } }),
+    )
+    expect(r.status).toBe(204)
+    expect([...st.m.keys()]).toEqual(['tombstone'])
+    const s = await room.onRequest(
+      new Request('http://x/parties/doc-room/r/snapshot', { headers: { 'x-mdr-internal': '1' } }),
+    )
+    expect(s.status).toBe(410)
+  })
+  it('a new DocRoom on tombstoned storage is purged', async () => {
+    const st = fakeStorage({ tombstone: 1 })
+    const room = makePurgeRoom(st)
+    await room.onLoad()
+    expect(room.document.getText('t').toString()).toBe('')
+    const c = fakeConn()
+    room.onConnect(c as never, ctxReq())
+    expect(c.close).toHaveBeenCalledWith(4410, 'deleted')
+  })
+})
