@@ -120,7 +120,7 @@ describe('CORS', () => {
     expect(res.status).toBe(204)
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
     expect(res.headers.get('access-control-allow-methods')).toBe('GET, POST, DELETE, OPTIONS')
-    expect(res.headers.get('access-control-allow-headers')).toBe('authorization, content-type')
+    expect(res.headers.get('access-control-allow-headers')).toBe('authorization, content-type, x-mdr-install')
     expect(res.headers.get('access-control-max-age')).toBe('86400')
     expect(res.headers.get('access-control-allow-credentials')).toBeNull()
     expect(spy).not.toHaveBeenCalled()
@@ -133,7 +133,7 @@ describe('CORS', () => {
       store: new MemoryTokenStore(),
     })
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
-    expect(res.headers.get('access-control-expose-headers')).toBe('content-type')
+    expect(res.headers.get('access-control-expose-headers')).toBe('content-type, retry-after')
   })
 
   it('401 from GET links carries ACAO *', async () => {
@@ -216,5 +216,52 @@ describe('CORS on errors and passthrough', () => {
     )
     expect(res.status).not.toBe(501)
     expect(res.status).toBe(201)
+  })
+})
+
+describe('DELETE /api/rooms/:roomId', () => {
+  it('purges the DO via internal POST route', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const stmt = {
+      bind: () => stmt,
+      run: async () => ({}),
+      all: async () => ({ results: [] }),
+    }
+    const db = { prepare: () => stmt, batch: async () => [] }
+    const seen: Request[] = []
+    const routeParty = vi.fn(async (r: Request) => {
+      seen.push(r)
+      return new Response(null, { status: 204 })
+    })
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      { DB: db } as unknown as Env,
+      { routeParty: routeParty as never, store },
+    )
+    expect(res.status).toBe(204)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]!.method).toBe('POST')
+    expect(seen[0]!.headers.get('x-mdr-internal')).toBe('1')
+    expect(new URL(seen[0]!.url).pathname).toBe(`/parties/doc-room/${room.roomId}/purge`)
+  })
+
+  it('external /purge never reaches routeParty', async () => {
+    const { store, a } = await twoRooms()
+    const edit = await store.createLink(a.roomId, { role: 'edit', expiresIn: null })
+    const routeParty = vi.fn(ok)
+    const res = await handleRequest(
+      new Request(`http://x/parties/doc-room/${a.roomId}/purge?token=${edit.token}`, {
+        method: 'POST',
+        headers: { 'x-mdr-internal': '1' },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(404)
+    expect(routeParty).not.toHaveBeenCalled()
   })
 })

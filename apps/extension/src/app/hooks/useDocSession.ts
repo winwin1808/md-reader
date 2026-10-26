@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@md-reader/ui'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
@@ -38,6 +38,7 @@ export interface DocSession {
   dismissExternal(): void
   syncStatus: SyncStatus
   awareness: RoomConnection['awareness'] | null
+  persisted?: () => Promise<void>
 }
 
 export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null; room?: RoomBinding | null; displayName?: string }): DocSession {
@@ -119,6 +120,15 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         console.warn('Failed to initialize IndexeddbPersistence:', err)
       }
     }
+    persistedRef.current = () => new Promise<void>((resolve) => {
+      const db = (persistence as unknown as { db?: IDBDatabase | null } | null)?.db
+      if (!db) return resolve()
+      try {
+        const tx = db.transaction('updates', 'readonly')
+        tx.oncomplete = tx.onerror = tx.onabort = () => resolve()
+        tx.objectStore('updates').count()
+      } catch { resolve() }
+    })
     let tracker: CheckpointTracker | null = null
     setCheckpoints(null)
     checkpointsRef.current = null
@@ -198,6 +208,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     }
   }, [doc, persistenceName, record])
 
+  const persistedRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const persisted = useCallback(() => persistedRef.current(), [])
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('off')
   const [awareness, setAwareness] = useState<RoomConnection['awareness'] | null>(null)
   const nameRef = useRef(displayName)
@@ -417,5 +429,6 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     dismissExternal,
     syncStatus,
     awareness,
+    persisted,
   }
 }

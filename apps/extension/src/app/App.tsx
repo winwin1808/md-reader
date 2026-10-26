@@ -22,6 +22,7 @@ import {
   Logo,
   HistoryTimeline,
   historyLabel,
+  ConfirmAgentDialog,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
@@ -51,9 +52,14 @@ import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useHistory } from './hooks/useHistory'
 import { useExport } from './hooks/useExport'
+import { useAgentConfirm } from './hooks/useAgentConfirm'
 import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
+import { useBridgeSettings } from './hooks/useBridgeSettings'
+import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
+import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
+import { createBridgeExecutor, type ExecSession } from './bridge-executor'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
 import { createImageSaver } from './image-saver'
@@ -98,6 +104,10 @@ const SELF_HOST_GUIDE_URL = 'https://github.com/winwin1808/md-reader/blob/main/d
 export function App(): React.JSX.Element {
   const t = useT()
   const locale = useLocale()
+  const bridge = useBridgeSettings()
+  useEffect(() => {
+    try { void Promise.resolve(chrome.runtime.sendMessage({ type: BRIDGE_SCAN_MSG })).catch(() => {}) } catch { /* ignore */ }
+  }, [])
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS)
   const [fontScale, setFontScale] = useState<FontScale>('md')
   const [tocRailOpen, setTocRailOpen] = useState<boolean>(true)
@@ -319,6 +329,37 @@ export function App(): React.JSX.Element {
   const [exportOpen, setExportOpen] = useState<boolean>(false)
   const [shareOpen, setShareOpen] = useState<boolean>(false)
   const share = useShare({ docId: session.docId, serverUrl: serverUrl ?? '' })
+  const execSessionRef = useRef<ExecSession | null>(null)
+  const agentConfirm = useAgentConfirm()
+  execSessionRef.current = session.docId && yText ? {
+    docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null,
+    share: {
+      serverUrl: share.binding?.serverUrl ?? serverUrl ?? '',
+      enable: share.enable,
+      createLink: share.createLink,
+      revoke: share.revoke,
+      refresh: share.refresh,
+      links: () => share.currentLinks(),
+      bound: () => share.currentBinding() !== null,
+    },
+    confirm: agentConfirm.confirm,
+  } : null
+  useEffect(() => {
+    const onMsg = chrome?.runtime?.onMessage
+    if (!onMsg?.addListener) return
+    const exec = createBridgeExecutor(() => execSessionRef.current)
+    const listener = (msg: unknown, sender: { id?: string; tab?: unknown }, sendResponse: (r: unknown) => void): boolean | undefined => {
+      const m = msg as Partial<ExecMsg> | null
+      if (!m || m.type !== BRIDGE_EXEC_MSG || !m.req) return undefined
+      if (sender.id !== chrome.runtime.id || sender.tab) return undefined
+      const req = m.req
+      const client = typeof m.client === 'string' && m.client ? m.client : 'AI'
+      void exec(req, client).then(sendResponse, (err) => sendResponse({ type: 'res', id: req.id, ok: false, error: { code: 'INTERNAL', message: String(err) } }))
+      return true
+    }
+    onMsg.addListener(listener)
+    return () => onMsg.removeListener(listener)
+  }, [])
   const shareServer = !serverUrl
     ? ({ state: 'missing' } as const)
     : share.error === t('ext.share.unreachable')
@@ -763,6 +804,9 @@ export function App(): React.JSX.Element {
           onShare={session.docId ? () => setShareOpen(true) : undefined}
         />
         <>
+          {agentConfirm.pending && (
+            <ConfirmAgentDialog req={agentConfirm.pending.req} client={agentConfirm.pending.client} onAllow={agentConfirm.allow} onDeny={agentConfirm.deny} />
+          )}
           <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
           <ShareModal
             open={shareOpen}
@@ -774,6 +818,7 @@ export function App(): React.JSX.Element {
             onRevoke={share.revoke}
             onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
+            onDeleteRemote={share.deleteRemote}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl ?? '', t)}
             busy={share.busy}
             error={share.error}
@@ -781,7 +826,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} />
+          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
         </>
         {isReadingMode && (
           <button

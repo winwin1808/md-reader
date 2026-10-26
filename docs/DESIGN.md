@@ -440,6 +440,31 @@ Spec: `docs/superpowers/specs/2026-10-25-phase-9-design.md`.
 | 9e | E2E | Playwright live preview + copy link |
 | 9f | Ship | 1.2.0, listing |
 
+### Phase 10 — MCP cục bộ + gia cố multi-tenant
+
+Ship: *AI (Claude Desktop/Code, Cursor) đưa tài liệu thẳng vào MD Reader qua MCP cục bộ, chia sẻ chỉ khi người dùng
+duyệt; máy chủ chung có rate limit, quota, xoá dữ liệu, báo cáo/gỡ nội dung.*
+Spec: `docs/superpowers/specs/2026-10-26-phase-10-design.md`. Cầu nối: `@md-reader/mcp` mở WS trên `127.0.0.1:47821..47830`,
+service worker nối ra (mặc định tắt, ghép cặp do người dùng duyệt), thao tác tài liệu thực thi trong app page.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 10a | Spike cầu nối | SW MV3 ↔ WS localhost: quyền, vòng đời, alarms; bảng §5.7 + luật chọn WS/native messaging |
+| 10b | `core/bridge` | Kiểu message/tool, `parseBridgeMessage`, `validateToolArgs`, `textHash` |
+| 10c | Giới hạn | D1 `0003_tenancy`, `LimitStore`, 429 cho tạo phòng/upload theo khoá bản cài + IP + toàn cục |
+| 10d | Xoá phòng (store) | `deleteRoom` cho token/asset/limit store |
+| 10e | Xoá phòng (route) | `DELETE /api/rooms/:id`, `DocRoom.purge()` |
+| 10f | Báo cáo & gỡ | `POST /api/report`, takedown admin bằng `ADMIN_SECRET` |
+| 10g | Web | Nút báo cáo, `Notice` thay `window.alert`, trang đã gỡ |
+| 10h | Extension tenancy | Gửi `x-mdr-install`, thông báo 429, nút "Xoá dữ liệu trên máy chủ" |
+| 10i | MCP bridge server | `packages/mcp` scaffold, pairing, WS server, Origin check |
+| 10j | MCP tools | 7 tool trên `McpServer`, CLI stdio |
+| 10k | Cầu nối extension | Quét cổng, alarms, ghép cặp `PairDialog`, Settings "Kết nối AI" |
+| 10l | publish/list/get | Thực thi trong app page, mở tab nền |
+| 10m | `update_doc` | `baseHash` chống đè, `applyTextChange` |
+| 10n | Share qua xác nhận | `ConfirmAgentDialog`, `share_doc`/`list_links`/`revoke_link` |
+| 10o | Docs & ship | `docs/MCP.md`, ROADMAP, privacy/listing, e2e, 1.3.0 |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
@@ -682,3 +707,21 @@ phút hai người. Không stage nào được ship 8c trước khi bảng này 
 | (5) `onConnect` đọc header upgrade | Có: đọc được `x-mdr-role=view` từ `ctx.request.headers`; phải gọi `super.onConnect(conn, ctx)` | 8a0.1 |
 
 Kết luận theo luật quyết định của spec 8a0: hội tụ = yes; Free nhận SQLite DO = yes; mức dùng 5,37 % ≥ 5 % nên batching update phía client được đưa vào Deferred 8c. R2 chưa bật trên tài khoản (lỗi 10042) nên 8a3 phải chờ bật R2.
+
+### 5.7 Cầu nối MCP ↔ extension — đã đo 2026-10-26
+
+Spike 10a (`docs/superpowers/plans/2026-10-26-phase-10-10a-plan.md`), Chromium unbranded 1726815 `--headless=new`,
+load-unpacked, WS server `ws` trên `127.0.0.1`.
+
+| Câu hỏi | Kết quả quan sát | Nguồn (task) |
+|---|---|---|
+| (1) SW MV3 mở `ws://127.0.0.1` không cần host permission? | Có, không lỗi; manifest chỉ `alarms` + `storage`. Server thấy `Origin: chrome-extension://<id>` | 10a.1 |
+| (2) Kết nối giữ SW sống khi nhàn rỗi? | Không: SW bị dừng 30 s sau message cuối (CLOSE 1001, 2/2 lượt). Ping 20 s giữ sống trọn 6 phút (17 ping, 1 lần start) | 10a.1 |
+| (3) Alarm 30 s đánh thức SW đã dừng và nối lại? | Có: 26.1 · 29.9 · 29.9 s. Chỉ khi không có debugger gắn vào SW | 10a.2 |
+| (4) Quét 10 cổng | 7–28 ms (dừng ở cổng mở), 104 ms khi đóng hết; mỗi cổng bị từ chối sinh log `net::ERR_CONNECTION_REFUSED` mức error | 10a.2 |
+
+**Kết luận:** (1) có và ping giữ được → **giữ WebSocket localhost**, không host permission, không native messaging.
+Bắt buộc: ping `{type:'ping'}` mỗi 20 s từ extension khi đã nối; `chrome.alarms` 0.5 phút để sống lại sau khi SW bị
+dừng (độ trễ nối lại ≤ ~30 s, nên `connectWaitMs` 35 s của MCP đủ). E2E không được giữ handle CDP trên SW.
+Log lỗi cổng đóng chỉ phát sinh khi người dùng đã bật Kết nối AI (mặc định tắt); 10k giảm tiếng ồn bằng cách sau 10 lượt
+quét trắng liên tiếp chỉ quét mỗi 5 phút, và quét ngay khi app page mở hoặc khi bật lại trong Cài đặt.

@@ -25,6 +25,7 @@ export {
   ensureDoc,
 } from './doc/doc.js'
 export * from './doc/apply.js'
+export { applyTextChangeAsActor } from './doc/apply-as.js'
 export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
 
 export { defaultFormatOptions, formatMarkdown } from './format/index.js'
@@ -49,3 +50,4 @@ export * from './share/index.js'
 export { computeBlame } from './doc/blame.js'
 export type { BlameRange } from './doc/blame.js'
 export { textAtCheckpoint, restoreCheckpoint } from './doc/restore.js'
+export * from './bridge/protocol.js'

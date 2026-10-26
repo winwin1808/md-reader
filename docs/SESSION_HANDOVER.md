@@ -1,8 +1,56 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-25. Branch: `main` — phase 8 đã merge vào `main` (PR #4, commit `e0b9a75`). Bước kế: publish 1.1.0 lên Chrome Web Store.
+Cập nhật: 2026-10-26. Branch: `phase-10` — **phase 10 đã ship**, MR https://github.com/winwin1808/md-reader/pull/7 (`phase-10` → `main`) **đang mở, chưa merge**.
 
-## Đang ở đâu
+## Phase 10 — MCP cục bộ + gia cố multi-tenant (v1.3.0)
+
+Spec `docs/superpowers/specs/2026-10-26-phase-10-design.md` (shipped), intent `docs/superpowers/intent/2026-10-26-phase-10-mcp-cuc-bo.md`,
+plan `docs/superpowers/plans/2026-10-26-phase-10-10{a..o}-plan.md`. Hướng dẫn người dùng: `docs/MCP.md` / `docs/MCP.en.md`.
+
+Trạng thái xanh lúc ship (đo thật trên `phase-10`):
+
+```
+packages/core test        249 passed
+packages/ui test          468 passed
+apps/extension test       400 passed (15/15 lượt dưới tải CPU sau 10o.5)
+apps/web test              57 passed
+apps/api test             129 passed
+packages/mcp test          34 passed
+extension e2e               8 passed (có mcp.spec.ts: CLI MCP thật ↔ extension)
+api smoke:tenancy          OK (wrangler dev + D1 --local; 429 ở phòng thứ 21)
+pnpm -r typecheck / build  exit 0
+dist/content.js gz         13 615 B (ngân sách 61 440)
+dist/worker.js gz          ~101 KB (tăng từ ~72 KB: worker kéo yjs/y-indexeddb cho publish_doc)
+version                    1.3.0 (extension + @md-reader/mcp)
+```
+
+### Việc người làm trước khi phát hành 1.3.0
+1. Duyệt + merge MR #7.
+2. Máy chủ: `set -a; . ~/.config/md-reader/cloudflare.env` rồi `wrangler d1 migrations apply <DB> --remote` (migration `0003_tenancy`),
+   `wrangler secret put ADMIN_SECRET`, `pnpm deploy:api`; chạy `scripts/smoke.mjs` với URL thật. Gỡ nội dung: `apps/api/scripts/takedown.mjs`.
+3. `npm publish` `@md-reader/mcp@1.3.0` (cần `pnpm --filter @md-reader/mcp build` trước).
+4. Chrome Web Store: `node apps/extension/scripts/package.mjs` (zip đã bỏ `key`), nộp 1.3.0; khi có ID store → thêm vào
+   `KNOWN_EXTENSION_IDS` (`packages/core/src/bridge/protocol.ts`) và phát hành mcp bản vá.
+5. Điền liên hệ trong `docs/store/privacy-policy.md`; form Data usage khớp `listing.md`.
+6. Khuyến nghị: chạy skill `security-audit` (đã thêm ở `.claude/skills/security-audit`, MIT, Cloudflare) ở chế độ audit đầy đủ trước khi nộp store.
+7. Site `le-sach.github.io`: tạo org GitHub `le-sach` (web UI), rồi repo `le-sach/le-sach.github.io` từ `site/`, đổi URL tuyệt đối `md-reader-winwin.pages.dev` → `le-sach.github.io`, bật Pages.
+
+### Khoá / bí mật (ngoài repo, không commit)
+- Khoá riêng extension: `~/.config/md-reader/extension-key.pem` (0600) — sinh ra `key` trong manifest để ID cố định `ojcemoafaibjfghljkbagnkbgljakbji`.
+- Credential Cloudflare: `~/.config/md-reader/cloudflare.env` — chỉ `source`, không in.
+- File ghép cặp MCP: `~/.config/md-reader/mcp.json` (pairKey — không log/in).
+
+### Nợ mở từ phase 10
+- Remote MCP + OAuth — hoãn (ghi ở ROADMAP), làm bản tự host trước khi có nhu cầu.
+- `bindRoom` chưa xử lý close 4410 (phòng bị xoá từ máy khác → provider nối lại mãi); `getInstallKey` lỗi storage hiện là "lỗi mạng"; hai tab lần đầu có thể sinh hai khoá.
+- useShare: cửa sổ render→effect khi đổi docId (binding cũ còn trong ref); đổi tài liệu giữa `enable()` để lại phòng mồ côi (không tạo link).
+- `usage_daily` không bao giờ được dọn (privacy đã nói "chưa tự xoá") — nên có cron/dọn.
+- originKind `mcp` + actor checkpoint theo tên client (đang là "AI"); `meta.actors` thêm một mục mỗi lần `update_doc`.
+- `addTakedown` không atomic; `revokedUntil` không dọn; client bị thu hồi nối lại trong 60 s không được hỏi lại (docs đã ghi).
+- Flake `src/flows/ux-reading.flow.test.tsx` thấy 1 lần dưới tải CPU; `namesBefore` trong useDocSession.test chưa reset ở mọi beforeEach.
+- ConfirmAgentDialog: bẫy Tab chỉ ở hàng nút.
+
+## Trước phase 10 (lịch sử)
 
 - **Phase 9 (Sửa thẳng trên trang) đã ship** trên branch `phase-9`, MR vào `main` (xem CLAUDE.md Status 2026-10-25). Token Cloudflare để deploy nằm ở `~/.config/md-reader/cloudflare.env` (ngoài repo): `set -a; . ~/.config/md-reader/cloudflare.env; pnpm deploy:api`.
 
@@ -58,9 +106,7 @@ service worker — 7o xong) · khoá Web Lock khi import cùng URL · e2e cộng
 
 ## Món nợ đang mở
 
-- **Không có endpoint xoá dữ liệu phòng**: tắt chia sẻ/thu hồi chỉ đặt `revoked_at`; nội dung DO và
-  dòng D1 vẫn còn. Cần `DELETE /api/rooms/:id` (owner) xoá DO storage + D1 trước khi nhiều người dùng.
-- Không có rate limit cho `POST /api/rooms`; không có revoke-all phía server.
+- ~~Không có endpoint xoá dữ liệu phòng / không rate limit~~ — đã làm ở phase 10 (`DELETE /api/rooms/:id`, giới hạn/ngày D1). Vẫn chưa có revoke-all phía server.
 - `registerActor` ở doc chưa khởi tạo chờ map `actors` vô hạn (phòng luôn seed từ doc chủ nên không xảy ra thực tế).
 - Giới hạn cursor awareness đếm ký tự, không phải byte (đã chặn tổng 16 KB/message); 413 đếm theo UTF-16.
 - History drawer: đè nội dung, không trả focus khi đóng, chưa phân trang.

@@ -1,6 +1,8 @@
 import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
+import { D1LimitStore } from './limits.js'
 import { authorizeWs, handleApi, safeDecode } from './api.js'
+import { D1ModerationStore } from './moderation.js'
 import { D1AssetStore } from './assets.js'
 import { D1TokenStore } from './tokens-d1.js'
 import type { TokenStore } from './tokens.js'
@@ -26,7 +28,7 @@ function json(body: unknown, status = 200): Response {
 function withCors(res: Response): Response {
   const headers = new Headers(res.headers)
   headers.set('access-control-allow-origin', '*')
-  headers.set('access-control-expose-headers', 'content-type')
+  headers.set('access-control-expose-headers', 'content-type, retry-after')
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
 }
 
@@ -41,7 +43,7 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
         headers: {
           'access-control-allow-origin': '*',
           'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
-          'access-control-allow-headers': 'authorization, content-type',
+          'access-control-allow-headers': 'authorization, content-type, x-mdr-install',
           'access-control-max-age': '86400',
         },
       })
@@ -49,6 +51,19 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
     try {
       return withCors((await handleApi(req, store, {
         assets: new D1AssetStore(env.DB),
+        limits: new D1LimitStore(env.DB),
+        moderation: new D1ModerationStore(env.DB),
+        ...(env.ADMIN_SECRET ? { adminSecret: env.ADMIN_SECRET } : {}),
+        purge: (roomId) =>
+          deps
+            .routeParty(
+              new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/purge`, {
+                method: 'POST',
+                headers: { 'x-mdr-internal': '1' },
+              }),
+              env,
+            )
+            .then(() => undefined),
         snapshot: (roomId) =>
           deps.routeParty(
             new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {

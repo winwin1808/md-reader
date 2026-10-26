@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useT } from '../i18n';
+import { useT, useLocale } from '../i18n';
 import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
@@ -71,6 +71,12 @@ export interface SettingsModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultServerUrl?: string;
+  aiBridge?: {
+    enabled: boolean;
+    clients: Array<{ keyHash: string; client: string; at: number }>;
+    onToggle(enabled: boolean): void;
+    onRevoke(keyHash: string): void;
+  };
 }
 
 const SECTIONS = [
@@ -80,6 +86,7 @@ const SECTIONS = [
   { id: 'aids', label: 'settings.section.aids' as const },
   { id: 'slides', label: 'settings.section.slides' as const },
   { id: 'collab', label: 'settings.section.collab' as const },
+  { id: 'ai', label: 'settings.section.ai' as const },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -422,6 +429,7 @@ function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) 
 
 export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   const t = useT();
+  const locale = useLocale();
   const {
     settings,
     onSettingChange,
@@ -438,6 +446,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
+  const sections = SECTIONS.filter((s) => s.id !== 'ai' || props.aiBridge);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -485,11 +494,11 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
     const body = bodyRef.current;
     if (!body || lockRef.current) return;
     if (body.scrollHeight > body.clientHeight && body.scrollTop + body.clientHeight >= body.scrollHeight - 2) {
-      setCurrent(SECTIONS[SECTIONS.length - 1]!.id);
+      setCurrent(sections[sections.length - 1]!.id);
       return;
     }
-    let found: SectionId = SECTIONS[0].id;
-    for (const s of SECTIONS) {
+    let found: SectionId = sections[0]!.id;
+    for (const s of sections) {
       const el = sectionRefs.current[s.id];
       if (el && el.offsetTop - body.offsetTop <= body.scrollTop + 8) found = s.id;
     }
@@ -584,7 +593,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
         <div className="settings-layout">
           {wide && (
             <nav className="settings-index" aria-label={t('settings.nav')}>
-              {SECTIONS.map((s) => (
+              {sections.map((s) => (
                 <button
                   key={s.id}
                   type="button"
@@ -869,6 +878,33 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     />
                   </div>
 </section>
+{props.aiBridge && (
+<section aria-labelledby="settings-h-ai" id="settings-sec-ai" data-section={"ai"} className="settings-group" ref={(el) => { sectionRefs.current['ai'] = el }}>
+<h3 id="settings-h-ai" className="settings-group-title">{t('settings.section.ai')}</h3>
+                  <ToggleRow
+                    id="settings-ai-enable"
+                    title={t('settings.ai.enable')}
+                    description={t('settings.ai.enableDesc')}
+                    checked={props.aiBridge.enabled}
+                    onChange={props.aiBridge.onToggle}
+                  />
+                  {props.aiBridge.clients.length === 0 ? (
+                    <div className="settings-row-desc">{t('settings.ai.none')}</div>
+                  ) : (
+                    props.aiBridge.clients.map((c) => (
+                      <div className="settings-row" key={c.keyHash}>
+                        <div className="settings-row-info">
+                          <div className="settings-row-label">{c.client}</div>
+                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(locale)}</div>
+                        </div>
+                        <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
+                          {t('settings.ai.revoke')}
+                        </button>
+                      </div>
+                    ))
+                  )}
+</section>
+)}
           </div>
         </div>
       </div>

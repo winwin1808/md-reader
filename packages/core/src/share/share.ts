@@ -78,14 +78,21 @@ export function wsHost(serverUrl: string): string {
 
 export const API_PATHS = {
   rooms: '/api/rooms',
+  room: (roomId: string) => `/api/rooms/${roomId}`,
   links: (roomId: string) => `/api/rooms/${roomId}/links`,
   revoke: (roomId: string, prefix: string) => `/api/rooms/${roomId}/links/${prefix}`,
   resolve: (token: string) => `/api/s/${token}`,
   snapshot: (token: string) => `/api/s/${token}/snapshot`,
   assets: (roomId: string) => `/api/rooms/${roomId}/assets`,
   asset: (id: string) => `/api/a/${id}`,
+  report: '/api/report',
   party: 'doc-room',
 } as const
+
+export interface ReportRequest { token: string; reason: string }
+
+export const INSTALL_HEADER = 'x-mdr-install'
+export type LimitErrorCode = 'RATE_LIMITED' | 'QUOTA_EXCEEDED'
 
 export interface UploadAssetResponse {
   id: string

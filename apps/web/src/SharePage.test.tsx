@@ -13,7 +13,7 @@ vi.mock('@md-reader/ui', async (orig) => ({
   },
 }))
 import { SharePage } from './SharePage'
-import { loadShare, renderShareHtml, tokenFromPath } from './share-client'
+import { loadShare, renderShareHtml, tokenFromPath, sendReport } from './share-client'
 
 afterEach(() => { cleanup(); document.title = '' })
 
@@ -161,5 +161,45 @@ describe('SharePage roles', () => {
     await waitFor(() => expect(screen.getByTestId('viewer')).toBeTruthy())
     expect(screen.queryByText('Bắt đầu sửa')).toBeNull()
     expect(document.querySelector('.cm-editor')).toBeNull()
+  })
+})
+
+describe('sendReport', () => {
+  const mk = (status: number | 'throw'): typeof fetch =>
+    (async () => { if (status === 'throw') throw new Error('x'); return new Response('', { status }) }) as unknown as typeof fetch
+  it('maps statuses', async () => {
+    expect(await sendReport(TOKEN, 'r', mk(202))).toBe('sent')
+    expect(await sendReport(TOKEN, 'r', mk(429))).toBe('limited')
+    expect(await sendReport(TOKEN, 'r', mk(500))).toBe('failed')
+    expect(await sendReport(TOKEN, 'r', mk('throw'))).toBe('failed')
+  })
+})
+
+describe('SharePage report', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+  const open = async (): Promise<void> => {
+    render(<SharePage token={TOKEN} load={(t) => loadShare(t, fakeFetch(200))} />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeTruthy())
+    fireEvent.click(screen.getByText('Báo cáo nội dung'))
+  }
+  it('send disabled when empty; 202 closes form and notifies', async () => {
+    const f = vi.fn(async () => new Response('', { status: 202 }))
+    vi.stubGlobal('fetch', f)
+    await open()
+    const send = screen.getByText('Gửi báo cáo') as HTMLButtonElement
+    expect(send.disabled).toBe(true)
+    expect(f).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Lý do báo cáo'), { target: { value: 'spam' } })
+    expect(send.disabled).toBe(false)
+    fireEvent.click(send)
+    await waitFor(() => expect(screen.getByText(/Đã gửi báo cáo/)).toBeTruthy())
+    expect(screen.queryByLabelText('Lý do báo cáo')).toBeNull()
+  })
+  it('429 shows limit notice', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 429 })))
+    await open()
+    fireEvent.change(screen.getByLabelText('Lý do báo cáo'), { target: { value: 'spam' } })
+    fireEvent.click(screen.getByText('Gửi báo cáo'))
+    await waitFor(() => expect(screen.getByText(/quá nhiều báo cáo/)).toBeTruthy())
   })
 })

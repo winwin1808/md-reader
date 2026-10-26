@@ -10,6 +10,7 @@ export class DocRoom extends YServer<Env> {
 
   private stats: LogStats = { updates: 0, bytes: 0 }
   private queue: Promise<unknown> = Promise.resolve()
+  private purged = false
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -28,13 +29,27 @@ export class DocRoom extends YServer<Env> {
   }
 
   private persistUpdate(u: Uint8Array): Promise<void> {
+    if (this.purged) return Promise.resolve()
     return this.enqueue(async () => {
+      if (this.purged) return
       this.stats = await appendUpdate(this.kv, u, this.stats)
       if (shouldCompact(this.stats, false)) this.stats = await compact(this.kv, this.document)
     })
   }
 
+  async purge(): Promise<void> {
+    this.purged = true
+    for (const c of [...this.getConnections()]) c.close(4410, 'deleted')
+    await this.queue
+    await this.ctx.storage.deleteAll()
+    await this.ctx.storage.put('tombstone', 1)
+  }
+
   async onLoad(): Promise<void> {
+    if (await this.ctx.storage.get('tombstone')) {
+      this.purged = true
+      return
+    }
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
@@ -44,7 +59,9 @@ export class DocRoom extends YServer<Env> {
   }
 
   async onSave(): Promise<void> {
+    if (this.purged) return
     await this.enqueue(async () => {
+      if (this.purged) return
       const empty = [...this.getConnections()].length === 0
       if (shouldCompact(this.stats, empty)) this.stats = await compact(this.kv, this.document)
     })
@@ -52,9 +69,9 @@ export class DocRoom extends YServer<Env> {
 
   private compactIfEmpty(closing: Connection): void {
     const others = [...this.getConnections()].filter((c) => c.id !== closing.id)
-    if (others.length > 0 || this.stats.updates === 0) return
+    if (this.purged || others.length > 0 || this.stats.updates === 0) return
     void this.enqueue(async () => {
-      if (this.stats.updates > 0) this.stats = await compact(this.kv, this.document)
+      if (!this.purged && this.stats.updates > 0) this.stats = await compact(this.kv, this.document)
     }).catch((e) => console.error('compact failed', e))
   }
 
@@ -69,6 +86,10 @@ export class DocRoom extends YServer<Env> {
   }
 
   onConnect(conn: Connection, ctx: ConnectionContext): void {
+    if (this.purged) {
+      conn.close(4410, 'deleted')
+      return
+    }
     const role = ctx.request.headers.get('x-mdr-role') ?? 'view'
     conn.setState({ role })
     super.onConnect(conn, ctx)
@@ -81,6 +102,7 @@ export class DocRoom extends YServer<Env> {
   }
 
   handleMessage(conn: Connection, message: string | ArrayBuffer | ArrayBufferView): void {
+    if (this.purged) return
     if (typeof message === 'string') return super.handleMessage(conn, message)
     const bytes =
       message instanceof Uint8Array
@@ -103,6 +125,11 @@ export class DocRoom extends YServer<Env> {
 
   async onRequest(req: Request): Promise<Response> {
     const url = new URL(req.url)
+    if (req.method === 'POST' && req.headers.get('x-mdr-internal') === '1' && url.pathname.endsWith('/purge')) {
+      await this.purge()
+      return new Response(null, { status: 204 })
+    }
+    if (this.purged && url.pathname.endsWith('/snapshot')) return new Response('gone', { status: 410 })
     if (req.method === 'GET' && req.headers.get('x-mdr-internal') === '1' && url.pathname.endsWith('/snapshot')) {
       return new Response(Y.encodeStateAsUpdate(this.document) as unknown as BodyInit, {
         status: 200,

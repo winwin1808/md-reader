@@ -1,5 +1,6 @@
-import { API_PATHS, type UploadAssetResponse } from '@md-reader/core'
+import { API_PATHS, INSTALL_HEADER, type UploadAssetResponse } from '@md-reader/core'
 import { createT } from '@md-reader/ui'
+import { getInstallKey, limitMessage } from './collab/tenancy'
 import type { ImageSaver, TFunction } from '@md-reader/ui'
 
 export interface ImageSaverCtx {
@@ -28,13 +29,19 @@ export async function uploadImage(serverUrl: string, room: string, token: string
   const MSG_NET = t('ext.image.net')
   let res: Response
   try {
+    const install = await getInstallKey()
     res = await fetch(serverUrl.replace(/\/+$/, '') + API_PATHS.assets(room), {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'content-type': file.type },
+      headers: { Authorization: `Bearer ${token}`, 'content-type': file.type, [INSTALL_HEADER]: install },
       body: file,
     })
   } catch {
     throw new Error(MSG_NET)
+  }
+  if (res.status === 429) {
+    let body: unknown = null
+    try { body = await res.json() } catch { /* ignore */ }
+    throw new Error(limitMessage(t, 429, body) ?? MSG_NET)
   }
   if (res.status === 413) {
     let code = ''

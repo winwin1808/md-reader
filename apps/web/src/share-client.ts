@@ -6,6 +6,7 @@ import {
   exportText,
   parseMarkdown,
   renderToHtml,
+  type ReportRequest,
   type ResolveTokenResponse,
 } from '@md-reader/core'
 
@@ -59,4 +60,22 @@ export function renderShareHtml(text: string, locale: Locale = 'vi'): string {
     externalLinks: true,
     plugins: PLUGINS,
   }).html
+}
+
+export type ReportResult = 'sent' | 'limited' | 'failed'
+
+export async function sendReport(token: string, reason: string, fetchFn: typeof fetch = fetch): Promise<ReportResult> {
+  try {
+    const body: ReportRequest = { token, reason }
+    const res = await fetchFn(API_PATHS.report, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.status === 202) return 'sent'
+    if (res.status === 429) return 'limited'
+    return 'failed'
+  } catch {
+    return 'failed'
+  }
 }

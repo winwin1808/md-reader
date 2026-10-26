@@ -327,3 +327,178 @@ describe('hardening (8a2.5)', () => {
     })
   })
 })
+
+describe('handleApi limits', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4])
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryAssetStore } = await import('./assets.js')
+    return { store: new MemoryTokenStore(now), limits: new MemoryLimitStore(now), assets: new MemoryAssetStore() }
+  }
+  const post = (headers: Record<string, string> = {}) =>
+    new Request('http://x/api/rooms', { method: 'POST', headers })
+
+  it('21st room from one install is 429 with retry-after', async () => {
+    const { store, limits } = await mk()
+    const h = { 'x-mdr-install': 'i'.repeat(20) }
+    for (let i = 0; i < 20; i++) expect((await handleApi(post(h), store, { limits }))!.status).toBe(201)
+    const r = (await handleApi(post(h), store, { limits }))!
+    expect(r.status).toBe(429)
+    expect(r.headers.get('retry-after')).toBeTruthy()
+    const b = (await r.json()) as { error: string; retryAfter: number }
+    expect(b.error).toBe('RATE_LIMITED')
+    expect(b.retryAfter).toBeGreaterThan(0)
+  })
+
+  it('51st room from one IP without install header is 429', async () => {
+    const { store, limits } = await mk()
+    const h = { 'CF-Connecting-IP': '1.2.3.4' }
+    for (let i = 0; i < 50; i++) expect((await handleApi(post(h), store, { limits }))!.status).toBe(201)
+    expect((await handleApi(post(h), store, { limits }))!.status).toBe(429)
+  })
+
+  it('asset upload 429 after 100/day; 403 does not consume quota', async () => {
+    const { store, limits, assets } = await mk()
+    const h = { 'x-mdr-install': 'j'.repeat(20) }
+    const room = (await (await handleApi(post(h), store, { limits }))!.json()) as { roomId: string; ownerToken: string }
+    const up = (bearer: string) =>
+      new Request(`http://x/api/rooms/${room.roomId}/assets`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${bearer}`, 'content-type': 'image/png', ...h },
+        body: PNG,
+      })
+    for (let i = 0; i < 5; i++) expect((await handleApi(up('bad'), store, { limits, assets }))!.status).toBe(403)
+    for (let i = 0; i < 100; i++) expect((await handleApi(up(room.ownerToken), store, { limits, assets }))!.status).toBe(201)
+    const r = (await handleApi(up(room.ownerToken), store, { limits, assets }))!
+    expect(r.status).toBe(429)
+    expect(r.headers.get('retry-after')).toBeTruthy()
+  })
+})
+
+describe('DELETE /api/rooms/:roomId (10e.2)', () => {
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryAssetStore } = await import('./assets.js')
+    return { limits: new MemoryLimitStore(now), assets: new MemoryAssetStore() }
+  }
+
+  it('owner deletes: 204, links die, other room intact, purge called', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const other = await store.createRoom()
+    const edit = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const view = await store.createLink(roomId, { role: 'view', expiresIn: null })
+    const purge = vi.fn(async () => {})
+    const deps = { ...(await mk()), purge }
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, deps))!
+    expect(res.status).toBe(204)
+    expect(purge).toHaveBeenCalledWith(roomId)
+    expect((await handleApi(req('GET', `/api/s/${view.token}`), store))!.status).toBe(410)
+    expect(
+      (await handleApi(req('POST', `/api/rooms/${roomId}/links`, { bearer: ownerToken, body: { role: 'view', expiresIn: null } }), store))!.status,
+    ).toBe(401)
+    expect((await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: edit.token }), store))!.status).toBe(401)
+    expect((await handleApi(req('GET', `/api/rooms/${other.roomId}/links`, { bearer: other.ownerToken }), store))!.status).toBe(200)
+  })
+
+  it('edit/view link cannot delete; unknown room 401', async () => {
+    const { store, roomId } = await setup()
+    const edit = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const purge = vi.fn(async () => {})
+    expect((await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: edit.token }), store, { purge }))!.status).toBe(401)
+    expect((await handleApi(req('DELETE', '/api/rooms/nope', { bearer: 'x' }), store, { purge }))!.status).toBe(401)
+    expect(purge).not.toHaveBeenCalled()
+  })
+
+  it('purge failure still 204', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const purge = vi.fn(async () => { throw new Error('boom') })
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { purge }))!
+    expect(res.status).toBe(204)
+    err.mockRestore()
+  })
+
+  it('assets failure still calls purge and returns 204', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const d = await mk()
+    d.assets.deleteRoom = async () => { throw new Error('boom') }
+    const purge = vi.fn(async () => {})
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { ...d, purge }))!
+    expect(res.status).toBe(204)
+    expect(purge).toHaveBeenCalledWith(roomId)
+    err.mockRestore()
+  })
+
+  it('clears authCache entries so old token is 410 immediately', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const link = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    const wsReq = new Request(`http://x/parties/doc-room/${roomId}?token=${link.token}`)
+    const first = await authorizeWs(wsReq, store, now)
+    expect(first).toMatchObject({ roomId })
+    expect(_authCacheSize()).toBe(1)
+    await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store)
+    expect(_authCacheSize()).toBe(0)
+    expect(((await authorizeWs(wsReq, store, now)) as Response).status).toBe(410)
+  })
+})
+
+describe('handleApi report + admin takedown', () => {
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryModerationStore } = await import('./moderation.js')
+    const s = await setup()
+    const link = await s.store.createLink(s.roomId, { role: 'view', expiresIn: null })
+    return { ...s, link, limits: new MemoryLimitStore(now), moderation: new MemoryModerationStore(now) }
+  }
+  const rep = (body: unknown, h: Record<string, string> = {}) =>
+    new Request('http://x/api/report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...h },
+      body: JSON.stringify(body),
+    })
+
+  it('valid report by view link -> 202 and recorded', async () => {
+    const { store, roomId, link, limits, moderation } = await mk()
+    const res = (await handleApi(rep({ token: link.token, reason: ' spam ' }), store, { limits, moderation }))!
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(moderation.reports).toHaveLength(1)
+    expect(moderation.reports[0]).toMatchObject({ roomId, reason: 'spam' })
+  })
+
+  it('bad token 404; bad reason 400; no moderation 501', async () => {
+    const { store, link, limits, moderation } = await mk()
+    expect((await handleApi(rep({ token: 'nope', reason: 'x' }), store, { limits, moderation }))!.status).toBe(404)
+    expect((await handleApi(rep({ token: link.token, reason: '' }), store, { limits, moderation }))!.status).toBe(400)
+    expect((await handleApi(rep({ token: link.token, reason: 'a'.repeat(501) }), store, { limits, moderation }))!.status).toBe(400)
+    expect((await handleApi(rep({ token: link.token, reason: 'x' }), store, { limits }))!.status).toBe(501)
+  })
+
+  it('11th report from one IP is 429', async () => {
+    const { store, link, limits, moderation } = await mk()
+    const h = { 'CF-Connecting-IP': '9.9.9.9' }
+    for (let i = 0; i < 10; i++)
+      expect((await handleApi(rep({ token: link.token, reason: 'x' }, h), store, { limits, moderation }))!.status).toBe(202)
+    expect((await handleApi(rep({ token: link.token, reason: 'x' }, h), store, { limits, moderation }))!.status).toBe(429)
+  })
+
+  const tk = (roomId: string, bearer?: string) =>
+    req('POST', `/api/admin/rooms/${roomId}/takedown`, bearer === undefined ? {} : { bearer })
+
+  it('admin: 404 without secret, 401 wrong, 204 right then link is 410', async () => {
+    const { store, roomId, link, moderation } = await mk()
+    expect((await handleApi(tk(roomId, 's3'), store, { moderation }))!.status).toBe(404)
+    expect((await handleApi(tk(roomId, 'bad'), store, { moderation, adminSecret: 's3' }))!.status).toBe(401)
+    expect(moderation.takedowns.size).toBe(0)
+    expect((await handleApi(tk(roomId, 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(204)
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(410)
+    expect(moderation.takedowns.has(roomId)).toBe(true)
+  })
+
+  it('takedown of missing room is 404 and records nothing', async () => {
+    const { store, moderation } = await mk()
+    expect((await handleApi(tk('ghost', 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(404)
+    expect(moderation.takedowns.size).toBe(0)
+  })
+})
