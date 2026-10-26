@@ -184,7 +184,8 @@ Routes: `DELETE /api/rooms/:roomId` (owner) → 204 / 404; `POST /api/report` �
 
 ### `@md-reader/mcp` (mới, `packages/mcp`)
 
-Node ≥ 20, ESM, `bin: { "md-reader-mcp": "dist/cli.js" }`. Phụ thuộc: `@modelcontextprotocol/sdk`, `ws`, `@md-reader/core`.
+Node ≥ 20, ESM, `bin: { "md-reader-mcp": "dist/cli.js" }`. Import core qua subpath `@md-reader/core/bridge` (core là gói private
+xuất TS) và Vite build `dist/cli.js` nhúng sẵn phần bridge; pin `@modelcontextprotocol/sdk` 1.32.1, `zod` 4.6.5, `ws` 8.22.0. Phụ thuộc: `@modelcontextprotocol/sdk`, `ws`, `@md-reader/core`.
 KHÔNG react, KHÔNG `chrome.*`, KHÔNG giữ Y.Doc.
 
 ```ts
@@ -194,6 +195,7 @@ export function loadOrCreatePairKey(path?: string): Promise<string>
 // src/bridge-server.ts
 export interface BridgeServer {
   readonly port: number
+  setClient(name: string): void                                          // tên client MCP biết sau initialize
   call<T extends BridgeTool>(tool: T, args: BridgeArgsMap[T], timeoutMs?: number): Promise<BridgeResultMap[T]>
   close(): Promise<void>
 }
@@ -387,7 +389,7 @@ SESSION_HANDOVER.
 - 10f: done
 - 10g: done
 - 10h: done
-- 10i: pending
+- 10i: planned
 - 10j: pending
 - 10k: pending
 - 10l: pending
