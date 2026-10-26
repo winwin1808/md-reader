@@ -392,7 +392,7 @@ SESSION_HANDOVER.
 - 10f: done
 - 10g: done
 - 10h: done
-- 10i: planned
+- 10i: done      (pin ID extension `ojcemoafaibjfghljkbagnkbgljakbji`, maxPayload 16 MiB, ≤4 kết nối, pair file nguyên tử)
 - 10j: pending
 - 10k: pending
 - 10l: pending
