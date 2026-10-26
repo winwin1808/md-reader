@@ -418,6 +418,18 @@ describe('DELETE /api/rooms/:roomId (10e.2)', () => {
     err.mockRestore()
   })
 
+  it('assets failure still calls purge and returns 204', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const d = await mk()
+    d.assets.deleteRoom = async () => { throw new Error('boom') }
+    const purge = vi.fn(async () => {})
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { ...d, purge }))!
+    expect(res.status).toBe(204)
+    expect(purge).toHaveBeenCalledWith(roomId)
+    err.mockRestore()
+  })
+
   it('clears authCache entries so old token is 410 immediately', async () => {
     const { store, roomId, ownerToken } = await setup()
     const link = await store.createLink(roomId, { role: 'edit', expiresIn: null })

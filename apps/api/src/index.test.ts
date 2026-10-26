@@ -248,4 +248,20 @@ describe('DELETE /api/rooms/:roomId', () => {
     expect(seen[0]!.headers.get('x-mdr-internal')).toBe('1')
     expect(new URL(seen[0]!.url).pathname).toBe(`/parties/doc-room/${room.roomId}/purge`)
   })
+
+  it('external /purge never reaches routeParty', async () => {
+    const { store, a } = await twoRooms()
+    const edit = await store.createLink(a.roomId, { role: 'edit', expiresIn: null })
+    const routeParty = vi.fn(ok)
+    const res = await handleRequest(
+      new Request(`http://x/parties/doc-room/${a.roomId}/purge?token=${edit.token}`, {
+        method: 'POST',
+        headers: { 'x-mdr-internal': '1' },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(404)
+    expect(routeParty).not.toHaveBeenCalled()
+  })
 })

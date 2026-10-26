@@ -179,4 +179,27 @@ describe('DocRoom.purge', () => {
     room.onConnect(c as never, ctxReq())
     expect(c.close).toHaveBeenCalledWith(4410, 'deleted')
   })
+  it('purge after a queued persistUpdate leaves only the tombstone', async () => {
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    const r = room as unknown as { persistUpdate: (u: Uint8Array) => Promise<void> }
+    const d = new Y.Doc()
+    d.getText('t').insert(0, 'x')
+    const p = r.persistUpdate(Y.encodeStateAsUpdate(d))
+    await room.purge()
+    await p
+    expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
+  it('onSave and last-connection close after purge keep only the tombstone', async () => {
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    ;(room as unknown as { stats: unknown }).stats = { updates: 5, bytes: 1e9 }
+    await room.purge()
+    await room.onSave()
+    const closeSpy = vi.spyOn(YServer.prototype as unknown as { onClose: () => Promise<void> }, 'onClose').mockResolvedValue(undefined)
+    await room.onClose(fakeConn() as never, 1000, '', true)
+    await (room as unknown as { queue: Promise<unknown> }).queue
+    closeSpy.mockRestore()
+    expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
 })

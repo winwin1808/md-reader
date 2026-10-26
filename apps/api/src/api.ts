@@ -263,12 +263,15 @@ export async function deleteRoomEverywhere(
 ): Promise<boolean> {
   const ok = await d.store.deleteRoom(roomId)
   for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
-  await d.assets?.deleteRoom(roomId)
-  await d.limits?.forgetRoom(roomId)
-  try {
-    await d.purge?.(roomId)
-  } catch {
-    console.error('purge failed', roomId)
+  const step = async (name: string, f?: () => Promise<unknown>) => {
+    try {
+      await f?.()
+    } catch {
+      console.error(`${name} failed`, roomId)
+    }
   }
+  await step('assets.deleteRoom', d.assets && (() => d.assets!.deleteRoom(roomId)))
+  await step('limits.forgetRoom', d.limits && (() => d.limits!.forgetRoom(roomId)))
+  await step('purge', d.purge && (() => d.purge!(roomId)))
   return ok
 }
