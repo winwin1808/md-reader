@@ -774,6 +774,7 @@ export function App(): React.JSX.Element {
             onRevoke={share.revoke}
             onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
+            onDeleteRemote={share.deleteRemote}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl ?? '', t)}
             busy={share.busy}
             error={share.error}

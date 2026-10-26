@@ -25,6 +25,7 @@ beforeEach(async () => {
   ;(globalThis as any).chrome = { storage: { local: {
     get: async (k: string) => (k in store ? { [k]: store[k] } : {}),
     set: async (o: Record<string, unknown>) => { Object.assign(store, o) },
+    remove: async (k: string) => { delete store[k] },
   } } }
 })
 
@@ -332,6 +333,64 @@ describe('useShare', () => {
       const h = renderHook(() => useShare({ docId, serverUrl: SERVER }))
       await act(async () => { await expect(h.result.current.revokeAll()).rejects.toThrow('Chưa bật chia sẻ') })
       expect(fetchMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('deleteRemote', () => {
+    async function boundWithLink() {
+      const h = await bound()
+      fetchMock.mockReturnValueOnce(json(link('SECRET', 'aaaa')))
+      await act(async () => { await h.result.current.createLink({ role: 'view', expiresIn: null }) })
+      expect(store['mdr.links.r1']).toBeTruthy()
+      return h
+    }
+    for (const status of [204, 404]) {
+      it(`DELETE ${status} unbinds, clears links and cache`, async () => {
+        const h = await boundWithLink()
+        fetchMock.mockReturnValueOnce(Promise.resolve(new Response(status === 204 ? null : '{}', { status })))
+        await act(async () => { await h.result.current.deleteRemote() })
+        const [url, init] = fetchMock.mock.calls[2]
+        expect(url).toBe(`${SERVER}/api/rooms/r1`)
+        expect(init.method).toBe('DELETE')
+        expect(init.headers.Authorization).toBe('Bearer own')
+        expect(h.result.current.binding).toBeNull()
+        expect(h.result.current.links).toEqual([])
+        expect(store['mdr.links.r1']).toBeUndefined()
+        expect((await getRecord(docId))?.room).toBeUndefined()
+      })
+    }
+    it('401 + resolve 410 unbinds as if deleted', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 410 })))
+      await act(async () => { await h.result.current.deleteRemote() })
+      expect(fetchMock.mock.calls[3][0]).toBe(`${SERVER}/api/s/own`)
+      expect(h.result.current.binding).toBeNull()
+      expect(store['mdr.links.r1']).toBeUndefined()
+      expect((await getRecord(docId))?.room).toBeUndefined()
+    })
+    it('401 + resolve 200 throws and keeps binding', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 200 })))
+      await act(async () => { await expect(h.result.current.deleteRemote()).rejects.toThrow() })
+      expect(h.result.current.binding?.roomId).toBe('r1')
+      expect(store['mdr.links.r1']).toBeTruthy()
+    })
+    it('401 + resolve network error throws and keeps binding', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      fetchMock.mockReturnValueOnce(Promise.reject(new TypeError('net')))
+      await act(async () => { await expect(h.result.current.deleteRemote()).rejects.toThrow() })
+      expect(h.result.current.binding?.roomId).toBe('r1')
+      expect(store['mdr.links.r1']).toBeTruthy()
+    })
+    it('401 throws and keeps binding', async () => {
+      const h = await boundWithLink()
+      fetchMock.mockReturnValueOnce(Promise.resolve(new Response('{}', { status: 401 })))
+      await act(async () => { await expect(h.result.current.deleteRemote()).rejects.toThrow() })
+      expect(h.result.current.binding?.roomId).toBe('r1')
+      expect(store['mdr.links.r1']).toBeTruthy()
     })
   })
 })

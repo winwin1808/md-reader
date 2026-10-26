@@ -25,3 +25,9 @@ export async function forgetLinkToken(room: string, prefix: string): Promise<voi
     await chrome.storage.local.set({ [key(room)]: cur })
   } catch { /* best effort */ }
 }
+
+export async function forgetRoomTokens(room: string): Promise<void> {
+  try {
+    await chrome.storage.local.remove(key(room))
+  } catch { /* best effort */ }
+}

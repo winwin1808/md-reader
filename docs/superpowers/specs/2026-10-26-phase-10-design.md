@@ -386,7 +386,7 @@ SESSION_HANDOVER.
 - 10e: done      (purge + tombstone; mọi bước sau D1 không chặn purge — 10e.3)
 - 10f: done
 - 10g: done
-- 10h: pending
+- 10h: done
 - 10i: pending
 - 10j: pending
 - 10k: pending

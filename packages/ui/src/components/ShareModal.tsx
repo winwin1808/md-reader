@@ -9,6 +9,7 @@ import '../theme/share.css'
 export interface ShareModalProps {
   open: boolean
   onClose(): void
+  onDeleteRemote?: () => Promise<void>
   binding: RoomBinding | null
   links: ShareLink[]
   onEnable(): Promise<void>
@@ -36,7 +37,7 @@ export function formatRemaining(expiresAt: number | null, now: number, t: TFunct
 type Expiry = '7d' | '30d' | 'never'
 
 export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
-  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, now = Date.now, buildUrl, busy, error, server, onSaveServer, guideUrl } = props
+  const { open, onClose, binding, links, onEnable, onCreateLink, onRevoke, onRecreate, onRevokeAll, onDeleteRemote, now = Date.now, buildUrl, busy, error, server, onSaveServer, guideUrl } = props
   const t = useT()
   const [serverInput, setServerInput] = useState(server?.url ?? '')
   const titleId = useId()
@@ -50,6 +51,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
   const [label, setLabel] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null)
   const [confirmAll, setConfirmAll] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [showLabel, setShowLabel] = useState(false)
   const [showOff, setShowOff] = useState(false)
   const [created, setCreated] = useState<ShareLink | null>(null)
@@ -61,6 +63,7 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
       setLocalError(null)
       setConfirming(null)
       setConfirmAll(false)
+      setConfirmDelete(false)
       setCreated(null)
       setShowOff(false)
       setShowLabel(false)
@@ -290,6 +293,18 @@ export function ShareModal(props: ShareModalProps): React.JSX.Element | null {
                   </span>
                 ) : (
                   <button type="button" disabled={busy} className="share-text-btn is-danger" onClick={() => setConfirmAll(true)}>{t('share.turnOff')}</button>
+                )
+              )}
+              {onDeleteRemote && (
+                confirmDelete ? (
+                  <span className="share-confirm">
+                    <span>{t('share.deleteRemoteQ')}</span>
+                    <button type="button" disabled={busy} className="share-text-btn is-danger"
+                      onClick={() => { setConfirmDelete(false); void run(() => onDeleteRemote()) }}>{t('share.yes')}</button>
+                    <button type="button" className="share-text-btn" onClick={() => setConfirmDelete(false)}>{t('share.no')}</button>
+                  </span>
+                ) : (
+                  <button type="button" disabled={busy} className="share-text-btn is-danger" onClick={() => setConfirmDelete(true)}>{t('share.deleteRemote')}</button>
                 )
               )}
             </div>

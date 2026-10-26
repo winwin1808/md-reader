@@ -61,6 +61,9 @@ export const vi = {
   'ext.notice.gotIt': 'Đã hiểu',
   'ext.empty.title': 'Mở một tài liệu Markdown',
   'ext.empty.hint': 'Kéo file .md vào cửa sổ này, hoặc chọn từ máy.',
+  'ext.limit.rate': 'Đã đạt giới hạn hôm nay, thử lại sau khoảng {hours} giờ',
+  'ext.limit.rateSoon': 'Đã đạt giới hạn, thử lại sau',
+  'ext.limit.quota': 'Đã hết dung lượng chia sẻ của máy này. Xoá bớt tài liệu đã chia sẻ để giải phóng.',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -126,4 +129,7 @@ export const en: Record<keyof typeof vi, string> = {
   'ext.notice.gotIt': 'Got it',
   'ext.empty.title': 'Open a Markdown document',
   'ext.empty.hint': 'Drag a .md file into this window, or choose one from your device.',
+  'ext.limit.rate': 'Daily limit reached, try again in about {hours} h',
+  'ext.limit.rateSoon': 'Limit reached, try again later',
+  'ext.limit.quota': 'This device has used its sharing quota. Delete some shared documents to free space.',
 }

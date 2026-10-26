@@ -361,4 +361,33 @@ describe('ShareModal setup panel', () => {
     setup()
     expect(screen.getByRole('button', { name: 'Tạo link' })).toBeTruthy()
   })
+
+  describe('delete remote', () => {
+    it('hides the button without binding', () => {
+      setup({ binding: null, onDeleteRemote: vi.fn() })
+      expect(screen.queryByText('Xoá dữ liệu trên máy chủ')).toBeNull()
+    })
+    it('asks, "No" cancels without calling', () => {
+      const onDeleteRemote = vi.fn().mockResolvedValue(undefined)
+      setup({ onDeleteRemote })
+      fireEvent.click(screen.getByText('Xoá dữ liệu trên máy chủ'))
+      expect(screen.getByText(/Xoá vĩnh viễn nội dung/)).toBeTruthy()
+      fireEvent.click(screen.getByText('Không'))
+      expect(screen.queryByText(/Xoá vĩnh viễn nội dung/)).toBeNull()
+      expect(onDeleteRemote).not.toHaveBeenCalled()
+    })
+    it('"Yes" calls once', async () => {
+      const onDeleteRemote = vi.fn().mockResolvedValue(undefined)
+      setup({ onDeleteRemote })
+      fireEvent.click(screen.getByText('Xoá dữ liệu trên máy chủ'))
+      fireEvent.click(screen.getByText('Có'))
+      await waitFor(() => expect(onDeleteRemote).toHaveBeenCalledTimes(1))
+    })
+    it('shows error on reject', async () => {
+      setup({ onDeleteRemote: vi.fn().mockRejectedValue(new Error('boom')) })
+      fireEvent.click(screen.getByText('Xoá dữ liệu trên máy chủ'))
+      fireEvent.click(screen.getByText('Có'))
+      expect((await screen.findByRole('alert')).textContent).toContain('boom')
+    })
+  })
 })

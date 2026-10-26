@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useT } from '@md-reader/ui'
 import type { TFunction } from '@md-reader/ui'
-import { API_PATHS, SHARE_EXPIRY_PRESETS } from '@md-reader/core'
+import { API_PATHS, INSTALL_HEADER, SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, CreateRoomResponse, RoomBinding, ShareLink } from '@md-reader/core'
-import { saveLinkToken, getLinkTokens, forgetLinkToken } from './link-cache'
+import { saveLinkToken, getLinkTokens, forgetLinkToken, forgetRoomTokens } from './link-cache'
+import { getInstallKey, limitMessage } from './tenancy'
 import { getRecord, touchRecord } from '../doc-registry'
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -16,7 +17,13 @@ async function call<T>(t: TFunction, url: string, init: RequestInit): Promise<T>
   } catch {
     throw new Error(t('ext.share.unreachable'))
   }
-  if (res.status === 401) throw new Error(t('ext.share.forbidden'))
+  if (res.status === 401) throw Object.assign(new Error(t('ext.share.forbidden')), { status: 401 })
+  if (res.status === 429) {
+    let body: unknown = null
+    try { body = await res.json() } catch { /* ignore */ }
+    const m = limitMessage(t, 429, body)
+    throw Object.assign(new Error(m ?? t('ext.share.serverError', { status: 429 })), { status: 429 })
+  }
   if (!res.ok) throw Object.assign(new Error(t('ext.share.serverError', { status: res.status })), { status: res.status })
   if (res.status === 204) return undefined as T
   let text: string
@@ -98,7 +105,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     if (!docId) throw new Error(t('ext.share.noDoc'))
     if (enabling.current) return enabling.current
     const p: Promise<RoomBinding> = run(async (stale) => {
-      const r = await call<CreateRoomResponse>(t, `${serverUrl}${API_PATHS.rooms}`, { method: 'POST' })
+      const r = await call<CreateRoomResponse>(t, `${serverUrl}${API_PATHS.rooms}`, { method: 'POST', headers: { [INSTALL_HEADER]: await getInstallKey() } })
       if (!isObj(r) || typeof r.roomId !== 'string' || typeof r.ownerToken !== 'string') throw new Error(INVALID)
       const b: RoomBinding = { serverUrl, roomId: r.roomId, ownerToken: r.ownerToken }
       await touchRecord(docId, { room: b })
@@ -196,5 +203,31 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     }
   }), [run, refresh])
 
-  return { binding, links, enable, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
+  const deleteRemote = useCallback(() => run(async (stale) => {
+    const b = need()
+    try {
+      await call<unknown>(t, `${b.serverUrl}${API_PATHS.room(b.roomId)}`, { method: 'DELETE', headers: auth(b) })
+    } catch (e) {
+      const st = (e as { status?: number }).status
+      if (st === 401) {
+        let gone = false
+        try {
+          const r = await fetch(`${b.serverUrl}${API_PATHS.resolve(b.ownerToken)}`)
+          gone = r.status === 410 || r.status === 404
+        } catch { /* mạng lỗi: coi như chưa rõ */ }
+        if (!gone) throw e
+      } else if (st !== 404) throw e
+    }
+    await forgetRoomTokens(b.roomId)
+    await touchRecord(docId as string, { room: undefined })
+    if (!stale()) {
+      bindingRef.current = null
+      tokens.current.clear()
+      session.current.clear()
+      setBinding(null)
+      setLinks([])
+    }
+  }), [run, docId])
+
+  return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error }
 }
