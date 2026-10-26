@@ -41,8 +41,8 @@ export async function adminAuthorized(req: Request, secret: string | undefined):
   if (!secret) return false
   const m = /^Bearer (.*)$/.exec(req.headers.get('authorization') ?? '')
   if (!m) return false
-  const [a, b] = await Promise.all([sha256(m[1]), sha256(secret)])
+  const [a, b] = await Promise.all([sha256(m[1] ?? ''), sha256(secret)])
   let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0)
   return diff === 0
 }
