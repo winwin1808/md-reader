@@ -1,6 +1,7 @@
 import type { CreateLinkRequest, ResolveTokenResponse, ShareRole } from '@md-reader/core'
 import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAssetResponse } from '@md-reader/core'
 import type { AssetStore } from './assets.js'
+import { MAX_REASON, adminAuthorized, type ModerationStore } from './moderation.js'
 import { subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
 import { RoomNotFoundError, hashToken, type TokenStore } from './tokens.js'
 
@@ -50,6 +51,8 @@ export interface ApiDeps {
   assets?: AssetStore
   limits?: LimitStore
   purge?: (roomId: string) => Promise<void>
+  moderation?: ModerationStore
+  adminSecret?: string
 }
 
 function limited(v: NonNullable<LimitVerdict>): Response {
@@ -85,6 +88,52 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     const room = await store.createRoom()
     await deps.limits.record('room', subj, { roomId: room.roomId })
     return json(room, 201)
+  }
+
+  if (path === '/api/report' && method === 'POST') {
+    let body: unknown
+    try {
+      const text = await req.text()
+      if (text.length > MAX_BODY) return json({ error: 'invalid body' }, 400)
+      body = JSON.parse(text)
+    } catch {
+      return json({ error: 'invalid body' }, 400)
+    }
+    const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+    const reason = typeof b.reason === 'string' ? b.reason.trim() : ''
+    if (typeof b.token !== 'string' || b.token.length < 1 || b.token.length > 200 || reason.length < 1 || reason.length > MAX_REASON)
+      return json({ error: 'invalid body' }, 400)
+    const r = await store.resolve(b.token)
+    if (!r) return json({ error: 'not found' }, 404)
+    if (!deps.moderation) return json({ error: 'not available' }, 501)
+    const subj = await subjectFrom(req)
+    if (deps.limits) {
+      const v = await deps.limits.check('report', subj)
+      if (v) return limited(v)
+    }
+    await deps.moderation.addReport({ roomId: r.roomId, reason, ipHash: subj.ipHash })
+    if (deps.limits) await deps.limits.record('report', subj, { roomId: r.roomId })
+    return json({ ok: true }, 202)
+  }
+
+  if (path.startsWith('/api/admin/')) {
+    if (!deps.adminSecret) return json({ error: 'not found' }, 404)
+    const m = /^\/api\/admin\/rooms\/([^/]+)\/takedown$/.exec(path)
+    if (m && method === 'POST') {
+      if (!(await adminAuthorized(req, deps.adminSecret))) return json({ error: 'unauthorized' }, 401)
+      const roomId = safeDecode(m[1]!)
+      if (roomId === null) return json({ error: 'bad path' }, 400)
+      const ok = await deleteRoomEverywhere(roomId, {
+        store,
+        ...(deps.assets ? { assets: deps.assets } : {}),
+        ...(deps.limits ? { limits: deps.limits } : {}),
+        ...(deps.purge ? { purge: deps.purge } : {}),
+      })
+      if (!ok) return json({ error: 'not found' }, 404)
+      await deps.moderation?.addTakedown(roomId)
+      return new Response(null, { status: 204 })
+    }
+    return json({ error: 'not found' }, 404)
   }
 
   const badPath = () => json({ error: 'bad path' }, 400)

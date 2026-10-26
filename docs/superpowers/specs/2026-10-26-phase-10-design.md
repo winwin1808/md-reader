@@ -384,7 +384,7 @@ SESSION_HANDOVER.
 - 10c: done      (LimitStore + 429; phòng không khoá giới hạn ảnh theo IP — 10c.3)
 - 10d: done
 - 10e: done      (purge + tombstone; mọi bước sau D1 không chặn purge — 10e.3)
-- 10f: pending
+- 10f: done
 - 10g: pending
 - 10h: pending
 - 10i: pending

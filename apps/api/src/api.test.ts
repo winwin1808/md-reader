@@ -442,3 +442,63 @@ describe('DELETE /api/rooms/:roomId (10e.2)', () => {
     expect(((await authorizeWs(wsReq, store, now)) as Response).status).toBe(410)
   })
 })
+
+describe('handleApi report + admin takedown', () => {
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryModerationStore } = await import('./moderation.js')
+    const s = await setup()
+    const link = await s.store.createLink(s.roomId, { role: 'view', expiresIn: null })
+    return { ...s, link, limits: new MemoryLimitStore(now), moderation: new MemoryModerationStore(now) }
+  }
+  const rep = (body: unknown, h: Record<string, string> = {}) =>
+    new Request('http://x/api/report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...h },
+      body: JSON.stringify(body),
+    })
+
+  it('valid report by view link -> 202 and recorded', async () => {
+    const { store, roomId, link, limits, moderation } = await mk()
+    const res = (await handleApi(rep({ token: link.token, reason: ' spam ' }), store, { limits, moderation }))!
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(moderation.reports).toHaveLength(1)
+    expect(moderation.reports[0]).toMatchObject({ roomId, reason: 'spam' })
+  })
+
+  it('bad token 404; bad reason 400; no moderation 501', async () => {
+    const { store, link, limits, moderation } = await mk()
+    expect((await handleApi(rep({ token: 'nope', reason: 'x' }), store, { limits, moderation }))!.status).toBe(404)
+    expect((await handleApi(rep({ token: link.token, reason: '' }), store, { limits, moderation }))!.status).toBe(400)
+    expect((await handleApi(rep({ token: link.token, reason: 'a'.repeat(501) }), store, { limits, moderation }))!.status).toBe(400)
+    expect((await handleApi(rep({ token: link.token, reason: 'x' }), store, { limits }))!.status).toBe(501)
+  })
+
+  it('11th report from one IP is 429', async () => {
+    const { store, link, limits, moderation } = await mk()
+    const h = { 'CF-Connecting-IP': '9.9.9.9' }
+    for (let i = 0; i < 10; i++)
+      expect((await handleApi(rep({ token: link.token, reason: 'x' }, h), store, { limits, moderation }))!.status).toBe(202)
+    expect((await handleApi(rep({ token: link.token, reason: 'x' }, h), store, { limits, moderation }))!.status).toBe(429)
+  })
+
+  const tk = (roomId: string, bearer?: string) =>
+    req('POST', `/api/admin/rooms/${roomId}/takedown`, bearer === undefined ? {} : { bearer })
+
+  it('admin: 404 without secret, 401 wrong, 204 right then link is 410', async () => {
+    const { store, roomId, link, moderation } = await mk()
+    expect((await handleApi(tk(roomId, 's3'), store, { moderation }))!.status).toBe(404)
+    expect((await handleApi(tk(roomId, 'bad'), store, { moderation, adminSecret: 's3' }))!.status).toBe(401)
+    expect(moderation.takedowns.size).toBe(0)
+    expect((await handleApi(tk(roomId, 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(204)
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(410)
+    expect(moderation.takedowns.has(roomId)).toBe(true)
+  })
+
+  it('takedown of missing room is 404 and records nothing', async () => {
+    const { store, moderation } = await mk()
+    expect((await handleApi(tk('ghost', 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(404)
+    expect(moderation.takedowns.size).toBe(0)
+  })
+})
