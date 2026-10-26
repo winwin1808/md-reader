@@ -6,7 +6,7 @@ import { startBridgeServer } from './bridge-server'
 import { loadOrCreatePairKey } from './pairing'
 import { registerTools } from './tools'
 
-export const VERSION = '0.1.0'
+export const VERSION = '1.3.0'
 
 export async function main(
   deps: {
