@@ -26,6 +26,9 @@ minh trên gói Free, và không đếm được quota tích luỹ); đếm tron
 
 - Trang web bất kỳ **không** điều khiển được extension qua cầu nối: extension là bên nối ra; trang web không mở được kết
   nối vào service worker.
+- **Extension lạ** trên cùng trình duyệt không nối được vào MCP: server chỉ nhận Origin `chrome-extension://<id>` với id thuộc
+  `KNOWN_EXTENSION_IDS` (manifest có `key` cố định → ID `ojcemoafaibjfghljkbagnkbgljakbji`; ID store thêm khi phát hành;
+  `MDR_EXTENSION_ID` ghi đè). Origin do trình duyệt đặt nên không giả được (quyết định sau review 10i, người dùng duyệt 2026-10-26).
 - Tiến trình lạ chiếm cổng trước MCP thật: không có tác dụng nếu chưa được người dùng duyệt ghép cặp (khoá chưa biết).
 - Phần mềm độc hại đã chạy với quyền người dùng (đọc được file `~/.config/md-reader/mcp.json`) **nằm ngoài phạm vi** — nó
   vốn đọc được IndexedDB của Chrome.
