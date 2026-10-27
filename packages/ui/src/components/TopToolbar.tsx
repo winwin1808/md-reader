@@ -9,7 +9,7 @@ import '../theme/toolbar.css'
 export type FontScale = 'sm' | 'md' | 'lg' | 'xl'
 
 export type SaveStatus =
-  | { kind: 'none' } | { kind: 'dirty' } | { kind: 'saving' } | { kind: 'saved'; at: number }
+  | { kind: 'none' } | { kind: 'dirty'; ai?: boolean } | { kind: 'saving' } | { kind: 'saved'; at: number }
   | { kind: 'error'; message?: string; onRetry(): void } | { kind: 'needs-permission'; onGrant(): void }
 
 export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
@@ -77,7 +77,10 @@ function StatusView({ status }: { status: SaveStatus }): React.JSX.Element {
   let title: string | undefined
   switch (status.kind) {
     case 'dirty':
-      content = t('toolbar.status.dirty')
+      if (status.ai) {
+        content = t('toolbar.status.aiUnsaved')
+        title = t('toolbar.status.aiUnsavedHint')
+      } else content = t('toolbar.status.dirty')
       break
     case 'saving':
       content = t('toolbar.status.saving')
