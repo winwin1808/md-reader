@@ -31,7 +31,7 @@ describe('cli main', () => {
     stdout.on('data', (d) => (out += d))
     stderr.on('data', (d) => (err += d))
     const h = await main({ stdin, stdout, stderr, pairPath, ports: [port] })
-    expect(err).toContain(`md-reader-mcp ${VERSION} listening on 127.0.0.1:${port}`)
+    expect(err).toContain(`le-sach-mcp ${VERSION} listening on 127.0.0.1:${port}`)
     const raw = readFileSync(pairPath, 'utf8')
     const key = (JSON.parse(raw) as { pairKey?: string; key?: string }).pairKey ?? (JSON.parse(raw) as { key?: string }).key
     expect(typeof key).toBe('string')
@@ -67,7 +67,7 @@ const distCli = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'cli
 describe('cli via symlink', () => {
   it.skipIf(!existsSync(distCli))('starts through a bin symlink and exits 0 on stdin end', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'mdr-link-'))
-    const link = join(dir, 'md-reader-mcp')
+    const link = join(dir, 'le-sach-mcp')
     symlinkSync(distCli, link)
     const child = spawn(process.execPath, [link], {
       env: { ...process.env, MDR_PAIR_FILE: join(dir, 'mcp.json') },

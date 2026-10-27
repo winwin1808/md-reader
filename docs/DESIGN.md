@@ -444,7 +444,7 @@ Spec: `docs/superpowers/specs/2026-10-25-phase-9-design.md`.
 
 Ship: *AI (Claude Desktop/Code, Cursor) đưa tài liệu thẳng vào MD Reader qua MCP cục bộ, chia sẻ chỉ khi người dùng
 duyệt; máy chủ chung có rate limit, quota, xoá dữ liệu, báo cáo/gỡ nội dung.*
-Spec: `docs/superpowers/specs/2026-10-26-phase-10-design.md`. Cầu nối: `@md-reader/mcp` mở WS trên `127.0.0.1:47821..47830`,
+Spec: `docs/superpowers/specs/2026-10-26-phase-10-design.md`. Cầu nối: `le-sach-mcp` mở WS trên `127.0.0.1:47821..47830`,
 service worker nối ra (mặc định tắt, ghép cặp do người dùng duyệt), thao tác tài liệu thực thi trong app page.
 
 | # | Phase con | Xong nghĩa là |

@@ -32,7 +32,7 @@ export async function main(
       (deps.stdout ?? process.stdout) as import('node:stream').Writable,
     ),
   )
-  stderr.write(`md-reader-mcp ${VERSION} listening on 127.0.0.1:${bridge.port}\n`)
+  stderr.write(`le-sach-mcp ${VERSION} listening on 127.0.0.1:${bridge.port}\n`)
   return {
     async close() {
       await server.close()
@@ -66,7 +66,7 @@ if (isDirectRun(import.meta.url, process.argv[1])) {
   process.on('SIGTERM', stop)
   process.stdin.on('end', stop)
   running.catch((e: unknown) => {
-    process.stderr.write(`md-reader-mcp: ${e instanceof Error ? e.message : String(e)}\n`)
+    process.stderr.write(`le-sach-mcp: ${e instanceof Error ? e.message : String(e)}\n`)
     process.exit(1)
   })
 }

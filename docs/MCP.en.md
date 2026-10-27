@@ -4,7 +4,7 @@ Vietnamese version: [MCP.md](MCP.md)
 
 ## 1. What local MCP is
 
-`@md-reader/mcp` is an MCP (Model Context Protocol) server that runs **on your own computer**. It talks to your AI client (Claude Desktop, Claude Code, Cursor, ...) over stdio, and reaches the MD Reader Chrome extension through a WebSocket bridge that listens only on `127.0.0.1`. There is no intermediate server: documents live in your Chrome and are not uploaded anywhere unless you share them yourself.
+`le-sach-mcp` is an MCP (Model Context Protocol) server that runs **on your own computer**. It talks to your AI client (Claude Desktop, Claude Code, Cursor, ...) over stdio, and reaches the MD Reader Chrome extension through a WebSocket bridge that listens only on `127.0.0.1`. There is no intermediate server: documents live in your Chrome and are not uploaded anywhere unless you share them yourself.
 
 The bridge is **off by default**. The extension accepts connections only after you turn it on in Settings.
 
@@ -15,7 +15,7 @@ The bridge is **off by default**. The extension accepts connections only after y
 Requires Node >= 20. Nothing to install beforehand; your client runs:
 
 ```
-npx -y @md-reader/mcp
+npx -y le-sach-mcp
 ```
 
 ## 3. Client configuration
@@ -27,7 +27,7 @@ npx -y @md-reader/mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "@md-reader/mcp"]
+      "args": ["-y", "le-sach-mcp"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y @md-reader/mcp
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y @md-reader/mcp
+claude mcp add md-reader -- npx -y le-sach-mcp
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y @md-reader/mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "@md-reader/mcp"]
+      "args": ["-y", "le-sach-mcp"]
     }
   }
 }

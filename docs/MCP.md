@@ -4,7 +4,7 @@ Bản tiếng Anh: [MCP.en.md](MCP.en.md)
 
 ## 1. MCP cục bộ là gì
 
-`@md-reader/mcp` là một máy chủ MCP (Model Context Protocol) chạy **ngay trên máy bạn**, nói chuyện với client AI (Claude Desktop, Claude Code, Cursor...) qua stdio. Nó nối với extension MD Reader trong Chrome qua một cầu nối WebSocket chỉ lắng nghe trên `127.0.0.1`. Không có máy chủ trung gian: tài liệu nằm trong Chrome của bạn và không được tải lên đâu cả, trừ khi bạn tự chia sẻ.
+`le-sach-mcp` là một máy chủ MCP (Model Context Protocol) chạy **ngay trên máy bạn**, nói chuyện với client AI (Claude Desktop, Claude Code, Cursor...) qua stdio. Nó nối với extension MD Reader trong Chrome qua một cầu nối WebSocket chỉ lắng nghe trên `127.0.0.1`. Không có máy chủ trung gian: tài liệu nằm trong Chrome của bạn và không được tải lên đâu cả, trừ khi bạn tự chia sẻ.
 
 Cầu nối **tắt mặc định**. Bạn phải bật trong Cài đặt thì extension mới nhận kết nối.
 
@@ -15,7 +15,7 @@ Cầu nối **tắt mặc định**. Bạn phải bật trong Cài đặt thì e
 Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bằng:
 
 ```
-npx -y @md-reader/mcp
+npx -y le-sach-mcp
 ```
 
 ## 3. Cấu hình client
@@ -27,7 +27,7 @@ npx -y @md-reader/mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "@md-reader/mcp"]
+      "args": ["-y", "le-sach-mcp"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y @md-reader/mcp
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y @md-reader/mcp
+claude mcp add md-reader -- npx -y le-sach-mcp
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y @md-reader/mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "@md-reader/mcp"]
+      "args": ["-y", "le-sach-mcp"]
     }
   }
 }
