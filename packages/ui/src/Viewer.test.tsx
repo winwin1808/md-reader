@@ -241,3 +241,29 @@ describe('Viewer resolveImage', () => {
     expect(imgs[2]!.getAttribute('alt')).toBe('c')
   })
 })
+
+describe('Viewer code header XSS (11a)', () => {
+  it('does not inject markup from code class names', () => {
+    const w = window as unknown as Record<string, unknown>
+    const htmls = [
+      '<pre><code class="language-<img src=x onerror=window.__x=1>">x</code></pre>',
+      '<pre><code class="foo&quot;><img src=x onerror=window.__y=1>">x</code></pre>',
+    ]
+    for (const html of htmls) {
+      const { container } = render(<Viewer html={html} />)
+      expect(container.querySelector('.code-block-header img')).toBeNull()
+      expect(container.querySelector('.code-lang-badge')).toBeNull()
+      expect(container.querySelector('.code-copy-btn')).not.toBeNull()
+    }
+    expect(w.__x).toBeUndefined()
+    expect(w.__y).toBeUndefined()
+  })
+  it('shows badge for language-ts, none without language class', () => {
+    const a = render(<Viewer html={'<pre><code class="language-ts">x</code></pre>'} />)
+    expect(a.container.querySelector('.code-lang-badge')!.textContent).toBe('ts')
+    a.unmount()
+    const b = render(<Viewer html={'<pre><code>x</code></pre>'} />)
+    expect(b.container.querySelector('.code-lang-badge')).toBeNull()
+    expect(b.container.querySelector('.code-copy-btn')).not.toBeNull()
+  })
+})

@@ -53,13 +53,13 @@ describe('Viewer code copy and header enhancement', () => {
     expect(copyBtn?.classList.contains('copied')).toBe(false)
   })
 
-  it('defaults to "text" if language is not specified', () => {
+  it('shows no badge if language is not specified', () => {
     const html = '<pre><code>plain text</code></pre>'
     const { container } = render(<Viewer html={html} />)
 
     const badge = container.querySelector('.code-lang-badge')
-    expect(badge).not.toBeNull()
-    expect(badge?.textContent).toBe('text')
+    expect(badge).toBeNull()
+    expect(container.querySelector('.code-copy-btn')).not.toBeNull()
   })
 
   it('does not add header to mermaid blocks', () => {
