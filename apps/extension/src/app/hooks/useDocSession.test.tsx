@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor, cleanup } from '@testing-library/react'
 import * as Y from 'yjs'
-import { hashText, ORIGIN_LOAD } from '@md-reader/core'
+import { hashText, ORIGIN_LOAD, applyTextChangeAsActor } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase, getRecord, docParam } from '../doc-registry'
 
 vi.mock('../doc-registry', async (orig) => {
@@ -489,24 +489,49 @@ describe('useDocSession aiUnsaved (11g)', () => {
     return h
   }
 
-  it('mcp origin sets aiUnsaved + dirty; local typing clears; peer does not; ackAi clears', async () => {
+  it('real MCP path sets persistent flag; null-origin/peer do not clear; ackAi only for exact text; undoManager/binding clear', async () => {
     const { result } = await ready()
+    const { doc, yText } = result.current
     expect(result.current.aiUnsaved).toBe(false)
-    act(() => { result.current.doc.transact(() => { result.current.yText.insert(5, ' AI') }, 'mcp') })
+    act(() => { applyTextChangeAsActor(doc, 'hello AI', 'AI', 'mcp') })
     expect(result.current.aiUnsaved).toBe(true)
+    expect(doc.getMap('meta').get('aiUnsaved')).toBe(true)
     expect(result.current.isDirty).toBe(true)
-    // peer update (local === false) leaves the flag
+    // programmatic local transaction with null origin does not clear
+    act(() => { doc.transact(() => { yText.insert(0, 'n') }, null) })
+    expect(result.current.aiUnsaved).toBe(true)
+    // peer update leaves the flag
     const peer = new Y.Doc()
-    Y.applyUpdate(peer, Y.encodeStateAsUpdate(result.current.doc))
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc))
     peer.getText('source').insert(0, 'P')
-    act(() => { Y.applyUpdate(result.current.doc, Y.encodeStateAsUpdate(peer), 'remote') })
+    act(() => { Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer), 'remote') })
     expect(result.current.aiUnsaved).toBe(true)
-    // user typing
-    act(() => { result.current.yText.insert(0, 'x') })
-    expect(result.current.aiUnsaved).toBe(false)
-    act(() => { result.current.doc.transact(() => { result.current.yText.insert(0, 'y') }, 'mcp') })
+    // ack with stale text does not clear
+    act(() => result.current.ackAi('stale'))
     expect(result.current.aiUnsaved).toBe(true)
-    act(() => result.current.ackAi())
+    // editor binding origin clears
+    act(() => { doc.transact(() => { yText.insert(0, 'x') }, { ytext: yText, awareness: null }) })
     expect(result.current.aiUnsaved).toBe(false)
+    act(() => { applyTextChangeAsActor(doc, yText.toString() + '!', 'AI', 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    // exact ack clears
+    act(() => result.current.ackAi(yText.toString()))
+    expect(result.current.aiUnsaved).toBe(false)
+    expect(doc.getMap('meta').has('aiUnsaved')).toBe(false)
+    // undoManager origin clears
+    act(() => { applyTextChangeAsActor(doc, yText.toString() + '?', 'AI', 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    act(() => { doc.transact(() => { yText.insert(0, 'u') }, result.current.undoManager) })
+    expect(result.current.aiUnsaved).toBe(false)
+  })
+
+  it('flag persisted in meta survives reload', async () => {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'hello')
+    d.getMap('meta').set('aiUnsaved', true)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.aiUnsaved).toBe(true), LOAD_WAIT)
   })
 })

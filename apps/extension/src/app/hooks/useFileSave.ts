@@ -111,7 +111,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     rememberBase(savedContent)
-    session.ackAi()
+    session.ackAi(savedContent)
     // Accepted: the snapshot may include keystrokes typed during the disk write.
     // Autosave stays quiet: the 30 s quiet 'auto' checkpoint covers typing sessions.
     if (explicit) session.checkpoints?.flush('save', 'Bạn', { force: true })

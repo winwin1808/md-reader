@@ -47,7 +47,7 @@ function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
     docId: null, record: null,
     doc, yText, undoManager: new Y.UndoManager(yText),
     content: yText.toString(), title: 'a', hasContent: true,
-    isDirty: false, setDirty: () => {}, aiUnsaved: false, ackAi: () => {}, error: null, setError: () => {}, synced: true,
+    isDirty: false, setDirty: () => {}, aiUnsaved: false, ackAi: (_t: string) => {}, error: null, setError: () => {}, synced: true,
     externalChange: null, acceptExternal: () => {}, dismissExternal: () => {},
     checkpoints: tracker,
     syncStatus: 'off', awareness: null,
@@ -543,7 +543,7 @@ describe('openLocalFileAsDoc', () => {
   })
 
   describe('AI edits (11g)', () => {
-    const setupAi = async (doc: Y.Doc, ackAi: () => void) => {
+    const setupAi = async (doc: Y.Doc, ackAi: (t: string) => void) => {
       const handle = fakeHandle()
       saveFileAs.mockResolvedValue({ handle })
       doc.getText('source').insert(0, 'a')
@@ -568,7 +568,7 @@ describe('openLocalFileAsDoc', () => {
       expect(saveToHandle).not.toHaveBeenCalled()
       rerender({ s: makeSession(doc, { isDirty: true, content: 'ab', aiUnsaved: false, ackAi }) })
       await waitFor(() => expect(saveToHandle).toHaveBeenCalledTimes(1), { timeout: 4000 })
-      await waitFor(() => expect(ackAi).toHaveBeenCalled())
+      await waitFor(() => expect(ackAi).toHaveBeenCalledWith('ab'))
     })
 
     it('explicit save still saves when aiUnsaved and acks', async () => {
@@ -580,7 +580,28 @@ describe('openLocalFileAsDoc', () => {
       rerender({ s: makeSession(doc, { isDirty: true, content: 'ab', aiUnsaved: true, ackAi }) })
       await act(async () => { await result.current.save({ explicit: true }) })
       expect(saveToHandle).toHaveBeenCalledTimes(1)
-      expect(ackAi).toHaveBeenCalled()
+      expect(ackAi).toHaveBeenCalledWith('ab')
+    })
+
+    it('AI edit during in-flight save keeps the flag and blocks auto-save', async () => {
+      const doc = new Y.Doc()
+      const meta = doc.getMap('meta')
+      // real ack semantics: clear only if text still equals saved text
+      const ackAi = vi.fn((t: string) => { if (t === doc.getText('source').toString()) meta.delete('aiUnsaved') })
+      const { result, rerender } = await setupAi(doc, ackAi)
+      ackAi.mockClear()
+      doc.getText('source').insert(1, 'b')
+      meta.set('aiUnsaved', true)
+      rerender({ s: makeSession(doc, { isDirty: true, content: 'ab', aiUnsaved: true, ackAi }) })
+      let release: () => void = () => {}
+      saveToHandle.mockImplementationOnce(async (_h, text) => { await new Promise<void>((r) => { release = r }); disk = text })
+      let p: Promise<void> | undefined
+      await act(async () => { p = result.current.save({ explicit: true }) as Promise<void>; await Promise.resolve() })
+      await waitFor(() => expect(saveToHandle).toHaveBeenCalledTimes(1))
+      doc.getText('source').insert(2, 'C')
+      await act(async () => { release(); await p })
+      expect(meta.get('aiUnsaved')).toBe(true)
+      expect(ackAi).toHaveBeenCalledWith('ab')
     })
   })
 })
