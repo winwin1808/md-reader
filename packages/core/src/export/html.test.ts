@@ -165,6 +165,41 @@ describe('exportToHtml', () => {
     expect(result).toContain('<img alt="no src">')
   })
 
+  describe('image MIME allowlist and CSP (11b)', () => {
+    const run = async (mimeType: string) => {
+      const fetchImage = vi.fn().mockResolvedValue({ base64: 'AAAA', mimeType })
+      return exportToHtml({
+        html: '<img src="https://e.com/a.png" alt="a">',
+        cssContent: '',
+        title: 't',
+        fetchImage,
+      })
+    }
+
+    it('rejects an attribute-injecting mimeType', async () => {
+      const out = await run('x" onerror="window.__pwn=1')
+      expect(out).not.toContain('onerror')
+      expect(out).toContain('<img src="https://e.com/a.png"')
+    })
+
+    it('does not embed text/html', async () => {
+      const out = await run('text/html')
+      expect(out).not.toContain('data:text/html')
+      expect(out).toContain('src="https://e.com/a.png"')
+    })
+
+    it('lowercases and embeds IMAGE/PNG', async () => {
+      expect(await run('IMAGE/PNG')).toContain('data:image/png;base64,AAAA')
+    })
+
+    it('includes a CSP meta and no script', async () => {
+      const out = await run('image/png')
+      expect(out).toContain('http-equiv="Content-Security-Policy"')
+      expect(out).toContain("default-src 'none'")
+      expect(out).not.toContain('<script')
+    })
+  })
+
   describe('default fetchImage using global fetch', () => {
     const originalFetch = globalThis.fetch
 
