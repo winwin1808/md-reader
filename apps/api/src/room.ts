@@ -96,13 +96,36 @@ export class DocRoom extends YServer<Env> {
     const role = h.get('x-mdr-role') ?? 'view'
     const prefix = h.get('x-mdr-prefix') ?? ''
     const exp = h.get('x-mdr-expires')
-    const expiresAt = exp && Number.isFinite(Number(exp)) ? Number(exp) : undefined
+    if (exp && !/^\d{1,15}$/.test(exp)) {
+      conn.close(4410, 'revoked')
+      return
+    }
+    const expiresAt = exp ? Number(exp) : undefined
     if ((prefix && this.revoked.has(prefix)) || (expiresAt !== undefined && expiresAt <= Date.now())) {
       conn.close(4410, 'revoked')
       return
     }
     conn.setState({ role, prefix, expiresAt })
+    if (expiresAt !== undefined) void this.scheduleExpiry(expiresAt).catch((e) => console.error('setAlarm failed', e))
     super.onConnect(conn, ctx)
+  }
+
+  private async scheduleExpiry(t: number): Promise<void> {
+    const cur = await this.ctx.storage.getAlarm()
+    if (cur === null || cur === undefined || cur > t) await this.ctx.storage.setAlarm(t)
+  }
+
+  async onAlarm(): Promise<void> {
+    await super.onAlarm?.()
+    const now = Date.now()
+    let next: number | undefined
+    for (const c of [...this.getConnections()]) {
+      const t = (c.state as { expiresAt?: number } | null)?.expiresAt
+      if (t === undefined) continue
+      if (t <= now) c.close(4410, 'expired')
+      else if (next === undefined || t < next) next = t
+    }
+    if (next !== undefined) await this.ctx.storage.setAlarm(next)
   }
 
   droppedWrites = 0

@@ -113,6 +113,13 @@ function fakeStorage(init: Record<string, unknown> = {}) {
     list: async (o: { prefix?: string } = {}) =>
       new Map([...m].filter(([k]) => k.startsWith(o.prefix ?? ''))),
     deleteAll: async () => void m.clear(),
+    alarm: null as number | null,
+    getAlarm: async function (this: { alarm: number | null }) {
+      return this.alarm
+    },
+    setAlarm: vi.fn(async function (this: { alarm: number | null }, t: number) {
+      this.alarm = t
+    }),
   }
 }
 function makePurgeRoom(storage = fakeStorage(), conns: Array<ReturnType<typeof fakeConn>> = []) {
@@ -269,5 +276,52 @@ describe('DocRoom revoke (11c)', () => {
     expect(r.status).toBe(404)
     expect(a.close).not.toHaveBeenCalled()
     expect(st.m.has('revoked:abc')).toBe(false)
+  })
+})
+
+describe('DocRoom expiry alarm (11c T4)', () => {
+  vi.spyOn(YServer.prototype as unknown as { onAlarm: () => Promise<void> }, 'onAlarm').mockResolvedValue(undefined)
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const withState = (expiresAt?: number) => ({ ...fakeConn(), state: { role: 'view', expiresAt } })
+
+  it('onAlarm closes only expired conns', async () => {
+    const a = withState(Date.now() - 1)
+    const b = withState(undefined)
+    const room = makePurgeRoom(fakeStorage(), [a, b])
+    await room.onAlarm()
+    expect(a.close).toHaveBeenCalledWith(4410, 'expired')
+    expect(b.close).not.toHaveBeenCalled()
+  })
+  it('onConnect with future expiry sets alarm; earlier existing alarm is kept', async () => {
+    const sup = vi.spyOn(YServer.prototype as unknown as { onConnect: () => void }, 'onConnect').mockImplementation(() => undefined)
+    const t = Date.now() + 60_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    room.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st.setAlarm).toHaveBeenCalledWith(t)
+
+    const st2 = fakeStorage()
+    st2.alarm = t - 1000
+    const room2 = makePurgeRoom(st2)
+    room2.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st2.setAlarm).not.toHaveBeenCalled()
+    sup.mockRestore()
+  })
+  it('onAlarm re-arms for the earliest future expiry', async () => {
+    const t1 = Date.now() + 90_000
+    const t2 = Date.now() + 30_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st, [withState(Date.now() - 1), withState(t1), withState(t2)])
+    await room.onAlarm()
+    expect(st.setAlarm).toHaveBeenCalledWith(t2)
+  })
+  it('unparsable x-mdr-expires closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-expires': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
   })
 })
