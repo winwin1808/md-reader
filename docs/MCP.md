@@ -60,8 +60,10 @@ Biến môi trường tuỳ chọn:
 ## 4. Bật và ghép cặp
 
 1. Mở Chrome có MD Reader, vào **Cài đặt → Kết nối AI** và bật.
-2. Khi client AI kết nối lần đầu, extension hiện **hộp ghép cặp** hỏi có cho client đó (hiện theo tên client, tối đa 40 ký tự) hay không. Chọn Cho phép.
-3. Khoá ghép cặp được lưu trong `~/.config/md-reader/mcp.json` (quyền 600). Đừng chia sẻ file này.
+2. Khởi động (hoặc khởi động lại) client AI. Trong **10 phút** đầu sau khi `le-sach-mcp` chạy, extension hiện **hộp ghép cặp** gồm tên client (tối đa 40 ký tự) và **mã nhận dạng** dạng `ABCD-1234`. Mã này phải khớp với dòng `le-sach-mcp: đã ghép cặp với MD Reader …` trong log của client AI (dòng đó in ra sau khi bạn bấm Cho phép). Chọn Cho phép.
+3. Cách xác thực (giao thức v2): `le-sach-mcp` và extension mỗi bên giữ một cặp khoá ECDSA P-256 riêng. Mỗi lần nối, hai bên ký lên số ngẫu nhiên của bên kia kèm số cổng; không có bí mật nào đi qua kết nối. Extension chỉ chạy lệnh của máy chủ có khoá bạn đã duyệt; `le-sach-mcp` chỉ nhận extension đã ghép cặp đầu tiên (ghim lần đầu, chỉ trong 10 phút đầu).
+   Khoá của máy chủ nằm trong `~/.config/md-reader/mcp.json` (quyền 600). Đừng chia sẻ file này. Muốn ghép cặp lại từ đầu: xoá file này, khởi động lại client AI, rồi duyệt lại trong extension. File hỏng hoặc từ phiên bản cũ sẽ được đổi tên thành `mcp.json.bak-…` và tạo khoá mới (log ghi rõ).
+   Giới hạn còn lại: một chương trình khác trên cùng máy, chạy với cùng tài khoản và nối vào `le-sach-mcp` trước extension trong 10 phút đầu, có thể chiếm chỗ ghép cặp phía máy chủ. Khi đó extension thật sẽ bị từ chối (bạn sẽ thấy ghép cặp không thành) — xoá file ghép cặp và khởi động lại.
 4. Thu hồi: vào Cài đặt → Kết nối AI để thu hồi client. Client bị thu hồi mà nối lại trong vòng 60 giây sẽ **không được hỏi lại**; muốn ghép lại, tắt rồi bật Kết nối AI sau 60 giây.
 
 ## 5. Bảy tool
@@ -71,7 +73,7 @@ Biến môi trường tuỳ chọn:
 | `publish_doc` | Tạo tài liệu mới trong MD Reader trên máy này và mở tab (`open` tuỳ chọn). Trả `docId`. | Không |
 | `list_docs` | Liệt kê tài liệu (id, tiêu đề, lần mở cuối, đã chia sẻ hay chưa). | Không |
 | `get_doc` | Đọc Markdown hiện tại, gồm cả sửa của người cộng tác. Trả `markdown` và `hash`. | Không |
-| `update_doc` | Thay Markdown của tài liệu; chỉ phần thay đổi được ghi. Cần `baseHash` lấy từ `get_doc`; tài liệu đã đổi từ đó thì lỗi `CONFLICT`, gọi lại `get_doc` rồi thử lại. Lịch sử ghi là "AI: cập nhật". | Không |
+| `update_doc` | Thay Markdown của tài liệu; chỉ phần thay đổi được ghi. Cần `baseHash` lấy từ `get_doc`; tài liệu đã đổi từ đó thì lỗi `CONFLICT`, gọi lại `get_doc` rồi thử lại. Lịch sử ghi là "AI: cập nhật". Thay đổi chỉ nằm trong MD Reader: **không tự ghi ra file trên đĩa** — thanh trạng thái hiện "AI đã sửa — chưa lưu" tới khi bạn bấm Lưu (⌘S) hoặc tự sửa tiếp. | Không |
 | `share_doc` | Xin tạo link chia sẻ (`role`: `view` hoặc `edit`, mặc định `view`; `expiresInDays`: 7, 30 hoặc `null`, mặc định 7). Trả URL. | **Luôn hỏi** |
 | `list_links` | Liệt kê link chia sẻ của tài liệu (tiền tố, vai trò, hạn, đã thu hồi). | Không |
 | `revoke_link` | Xin thu hồi link theo `tokenPrefix` (6 ký tự). | **Luôn hỏi** |
