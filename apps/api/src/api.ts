@@ -124,13 +124,14 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       if (!(await adminAuthorized(req, deps.adminSecret))) return json({ error: 'unauthorized' }, 401)
       const roomId = safeDecode(m[1]!)
       if (roomId === null) return json({ error: 'bad path' }, 400)
-      const ok = await deleteRoomEverywhere(roomId, {
+      const outcome = await deleteRoomEverywhere(roomId, {
         store,
         ...(deps.assets ? { assets: deps.assets } : {}),
         ...(deps.limits ? { limits: deps.limits } : {}),
         ...(deps.purge ? { purge: deps.purge } : {}),
       })
-      if (!ok) return json({ error: 'not found' }, 404)
+      if (outcome === 'purge_failed') return json({ error: 'PURGE_FAILED' }, 502)
+      if (outcome === 'not_found') return json({ error: 'not found' }, 404)
       await deps.moderation?.addTakedown(roomId)
       return new Response(null, { status: 204 })
     }
@@ -143,13 +144,14 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     const roomId = safeDecode(del[1]!)
     if (roomId === null) return badPath()
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
-    const ok = await deleteRoomEverywhere(roomId, {
+    const outcome = await deleteRoomEverywhere(roomId, {
       store,
       ...(deps.assets ? { assets: deps.assets } : {}),
       ...(deps.limits ? { limits: deps.limits } : {}),
       ...(deps.purge ? { purge: deps.purge } : {}),
     })
-    return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+    if (outcome === 'purge_failed') return json({ error: 'PURGE_FAILED' }, 502)
+    return outcome === 'deleted' ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
   }
 
   const links = /^\/api\/rooms\/([^/]+)\/links$/.exec(path)
@@ -324,21 +326,30 @@ export async function authorizeWs(
   return entry.value ?? json({ error: 'link expired or revoked' }, 410)
 }
 
+export type DeleteOutcome = 'deleted' | 'not_found' | 'purge_failed'
+
 export async function deleteRoomEverywhere(
   roomId: string,
   d: { store: TokenStore; assets?: AssetStore; limits?: LimitStore; purge?: (roomId: string) => Promise<void> },
-): Promise<boolean> {
+): Promise<DeleteOutcome> {
+  try {
+    await d.purge?.(roomId)
+  } catch (e) {
+    console.error('purge failed', roomId, e)
+    return 'purge_failed'
+  }
+  try {
+    await d.assets?.deleteRoom(roomId)
+  } catch (e) {
+    console.error('assets.deleteRoom failed', roomId, e)
+    return 'purge_failed'
+  }
+  try {
+    await d.limits?.forgetRoom(roomId)
+  } catch (e) {
+    console.error('limits.forgetRoom failed', roomId, e)
+  }
   const ok = await d.store.deleteRoom(roomId)
   forgetRoomAuth(roomId)
-  const step = async (name: string, f?: () => Promise<unknown>) => {
-    try {
-      await f?.()
-    } catch {
-      console.error(`${name} failed`, roomId)
-    }
-  }
-  await step('assets.deleteRoom', d.assets && (() => d.assets!.deleteRoom(roomId)))
-  await step('limits.forgetRoom', d.limits && (() => d.limits!.forgetRoom(roomId)))
-  await step('purge', d.purge && (() => d.purge!(roomId)))
-  return ok
+  return ok ? 'deleted' : 'not_found'
 }

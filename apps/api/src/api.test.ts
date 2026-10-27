@@ -409,24 +409,44 @@ describe('DELETE /api/rooms/:roomId (10e.2)', () => {
     expect(purge).not.toHaveBeenCalled()
   })
 
-  it('purge failure still 204', async () => {
+  it('purge failure: 502, D1 untouched, retry succeeds', async () => {
     const { store, roomId, ownerToken } = await setup()
+    const link = await store.createLink(roomId, { role: 'view', expiresIn: null })
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const purge = vi.fn(async () => { throw new Error('boom') })
-    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { purge }))!
-    expect(res.status).toBe(204)
+    let fail = true
+    const purge = vi.fn(async () => { if (fail) throw new Error('boom') })
+    const del = () => handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { purge })
+    const res = (await del())!
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({ error: 'PURGE_FAILED' })
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(200)
+    fail = false
+    expect((await del())!.status).toBe(204)
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(410)
     err.mockRestore()
   })
 
-  it('assets failure still calls purge and returns 204', async () => {
+  it('assets failure: 502 and D1 kept', async () => {
     const { store, roomId, ownerToken } = await setup()
+    const link = await store.createLink(roomId, { role: 'view', expiresIn: null })
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     const d = await mk()
     d.assets.deleteRoom = async () => { throw new Error('boom') }
     const purge = vi.fn(async () => {})
     const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { ...d, purge }))!
-    expect(res.status).toBe(204)
+    expect(res.status).toBe(502)
     expect(purge).toHaveBeenCalledWith(roomId)
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(200)
+    err.mockRestore()
+  })
+
+  it('limits failure still 204', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const d = await mk()
+    d.limits.forgetRoom = async () => { throw new Error('boom') }
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { ...d, purge: async () => {} }))!
+    expect(res.status).toBe(204)
     err.mockRestore()
   })
 
@@ -500,6 +520,18 @@ describe('handleApi report + admin takedown', () => {
     const { store, moderation } = await mk()
     expect((await handleApi(tk('ghost', 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(404)
     expect(moderation.takedowns.size).toBe(0)
+  })
+
+  it('takedown with purge failure: 502, no addTakedown, D1 kept', async () => {
+    const { store, roomId, link, moderation } = await mk()
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const purge = async () => { throw new Error('boom') }
+    const res = (await handleApi(tk(roomId, 's3'), store, { moderation, adminSecret: 's3', purge }))!
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({ error: 'PURGE_FAILED' })
+    expect(moderation.takedowns.size).toBe(0)
+    expect((await handleApi(req('GET', `/api/s/${link.token}`), store))!.status).toBe(200)
+    err.mockRestore()
   })
 })
 

@@ -63,7 +63,9 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
               }),
               env,
             )
-            .then(() => undefined),
+            .then((res) => {
+              if (!res || !res.ok) throw new Error('purge ' + (res ? res.status : 'null'))
+            }),
         revokeLive: (roomId, prefix) =>
           deps
             .routeParty(
