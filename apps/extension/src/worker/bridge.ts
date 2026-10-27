@@ -1,20 +1,19 @@
 import {
   BRIDGE_PORTS,
-  BRIDGE_PROTOCOL,
   parseBridgeMessage,
-  textHash,
   sanitizeClientName,
   type BridgeRequest,
   type BridgeResponse,
-  type BridgeHello,
+  type BridgeHelloV2,
 } from '@md-reader/core/bridge'
+import { importPublicKey, keyId, newNonce, authPayload, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
 
 export const PING_MS = 20_000
 export const IDLE_SCANS_BEFORE_BACKOFF = 10
 const CONNECT_TIMEOUT_MS = 1000
 
-export interface ApprovedClient { keyHash: string; client: string; at: number }
-export interface BridgeConn { port: number; client: string; keyHash: string; state: 'pending' | 'paired' }
+export interface ApprovedClient { keyHash: string; client: string; at: number; serverKey: string }
+export interface BridgeConn { port: number; client: string; keyHash: string; state: 'pending' | 'authing' | 'paired' }
 export interface WsLike {
   readyState: number
   send(data: string): void
@@ -27,6 +26,7 @@ export interface WsLike {
 export interface BridgeDeps {
   connect(url: string): WsLike
   approved(): Promise<ApprovedClient[]>
+  extKey(): Promise<{ privateKey: CryptoKey; publicKey: string }>
   requestPairing(c: { port: number; client: string; keyHash: string }): void
   execute(req: BridgeRequest, client: string): Promise<BridgeResponse>
   setTimer(fn: () => void, ms: number): unknown
@@ -37,6 +37,9 @@ interface Entry {
   ws: WsLike
   conn: BridgeConn
   hello: boolean
+  serverKey: string
+  serverNonce: string
+  myNonce: string
   pingTimer: unknown
 }
 
@@ -54,23 +57,54 @@ export function createBridge(deps: BridgeDeps) {
     try { ws.send(JSON.stringify(m)) } catch { /* socket gone */ }
   }
 
-  async function onHello(e: Entry, h: BridgeHello) {
+  function kill(e: Entry) {
+    try { e.ws.close() } catch { /* ignore */ }
+    drop(e.conn.port, e)
+  }
+
+  async function authenticate(e: Entry) {
+    const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
+    const { privateKey, publicKey } = await deps.extKey()
+    if (!live()) return
+    const myNonce = newNonce()
+    const sig = await signPayload(privateKey, authPayload('ext', e.serverNonce, e.conn.keyHash, e.conn.port))
+    if (!live()) return
+    e.myNonce = myNonce
+    e.conn.state = 'authing'
+    send(e.ws, { type: 'auth', extKey: publicKey, nonce: myNonce, sig })
+  }
+
+  async function onAuthOk(e: Entry, sig: string) {
+    if (e.conn.state !== 'authing') return
+    const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
+    let ok = false
+    try {
+      const { publicKey } = await deps.extKey()
+      const payload = authPayload('srv', e.myNonce, await keyId(publicKey), e.conn.port)
+      ok = await verifyPayload(await importPublicKey(e.serverKey), payload, sig)
+    } catch { ok = false }
+    if (!live() || e.conn.state !== 'authing') return
+    if (ok) e.conn.state = 'paired'
+    else kill(e)
+  }
+
+  async function onHello(e: Entry, h: BridgeHelloV2) {
     if (e.hello) return
     e.hello = true
     const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
-    const keyHash = await textHash(h.pairKey)
+    const kid = await keyId(h.serverKey)
     if (!live()) return
     e.conn.client = sanitizeClientName(h.client)
-    e.conn.keyHash = keyHash
+    e.conn.keyHash = kid
+    e.serverKey = h.serverKey
+    e.serverNonce = h.nonce
     const list = await deps.approved()
     if (!live()) return
-    if (list.some((a) => a.keyHash === keyHash)) {
-      e.conn.state = 'paired'
-      send(e.ws, { type: 'welcome', paired: true })
+    if (list.some((a) => a.keyHash === kid && a.serverKey === h.serverKey)) {
+      await authenticate(e)
     } else {
       e.conn.state = 'pending'
-      send(e.ws, { type: 'welcome', paired: false })
-      deps.requestPairing({ port: e.conn.port, client: e.conn.client, keyHash })
+      deps.requestPairing({ port: e.conn.port, client: e.conn.client, keyHash: kid })
     }
   }
 
@@ -91,7 +125,7 @@ export function createBridge(deps: BridgeDeps) {
     return new Promise((resolve) => {
       let ws: WsLike
       try { ws = deps.connect(`ws://127.0.0.1:${port}`) } catch { connecting.delete(port); resolve(); return }
-      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending' }, hello: false, pingTimer: undefined }
+      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending' }, hello: false, serverKey: '', serverNonce: '', myNonce: '', pingTimer: undefined }
       let settled = false
       let timeout: unknown
       const settle = () => {
@@ -118,9 +152,16 @@ export function createBridge(deps: BridgeDeps) {
       ws.onmessage = (ev) => {
         if (typeof ev.data !== 'string') return
         const m = parseBridgeMessage(ev.data)
-        if (!m) return
+        if (!m) {
+          try { if ((JSON.parse(ev.data) as { type?: unknown }).type === 'hello') kill(e) } catch { /* ignore */ }
+          return
+        }
         if (m.type === 'hello') {
-          if (m.protocol === BRIDGE_PROTOCOL) void onHello(e, m).catch(() => {})
+          void onHello(e, m).catch(() => kill(e))
+        } else if (m.type === 'auth-ok') {
+          void onAuthOk(e, m.sig)
+        } else if (m.type === 'reject') {
+          kill(e)
         } else if (m.type === 'req') {
           void onReq(e, m)
         }
@@ -145,9 +186,8 @@ export function createBridge(deps: BridgeDeps) {
       if (!e || e.conn.state !== 'pending' || !e.conn.keyHash) return
       if (keyHash !== undefined && keyHash !== e.conn.keyHash) return
       if (allow) {
-        await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now() })
-        e.conn.state = 'paired'
-        send(e.ws, { type: 'welcome', paired: true })
+        await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now(), serverKey: e.serverKey })
+        await authenticate(e).catch(() => kill(e))
       } else {
         send(e.ws, { type: 'reject', code: 'DENIED' })
         try { e.ws.close() } catch { /* ignore */ }

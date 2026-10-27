@@ -13,7 +13,8 @@ function PairPage({ port, client, keyHash }: { port: number; client: string; key
   const decide = (allow: boolean) => {
     try { void Promise.resolve(chrome.runtime.sendMessage({ type: PAIR_DECISION_MSG, port, allow, keyHash })).catch(() => {}) } catch { /* ignore */ }
   }
-  return <PairDialog client={client} onAllow={() => decide(true)} onDeny={() => decide(false)} />
+  const fp = keyHash.slice(0, 4).toUpperCase() + '-' + keyHash.slice(4, 8).toUpperCase()
+  return <PairDialog client={client} fingerprint={fp} onAllow={() => decide(true)} onDeny={() => decide(false)} />
 }
 
 function PairInvalid(): React.JSX.Element {
