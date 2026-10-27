@@ -5,12 +5,16 @@ import type { Env } from './env.js'
 import { classifyMessage, sanitizeAwarenessMessage } from './protocol'
 import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike, type LogStats } from './persistence.js'
 
+export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
+export const MAX_ROOM_BYTES = 64 * 1024 * 1024
+
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }
 
   private stats: LogStats = { updates: 0, bytes: 0 }
   private queue: Promise<unknown> = Promise.resolve()
   private purged = false
+  private roomBytes = 0
   private revoked = new Set<string>()
 
   private get kv(): KVLike {
@@ -29,12 +33,18 @@ export class DocRoom extends YServer<Env> {
     return p
   }
 
+  private async doCompact(): Promise<void> {
+    const r = await compact(this.kv, this.document)
+    this.stats = { updates: r.updates, bytes: r.bytes }
+    this.roomBytes = r.stateBytes
+  }
+
   private persistUpdate(u: Uint8Array): Promise<void> {
     if (this.purged) return Promise.resolve()
     return this.enqueue(async () => {
       if (this.purged) return
       this.stats = await appendUpdate(this.kv, u, this.stats)
-      if (shouldCompact(this.stats, false)) this.stats = await compact(this.kv, this.document)
+      if (shouldCompact(this.stats, false)) await this.doCompact()
     })
   }
 
@@ -60,7 +70,9 @@ export class DocRoom extends YServer<Env> {
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
+    this.roomBytes = state ? state.length : 0
     this.document.on('update', (u: Uint8Array) => {
+      this.roomBytes += u.length
       void this.persistUpdate(u).catch((e) => console.error('persist failed', e))
     })
   }
@@ -70,7 +82,7 @@ export class DocRoom extends YServer<Env> {
     await this.enqueue(async () => {
       if (this.purged) return
       const empty = [...this.getConnections()].length === 0
-      if (shouldCompact(this.stats, empty)) this.stats = await compact(this.kv, this.document)
+      if (shouldCompact(this.stats, empty)) await this.doCompact()
     })
   }
 
@@ -78,7 +90,7 @@ export class DocRoom extends YServer<Env> {
     const others = [...this.getConnections()].filter((c) => c.id !== closing.id)
     if (this.purged || others.length > 0 || this.stats.updates === 0) return
     void this.enqueue(async () => {
-      if (!this.purged && this.stats.updates > 0) this.stats = await compact(this.kv, this.document)
+      if (!this.purged && this.stats.updates > 0) await this.doCompact()
     }).catch((e) => console.error('compact failed', e))
   }
 
@@ -147,6 +159,11 @@ export class DocRoom extends YServer<Env> {
       conn.close(4410, 'revoked')
       return
     }
+    const size = typeof message === 'string' ? message.length : message.byteLength
+    if (size > MAX_MESSAGE_BYTES) {
+      conn.close(1009, 'too large')
+      return
+    }
     if (typeof message === 'string') return super.handleMessage(conn, message)
     const bytes =
       message instanceof Uint8Array
@@ -157,6 +174,11 @@ export class DocRoom extends YServer<Env> {
     const k = classifyMessage(bytes)
     if ((k === 'step2' || k === 'update') && this.isReadOnly(conn)) {
       this.droppedWrites++
+      return
+    }
+    if ((k === 'step2' || k === 'update') && this.roomBytes >= MAX_ROOM_BYTES) {
+      this.droppedWrites++
+      conn.close(4413, 'room full')
       return
     }
     if (k === 'awareness') {

@@ -20,7 +20,7 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 - 11c: done
 - 11d: done
 - 11e: done
-- 11f1: pending
+- 11f1: planned
 - 11f2: pending
 - 11g: pending
 - 11h: pending

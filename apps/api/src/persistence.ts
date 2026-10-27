@@ -94,7 +94,7 @@ export function shouldCompact(stats: LogStats, roomEmpty: boolean): boolean {
   )
 }
 
-export async function compact(kv: KVLike, doc: Y.Doc): Promise<LogStats> {
+export async function compact(kv: KVLike, doc: Y.Doc): Promise<LogStats & { stateBytes: number }> {
   const state = Y.encodeStateAsUpdate(doc)
   const chunks = Math.max(1, Math.ceil(state.length / CHUNK_BYTES))
   const old = await readMeta(kv)
@@ -109,7 +109,7 @@ export async function compact(kv: KVLike, doc: Y.Doc): Promise<LogStats> {
   for (const k of (await kv.list({ prefix: 'snap:' })).keys()) {
     if (k !== 'snap:meta' && !k.startsWith(prefix)) await kv.delete(k)
   }
-  return { updates: 0, bytes: 0 }
+  return { updates: 0, bytes: 0, stateBytes: state.length }
 }
 
 export async function readStats(kv: KVLike): Promise<LogStats> {
