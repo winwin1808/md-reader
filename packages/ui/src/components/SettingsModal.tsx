@@ -895,7 +895,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       <div className="settings-row" key={c.keyHash}>
                         <div className="settings-row-info">
                           <div className="settings-row-label">{c.client}</div>
-                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(locale)}</div>
+                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(locale)} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
                         </div>
                         <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
                           {t('settings.ai.revoke')}
