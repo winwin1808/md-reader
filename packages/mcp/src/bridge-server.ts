@@ -6,13 +6,20 @@ import {
   BRIDGE_PORTS,
   KNOWN_EXTENSION_IDS,
   isAllowedExtensionOrigin,
-  BRIDGE_PROTOCOL,
+  BRIDGE_PROTOCOL_V2,
+  authPayload,
+  importPublicKey,
+  keyId,
+  newNonce,
   parseBridgeMessage,
+  signPayload,
+  verifyPayload,
   type BridgeArgsMap,
   type BridgeErrorCode,
   type BridgeResultMap,
   type BridgeTool,
 } from '@md-reader/core/bridge'
+import type { ServerIdentity } from './pairing'
 
 export class BridgeCallError extends Error {
   constructor(readonly code: BridgeErrorCode, message: string) {
@@ -80,7 +87,7 @@ function listen(port: number, allowed: (o: string) => boolean, getPaired: () => 
 }
 
 export async function startBridgeServer(opts: {
-  pairKey: string
+  identity: ServerIdentity
   client: string
   ports?: readonly number[]
   connectWaitMs?: number
@@ -124,24 +131,48 @@ export async function startBridgeServer(opts: {
       const old = findReplaceable(server, paired, ws)
       if (old) old.close(4000, 'replaced')
     }
-    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, pairKey: opts.pairKey }))
+    const nonce = newNonce()
+    let authStarted = false
+    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL_V2, client, serverKey: opts.identity.publicKey, nonce }))
+    const deny = () => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'reject', code: 'DENIED' }))
+      ws.close()
+    }
+    const authenticate = async (msg: { extKey: string; nonce: string; sig: string }) => {
+      const id = opts.identity
+      try {
+        const extPub = await importPublicKey(msg.extKey)
+        const ok = await verifyPayload(extPub, authPayload('ext', nonce, await keyId(id.publicKey), port), msg.sig)
+        if (!ok) return deny()
+        if (id.extKey === null) await id.pinExtKey(msg.extKey)
+        else if (id.extKey !== msg.extKey) return deny()
+        const sig = await signPayload(id.privateKey, authPayload('srv', msg.nonce, await keyId(msg.extKey), port))
+        if (ws.readyState !== WebSocket.OPEN || closing) return
+        ws.send(JSON.stringify({ type: 'auth-ok', sig }))
+      } catch {
+        return deny()
+      }
+      if (paired === ws) return
+      if (paired) {
+        const old = paired
+        paired = ws
+        failPendingOn(old)
+        old.close()
+      } else paired = ws
+      for (const w of waiters) {
+        clearTimeout(w.timer)
+        w.resolve(ws)
+      }
+      waiters.clear()
+    }
     ws.on('message', (data) => {
       const msg = parseBridgeMessage(String(data))
       if (!msg) return
       switch (msg.type) {
-        case 'welcome':
-          if (!msg.paired || paired === ws) return
-          if (paired) {
-            const old = paired
-            paired = ws
-            failPendingOn(old)
-            old.close()
-          } else paired = ws
-          for (const w of waiters) {
-            clearTimeout(w.timer)
-            w.resolve(ws)
-          }
-          waiters.clear()
+        case 'auth':
+          if (authStarted) return
+          authStarted = true
+          void authenticate(msg)
           return
         case 'reject':
           ws.close()
