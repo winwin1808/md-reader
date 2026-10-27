@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./docx": "./src/export/docx.ts",
     "./plugins": "./src/plugins/index.ts",
-    "./bridge": "./src/bridge/protocol.ts"
+    "./bridge": "./src/bridge/protocol.ts",
+    "./bridge-auth": "./src/bridge/auth.ts"
   },
   "sideEffects": false,
   "scripts": {
