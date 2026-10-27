@@ -34,10 +34,31 @@ export function secondsToNextDay(now: number): number {
   return Math.ceil(((dayOf(now) + 1) * DAY_MS - now) / 1000)
 }
 
+/** Normalise an IP into a quota subject: IPv4 as-is, IPv6 collapsed to its /64. */
+export function ipSubject(ip: string): string {
+  const raw = (ip ?? '').trim().toLowerCase()
+  if (!raw) return 'unknown'
+  if (!raw.includes(':')) return /^\d{1,3}(\.\d{1,3}){3}$/.test(raw) ? raw : 'unknown'
+  const mapped = /^(?:0{0,4}:){2,5}ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(raw)
+  if (mapped) return mapped[1]!
+  const halves = raw.split('::')
+  if (halves.length > 2) return 'unknown'
+  const head = halves[0] ? halves[0].split(':') : []
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : []
+  let groups: string[]
+  if (halves.length === 2) {
+    const fill = 8 - head.length - tail.length
+    if (fill < 1) return 'unknown'
+    groups = [...head, ...Array<string>(fill).fill('0'), ...tail]
+  } else groups = head
+  if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return 'unknown'
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':') + '::/64'
+}
+
 export async function subjectFrom(req: Request): Promise<LimitSubject> {
   const inst = req.headers.get('x-mdr-install')
   const installHash = inst && inst.length >= 16 && inst.length <= 200 ? await hashToken(inst) : null
-  const ipHash = await hashToken(req.headers.get('CF-Connecting-IP') || 'unknown')
+  const ipHash = await hashToken(ipSubject(req.headers.get('CF-Connecting-IP') ?? ''))
   return { installHash, ipHash }
 }
 
@@ -70,12 +91,10 @@ async function decide(
   }
   if (kind === 'asset') {
     if (!info?.roomId) return null
+    if ((await c.count('ip', s.ipHash, 'asset')) >= LIMITS.assetsPerIpPerDay) return rate()
+    if ((await c.count('ip', s.ipHash, 'asset_bytes')) + (info.bytes ?? 0) > LIMITS.assetBytesPerIpPerDay) return rate()
     const owner = await c.roomInstall(info.roomId)
-    if (!owner) {
-      if ((await c.count('ip', s.ipHash, 'asset')) >= LIMITS.assetsPerIpPerDay) return rate()
-      if ((await c.count('ip', s.ipHash, 'asset_bytes')) + (info.bytes ?? 0) > LIMITS.assetBytesPerIpPerDay) return rate()
-      return null
-    }
+    if (!owner) return null
     if ((await c.count('install', owner, 'asset')) >= LIMITS.assetsPerInstallPerDay) return rate()
     if ((await c.installBytes(owner)) + (info.bytes ?? 0) > LIMITS.assetBytesPerInstall) return { error: 'QUOTA_EXCEEDED' }
     return null
@@ -126,13 +145,12 @@ export class MemoryLimitStore implements LimitStore {
         this.rooms.set(info.roomId, { install: s.installHash, bytes: 0 })
       }
     } else if (kind === 'asset') {
+      this.bump('ip', s.ipHash, 'asset')
+      this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0)
       const r = this.rooms.get(info.roomId)
       if (r) {
         this.bump('install', r.install, 'asset')
         r.bytes += info.bytes ?? 0
-      } else {
-        this.bump('ip', s.ipHash, 'asset')
-        this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0)
       }
     } else {
       this.bump('ip', s.ipHash, 'report')
@@ -201,13 +219,12 @@ export class D1LimitStore implements LimitStore {
         .prepare('SELECT install_hash AS h FROM room_installs WHERE room_id=?')
         .bind(info.roomId)
         .first<{ h: string }>()
+      stmts.push(this.bump('ip', s.ipHash, 'asset'), this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0))
       if (r) {
         stmts.push(
           this.bump('install', r.h, 'asset'),
           this.db.prepare('UPDATE room_installs SET bytes = bytes + ? WHERE room_id=?').bind(info.bytes ?? 0, info.roomId),
         )
-      } else {
-        stmts.push(this.bump('ip', s.ipHash, 'asset'), this.bump('ip', s.ipHash, 'asset_bytes', info.bytes ?? 0))
       }
     } else {
       stmts.push(this.bump('ip', s.ipHash, 'report'))

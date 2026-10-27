@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIMITS, MemoryLimitStore, dayOf, secondsToNextDay, subjectFrom } from './limits.js'
+import { LIMITS, MemoryLimitStore, dayOf, ipSubject, secondsToNextDay, subjectFrom } from './limits.js'
 
 const S = { installHash: 'i1', ipHash: 'ip1' }
 const MB = 1024 * 1024
@@ -47,12 +47,12 @@ describe('LimitStore (memory)', () => {
     const st = new MemoryLimitStore(() => 0)
     expect(await st.check('asset', S, { roomId: 'nope', bytes: 1 * MB })).toBeNull()
     await st.record('room', S, { roomId: 'r1' })
-    await st.record('asset', S, { roomId: 'r1', bytes: 150 * MB })
+    await st.record('asset', { ...S, ipHash: 'other-ip' }, { roomId: 'r1', bytes: 150 * MB })
     expect(await st.check('asset', S, { roomId: 'r1', bytes: 50 * MB })).toBeNull()
     expect(await st.check('asset', S, { roomId: 'r1', bytes: 50 * MB + 1 })).toEqual({ error: 'QUOTA_EXCEEDED' })
     const c = new MemoryLimitStore(() => 0)
     await c.record('room', S, { roomId: 'r2' })
-    for (let i = 0; i < LIMITS.assetsPerInstallPerDay; i++) await c.record('asset', S, { roomId: 'r2', bytes: 1 })
+    for (let i = 0; i < LIMITS.assetsPerInstallPerDay; i++) await c.record('asset', { ...S, ipHash: `o${i}` }, { roomId: 'r2', bytes: 1 })
     expect((await c.check('asset', S, { roomId: 'r2', bytes: 1 }))?.error).toBe('RATE_LIMITED')
   })
 
@@ -72,7 +72,7 @@ describe('LimitStore isolation and unlocked-room asset limits', () => {
     const st = new MemoryLimitStore(() => 0)
     await st.record('room', A, { roomId: 'ra' })
     await st.record('room', B, { roomId: 'rb' })
-    for (let i = 0; i < LIMITS.assetsPerInstallPerDay; i++) await st.record('asset', B, { roomId: 'ra', bytes: 1 })
+    for (let i = 0; i < LIMITS.assetsPerInstallPerDay; i++) await st.record('asset', { ...B, ipHash: `o${i}` }, { roomId: 'ra', bytes: 1 })
     expect((await st.check('asset', B, { roomId: 'ra', bytes: 1 }))?.error).toBe('RATE_LIMITED')
     expect(await st.check('asset', B, { roomId: 'rb', bytes: 1 })).toBeNull()
   })
@@ -142,11 +142,12 @@ describe('LimitStore.forgetRoom', () => {
     const st = new MemoryLimitStore(() => 0)
     await st.record('room', X, { roomId: 'r0' })
     await st.record('room', X, { roomId: 'r1' })
-    await st.record('asset', X, { roomId: 'r0', bytes: 150 * MB })
+    const Y = { ...X, ipHash: 'fresh-ip' }
+    await st.record('asset', Y, { roomId: 'r0', bytes: 150 * MB })
     expect(await st.check('asset', X, { roomId: 'r1', bytes: 100 * MB })).toEqual({ error: 'QUOTA_EXCEEDED' })
     await st.forgetRoom('r0')
     expect(await st.check('asset', X, { roomId: 'r1', bytes: 100 * MB })).toBeNull()
-    for (let i = 0; i < LIMITS.assetsPerInstallPerDay - 1; i++) await st.record('asset', X, { roomId: 'r1', bytes: 1 })
+    for (let i = 0; i < LIMITS.assetsPerInstallPerDay - 1; i++) await st.record('asset', { ...X, ipHash: `o${i}` }, { roomId: 'r1', bytes: 1 })
     expect((await st.check('asset', X, { roomId: 'r1', bytes: 1 }))?.error).toBe('RATE_LIMITED')
   })
 })
@@ -164,6 +165,46 @@ describe('subjectFrom', () => {
     const b = await subjectFrom(new Request('https://x/'))
     expect(a.installHash).toBeNull()
     expect(b.installHash).toBeNull()
+    expect(a.ipHash).toBe(b.ipHash)
+  })
+})
+
+describe('11e: IP always counted, IPv6 /64', () => {
+  it('(a) rotating install keys from one IP still hits the IP byte cap', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    let verdict: unknown = null
+    for (let i = 0; i < 10 && !verdict; i++) {
+      const s = { installHash: `inst${i}`, ipHash: 'same-ip' }
+      await st.record('room', s, { roomId: `r${i}` })
+      verdict = await st.check('asset', s, { roomId: `r${i}`, bytes: 25 * MB })
+      if (!verdict) await st.record('asset', s, { roomId: `r${i}`, bytes: 25 * MB })
+    }
+    expect(verdict).toMatchObject({ error: 'RATE_LIMITED' })
+  })
+
+  it('(b) record asset on an install room also bumps ip counters', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    const s = { installHash: 'i1', ipHash: 'ipX' }
+    await st.record('room', s, { roomId: 'r1' })
+    await st.record('asset', s, { roomId: 'r1', bytes: 150 * MB })
+    const other = { installHash: 'i2', ipHash: 'ipX' }
+    await st.record('room', other, { roomId: 'r2' })
+    expect(await st.check('asset', other, { roomId: 'r2', bytes: 50 * MB + 1 })).toMatchObject({ error: 'RATE_LIMITED' })
+  })
+
+  it('(c) ipSubject', () => {
+    expect(ipSubject('2001:db8:1:2:aaaa::1')).toBe(ipSubject('2001:db8:1:2:bbbb::2'))
+    expect(ipSubject('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64')
+    expect(ipSubject('2001:db8:1:2:aaaa::1')).not.toBe(ipSubject('2001:db8:1:3::1'))
+    expect(ipSubject('::ffff:1.2.3.4')).toBe('1.2.3.4')
+    expect(ipSubject('1.2.3.4')).toBe('1.2.3.4')
+    expect(ipSubject('')).toBe('unknown')
+  })
+
+  it('(d) subjectFrom groups same /64', async () => {
+    const mk = (ip: string) => new Request('http://x', { headers: { 'CF-Connecting-IP': ip } })
+    const a = await subjectFrom(mk('2001:db8:1:2:aaaa::1'))
+    const b = await subjectFrom(mk('2001:db8:1:2:bbbb::2'))
     expect(a.ipHash).toBe(b.ipHash)
   })
 })
