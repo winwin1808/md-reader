@@ -15,7 +15,7 @@ Giả định đã chốt: 1.3.0 chưa phát hành → giao thức cầu nối �
 Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 
 ## Sub-phase queue
-- 11a: planned
+- 11a: done
 - 11b: pending
 - 11c: pending
 - 11d: pending
