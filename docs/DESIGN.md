@@ -465,6 +465,25 @@ service worker nối ra (mặc định tắt, ghép cặp do người dùng duy�
 | 10n | Share qua xác nhận | `ConfirmAgentDialog`, `share_doc`/`list_links`/`revoke_link` |
 | 10o | Docs & ship | `docs/MCP.md`, ROADMAP, privacy/listing, e2e, 1.3.0 |
 
+### Phase 11 — Vá bảo mật trước 1.3.0
+
+Ship: *8 hướng tấn công từ security audit 2026-10-27 được vá, mỗi cái có test hồi quy; cầu nối MCP v2 xác thực chữ ký hai chiều.*
+Spec: `docs/superpowers/specs/2026-10-27-phase-11-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 11a | XSS code fence | className allowlist chặt, header khối code dựng bằng textContent |
+| 11b | CSP | `_headers` cho web, export HTML: MIME ảnh allowlist + escape + meta CSP |
+| 11c | Thu hồi tức thì | DO lưu tập thu hồi, đóng socket, kiểm hết hạn mỗi message |
+| 11d | Xoá phòng an toàn | purge trước, kiểm kết quả, 502 thử lại được |
+| 11e | Quota IP | bytes theo IP luôn áp dụng, IPv6 /64 |
+| 11f | Trần Yjs + awareness | 2 MiB/message, 64 MiB/phòng, chặn giả clientID |
+| 11g | AI không ghi đĩa | update_doc không kích hoạt auto-save |
+| 11h | formatVersion lạ | ensureDoc tolerateNewer, phiên chủ không hỏng |
+| 11i | Bridge v2 (core+mcp) | ECDSA P-256, nonce, không bí mật qua dây |
+| 11j | Bridge v2 (extension) | ghim khoá máy chủ, fingerprint trong hộp ghép cặp |
+| 11k | Docs & kiểm lại | MCP.md, privacy, audit lại 8 mục, deploy |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
