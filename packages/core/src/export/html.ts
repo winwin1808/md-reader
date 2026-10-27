@@ -11,6 +11,9 @@ export interface ExportHtmlOptions {
   fetchImage?: (url: string) => Promise<{ base64: string; mimeType: string } | null>
 }
 
+const IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|avif|bmp|svg\+xml|x-icon)$/i
+const BASE64_RE = /^[A-Za-z0-9+/]+=*$/
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -75,8 +78,14 @@ export async function exportToHtml(options: ExportHtmlOptions): Promise<string> 
       Array.from(urlsToFetch).map(async (url) => {
         try {
           const result = await fetcher(url)
-          if (result && result.base64 && result.mimeType) {
-            urlToDataUri.set(url, `data:${result.mimeType};base64,${result.base64}`)
+          if (
+            result &&
+            typeof result.mimeType === 'string' &&
+            typeof result.base64 === 'string' &&
+            IMAGE_MIME.test(result.mimeType) &&
+            BASE64_RE.test(result.base64)
+          ) {
+            urlToDataUri.set(url, `data:${result.mimeType.toLowerCase()};base64,${result.base64}`)
           }
         } catch {
           // Graceful fallback to original src
@@ -100,7 +109,7 @@ export async function exportToHtml(options: ExportHtmlOptions): Promise<string> 
     }
     const fullSrc = srcMatch[0]
     const quote = srcMatch[1] ?? '"'
-    const newSrc = `src=${quote}${dataUri}${quote}`
+    const newSrc = `src=${quote}${escapeHtml(dataUri)}${quote}`
     const newAttrs = attrs.replace(fullSrc, () => newSrc)
     return `<img${newAttrs}>`
   })
@@ -111,6 +120,7 @@ export async function exportToHtml(options: ExportHtmlOptions): Promise<string> 
 <html lang="${escapeHtml(lang)}">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https: http:; style-src 'unsafe-inline'; font-src data: https:; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapedTitle}</title>
   <style>${cssContent}</style>
