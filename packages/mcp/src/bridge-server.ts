@@ -6,7 +6,7 @@ import {
   BRIDGE_PORTS,
   KNOWN_EXTENSION_IDS,
   isAllowedExtensionOrigin,
-  BRIDGE_PROTOCOL_V2,
+  BRIDGE_PROTOCOL,
   parseBridgeMessage,
   type BridgeArgsMap,
   type BridgeErrorCode,
@@ -142,7 +142,7 @@ export async function startBridgeServer(opts: {
     }
     const nonce = newNonce()
     let authStarted = false
-    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL_V2, client, serverKey: opts.identity.publicKey, nonce }))
+    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, serverKey: opts.identity.publicKey, nonce }))
     const deadline = setTimeout(() => {
       if (paired !== ws) ws.close()
     }, authDeadlineMs)

@@ -152,10 +152,12 @@ export function createBridge(deps: BridgeDeps) {
       ws.onmessage = (ev) => {
         if (typeof ev.data !== 'string') return
         const m = parseBridgeMessage(ev.data)
-        if (!m) return
+        if (!m) {
+          try { if ((JSON.parse(ev.data) as { type?: unknown }).type === 'hello') kill(e) } catch { /* ignore */ }
+          return
+        }
         if (m.type === 'hello') {
-          if (m.protocol === 2) void onHello(e, m).catch(() => kill(e))
-          else kill(e)
+          void onHello(e, m).catch(() => kill(e))
         } else if (m.type === 'auth-ok') {
           void onAuthOk(e, m.sig)
         } else if (m.type === 'reject') {

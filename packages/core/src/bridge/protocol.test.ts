@@ -18,11 +18,11 @@ describe('parseBridgeMessage', () => {
     expect(p({})).toBeNull()
   })
   it('hello', () => {
-    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: key, extra: 1 })).toEqual({ type: 'hello', protocol: 1, client: 'c', pairKey: key })
-    expect(p({ type: 'hello', protocol: 2, client: 'c', pairKey: key })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: '', pairKey: key })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: 'short' })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: 'c'.repeat(101), pairKey: key })).toBeNull()
+    const sk = 'k'.repeat(120), nn = 'n'.repeat(43)
+    expect(p({ type: 'hello', protocol: 2, client: 'c', serverKey: sk, nonce: nn, extra: 1 })).toEqual({ type: 'hello', protocol: 2, client: 'c', serverKey: sk, nonce: nn })
+    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: key })).toBeNull()
+    expect(p({ type: 'hello', protocol: 2, client: '', serverKey: sk, nonce: nn })).toBeNull()
+    expect(p({ type: 'hello', protocol: 2, client: 'c'.repeat(101), serverKey: sk, nonce: nn })).toBeNull()
   })
   it('req', () => {
     expect(p({ type: 'req', id: 'a', tool: 'get_doc', args: { docId: 'x' } })).toEqual({ type: 'req', id: 'a', tool: 'get_doc', args: { docId: 'x' } })
@@ -31,9 +31,8 @@ describe('parseBridgeMessage', () => {
     expect(p({ type: 'req', id: '', tool: 'get_doc', args: 1 })).toBeNull()
     expect(p({ type: 'req', id: 'a'.repeat(65), tool: 'get_doc', args: 1 })).toBeNull()
   })
-  it('welcome/reject/ping', () => {
-    expect(p({ type: 'welcome', paired: true, x: 1 })).toEqual({ type: 'welcome', paired: true })
-    expect(p({ type: 'welcome', paired: 'y' })).toBeNull()
+  it('reject/ping, no welcome', () => {
+    expect(p({ type: 'welcome', paired: true })).toBeNull()
     expect(p({ type: 'reject', code: 'DENIED' })).toEqual({ type: 'reject', code: 'DENIED' })
     expect(p({ type: 'reject', code: 'X' })).toBeNull()
     expect(p({ type: 'ping', z: 1 })).toEqual({ type: 'ping' })
