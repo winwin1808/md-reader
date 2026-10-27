@@ -3,7 +3,7 @@ import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAs
 import type { AssetStore } from './assets.js'
 import { MAX_REASON, adminAuthorized, type ModerationStore } from './moderation.js'
 import { subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
-import { RoomNotFoundError, hashToken, type TokenStore } from './tokens.js'
+import { RoomNotFoundError, hashToken, type ResolvedToken, type TokenStore } from './tokens.js'
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -51,6 +51,7 @@ export interface ApiDeps {
   assets?: AssetStore
   limits?: LimitStore
   purge?: (roomId: string) => Promise<void>
+  revokeLive?: (roomId: string, prefix: string) => Promise<void>
   moderation?: ModerationStore
   adminSecret?: string
 }
@@ -187,7 +188,14 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (roomId === null || prefix === null) return badPath()
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
     const ok = await store.revoke(roomId, prefix)
-    return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+    if (!ok) return json({ error: 'not found' }, 404)
+    forgetRoomAuth(roomId)
+    try {
+      await deps.revokeLive?.(roomId, prefix)
+    } catch (e) {
+      console.error('revokeLive failed', roomId, e)
+    }
+    return new Response(null, { status: 204 })
   }
 
   const up = /^\/api\/rooms\/([^/]+)\/assets$/.exec(path)
@@ -265,9 +273,13 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
 }
 
 const AUTH_TTL_MS = 60_000
-const authCache = new Map<string, { value: { roomId: string; role: ShareRole } | null; until: number }>()
+const authCache = new Map<string, { value: ResolvedToken | null; until: number }>()
 
 const AUTH_CACHE_MAX = 5000
+
+export function forgetRoomAuth(roomId: string): void {
+  for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
+}
 
 export function _resetAuthCache(): void {
   authCache.clear()
@@ -291,14 +303,15 @@ export async function authorizeWs(
   req: Request,
   store: TokenStore,
   now: () => number = Date.now,
-): Promise<{ roomId: string; role: ShareRole } | Response> {
+): Promise<ResolvedToken | Response> {
   const token = new URL(req.url).searchParams.get('token')
   if (!token) return json({ error: 'token required' }, 401)
   const key = await hashToken(token)
   const t = now()
   let entry = authCache.get(key)
   if (!entry || entry.until <= t) {
-    entry = { value: await store.resolve(token), until: t + AUTH_TTL_MS }
+    const value = await store.resolve(token)
+    entry = { value, until: Math.min(t + AUTH_TTL_MS, value?.expiresAt ?? Infinity) }
     authCache.delete(key)
     makeRoom(t)
     authCache.set(key, entry)
@@ -311,7 +324,7 @@ export async function deleteRoomEverywhere(
   d: { store: TokenStore; assets?: AssetStore; limits?: LimitStore; purge?: (roomId: string) => Promise<void> },
 ): Promise<boolean> {
   const ok = await d.store.deleteRoom(roomId)
-  for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
+  forgetRoomAuth(roomId)
   const step = async (name: string, f?: () => Promise<unknown>) => {
     try {
       await f?.()

@@ -153,13 +153,13 @@ describe('authorizeWs', () => {
       )
     )!.json()) as { token: string; tokenPrefix: string }
     const spy = vi.spyOn(store, 'resolve')
-    expect(await authorizeWs(wsReq(link.token), store, now)).toEqual({ roomId, role: 'view' })
-    expect(await authorizeWs(wsReq(link.token), store, now)).toEqual({ roomId, role: 'view' })
+    expect(await authorizeWs(wsReq(link.token), store, now)).toMatchObject({ roomId, role: 'view' })
+    expect(await authorizeWs(wsReq(link.token), store, now)).toMatchObject({ roomId, role: 'view' })
     expect(spy).toHaveBeenCalledTimes(1)
     await store.revoke(roomId, link.tokenPrefix)
     // Intentional: revocation takes up to 60 s to bite because of the auth cache.
     t += 59_000
-    expect(await authorizeWs(wsReq(link.token), store, now)).toEqual({ roomId, role: 'view' })
+    expect(await authorizeWs(wsReq(link.token), store, now)).toMatchObject({ roomId, role: 'view' })
     t += 2_000
     const r = (await authorizeWs(wsReq(link.token), store, now)) as Response
     expect(r.status).toBe(410)
@@ -500,5 +500,52 @@ describe('handleApi report + admin takedown', () => {
     const { store, moderation } = await mk()
     expect((await handleApi(tk('ghost', 's3'), store, { moderation, adminSecret: 's3' }))!.status).toBe(404)
     expect(moderation.takedowns.size).toBe(0)
+  })
+})
+
+describe('revoke live (11c)', () => {
+  const wsReq = (token: string) => new Request(`http://x/parties/doc-room/r1?token=${token}`)
+  async function withLink(expiresIn: number | null = null) {
+    const { store, roomId, ownerToken } = await setup()
+    const link = (await (
+      await handleApi(
+        req('POST', `/api/rooms/${roomId}/links`, { bearer: ownerToken, body: { role: 'view', expiresIn } }),
+        store,
+      )
+    )!.json()) as { token: string; tokenPrefix: string }
+    return { store, roomId, ownerToken, link }
+  }
+
+  it('revoke calls revokeLive and drops the cached auth immediately', async () => {
+    const { store, roomId, ownerToken, link } = await withLink()
+    expect((await authorizeWs(wsReq(link.token), store, now)) as object).toHaveProperty('roomId', roomId)
+    const revokeLive = vi.fn(async () => {})
+    const del = await handleApi(
+      req('DELETE', `/api/rooms/${roomId}/links/${link.tokenPrefix}`, { bearer: ownerToken }),
+      store,
+      { revokeLive },
+    )
+    expect(del!.status).toBe(204)
+    expect(revokeLive).toHaveBeenCalledWith(roomId, link.tokenPrefix)
+    expect(((await authorizeWs(wsReq(link.token), store, now)) as Response).status).toBe(410)
+  })
+
+  it('revokeLive throwing still yields 204', async () => {
+    const { store, roomId, ownerToken, link } = await withLink()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const del = await handleApi(
+      req('DELETE', `/api/rooms/${roomId}/links/${link.tokenPrefix}`, { bearer: ownerToken }),
+      store,
+      { revokeLive: async () => { throw new Error('boom') } },
+    )
+    expect(del!.status).toBe(204)
+    spy.mockRestore()
+  })
+
+  it('expiring link is not served from cache past its expiry', async () => {
+    const { store, link } = await withLink(5)
+    expect(await authorizeWs(wsReq(link.token), store, now)).toHaveProperty('role', 'view')
+    t += 6_000
+    expect(((await authorizeWs(wsReq(link.token), store, now)) as Response).status).toBe(410)
   })
 })

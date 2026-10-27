@@ -75,6 +75,21 @@ describe('handleRequest', () => {
     expect(forwarded.headers.get('x-mdr-role')).toBe('view')
   })
 
+  it('forwards the real prefix/expiry and ignores client-sent x-mdr-prefix/x-mdr-expires', async () => {
+    const { store, a, view } = await twoRooms()
+    const routeParty = vi.fn(ok)
+    await handleRequest(
+      new Request(`http://x/parties/doc-room/${a.roomId}?token=${view.token}`, {
+        headers: { 'x-mdr-prefix': 'evil', 'x-mdr-expires': '1' },
+      }),
+      env,
+      { routeParty, store },
+    )
+    const forwarded = (routeParty.mock.calls as unknown as [Request, Env][])[0]![0]
+    expect(forwarded.headers.get('x-mdr-prefix')).toBe(view.tokenPrefix)
+    expect(forwarded.headers.get('x-mdr-expires') ?? '').toBe('')
+  })
+
   it('owner token gets role edit', async () => {
     const { store, a } = await twoRooms()
     const routeParty = vi.fn(ok)
