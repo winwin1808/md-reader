@@ -74,7 +74,9 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
               }),
               env,
             )
-            .then(() => undefined),
+            .then((res) => {
+              if (!res || !res.ok) throw new Error('revoke ' + (res ? res.status : 'null'))
+            }),
         snapshot: (roomId) =>
           deps.routeParty(
             new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {

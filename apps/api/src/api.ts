@@ -188,12 +188,17 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (roomId === null || prefix === null) return badPath()
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
     const ok = await store.revoke(roomId, prefix)
-    if (!ok) return json({ error: 'not found' }, 404)
+    if (!ok) {
+      // Already revoked earlier? Then treat as idempotent so a failed revokeLive can be retried.
+      const known = (await store.listLinks(roomId)).some((l) => l.tokenPrefix === prefix)
+      if (!known) return json({ error: 'not found' }, 404)
+    }
     forgetRoomAuth(roomId)
     try {
       await deps.revokeLive?.(roomId, prefix)
     } catch (e) {
       console.error('revokeLive failed', roomId, e)
+      return json({ error: 'REVOKE_LIVE_FAILED' }, 502)
     }
     return new Response(null, { status: 204 })
   }

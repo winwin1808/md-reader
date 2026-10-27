@@ -280,3 +280,23 @@ describe('DELETE /api/rooms/:roomId', () => {
     expect(routeParty).not.toHaveBeenCalled()
   })
 })
+
+describe('revokeLive status', () => {
+  it('DO 500 on /revoke -> route returns 502', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const link = await store.createLink(room.roomId, { role: 'view', expiresIn: null })
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const routeParty = vi.fn(async () => new Response('err', { status: 500 }))
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}/links/${link.tokenPrefix}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(502)
+    spy.mockRestore()
+  })
+})

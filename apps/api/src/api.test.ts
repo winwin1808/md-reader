@@ -196,14 +196,14 @@ describe('hardening (8a2.5)', () => {
     expect((await handleApi(req('DELETE', `/api/rooms/${b.roomId}/links/abcdef`, { bearer: a.ownerToken }), a.store))!.status).toBe(401)
   })
 
-  it('second DELETE of same prefix -> 404; resolve body keys', async () => {
+  it('second DELETE of same prefix -> 204 idempotent; resolve body keys', async () => {
     const { store, roomId, ownerToken } = await setup()
     const l = (await (await link(store, roomId, ownerToken, { role: 'view', expiresIn: null })).json()) as { token: string; tokenPrefix: string }
     const r = (await handleApi(req('GET', `/api/s/${l.token}`), store))!
     expect(Object.keys(await r.json())).toEqual(['roomId', 'role', 'title'])
     const d = () => handleApi(req('DELETE', `/api/rooms/${roomId}/links/${l.tokenPrefix}`, { bearer: ownerToken }), store)
     expect((await d())!.status).toBe(204)
-    expect((await d())!.status).toBe(404)
+    expect((await d())!.status).toBe(204)
   })
 
   it('rejects bad expiresIn / label / oversize body', async () => {
@@ -530,16 +530,36 @@ describe('revoke live (11c)', () => {
     expect(((await authorizeWs(wsReq(link.token), store, now)) as Response).status).toBe(410)
   })
 
-  it('revokeLive throwing still yields 204', async () => {
+  it('revokeLive throwing yields 502; retry reruns revokeLive and gets 204', async () => {
     const { store, roomId, ownerToken, link } = await withLink()
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const del = await handleApi(
-      req('DELETE', `/api/rooms/${roomId}/links/${link.tokenPrefix}`, { bearer: ownerToken }),
-      store,
-      { revokeLive: async () => { throw new Error('boom') } },
-    )
-    expect(del!.status).toBe(204)
+    let fail = true
+    const revokeLive = vi.fn(async () => { if (fail) throw new Error('boom') })
+    const call = () =>
+      handleApi(
+        req('DELETE', `/api/rooms/${roomId}/links/${link.tokenPrefix}`, { bearer: ownerToken }),
+        store,
+        { revokeLive },
+      )
+    const first = await call()
+    expect(first!.status).toBe(502)
+    expect(await first!.json()).toEqual({ error: 'REVOKE_LIVE_FAILED' })
+    fail = false
+    expect((await call())!.status).toBe(204)
+    expect(revokeLive).toHaveBeenCalledTimes(2)
     spy.mockRestore()
+  })
+
+  it('unknown prefix still 404', async () => {
+    const { store, roomId, ownerToken } = await withLink()
+    const revokeLive = vi.fn(async () => {})
+    const del = await handleApi(
+      req('DELETE', `/api/rooms/${roomId}/links/nope1234`, { bearer: ownerToken }),
+      store,
+      { revokeLive },
+    )
+    expect(del!.status).toBe(404)
+    expect(revokeLive).not.toHaveBeenCalled()
   })
 
   it('expiring link is not served from cache past its expiry', async () => {
