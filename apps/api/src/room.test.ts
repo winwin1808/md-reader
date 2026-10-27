@@ -15,6 +15,7 @@ function spyOnSuper(stub: boolean) {
 function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
+  ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
   return room
@@ -201,5 +202,72 @@ describe('DocRoom.purge', () => {
     await (room as unknown as { queue: Promise<unknown> }).queue
     closeSpy.mockRestore()
     expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
+})
+
+describe('DocRoom revoke (11c)', () => {
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const revokeReq = (prefix: unknown, internal = true) =>
+    new Request('http://x/parties/doc-room/r/revoke', {
+      method: 'POST',
+      headers: internal ? { 'x-mdr-internal': '1' } : {},
+      body: JSON.stringify({ prefix }),
+    })
+
+  it('revoke closes conns with the same prefix only', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const b = { ...fakeConn(), state: { role: 'edit', prefix: 'xyz' } }
+    const room = makePurgeRoom(st, [a, b])
+    const r = await room.onRequest(revokeReq('abc'))
+    expect(r.status).toBe(204)
+    expect(a.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(b.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(true)
+  })
+  it('rejects bad prefix with 400', async () => {
+    const room = makePurgeRoom()
+    expect((await room.onRequest(revokeReq(''))).status).toBe(400)
+    expect((await room.onRequest(revokeReq('x'.repeat(33)))).status).toBe(400)
+    expect((await room.onRequest(revokeReq(5))).status).toBe(400)
+  })
+  it('onConnect with revoked prefix closes 4410', async () => {
+    const room = makePurgeRoom()
+    await room.onRequest(revokeReq('abc'))
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('onConnect with past expiry closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-expires': String(Date.now() - 1000) }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('handleMessage closes and drops when state expired', () => {
+    const room = makePurgeRoom()
+    const spy = spyOnSuper(false)
+    const c = { ...fakeConn(), state: { role: 'edit', expiresAt: Date.now() - 1 } }
+    room.handleMessage(c as never, updateMsg())
+    expect(spy).not.toHaveBeenCalled()
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    spy.mockRestore()
+  })
+  it('revoked set is reloaded in onLoad', async () => {
+    const room = makePurgeRoom(fakeStorage({ 'revoked:abc': 1 }))
+    await room.onLoad()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('/revoke without x-mdr-internal does not revoke', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const room = makePurgeRoom(st, [a])
+    const r = await room.onRequest(revokeReq('abc', false))
+    expect(r.status).toBe(404)
+    expect(a.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(false)
   })
 })

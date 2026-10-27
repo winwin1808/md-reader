@@ -11,6 +11,7 @@ export class DocRoom extends YServer<Env> {
   private stats: LogStats = { updates: 0, bytes: 0 }
   private queue: Promise<unknown> = Promise.resolve()
   private purged = false
+  private revoked = new Set<string>()
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -50,6 +51,7 @@ export class DocRoom extends YServer<Env> {
       this.purged = true
       return
     }
+    for (const k of (await this.ctx.storage.list({ prefix: 'revoked:' })).keys()) this.revoked.add(k.slice('revoked:'.length))
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
@@ -90,8 +92,16 @@ export class DocRoom extends YServer<Env> {
       conn.close(4410, 'deleted')
       return
     }
-    const role = ctx.request.headers.get('x-mdr-role') ?? 'view'
-    conn.setState({ role })
+    const h = ctx.request.headers
+    const role = h.get('x-mdr-role') ?? 'view'
+    const prefix = h.get('x-mdr-prefix') ?? ''
+    const exp = h.get('x-mdr-expires')
+    const expiresAt = exp && Number.isFinite(Number(exp)) ? Number(exp) : undefined
+    if ((prefix && this.revoked.has(prefix)) || (expiresAt !== undefined && expiresAt <= Date.now())) {
+      conn.close(4410, 'revoked')
+      return
+    }
+    conn.setState({ role, prefix, expiresAt })
     super.onConnect(conn, ctx)
   }
 
@@ -103,6 +113,11 @@ export class DocRoom extends YServer<Env> {
 
   handleMessage(conn: Connection, message: string | ArrayBuffer | ArrayBufferView): void {
     if (this.purged) return
+    const st = conn.state as { prefix?: string; expiresAt?: number } | null
+    if ((st?.expiresAt !== undefined && st.expiresAt <= Date.now()) || (st?.prefix && this.revoked.has(st.prefix))) {
+      conn.close(4410, 'revoked')
+      return
+    }
     if (typeof message === 'string') return super.handleMessage(conn, message)
     const bytes =
       message instanceof Uint8Array
@@ -127,6 +142,17 @@ export class DocRoom extends YServer<Env> {
     const url = new URL(req.url)
     if (req.method === 'POST' && req.headers.get('x-mdr-internal') === '1' && url.pathname.endsWith('/purge')) {
       await this.purge()
+      return new Response(null, { status: 204 })
+    }
+    if (req.method === 'POST' && req.headers.get('x-mdr-internal') === '1' && url.pathname.endsWith('/revoke')) {
+      const body = (await req.json().catch(() => null)) as { prefix?: unknown } | null
+      const prefix = body?.prefix
+      if (typeof prefix !== 'string' || prefix.length < 1 || prefix.length > 32) return new Response('bad request', { status: 400 })
+      this.revoked.add(prefix)
+      await this.ctx.storage.put('revoked:' + prefix, Date.now())
+      for (const c of [...this.getConnections()]) {
+        if ((c.state as { prefix?: string } | null)?.prefix === prefix) c.close(4410, 'revoked')
+      }
       return new Response(null, { status: 204 })
     }
     if (this.purged && url.pathname.endsWith('/snapshot')) return new Response('gone', { status: 410 })
