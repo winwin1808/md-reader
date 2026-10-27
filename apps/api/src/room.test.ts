@@ -123,16 +123,36 @@ describe('DocRoom size caps (11f1)', () => {
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
   })
-  it('closes 4413 when the room would exceed the cap', () => {
+  it('closes 4413 when the room is already full', () => {
     const room = makeRoom()
-    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES - 10
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES
     const spy = spyOnSuper(false)
     const c = closable({ role: 'edit' })
-    room.handleMessage(c as never, updateMsg('x'.repeat(40)))
+    room.handleMessage(c as never, updateMsg())
     expect(c.close).toHaveBeenCalledWith(4413, 'room full')
     expect(room.droppedWrites).toBe(1)
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
+  })
+  it('applies an update that merely crosses the cap when not yet full', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES - 10
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg('x'.repeat(20)))
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('roomBytes resets to the real state size after compact', async () => {
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    await room.onLoad()
+    room.document.getText('t').insert(0, 'hello')
+    ;(room as unknown as { roomBytes: number }).roomBytes = 50_000_000
+    await room.onSave() // phòng rỗng + updates > 0 → compact
+    const rb = (room as unknown as { roomBytes: number }).roomBytes
+    expect(rb).toBe(Y.encodeStateAsUpdate(room.document).length)
   })
   it('accepts small updates while there is room', () => {
     const room = makeRoom()

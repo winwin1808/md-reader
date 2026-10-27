@@ -33,12 +33,18 @@ export class DocRoom extends YServer<Env> {
     return p
   }
 
+  private async doCompact(): Promise<void> {
+    const r = await compact(this.kv, this.document)
+    this.stats = { updates: r.updates, bytes: r.bytes }
+    this.roomBytes = r.stateBytes
+  }
+
   private persistUpdate(u: Uint8Array): Promise<void> {
     if (this.purged) return Promise.resolve()
     return this.enqueue(async () => {
       if (this.purged) return
       this.stats = await appendUpdate(this.kv, u, this.stats)
-      if (shouldCompact(this.stats, false)) this.stats = await compact(this.kv, this.document)
+      if (shouldCompact(this.stats, false)) await this.doCompact()
     })
   }
 
@@ -76,7 +82,7 @@ export class DocRoom extends YServer<Env> {
     await this.enqueue(async () => {
       if (this.purged) return
       const empty = [...this.getConnections()].length === 0
-      if (shouldCompact(this.stats, empty)) this.stats = await compact(this.kv, this.document)
+      if (shouldCompact(this.stats, empty)) await this.doCompact()
     })
   }
 
@@ -84,7 +90,7 @@ export class DocRoom extends YServer<Env> {
     const others = [...this.getConnections()].filter((c) => c.id !== closing.id)
     if (this.purged || others.length > 0 || this.stats.updates === 0) return
     void this.enqueue(async () => {
-      if (!this.purged && this.stats.updates > 0) this.stats = await compact(this.kv, this.document)
+      if (!this.purged && this.stats.updates > 0) await this.doCompact()
     }).catch((e) => console.error('compact failed', e))
   }
 
@@ -170,7 +176,7 @@ export class DocRoom extends YServer<Env> {
       this.droppedWrites++
       return
     }
-    if ((k === 'step2' || k === 'update') && this.roomBytes + bytes.length > MAX_ROOM_BYTES) {
+    if ((k === 'step2' || k === 'update') && this.roomBytes >= MAX_ROOM_BYTES) {
       this.droppedWrites++
       conn.close(4413, 'room full')
       return

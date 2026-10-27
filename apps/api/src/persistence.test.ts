@@ -79,7 +79,7 @@ describe('persistence', () => {
     let stats = await appendUpdate(kv, Y.encodeStateAsUpdate(doc), { updates: 0, bytes: 0 })
     expect(stats.bytes).toBeGreaterThan(CHUNK_BYTES)
     stats = await compact(kv, doc)
-    expect(stats).toEqual({ updates: 0, bytes: 0 })
+    expect(stats).toMatchObject({ updates: 0, bytes: 0 })
     expect(kv.map.has('snap:0:0') && kv.map.has('snap:0:1') && kv.map.has('snap:0:2')).toBe(true)
     expect(kv.map.has('snap:0:3')).toBe(false)
     expect(JSON.parse(kv.map.get('snap:meta') as string).chunks).toBe(3)
@@ -149,5 +149,16 @@ describe('persistence', () => {
     expect(textOf(await loadState(kv))).toBe(letters)
     kv.map.delete('u:000000000000')
     expect((await readStats(kv)).updates).toBe(12)
+  })
+})
+
+describe('compact stateBytes (11f1)', () => {
+  it('returns stateBytes equal to the encoded state length', async () => {
+    const kv = new MemoryKV()
+    const doc = new Y.Doc()
+    doc.getText('t').insert(0, 'hello world')
+    const r = await compact(kv, doc)
+    expect(r.stateBytes).toBe(Y.encodeStateAsUpdate(doc).length)
+    expect(r.updates).toBe(0)
   })
 })
