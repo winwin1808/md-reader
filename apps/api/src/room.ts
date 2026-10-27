@@ -7,6 +7,9 @@ import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike
 
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 export const MAX_ROOM_BYTES = 64 * 1024 * 1024
+export const MAX_AWARENESS_IDS_PER_CONN = 4
+// Browsers throttle timers in hidden tabs to ~1/min, so 2 min exceeds one throttled renew cycle.
+export const AWARENESS_STALE_MS = 120_000
 
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }
@@ -16,6 +19,8 @@ export class DocRoom extends YServer<Env> {
   private purged = false
   private roomBytes = 0
   private revoked = new Set<string>()
+  private awarenessOwner = new Map<number, string>()
+  private lastSeen = new Map<string, number>()
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -95,6 +100,8 @@ export class DocRoom extends YServer<Env> {
   }
 
   async onClose(conn: Connection, code: number, reason: string, wasClean: boolean): Promise<void> {
+    for (const [id, owner] of [...this.awarenessOwner]) if (owner === conn.id) this.awarenessOwner.delete(id)
+    this.lastSeen.delete(conn.id)
     await super.onClose(conn, code, reason, wasClean)
     this.compactIfEmpty(conn)
   }
@@ -159,6 +166,8 @@ export class DocRoom extends YServer<Env> {
       conn.close(4410, 'revoked')
       return
     }
+    const now = Date.now()
+    this.lastSeen.set(conn.id, now)
     const size = typeof message === 'string' ? message.length : message.byteLength
     if (size > MAX_MESSAGE_BYTES) {
       conn.close(1009, 'too large')
@@ -182,7 +191,17 @@ export class DocRoom extends YServer<Env> {
       return
     }
     if (k === 'awareness') {
-      const s = sanitizeAwarenessMessage(bytes)
+      const s = sanitizeAwarenessMessage(bytes, (id, removal) => {
+        const owner = this.awarenessOwner.get(id)
+        if (owner === conn.id) return true
+        if (owner === undefined && removal) return false
+        if (owner !== undefined && now - (this.lastSeen.get(owner) ?? 0) <= AWARENESS_STALE_MS) return false
+        let held = 0
+        for (const o of this.awarenessOwner.values()) if (o === conn.id) held++
+        if (held >= MAX_AWARENESS_IDS_PER_CONN) return false
+        this.awarenessOwner.set(id, conn.id)
+        return true
+      })
       if (!s) return
       return super.handleMessage(conn, s)
     }

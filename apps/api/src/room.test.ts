@@ -5,7 +5,7 @@ import * as decoding from 'lib0/decoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { YServer } from 'y-partyserver'
-import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES } from './room'
+import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES, AWARENESS_STALE_MS } from './room'
 
 function spyOnSuper(stub: boolean) {
   const spy = vi.spyOn(YServer.prototype as unknown as { handleMessage: (c: unknown, m: unknown) => void }, 'handleMessage')
@@ -15,6 +15,8 @@ function spyOnSuper(stub: boolean) {
 function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
+  ;(room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner = new Map()
+  ;(room as unknown as { lastSeen: Map<string, number> }).lastSeen = new Map()
   ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
@@ -435,5 +437,109 @@ describe('DocRoom expiry alarm (11c T4)', () => {
     await room.purge()
     expect(st.m.has('x')).toBe(false)
     expect(st.m.get('tombstone')).toBe(1)
+  })
+})
+
+describe('DocRoom awareness ownership', () => {
+  function awFor(id: number, state: unknown = { user: { name: 'A', color: 'var(--peer-1)' } }): Uint8Array {
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, id)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, JSON.stringify(state))
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    return encoding.toUint8Array(e)
+  }
+  const idsIn = (m: Uint8Array): number[] => {
+    const d = decoding.createDecoder(m)
+    decoding.readVarUint(d)
+    const u = decoding.createDecoder(decoding.readVarUint8Array(d))
+    const n = decoding.readVarUint(u)
+    const out: number[] = []
+    for (let i = 0; i < n; i++) {
+      out.push(decoding.readVarUint(u))
+      decoding.readVarUint(u)
+      decoding.readVarString(u)
+    }
+    return out
+  }
+  const cn = (id: string) => ({ id, state: { role: 'edit' }, readyState: 1, send: () => undefined }) as never
+  const setup = () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false).mockImplementation(() => undefined)
+    return { room, spy }
+  }
+  it('forwards owner, blocks others (state and null)', () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    room.handleMessage(b, awFor(100))
+    room.handleMessage(b, awFor(100, null))
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  const seen = (room: DocRoom, id: string, t: number) =>
+    (room as unknown as { lastSeen: Map<string, number> }).lastSeen.set(id, t)
+  const ownerOf = (room: DocRoom, id: number) =>
+    (room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner.get(id)
+  it('transfers ownership when the old owner is silent over the stale window', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - AWARENESS_STALE_MS - 1000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(ownerOf(room, 100)).toBe('B')
+    spy.mockRestore()
+  })
+  it('keeps ownership when the old owner was seen 60 s ago (throttled hidden tab)', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - 60_000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(ownerOf(room, 100)).toBe('A')
+    spy.mockRestore()
+  })
+  it('does not claim an id with a malformed entry', () => {
+    const { room, spy } = setup()
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, 200)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, '{bad')
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    room.handleMessage(cn('A'), encoding.toUint8Array(e))
+    expect(ownerOf(room, 200)).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('rejects null removal for an unowned id and creates no owner', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(300, null))
+    expect(spy).not.toHaveBeenCalled()
+    expect(ownerOf(room, 300)).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('frees ids when owner closes', async () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    await room.onClose(a, 1000, '', true).catch(() => undefined)
+    room.handleMessage(b, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(idsIn(spy.mock.calls[1]![1] as Uint8Array)).toEqual([100])
+    spy.mockRestore()
+  })
+  it('caps ids per connection', () => {
+    const { room, spy } = setup()
+    const a = cn('A')
+    for (let i = 1; i <= 4; i++) room.handleMessage(a, awFor(i))
+    room.handleMessage(a, awFor(5))
+    expect(spy).toHaveBeenCalledTimes(4)
+    spy.mockRestore()
   })
 })
