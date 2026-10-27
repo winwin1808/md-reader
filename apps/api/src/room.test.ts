@@ -113,6 +113,9 @@ function fakeStorage(init: Record<string, unknown> = {}) {
     list: async (o: { prefix?: string } = {}) =>
       new Map([...m].filter(([k]) => k.startsWith(o.prefix ?? ''))),
     deleteAll: async () => void m.clear(),
+    deleteAlarm: vi.fn(async function (this: { alarm: number | null }) {
+      this.alarm = null
+    }),
     alarm: null as number | null,
     getAlarm: async function (this: { alarm: number | null }) {
       return this.alarm
@@ -323,5 +326,31 @@ describe('DocRoom expiry alarm (11c T4)', () => {
     room.onConnect(c as never, reqWith({ 'x-mdr-expires': 'abc' }))
     expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
     expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('purge deletes the alarm before deleteAll; onAlarm on a purged room does nothing', async () => {
+    const a = withState(Date.now() - 1)
+    const st = fakeStorage()
+    const order: string[] = []
+    st.deleteAlarm.mockImplementation(async () => void order.push('alarm'))
+    const origDel = st.deleteAll
+    st.deleteAll = async () => {
+      order.push('all')
+      await origDel()
+    }
+    const room = makePurgeRoom(st, [a])
+    await room.purge()
+    expect(order).toEqual(['alarm', 'all'])
+    a.close.mockClear()
+    await room.onAlarm()
+    expect(a.close).not.toHaveBeenCalled()
+    expect(st.setAlarm).not.toHaveBeenCalled()
+  })
+  it('purge still completes if deleteAlarm throws', async () => {
+    const st = fakeStorage({ x: 1 })
+    st.deleteAlarm.mockRejectedValue(new Error('boom'))
+    const room = makePurgeRoom(st)
+    await room.purge()
+    expect(st.m.has('x')).toBe(false)
+    expect(st.m.get('tombstone')).toBe(1)
   })
 })

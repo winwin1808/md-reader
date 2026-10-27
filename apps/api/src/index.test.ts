@@ -264,6 +264,23 @@ describe('DELETE /api/rooms/:roomId', () => {
     expect(new URL(seen[0]!.url).pathname).toBe(`/parties/doc-room/${room.roomId}/purge`)
   })
 
+  it('DO 500 on /purge -> owner DELETE 502', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const routeParty = vi.fn(async () => new Response('err', { status: 500 }))
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(502)
+    spy.mockRestore()
+  })
+
   it('external /purge never reaches routeParty', async () => {
     const { store, a } = await twoRooms()
     const edit = await store.createLink(a.roomId, { role: 'edit', expiresIn: null })

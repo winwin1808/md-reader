@@ -42,6 +42,11 @@ export class DocRoom extends YServer<Env> {
     this.purged = true
     for (const c of [...this.getConnections()]) c.close(4410, 'deleted')
     await this.queue
+    try {
+      await this.ctx.storage.deleteAlarm()
+    } catch (e) {
+      console.error('deleteAlarm failed', e)
+    }
     await this.ctx.storage.deleteAll()
     await this.ctx.storage.put('tombstone', 1)
   }
@@ -116,6 +121,7 @@ export class DocRoom extends YServer<Env> {
   }
 
   async onAlarm(): Promise<void> {
+    if (this.purged) return
     await super.onAlarm?.()
     const now = Date.now()
     let next: number | undefined
