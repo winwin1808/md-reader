@@ -15,6 +15,7 @@ function spyOnSuper(stub: boolean) {
 function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
+  ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
   return room
@@ -112,6 +113,13 @@ function fakeStorage(init: Record<string, unknown> = {}) {
     list: async (o: { prefix?: string } = {}) =>
       new Map([...m].filter(([k]) => k.startsWith(o.prefix ?? ''))),
     deleteAll: async () => void m.clear(),
+    alarm: null as number | null,
+    getAlarm: async function (this: { alarm: number | null }) {
+      return this.alarm
+    },
+    setAlarm: vi.fn(async function (this: { alarm: number | null }, t: number) {
+      this.alarm = t
+    }),
   }
 }
 function makePurgeRoom(storage = fakeStorage(), conns: Array<ReturnType<typeof fakeConn>> = []) {
@@ -201,5 +209,119 @@ describe('DocRoom.purge', () => {
     await (room as unknown as { queue: Promise<unknown> }).queue
     closeSpy.mockRestore()
     expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
+})
+
+describe('DocRoom revoke (11c)', () => {
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const revokeReq = (prefix: unknown, internal = true) =>
+    new Request('http://x/parties/doc-room/r/revoke', {
+      method: 'POST',
+      headers: internal ? { 'x-mdr-internal': '1' } : {},
+      body: JSON.stringify({ prefix }),
+    })
+
+  it('revoke closes conns with the same prefix only', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const b = { ...fakeConn(), state: { role: 'edit', prefix: 'xyz' } }
+    const room = makePurgeRoom(st, [a, b])
+    const r = await room.onRequest(revokeReq('abc'))
+    expect(r.status).toBe(204)
+    expect(a.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(b.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(true)
+  })
+  it('rejects bad prefix with 400', async () => {
+    const room = makePurgeRoom()
+    expect((await room.onRequest(revokeReq(''))).status).toBe(400)
+    expect((await room.onRequest(revokeReq('x'.repeat(33)))).status).toBe(400)
+    expect((await room.onRequest(revokeReq(5))).status).toBe(400)
+  })
+  it('onConnect with revoked prefix closes 4410', async () => {
+    const room = makePurgeRoom()
+    await room.onRequest(revokeReq('abc'))
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('onConnect with past expiry closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-expires': String(Date.now() - 1000) }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('handleMessage closes and drops when state expired', () => {
+    const room = makePurgeRoom()
+    const spy = spyOnSuper(false)
+    const c = { ...fakeConn(), state: { role: 'edit', expiresAt: Date.now() - 1 } }
+    room.handleMessage(c as never, updateMsg())
+    expect(spy).not.toHaveBeenCalled()
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    spy.mockRestore()
+  })
+  it('revoked set is reloaded in onLoad', async () => {
+    const room = makePurgeRoom(fakeStorage({ 'revoked:abc': 1 }))
+    await room.onLoad()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('/revoke without x-mdr-internal does not revoke', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const room = makePurgeRoom(st, [a])
+    const r = await room.onRequest(revokeReq('abc', false))
+    expect(r.status).toBe(404)
+    expect(a.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(false)
+  })
+})
+
+describe('DocRoom expiry alarm (11c T4)', () => {
+  vi.spyOn(YServer.prototype as unknown as { onAlarm: () => Promise<void> }, 'onAlarm').mockResolvedValue(undefined)
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const withState = (expiresAt?: number) => ({ ...fakeConn(), state: { role: 'view', expiresAt } })
+
+  it('onAlarm closes only expired conns', async () => {
+    const a = withState(Date.now() - 1)
+    const b = withState(undefined)
+    const room = makePurgeRoom(fakeStorage(), [a, b])
+    await room.onAlarm()
+    expect(a.close).toHaveBeenCalledWith(4410, 'expired')
+    expect(b.close).not.toHaveBeenCalled()
+  })
+  it('onConnect with future expiry sets alarm; earlier existing alarm is kept', async () => {
+    const sup = vi.spyOn(YServer.prototype as unknown as { onConnect: () => void }, 'onConnect').mockImplementation(() => undefined)
+    const t = Date.now() + 60_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    room.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st.setAlarm).toHaveBeenCalledWith(t)
+
+    const st2 = fakeStorage()
+    st2.alarm = t - 1000
+    const room2 = makePurgeRoom(st2)
+    room2.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st2.setAlarm).not.toHaveBeenCalled()
+    sup.mockRestore()
+  })
+  it('onAlarm re-arms for the earliest future expiry', async () => {
+    const t1 = Date.now() + 90_000
+    const t2 = Date.now() + 30_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st, [withState(Date.now() - 1), withState(t1), withState(t2)])
+    await room.onAlarm()
+    expect(st.setAlarm).toHaveBeenCalledWith(t2)
+  })
+  it('unparsable x-mdr-expires closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-expires': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
   })
 })

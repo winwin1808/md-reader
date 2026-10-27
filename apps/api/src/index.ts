@@ -64,6 +64,19 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
               env,
             )
             .then(() => undefined),
+        revokeLive: (roomId, prefix) =>
+          deps
+            .routeParty(
+              new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/revoke`, {
+                method: 'POST',
+                headers: { 'x-mdr-internal': '1', 'content-type': 'application/json' },
+                body: JSON.stringify({ prefix }),
+              }),
+              env,
+            )
+            .then((res) => {
+              if (!res || !res.ok) throw new Error('revoke ' + (res ? res.status : 'null'))
+            }),
         snapshot: (roomId) =>
           deps.routeParty(
             new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/snapshot`, {
@@ -87,7 +100,11 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
     if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
     const req2 = new Request(req)
     req2.headers.delete('x-mdr-internal')
+    req2.headers.delete('x-mdr-prefix')
+    req2.headers.delete('x-mdr-expires')
     req2.headers.set('x-mdr-role', auth.role)
+    req2.headers.set('x-mdr-prefix', auth.prefix ?? '')
+    req2.headers.set('x-mdr-expires', auth.expiresAt == null ? '' : String(auth.expiresAt))
     const res = await deps.routeParty(req2, env)
     return res ?? json({ error: 'not found' }, 404)
   }
