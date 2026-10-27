@@ -119,11 +119,24 @@ export function migrateDoc(doc: Y.Doc): { from: number; to: number } {
   return { from: v, to: FORMAT_VERSION }
 }
 
-export function ensureDoc(doc: Y.Doc, init?: InitOpts): { migrated: boolean } {
-  if (getMeta(doc).size === 0) {
+export function ensureDoc(
+  doc: Y.Doc,
+  init?: InitOpts,
+  opts?: { tolerateNewer?: boolean },
+): { migrated: boolean; newer: boolean } {
+  const meta = getMeta(doc)
+  if (meta.size === 0) {
     initDoc(doc, init)
-    return { migrated: false }
+    return { migrated: false, newer: false }
+  }
+  const raw = meta.get('formatVersion')
+  if (opts?.tolerateNewer && typeof raw === 'number' && raw > FORMAT_VERSION) {
+    // Structure check only; Y.Doc.get throws on type mismatch. Never write meta.
+    getSource(doc)
+    getMeta(doc)
+    getHistory(doc)
+    return { migrated: false, newer: true }
   }
   const r = migrateDoc(doc)
-  return { migrated: r.from !== r.to }
+  return { migrated: r.from !== r.to, newer: false }
 }

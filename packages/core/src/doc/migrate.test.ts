@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { UnsupportedFormatVersionError } from './schema.js'
-import { migrateDoc, ensureDoc, getMeta, getSource, readMeta } from './doc.js'
+import { migrateDoc, ensureDoc, getMeta, getSource, getHistory, readMeta } from './doc.js'
 
 function v1Fixture(): Y.Doc {
   const doc = new Y.Doc()
@@ -72,7 +72,7 @@ describe('ensureDoc', () => {
   it('initializes a bare doc', () => {
     const doc = new Y.Doc()
     const r = ensureDoc(doc, { title: 'T', source: 'x' })
-    expect(r).toEqual({ migrated: false })
+    expect(r).toEqual({ migrated: false, newer: false })
     const m = readMeta(doc)
     expect(m.title).toBe('T')
     expect(m.formatVersion).toBe(2)
@@ -80,6 +80,24 @@ describe('ensureDoc', () => {
   })
 
   it('migrates a v1 doc', () => {
-    expect(ensureDoc(v1Fixture())).toEqual({ migrated: true })
+    expect(ensureDoc(v1Fixture())).toEqual({ migrated: true, newer: false })
+  })
+
+  it('tolerateNewer: keeps a newer doc untouched and writable', () => {
+    const doc = v1Fixture()
+    getMeta(doc).set('formatVersion', 99)
+    const r = ensureDoc(doc, undefined, { tolerateNewer: true })
+    expect(r).toEqual({ migrated: false, newer: true })
+    expect(getMeta(doc).get('formatVersion')).toBe(99)
+    expect(getMeta(doc).get('name')).toBe('a.md')
+    getSource(doc).insert(0, 'x')
+    expect(getSource(doc).toString()).toBe('x# Hi')
+    expect(getHistory(doc)).toBeDefined()
+  })
+
+  it('without tolerateNewer a newer doc throws', () => {
+    const doc = v1Fixture()
+    getMeta(doc).set('formatVersion', 99)
+    expect(() => ensureDoc(doc)).toThrow(UnsupportedFormatVersionError)
   })
 })
