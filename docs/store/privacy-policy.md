@@ -1,6 +1,6 @@
 # MD Reader — Chính sách quyền riêng tư / Privacy Policy
 
-Cập nhật / Last updated: 2026-10-26
+Cập nhật / Last updated: 2026-10-27
 
 ## Tiếng Việt
 
@@ -38,4 +38,4 @@ MD Reader is a Chrome extension for reading, editing and presenting Markdown fil
 - **Access.** The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: `storage`, `activeTab`, `alarms` (wakes the local AI bridge) and access to Markdown URLs.
 - **Deleting data.** Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention and deleting server data item above.
 
-Contact: <điền email hỗ trợ công khai trước khi publish>
+Liên hệ / Contact: nguyenquanghao1808@gmail.com
