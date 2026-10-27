@@ -17,7 +17,7 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 ## Sub-phase queue
 - 11a: done
 - 11b: done
-- 11c: planned
+- 11c: done
 - 11d: pending
 - 11e: pending
 - 11f: pending
