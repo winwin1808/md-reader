@@ -65,6 +65,18 @@ describe('extractToc', () => {
 })
 
 describe('renderToHtml', () => {
+  test('code fence language class is strictly allowlisted (11a)', () => {
+    const r = renderToHtml(parseMarkdown('```<img/src=x/onerror=window.__x=1>\nx\n```'), { plugins: defaultRenderPlugins(), highlight: true, allowRawHtml: false })
+    expect(r.html).not.toContain('<img')
+    const classes = [...r.html.matchAll(/class="([^"]*)"/g)].map((m) => m[1]).join(' ')
+    expect(classes).not.toMatch(/[<"\/=]/)
+  })
+
+  test('code fence keeps language-c++', () => {
+    const r = renderToHtml(parseMarkdown('```c++\nint x;\n```'), { plugins: defaultRenderPlugins(), highlight: true, allowRawHtml: false })
+    expect(r.html).toContain('language-c++')
+  })
+
   test('renders markdown to html with highlight, sanitize, slug', () => {
     const markdown = '# Hello World\n\n```js\nconsole.log(1)\n```\n\n<script>alert(1)</script>'
     const parsed = parseMarkdown(markdown)

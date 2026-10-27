@@ -58,6 +58,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import rehypeStringify from 'rehype-stringify'
 import type { ParseResult } from '../parse/index.js'
 import { sanitizeSchema } from '../parse/index.js'
+import { LANG_CLASS } from '../parse/sanitize-schema.js'
 
 export function renderToHtml(parsed: ParseResult, options?: RenderOptions): RenderResult {
   const highlight = options?.highlight ?? true
@@ -91,11 +92,11 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
       ...sanitizeSchema.attributes,
       code: [
         ...codeAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
+        ['className', 'hljs', /^hljs-/, LANG_CLASS, 'math', 'math-inline', 'math-display', /^math-/],
       ],
       span: [
         ...spanAttributes,
-        ['className', 'hljs', /^hljs-/, /^language-/, 'math', 'math-inline', 'math-display', /^math-/],
+        ['className', 'hljs', /^hljs-/, LANG_CLASS, 'math', 'math-inline', 'math-display', /^math-/],
       ],
     },
   }

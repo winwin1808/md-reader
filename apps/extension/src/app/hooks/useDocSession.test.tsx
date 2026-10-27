@@ -2,8 +2,17 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor, cleanup } from '@testing-library/react'
 import * as Y from 'yjs'
-import { hashText, ORIGIN_LOAD } from '@md-reader/core'
+import { hashText, ORIGIN_LOAD, applyTextChangeAsActor } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase, getRecord, docParam } from '../doc-registry'
+
+const ensureFail = vi.hoisted(() => ({ on: false }))
+vi.mock('@md-reader/core', async (orig) => {
+  const actual = await orig<typeof import('@md-reader/core')>()
+  return { ...actual, ensureDoc: ((...a: Parameters<typeof actual.ensureDoc>) => {
+    if (ensureFail.on) throw new Error('boom')
+    return actual.ensureDoc(...a)
+  }) as typeof actual.ensureDoc }
+})
 
 vi.mock('../doc-registry', async (orig) => {
   const actual = await orig<typeof import('../doc-registry')>()
@@ -474,5 +483,92 @@ describe('useDocSession room binding', () => {
     await flush()
     expect(bindRoom).toHaveBeenCalledTimes(1)
     expect(bind.conns[0].awareness.setLocalStateField).toHaveBeenCalledWith('user', expect.objectContaining({ name: 'Lan' }))
+  })
+})
+
+describe('useDocSession aiUnsaved (11g)', () => {
+  beforeEach(async () => {
+    idbUpdate = null; names = []; namesBefore = 0
+    await __resetForTests()
+  })
+  const ready = async () => {
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.yText.toString()).toBe('hello'), LOAD_WAIT)
+    return h
+  }
+
+  it('real MCP path sets persistent flag; null-origin/peer do not clear; ackAi only for exact text; undoManager/binding clear', async () => {
+    const { result } = await ready()
+    const { doc, yText } = result.current
+    expect(result.current.aiUnsaved).toBe(false)
+    act(() => { applyTextChangeAsActor(doc, 'hello AI', 'AI', 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    expect(doc.getMap('meta').get('aiUnsaved')).toBe(true)
+    expect(result.current.isDirty).toBe(true)
+    // programmatic local transaction with null origin does not clear
+    act(() => { doc.transact(() => { yText.insert(0, 'n') }, null) })
+    expect(result.current.aiUnsaved).toBe(true)
+    // peer update leaves the flag
+    const peer = new Y.Doc()
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc))
+    peer.getText('source').insert(0, 'P')
+    act(() => { Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer), 'remote') })
+    expect(result.current.aiUnsaved).toBe(true)
+    // ack with stale text does not clear
+    act(() => result.current.ackAi('stale'))
+    expect(result.current.aiUnsaved).toBe(true)
+    // editor binding origin clears
+    act(() => { doc.transact(() => { yText.insert(0, 'x') }, { ytext: yText, awareness: null }) })
+    expect(result.current.aiUnsaved).toBe(false)
+    act(() => { applyTextChangeAsActor(doc, yText.toString() + '!', 'AI', 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    // exact ack clears
+    act(() => result.current.ackAi(yText.toString()))
+    expect(result.current.aiUnsaved).toBe(false)
+    expect(doc.getMap('meta').has('aiUnsaved')).toBe(false)
+    // undoManager origin clears
+    act(() => { applyTextChangeAsActor(doc, yText.toString() + '?', 'AI', 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    act(() => { doc.transact(() => { yText.insert(0, 'u') }, result.current.undoManager) })
+    expect(result.current.aiUnsaved).toBe(false)
+  })
+
+  it('flag persisted in meta survives reload', async () => {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'hello')
+    d.getMap('meta').set('aiUnsaved', true)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.aiUnsaved).toBe(true), LOAD_WAIT)
+  })
+})
+
+describe('useDocSession formatVersion tolerance (11h)', () => {
+  beforeEach(async () => {
+    idbUpdate = null; names = []; namesBefore = 0
+    await __resetForTests()
+  })
+
+  it('doc with formatVersion 99 opens: synced, checkpoints set, no error', async () => {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'hello')
+    d.getMap('meta').set('formatVersion', 99)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.checkpoints).not.toBeNull(), LOAD_WAIT)
+    expect(h.result.current.error).toBeNull()
+  })
+
+  it('other ensureDoc failure sets error and does not hang', async () => {
+    ensureFail.on = true
+    try {
+      const h = setup('hello')
+      await flush(); await syncNow()
+      await waitFor(() => expect(h.result.current.error).not.toBeNull(), LOAD_WAIT)
+      expect(h.result.current.checkpoints).toBeNull()
+    } finally { ensureFail.on = false }
   })
 })

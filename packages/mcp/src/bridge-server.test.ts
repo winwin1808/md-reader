@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import net from 'node:net'
 import WebSocket from 'ws'
-import { KNOWN_EXTENSION_IDS } from '@md-reader/core/bridge'
-import { BridgeCallError, startBridgeServer, type BridgeServer } from './bridge-server'
+import {
+  KNOWN_EXTENSION_IDS,
+} from '@md-reader/core/bridge'
+import { authPayload, exportPublicKey, generateBridgeKeyPair, importPublicKey, keyId, newNonce, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
+import type { ServerIdentity } from './pairing'
+import { AUTH_DEADLINE_MS, BridgeCallError, PAIR_WINDOW_MS, startBridgeServer, type BridgeServer } from './bridge-server'
 
-const KEY = 'k'.repeat(43)
 const ORIGIN = `chrome-extension://${KNOWN_EXTENSION_IDS[0]}`
 const FOREIGN = 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 const freePort = (): Promise<number> =>
@@ -24,9 +27,26 @@ afterEach(async () => {
   for (const s of servers.splice(0)) await s.close()
 })
 
-async function start(opts: { connectWaitMs?: number; ports?: number[] } = {}) {
+async function makeIdentity(extKey: string | null = null): Promise<ServerIdentity & { pinned: string[] }> {
+  const pair = await generateBridgeKeyPair()
+  const id: ServerIdentity & { pinned: string[] } = {
+    privateKey: pair.privateKey,
+    publicKey: await exportPublicKey(pair.publicKey),
+    extKey,
+    pinned: [],
+    async pinExtKey(k: string) {
+      id.pinned.push(k)
+      id.extKey = k
+    },
+  }
+  return id
+}
+
+let lastIdentity: ServerIdentity & { pinned: string[] }
+async function start(opts: { connectWaitMs?: number; ports?: number[]; identity?: ServerIdentity & { pinned: string[] }; now?: () => number; authDeadlineMs?: number } = {}) {
   const ports = opts.ports ?? [await freePort()]
-  const s = await startBridgeServer({ pairKey: KEY, client: 'test-client', ports, connectWaitMs: opts.connectWaitMs ?? 2000 })
+  lastIdentity = opts.identity ?? (await makeIdentity())
+  const s = await startBridgeServer({ identity: lastIdentity, client: 'test-client', ports, connectWaitMs: opts.connectWaitMs ?? 2000, now: opts.now, authDeadlineMs: opts.authDeadlineMs })
   servers.push(s)
   return s
 }
@@ -55,10 +75,24 @@ function connect(port: number, origin: string | undefined = ORIGIN): Promise<Ext
   })
 }
 const closed = (ws: WebSocket) => new Promise<void>((r) => (ws.readyState === WebSocket.CLOSED ? r() : ws.once('close', () => r())))
-const pairUp = async (port: number) => {
+async function sendAuth(
+  e: Ext,
+  hello: any,
+  port: number,
+  o: { pair?: CryptoKeyPair; signPort?: number; badSig?: boolean } = {},
+) {
+  const pair = o.pair ?? (await generateBridgeKeyPair())
+  const extKey = await exportPublicKey(pair.publicKey)
+  const nonce = newNonce()
+  const sig = await signPayload(pair.privateKey, authPayload('ext', hello.nonce, await keyId(hello.serverKey), o.signPort ?? port))
+  e.ws.send(JSON.stringify({ type: 'auth', extKey, nonce, sig: o.badSig ? 'A'.repeat(sig.length) : sig }))
+  return { pair, extKey, nonce }
+}
+const pairUp = async (port: number, pair?: CryptoKeyPair) => {
   const e = await connect(port)
-  await e.next((m) => m.type === 'hello')
-  e.ws.send(JSON.stringify({ type: 'welcome', paired: true }))
+  const hello = await e.next((m) => m.type === 'hello')
+  await sendAuth(e, hello, port, { pair })
+  await e.next((m) => m.type === 'auth-ok')
   return e
 }
 
@@ -66,15 +100,84 @@ describe('bridge server', () => {
   it('sends hello with the right fields on connect', async () => {
     const s = await start()
     const e = await connect(s.port)
-    expect(await e.next()).toEqual({ type: 'hello', protocol: 1, client: 'test-client', pairKey: KEY })
+    const hello = await e.next()
+    expect(hello).toEqual({ type: 'hello', protocol: 2, client: 'test-client', serverKey: lastIdentity.publicKey, nonce: hello.nonce })
+    expect(typeof hello.nonce).toBe('string')
+    expect(hello.nonce.length).toBeGreaterThan(10)
+    expect('pairKey' in hello).toBe(false)
   })
 
-  it('waits for welcome, then sends req and resolves on ok res', async () => {
+  it('valid auth gets auth-ok verifiable with the right port, then receives req', async () => {
     const s = await start()
     const e = await connect(s.port)
-    await e.next((m) => m.type === 'hello')
+    const hello = await e.next((m) => m.type === 'hello')
+    const { extKey, nonce } = await sendAuth(e, hello, s.port)
+    const ok = await e.next((m) => m.type === 'auth-ok')
+    const srvPub = await importPublicKey(lastIdentity.publicKey)
+    expect(await verifyPayload(srvPub, authPayload('srv', nonce, await keyId(extKey), s.port), ok.sig)).toBe(true)
+    expect(await verifyPayload(srvPub, authPayload('srv', nonce, await keyId(extKey), s.port + 1), ok.sig)).toBe(false)
+    expect(lastIdentity.pinned).toEqual([extKey])
     const p = s.call('list_docs', {})
-    e.ws.send(JSON.stringify({ type: 'welcome', paired: true }))
+    const req = await e.next((m) => m.type === 'req')
+    e.ws.send(JSON.stringify({ type: 'res', id: req.id, ok: true, result: { docs: [] } }))
+    await expect(p).resolves.toEqual({ docs: [] })
+  })
+
+  it('bad signature is rejected and closed, no req', async () => {
+    const s = await start({ connectWaitMs: 150 })
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    await sendAuth(e, hello, s.port, { badSig: true })
+    expect((await e.next((m) => m.type === 'reject')).code).toBe('DENIED')
+    await closed(e.ws)
+    await expect(s.call('list_docs', {})).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
+    expect(e.msgs.some((m) => m.type === 'req')).toBe(false)
+    expect(lastIdentity.pinned).toEqual([])
+  })
+
+  it('a different ext key than the pinned one is rejected even with a valid signature', async () => {
+    const a = await generateBridgeKeyPair()
+    const identity = await makeIdentity(await exportPublicKey(a.publicKey))
+    const s = await start({ identity, connectWaitMs: 150 })
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    await sendAuth(e, hello, s.port) // fresh key B
+    expect((await e.next((m) => m.type === 'reject')).code).toBe('DENIED')
+    await closed(e.ws)
+    await expect(s.call('list_docs', {})).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
+    // the pinned key still works
+    const ok = await pairUp(s.port, a)
+    expect(ok.ws.readyState).toBe(WebSocket.OPEN)
+  })
+
+  it('signature over a different port is rejected', async () => {
+    const s = await start({ connectWaitMs: 150 })
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    await sendAuth(e, hello, s.port, { signPort: s.port + 1 })
+    expect((await e.next((m) => m.type === 'reject')).code).toBe('DENIED')
+    await closed(e.ws)
+  })
+
+  it('a second auth on the same connection is ignored', async () => {
+    const s = await start()
+    const e = await pairUp(s.port)
+    const hello = { nonce: 'x', serverKey: lastIdentity.publicKey }
+    await sendAuth(e, hello, s.port)
+    const p = s.call('list_docs', {})
+    const req = await e.next((m) => m.type === 'req')
+    expect(e.msgs.filter((m) => m.type === 'auth-ok').length).toBeLessThanOrEqual(1)
+    expect(e.msgs.some((m) => m.type === 'reject')).toBe(false)
+    e.ws.send(JSON.stringify({ type: 'res', id: req.id, ok: true, result: { docs: [] } }))
+    await expect(p).resolves.toEqual({ docs: [] })
+  })
+
+  it('waits for auth, then sends req and resolves on ok res', async () => {
+    const s = await start()
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    const p = s.call('list_docs', {})
+    await sendAuth(e, hello, s.port)
     const req = await e.next((m) => m.type === 'req')
     expect(req.tool).toBe('list_docs')
     expect(req.args).toEqual({})
@@ -82,11 +185,11 @@ describe('bridge server', () => {
     await expect(p).resolves.toEqual({ docs: [] })
   })
 
-  it('welcome paired:false keeps the connection but does not pair', async () => {
+  it('welcome is ignored: the connection stays open but is not paired', async () => {
     const s = await start({ connectWaitMs: 150 })
     const e = await connect(s.port)
     await e.next((m) => m.type === 'hello')
-    e.ws.send(JSON.stringify({ type: 'welcome', paired: false }))
+    e.ws.send(JSON.stringify({ type: 'welcome', paired: true }))
     await expect(s.call('list_docs', {})).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
     expect(e.ws.readyState).toBe(WebSocket.OPEN)
   })
@@ -143,7 +246,7 @@ describe('bridge server', () => {
     const blocker = net.createServer()
     await new Promise<void>((r) => blocker.listen(busy, '127.0.0.1', r))
     try {
-      await expect(startBridgeServer({ pairKey: KEY, client: 'c', ports: [busy] })).rejects.toThrow('no free port')
+      await expect(startBridgeServer({ identity: await makeIdentity(), client: 'c', ports: [busy] })).rejects.toThrow('no free port')
     } finally {
       await new Promise((r) => blocker.close(r))
     }
@@ -151,12 +254,13 @@ describe('bridge server', () => {
 
   it('a second paired connection replaces the first; pending call rejects NOT_CONNECTED', async () => {
     const s = await start()
-    const a = await pairUp(s.port)
+    const kp = await generateBridgeKeyPair()
+    const a = await pairUp(s.port, kp)
     const p = s.call('list_docs', {})
     const settled = p.catch((x) => x)
     await a.next((m) => m.type === 'req')
     const aClosed = closed(a.ws)
-    const b = await pairUp(s.port)
+    const b = await pairUp(s.port, kp)
     const err = await settled
     expect(err.code).toBe('NOT_CONNECTED')
     await aClosed
@@ -170,7 +274,6 @@ describe('bridge server', () => {
     const s = await start()
     const e = await connect(s.port)
     await e.next((m) => m.type === 'hello')
-    e.ws.send(JSON.stringify({ type: 'welcome', paired: false }))
     e.ws.send(JSON.stringify({ type: 'reject', code: 'DENIED' }))
     await closed(e.ws)
   })
@@ -244,8 +347,44 @@ describe('bridge server', () => {
     const s = await start({ connectWaitMs: 150 })
     const e = await connect(s.port)
     await e.next((m) => m.type === 'hello')
-    e.ws.send(JSON.stringify({ type: 'welcome', paired: false }))
+    e.ws.send(JSON.stringify({ type: 'welcome', paired: true }))
     await expect(s.call('get_doc', { docId: 'x' })).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
     expect(e.msgs.some((m) => m.type === 'req')).toBe(false)
+  })
+  it('concurrent auth from two different keys while unpinned: exactly one pairs', async () => {
+    const s = await start({ connectWaitMs: 150 })
+    const a = await connect(s.port)
+    const b = await connect(s.port)
+    const ha = await a.next((m) => m.type === 'hello')
+    const hb = await b.next((m) => m.type === 'hello')
+    const [ka, kb] = await Promise.all([sendAuth(a, ha, s.port), sendAuth(b, hb, s.port)])
+    const results = await Promise.all(
+      [a, b].map((e) => e.next((m) => m.type === 'auth-ok' || m.type === 'reject')),
+    )
+    expect(results.filter((r) => r.type === 'auth-ok').length).toBe(1)
+    expect(results.filter((r) => r.type === 'reject').length).toBe(1)
+    expect(lastIdentity.pinned.length).toBe(1)
+    const winner = results[0].type === 'auth-ok' ? ka : kb
+    expect(lastIdentity.pinned[0]).toBe(winner.extKey)
+  })
+
+  it('outside the pairing window an unpinned identity rejects', async () => {
+    const t0 = 1_000_000
+    let t = t0
+    const s = await start({ connectWaitMs: 150, now: () => t })
+    t = t0 + PAIR_WINDOW_MS + 60_000
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    await sendAuth(e, hello, s.port)
+    expect((await e.next((m) => m.type === 'reject')).code).toBe('DENIED')
+    expect(lastIdentity.pinned).toEqual([])
+    expect(AUTH_DEADLINE_MS).toBe(10_000)
+  })
+
+  it('a connection that never authenticates is closed after the deadline', async () => {
+    const s = await start({ authDeadlineMs: 100 })
+    const e = await connect(s.port)
+    await e.next((m) => m.type === 'hello')
+    await closed(e.ws)
   })
 })

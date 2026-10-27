@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef } from 'react'
 import { useT } from '../i18n'
 import '../theme/conflict.css'
 
-export function PairDialog(p: { client: string; onAllow(): void; onDeny(): void }): React.JSX.Element {
+export function PairDialog(p: { client: string; fingerprint: string; onAllow(): void; onDeny(): void }): React.JSX.Element {
   const t = useT()
   const titleId = useId()
   const denyRef = useRef<HTMLButtonElement | null>(null)
@@ -36,6 +36,7 @@ export function PairDialog(p: { client: string; onAllow(): void; onDeny(): void 
         </div>
         <div style={{ padding: '16px 20px' }}>
           <p style={{ margin: 0 }}>{t('pair.body', { client: p.client })}</p>
+          <p style={{ margin: '12px 0 0' }}>{t('pair.fingerprint', { fp: p.fingerprint })}</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="conflict-btn" ref={denyRef} onClick={p.onDeny}>
               {t('pair.deny')}

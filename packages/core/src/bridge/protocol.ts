@@ -1,5 +1,5 @@
 import { hashText } from '../doc/hash.js'
-export const BRIDGE_PROTOCOL = 1
+export const BRIDGE_PROTOCOL = 2
 export const BRIDGE_PORTS: readonly number[] = Array.from({ length: 10 }, (_, i) => 47821 + i)
 export const BRIDGE_MAX_MARKDOWN = 2_000_000
 export const BRIDGE_MAX_TITLE = 200
@@ -34,15 +34,21 @@ export interface RevokeLinkResult { revoked: boolean }
 export interface BridgeArgsMap { publish_doc: PublishDocArgs; list_docs: Record<string, never>; get_doc: GetDocArgs; update_doc: UpdateDocArgs; share_doc: ShareDocArgs; list_links: ListLinksArgs; revoke_link: RevokeLinkArgs }
 export interface BridgeResultMap { publish_doc: PublishDocResult; list_docs: ListDocsResult; get_doc: GetDocResult; update_doc: UpdateDocResult; share_doc: ShareDocResult; list_links: ListLinksResult; revoke_link: RevokeLinkResult }
 
-export interface BridgeHello { type: 'hello'; protocol: 1; client: string; pairKey: string }
+export interface BridgeHello { type: 'hello'; protocol: 2; client: string; serverKey: string; nonce: string }
+export type BridgeHelloV2 = BridgeHello
+export interface BridgeAuth { type: 'auth'; extKey: string; nonce: string; sig: string }
+export interface BridgeAuthOk { type: 'auth-ok'; sig: string }
 export interface BridgeRequest { type: 'req'; id: string; tool: BridgeTool; args: unknown }
-export interface BridgeWelcome { type: 'welcome'; paired: boolean }
 export interface BridgeReject { type: 'reject'; code: 'DENIED' | 'PROTOCOL' }
 export interface BridgePing { type: 'ping' }
 export type BridgeResponse =
   | { type: 'res'; id: string; ok: true; result: unknown }
   | { type: 'res'; id: string; ok: false; error: { code: BridgeErrorCode; message: string } }
-export type BridgeMessage = BridgeHello | BridgeRequest | BridgeWelcome | BridgeReject | BridgeResponse | BridgePing
+export type BridgeMessage = BridgeHello | BridgeRequest | BridgeReject | BridgeResponse | BridgePing | BridgeAuth | BridgeAuthOk
+
+function b64u(v: unknown, min: number, max: number): v is string {
+  return str(v, min, max) && /^[A-Za-z0-9_-]+$/.test(v)
+}
 
 function str(v: unknown, min: number, max: number): v is string {
   return typeof v === 'string' && v.length >= min && v.length <= max
@@ -55,14 +61,17 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
   const o = v as Record<string, unknown>
   switch (o.type) {
     case 'hello':
-      if (o.protocol !== 1 || !str(o.client, 1, 100) || !str(o.pairKey, 16, 200)) return null
-      return { type: 'hello', protocol: 1, client: o.client, pairKey: o.pairKey }
+      if (o.protocol !== 2 || !str(o.client, 1, 100) || !b64u(o.serverKey, 80, 200) || !b64u(o.nonce, 43, 43)) return null
+      return { type: 'hello', protocol: 2, client: o.client, serverKey: o.serverKey, nonce: o.nonce }
+    case 'auth':
+      if (!b64u(o.extKey, 80, 200) || !b64u(o.nonce, 43, 43) || !b64u(o.sig, 80, 100)) return null
+      return { type: 'auth', extKey: o.extKey, nonce: o.nonce, sig: o.sig }
+    case 'auth-ok':
+      if (!b64u(o.sig, 80, 100)) return null
+      return { type: 'auth-ok', sig: o.sig }
     case 'req':
       if (!str(o.id, 1, 64) || !BRIDGE_TOOLS.includes(o.tool as BridgeTool) || !('args' in o)) return null
       return { type: 'req', id: o.id, tool: o.tool as BridgeTool, args: o.args }
-    case 'welcome':
-      if (typeof o.paired !== 'boolean') return null
-      return { type: 'welcome', paired: o.paired }
     case 'reject':
       if (o.code !== 'DENIED' && o.code !== 'PROTOCOL') return null
       return { type: 'reject', code: o.code }

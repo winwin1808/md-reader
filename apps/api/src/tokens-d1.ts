@@ -5,6 +5,7 @@ import {
   newRoomId,
   newToken,
   tokenPrefix,
+  type ResolvedToken,
   type TokenStore,
 } from './tokens.js'
 
@@ -106,20 +107,22 @@ export class D1TokenStore implements TokenStore {
     return (res.meta.changes ?? 0) > 0
   }
 
-  async resolve(token: string): Promise<{ roomId: string; role: ShareRole } | null> {
+  async resolve(token: string): Promise<ResolvedToken | null> {
     const h = await hashToken(token)
     const owner = await this.db
       .prepare('SELECT id FROM rooms WHERE owner_token_hash = ?')
       .bind(h)
       .first<{ id: string }>()
-    if (owner) return { roomId: owner.id, role: 'edit' }
+    if (owner) return { roomId: owner.id, role: 'edit', expiresAt: null }
     const link = await this.db
       .prepare(
-        'SELECT room_id, role FROM links WHERE token_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)',
+        'SELECT room_id, role, token_prefix, expires_at FROM links WHERE token_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)',
       )
       .bind(h, this.now())
-      .first<{ room_id: string; role: ShareRole }>()
-    return link ? { roomId: link.room_id, role: link.role } : null
+      .first<{ room_id: string; role: ShareRole; token_prefix: string; expires_at: number | null }>()
+    return link
+      ? { roomId: link.room_id, role: link.role, prefix: link.token_prefix, expiresAt: link.expires_at }
+      : null
   }
 
   async deleteRoom(roomId: string): Promise<boolean> {

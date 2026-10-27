@@ -16,7 +16,8 @@ describe('tokens', () => {
     const { roomId, ownerToken } = await s.createRoom()
     expect(await s.verifyOwner(roomId, ownerToken)).toBe(true)
     expect(await s.verifyOwner(roomId, 'x')).toBe(false)
-    expect(await s.resolve(ownerToken)).toEqual({ roomId, role: 'edit' })
+    expect(await s.resolve(ownerToken)).toEqual({ roomId, role: 'edit', expiresAt: null })
+    expect((await s.resolve(ownerToken))!.prefix).toBeUndefined()
   })
   it('link expiry and revoke', async () => {
     let now = 1000
@@ -24,7 +25,12 @@ describe('tokens', () => {
     const { roomId } = await s.createRoom()
     const l = await s.createLink(roomId, { role: 'view', expiresIn: 30 * 86400000 })
     expect(l.expiresAt).toBe(1000 + 30 * 86400000)
-    expect(await s.resolve(l.token)).toEqual({ roomId, role: 'view' })
+    expect(await s.resolve(l.token)).toEqual({
+      roomId,
+      role: 'view',
+      prefix: l.tokenPrefix,
+      expiresAt: 1000 + 30 * 86400000,
+    })
     now = l.expiresAt!
     expect(await s.resolve(l.token)).toBeNull()
     now = 2000
@@ -62,6 +68,11 @@ describe('tokens', () => {
     expect(await s.listLinks(roomId)).toEqual([])
     expect(await s.verifyOwner(roomId, ownerToken)).toBe(false)
     expect(await s.deleteRoom(roomId)).toBe(false)
-    expect(await s.resolve(ol.token)).toEqual({ roomId: other.roomId, role: 'view' })
+    expect(await s.resolve(ol.token)).toEqual({
+      roomId: other.roomId,
+      role: 'view',
+      prefix: ol.tokenPrefix,
+      expiresAt: null,
+    })
   })
 })

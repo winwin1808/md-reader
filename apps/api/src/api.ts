@@ -3,7 +3,7 @@ import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAs
 import type { AssetStore } from './assets.js'
 import { MAX_REASON, adminAuthorized, type ModerationStore } from './moderation.js'
 import { subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
-import { RoomNotFoundError, hashToken, type TokenStore } from './tokens.js'
+import { RoomNotFoundError, hashToken, type ResolvedToken, type TokenStore } from './tokens.js'
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -51,6 +51,7 @@ export interface ApiDeps {
   assets?: AssetStore
   limits?: LimitStore
   purge?: (roomId: string) => Promise<void>
+  revokeLive?: (roomId: string, prefix: string) => Promise<void>
   moderation?: ModerationStore
   adminSecret?: string
 }
@@ -123,13 +124,14 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       if (!(await adminAuthorized(req, deps.adminSecret))) return json({ error: 'unauthorized' }, 401)
       const roomId = safeDecode(m[1]!)
       if (roomId === null) return json({ error: 'bad path' }, 400)
-      const ok = await deleteRoomEverywhere(roomId, {
+      const outcome = await deleteRoomEverywhere(roomId, {
         store,
         ...(deps.assets ? { assets: deps.assets } : {}),
         ...(deps.limits ? { limits: deps.limits } : {}),
         ...(deps.purge ? { purge: deps.purge } : {}),
       })
-      if (!ok) return json({ error: 'not found' }, 404)
+      if (outcome === 'purge_failed') return json({ error: 'PURGE_FAILED' }, 502)
+      if (outcome === 'not_found') return json({ error: 'not found' }, 404)
       await deps.moderation?.addTakedown(roomId)
       return new Response(null, { status: 204 })
     }
@@ -142,13 +144,14 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     const roomId = safeDecode(del[1]!)
     if (roomId === null) return badPath()
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
-    const ok = await deleteRoomEverywhere(roomId, {
+    const outcome = await deleteRoomEverywhere(roomId, {
       store,
       ...(deps.assets ? { assets: deps.assets } : {}),
       ...(deps.limits ? { limits: deps.limits } : {}),
       ...(deps.purge ? { purge: deps.purge } : {}),
     })
-    return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+    if (outcome === 'purge_failed') return json({ error: 'PURGE_FAILED' }, 502)
+    return outcome === 'deleted' ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
   }
 
   const links = /^\/api\/rooms\/([^/]+)\/links$/.exec(path)
@@ -187,7 +190,19 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (roomId === null || prefix === null) return badPath()
     if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
     const ok = await store.revoke(roomId, prefix)
-    return ok ? new Response(null, { status: 204 }) : json({ error: 'not found' }, 404)
+    if (!ok) {
+      // Already revoked earlier? Then treat as idempotent so a failed revokeLive can be retried.
+      const known = (await store.listLinks(roomId)).some((l) => l.tokenPrefix === prefix)
+      if (!known) return json({ error: 'not found' }, 404)
+    }
+    forgetRoomAuth(roomId)
+    try {
+      await deps.revokeLive?.(roomId, prefix)
+    } catch (e) {
+      console.error('revokeLive failed', roomId, e)
+      return json({ error: 'REVOKE_LIVE_FAILED' }, 502)
+    }
+    return new Response(null, { status: 204 })
   }
 
   const up = /^\/api\/rooms\/([^/]+)\/assets$/.exec(path)
@@ -265,9 +280,13 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
 }
 
 const AUTH_TTL_MS = 60_000
-const authCache = new Map<string, { value: { roomId: string; role: ShareRole } | null; until: number }>()
+const authCache = new Map<string, { value: ResolvedToken | null; until: number }>()
 
 const AUTH_CACHE_MAX = 5000
+
+export function forgetRoomAuth(roomId: string): void {
+  for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
+}
 
 export function _resetAuthCache(): void {
   authCache.clear()
@@ -291,14 +310,15 @@ export async function authorizeWs(
   req: Request,
   store: TokenStore,
   now: () => number = Date.now,
-): Promise<{ roomId: string; role: ShareRole } | Response> {
+): Promise<ResolvedToken | Response> {
   const token = new URL(req.url).searchParams.get('token')
   if (!token) return json({ error: 'token required' }, 401)
   const key = await hashToken(token)
   const t = now()
   let entry = authCache.get(key)
   if (!entry || entry.until <= t) {
-    entry = { value: await store.resolve(token), until: t + AUTH_TTL_MS }
+    const value = await store.resolve(token)
+    entry = { value, until: Math.min(t + AUTH_TTL_MS, value?.expiresAt ?? Infinity) }
     authCache.delete(key)
     makeRoom(t)
     authCache.set(key, entry)
@@ -306,21 +326,30 @@ export async function authorizeWs(
   return entry.value ?? json({ error: 'link expired or revoked' }, 410)
 }
 
+export type DeleteOutcome = 'deleted' | 'not_found' | 'purge_failed'
+
 export async function deleteRoomEverywhere(
   roomId: string,
   d: { store: TokenStore; assets?: AssetStore; limits?: LimitStore; purge?: (roomId: string) => Promise<void> },
-): Promise<boolean> {
-  const ok = await d.store.deleteRoom(roomId)
-  for (const [k, e] of authCache) if (e.value?.roomId === roomId) authCache.delete(k)
-  const step = async (name: string, f?: () => Promise<unknown>) => {
-    try {
-      await f?.()
-    } catch {
-      console.error(`${name} failed`, roomId)
-    }
+): Promise<DeleteOutcome> {
+  try {
+    await d.purge?.(roomId)
+  } catch (e) {
+    console.error('purge failed', roomId, e)
+    return 'purge_failed'
   }
-  await step('assets.deleteRoom', d.assets && (() => d.assets!.deleteRoom(roomId)))
-  await step('limits.forgetRoom', d.limits && (() => d.limits!.forgetRoom(roomId)))
-  await step('purge', d.purge && (() => d.purge!(roomId)))
-  return ok
+  try {
+    await d.assets?.deleteRoom(roomId)
+  } catch (e) {
+    console.error('assets.deleteRoom failed', roomId, e)
+    return 'purge_failed'
+  }
+  try {
+    await d.limits?.forgetRoom(roomId)
+  } catch (e) {
+    console.error('limits.forgetRoom failed', roomId, e)
+  }
+  const ok = await d.store.deleteRoom(roomId)
+  forgetRoomAuth(roomId)
+  return ok ? 'deleted' : 'not_found'
 }

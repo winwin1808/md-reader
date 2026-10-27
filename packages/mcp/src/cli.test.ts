@@ -20,7 +20,7 @@ function freePort(): Promise<number> {
 }
 
 describe('cli main', () => {
-  it('logs listening line without pairKey, keeps stdout silent, frees the port', async () => {
+  it('logs listening line without private key, keeps stdout silent, frees the port', async () => {
     const port = await freePort()
     const pairPath = join(mkdtempSync(join(tmpdir(), 'mdr-cli-')), 'pair.json')
     const stdin = new PassThrough()
@@ -32,10 +32,9 @@ describe('cli main', () => {
     stderr.on('data', (d) => (err += d))
     const h = await main({ stdin, stdout, stderr, pairPath, ports: [port] })
     expect(err).toContain(`le-sach-mcp ${VERSION} listening on 127.0.0.1:${port}`)
-    const raw = readFileSync(pairPath, 'utf8')
-    const key = (JSON.parse(raw) as { pairKey?: string; key?: string }).pairKey ?? (JSON.parse(raw) as { key?: string }).key
-    expect(typeof key).toBe('string')
-    expect(err).not.toContain(key as string)
+    const file = JSON.parse(readFileSync(pairPath, 'utf8')) as { version: number; privateKey: { d: string }; publicKey: string }
+    expect(file.version).toBe(2)
+    expect(err).not.toContain(file.privateKey.d)
     expect(out).toBe('')
     await h.close()
     const s = createServer()

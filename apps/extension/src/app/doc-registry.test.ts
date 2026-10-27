@@ -157,6 +157,22 @@ describe('doc-registry', () => {
     expect(await migrateLegacyRegistry()).toBe(0)
   })
 
+  it('writeDocText works on a doc with a newer formatVersion (11h)', async () => {
+    const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
+    const seed = new Y.Doc({ gc: false })
+    const sp = new IndexeddbPersistence(r.persistenceName, seed)
+    await sp.whenSynced
+    seed.getText('source').insert(0, 'old')
+    seed.getMap('meta').set('formatVersion', 99)
+    await sp.destroy()
+    expect(await writeDocText(r, 'fresh', 'replace')).toBe('written')
+    const doc = new Y.Doc({ gc: false })
+    const p = new IndexeddbPersistence(r.persistenceName, doc)
+    await p.whenSynced
+    expect(getSource(doc).toString()).toBe('fresh')
+    await p.destroy()
+  })
+
   it('writeDocText replace persists text and hash; if-clean keeps edits', async () => {
     const r = await createRecord({ title: 'T', originKind: 'file', originPath: null })
     expect(await writeDocText(r, 'hello', 'replace')).toBe('written')

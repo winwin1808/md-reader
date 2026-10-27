@@ -310,7 +310,7 @@ export async function writeDocText(
   const p = new IndexeddbPersistence(record.persistenceName, doc)
   try {
     await p.whenSynced
-    ensureDoc(doc, { title: record.title })
+    ensureDoc(doc, { title: record.title }, { tolerateNewer: true })
     const local = getSource(doc).toString()
     const originHash = getMeta(doc).get('originHash')
     const newHash = await hashText(text)

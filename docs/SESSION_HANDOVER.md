@@ -2,6 +2,21 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 11 — Vá bảo mật trước 1.3.0 (2026-10-27)
+
+Branch `phase-11` (11a..11k), MR `phase-11` → `main` mở, **chưa merge**. Spec `docs/superpowers/specs/2026-10-27-phase-11-design.md`;
+kết quả audit + trạng thái từng mục ở `docs/research/security-audit-2026-10-27.md`.
+
+**Sau khi merge (theo thứ tự):**
+1. Deploy Worker: `source ~/.config/md-reader/cloudflare.env && pnpm --filter api deploy` (không migration mới). Smoke: mở link chia sẻ, thu hồi → tab đang mở bị ngắt ngay.
+2. Build lại gói store 1.3.0 (`docs/store/md-reader-1.3.0.zip`, bỏ `key`).
+3. Publish npm: `cd packages/mcp && pnpm publish --access public --no-git-checks --otp=<mã>` — giao thức cầu nối **v2**, không tương thích bản trước (chưa ai dùng).
+4. Sinh lại `site/privacy.html` từ `docs/store/privacy-policy.md` (đã sửa câu thu hồi tức thì + IPv6 /64).
+
+**Nợ mới:** máy chủ chưa lọc peer ghi `meta` (formatVersion/aiUnsaved); chưa có trần toàn cục bytes ảnh / TTL phòng; ghim khoá giữa hai tiến trình CLI cùng lúc có thể đua;
+`decide(allow)` bấm hai lần → phải ghép lại; phòng đầy 64 MiB chỉ thu nhỏ được bằng xoá phòng; client hiển thị đóng 4413 như mất kết nối; banner "doc phiên bản mới hơn" chưa có;
+flake `ux-reading.flow` / một test extension dưới tải vẫn thấy thỉnh thoảng.
+
 ## Phase 10 — MCP cục bộ + gia cố multi-tenant (v1.3.0)
 
 Spec `docs/superpowers/specs/2026-10-26-phase-10-design.md` (shipped), intent `docs/superpowers/intent/2026-10-26-phase-10-mcp-cuc-bo.md`,

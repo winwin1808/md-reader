@@ -2,13 +2,20 @@ import type { ShareRole, ShareLink, CreateRoomResponse, CreateLinkRequest } from
 
 export class RoomNotFoundError extends Error {}
 
+export interface ResolvedToken {
+  roomId: string
+  role: ShareRole
+  prefix?: string
+  expiresAt?: number | null
+}
+
 export interface TokenStore {
   createRoom(): Promise<CreateRoomResponse>
   verifyOwner(roomId: string, ownerToken: string): Promise<boolean>
   createLink(roomId: string, req: CreateLinkRequest): Promise<ShareLink>
   listLinks(roomId: string): Promise<ShareLink[]>
   revoke(roomId: string, tokenPrefix: string): Promise<boolean>
-  resolve(token: string): Promise<{ roomId: string; role: ShareRole } | null>
+  resolve(token: string): Promise<ResolvedToken | null>
   deleteRoom(roomId: string): Promise<boolean>
 }
 
@@ -105,15 +112,15 @@ export class MemoryTokenStore implements TokenStore {
     return true
   }
 
-  async resolve(token: string): Promise<{ roomId: string; role: ShareRole } | null> {
+  async resolve(token: string): Promise<ResolvedToken | null> {
     const h = await hashToken(token)
     for (const [roomId, room] of this.rooms) {
-      if (room.ownerTokenHash === h) return { roomId, role: 'edit' }
+      if (room.ownerTokenHash === h) return { roomId, role: 'edit', expiresAt: null }
     }
     const r = this.links.get(h)
     if (!r || r.revokedAt !== null) return null
     if (r.expiresAt !== null && r.expiresAt <= this.now()) return null
-    return { roomId: r.roomId, role: r.role }
+    return { roomId: r.roomId, role: r.role, prefix: r.tokenPrefix, expiresAt: r.expiresAt }
   }
 
   async deleteRoom(roomId: string): Promise<boolean> {

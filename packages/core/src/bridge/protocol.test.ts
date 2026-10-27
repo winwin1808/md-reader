@@ -18,11 +18,11 @@ describe('parseBridgeMessage', () => {
     expect(p({})).toBeNull()
   })
   it('hello', () => {
-    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: key, extra: 1 })).toEqual({ type: 'hello', protocol: 1, client: 'c', pairKey: key })
-    expect(p({ type: 'hello', protocol: 2, client: 'c', pairKey: key })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: '', pairKey: key })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: 'short' })).toBeNull()
-    expect(p({ type: 'hello', protocol: 1, client: 'c'.repeat(101), pairKey: key })).toBeNull()
+    const sk = 'k'.repeat(120), nn = 'n'.repeat(43)
+    expect(p({ type: 'hello', protocol: 2, client: 'c', serverKey: sk, nonce: nn, extra: 1 })).toEqual({ type: 'hello', protocol: 2, client: 'c', serverKey: sk, nonce: nn })
+    expect(p({ type: 'hello', protocol: 1, client: 'c', pairKey: key })).toBeNull()
+    expect(p({ type: 'hello', protocol: 2, client: '', serverKey: sk, nonce: nn })).toBeNull()
+    expect(p({ type: 'hello', protocol: 2, client: 'c'.repeat(101), serverKey: sk, nonce: nn })).toBeNull()
   })
   it('req', () => {
     expect(p({ type: 'req', id: 'a', tool: 'get_doc', args: { docId: 'x' } })).toEqual({ type: 'req', id: 'a', tool: 'get_doc', args: { docId: 'x' } })
@@ -31,9 +31,8 @@ describe('parseBridgeMessage', () => {
     expect(p({ type: 'req', id: '', tool: 'get_doc', args: 1 })).toBeNull()
     expect(p({ type: 'req', id: 'a'.repeat(65), tool: 'get_doc', args: 1 })).toBeNull()
   })
-  it('welcome/reject/ping', () => {
-    expect(p({ type: 'welcome', paired: true, x: 1 })).toEqual({ type: 'welcome', paired: true })
-    expect(p({ type: 'welcome', paired: 'y' })).toBeNull()
+  it('reject/ping, no welcome', () => {
+    expect(p({ type: 'welcome', paired: true })).toBeNull()
     expect(p({ type: 'reject', code: 'DENIED' })).toEqual({ type: 'reject', code: 'DENIED' })
     expect(p({ type: 'reject', code: 'X' })).toBeNull()
     expect(p({ type: 'ping', z: 1 })).toEqual({ type: 'ping' })
@@ -120,3 +119,25 @@ describe('sanitizeClientName', () => {
     expect(sanitizeClientName(42)).toBe('AI')
   })
 })
+
+describe('bridge protocol v2', () => {
+  const b64 = (n: number) => 'A'.repeat(n)
+  it('parses hello v2 / auth / auth-ok', () => {
+    expect(p({ type: 'hello', protocol: 2, client: 'c', serverKey: b64(120), nonce: b64(43) })).toEqual({ type: 'hello', protocol: 2, client: 'c', serverKey: b64(120), nonce: b64(43) })
+    expect(p({ type: 'auth', extKey: b64(120), nonce: b64(43), sig: b64(86) })).toEqual({ type: 'auth', extKey: b64(120), nonce: b64(43), sig: b64(86) })
+    expect(p({ type: 'auth-ok', sig: b64(86) })).toEqual({ type: 'auth-ok', sig: b64(86) })
+  })
+  it('rejects bad v2', () => {
+    expect(p({ type: 'hello', protocol: 2, client: 'c', serverKey: b64(120), nonce: b64(42) })).toBeNull()
+    expect(p({ type: 'auth', extKey: b64(120), nonce: b64(42), sig: b64(86) })).toBeNull()
+    expect(p({ type: 'auth', extKey: b64(120), nonce: b64(43), sig: 'x' })).toBeNull()
+    expect(p({ type: 'auth-ok', sig: 'x!' })).toBeNull()
+    expect(p({ type: 'hello', protocol: 2, client: 'c', serverKey: '+/'.repeat(60), nonce: b64(43) })).toBeNull()
+  })
+  it('never returns pairKey from v2 hello', () => {
+    const m = p({ type: 'hello', protocol: 2, client: 'c', serverKey: b64(120), nonce: b64(43), pairKey: key })
+    expect(m).not.toBeNull()
+    expect(JSON.stringify(m)).not.toContain('pairKey')
+  })
+})
+

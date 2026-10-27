@@ -75,6 +75,21 @@ describe('handleRequest', () => {
     expect(forwarded.headers.get('x-mdr-role')).toBe('view')
   })
 
+  it('forwards the real prefix/expiry and ignores client-sent x-mdr-prefix/x-mdr-expires', async () => {
+    const { store, a, view } = await twoRooms()
+    const routeParty = vi.fn(ok)
+    await handleRequest(
+      new Request(`http://x/parties/doc-room/${a.roomId}?token=${view.token}`, {
+        headers: { 'x-mdr-prefix': 'evil', 'x-mdr-expires': '1' },
+      }),
+      env,
+      { routeParty, store },
+    )
+    const forwarded = (routeParty.mock.calls as unknown as [Request, Env][])[0]![0]
+    expect(forwarded.headers.get('x-mdr-prefix')).toBe(view.tokenPrefix)
+    expect(forwarded.headers.get('x-mdr-expires') ?? '').toBe('')
+  })
+
   it('owner token gets role edit', async () => {
     const { store, a } = await twoRooms()
     const routeParty = vi.fn(ok)
@@ -249,6 +264,23 @@ describe('DELETE /api/rooms/:roomId', () => {
     expect(new URL(seen[0]!.url).pathname).toBe(`/parties/doc-room/${room.roomId}/purge`)
   })
 
+  it('DO 500 on /purge -> owner DELETE 502', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const routeParty = vi.fn(async () => new Response('err', { status: 500 }))
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(502)
+    spy.mockRestore()
+  })
+
   it('external /purge never reaches routeParty', async () => {
     const { store, a } = await twoRooms()
     const edit = await store.createLink(a.roomId, { role: 'edit', expiresIn: null })
@@ -263,5 +295,25 @@ describe('DELETE /api/rooms/:roomId', () => {
     )
     expect(res.status).toBe(404)
     expect(routeParty).not.toHaveBeenCalled()
+  })
+})
+
+describe('revokeLive status', () => {
+  it('DO 500 on /revoke -> route returns 502', async () => {
+    const store = new MemoryTokenStore()
+    const room = await store.createRoom()
+    const link = await store.createLink(room.roomId, { role: 'view', expiresIn: null })
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const routeParty = vi.fn(async () => new Response('err', { status: 500 }))
+    const res = await handleRequest(
+      new Request(`http://x/api/rooms/${room.roomId}/links/${link.tokenPrefix}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${room.ownerToken}` },
+      }),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(502)
+    spy.mockRestore()
   })
 })

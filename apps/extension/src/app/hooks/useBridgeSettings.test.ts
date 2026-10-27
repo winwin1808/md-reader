@@ -28,7 +28,7 @@ describe('useBridgeSettings', () => {
   })
 
   it('setEnabled writes and keeps approved', async () => {
-    const a = { keyHash: 'h1', client: 'Claude', at: 1 }
+    const a = { keyHash: 'h1', client: 'Claude', at: 1, serverKey: 'sk' }
     const s = fakeStore({ enabled: false, approved: [a] })
     const { result } = renderHook(() => useBridgeSettings(s))
     await waitFor(() => expect(result.current.clients).toEqual([a]))
@@ -40,13 +40,13 @@ describe('useBridgeSettings', () => {
     const s = fakeStore()
     const { result } = renderHook(() => useBridgeSettings(s))
     await waitFor(() => expect(result.current.enabled).toBe(false))
-    act(() => { s.emit({ enabled: true, approved: [{ keyHash: 'x', client: 'C', at: 2 }] }) })
+    act(() => { s.emit({ enabled: true, approved: [{ keyHash: 'x', client: 'C', at: 2, serverKey: 'sk' }] }) })
     expect(result.current.enabled).toBe(true)
     expect(result.current.clients).toHaveLength(1)
   })
 
   it('revoke removes the matching keyHash', async () => {
-    const s = fakeStore({ enabled: true, approved: [{ keyHash: 'a', client: 'A', at: 1 }, { keyHash: 'b', client: 'B', at: 2 }] })
+    const s = fakeStore({ enabled: true, approved: [{ keyHash: 'a', client: 'A', at: 1, serverKey: 'sk' }, { keyHash: 'b', client: 'B', at: 2, serverKey: 'sk' }] })
     const { result } = renderHook(() => useBridgeSettings(s))
     await waitFor(() => expect(result.current.clients).toHaveLength(2))
     await act(async () => { await result.current.revoke('a') })

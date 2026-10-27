@@ -1,5 +1,7 @@
 import { defaultSchema } from 'rehype-sanitize'
 
+export const LANG_CLASS = /^language-[A-Za-z0-9_+#.-]{1,40}$/
+
 const svgAttributes = [
   'viewBox', 'd', 'fill', 'fillRule', 'stroke', 'strokeWidth',
   'strokeLinecap', 'strokeLinejoin', 'strokeDasharray', 'strokeDashoffset',
@@ -41,11 +43,11 @@ export const sanitizeSchema: typeof defaultSchema = {
     ...defaultSchema.attributes,
     code: [
       ...codeAttributes,
-      ['className', /^hljs-/, /^language-/],
+      ['className', /^hljs-/, LANG_CLASS],
     ],
     span: [
       ...spanAttributes,
-      ['className', /^hljs-/, /^language-/],
+      ['className', /^hljs-/, LANG_CLASS],
     ],
     h1: [...(defaultSchema.attributes?.h1 ?? []), 'id'],
     h2: [...(defaultSchema.attributes?.h2 ?? []), 'id'],

@@ -5,7 +5,7 @@ import * as decoding from 'lib0/decoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { YServer } from 'y-partyserver'
-import { DocRoom } from './room'
+import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES, AWARENESS_STALE_MS } from './room'
 
 function spyOnSuper(stub: boolean) {
   const spy = vi.spyOn(YServer.prototype as unknown as { handleMessage: (c: unknown, m: unknown) => void }, 'handleMessage')
@@ -15,6 +15,9 @@ function spyOnSuper(stub: boolean) {
 function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
+  ;(room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner = new Map()
+  ;(room as unknown as { lastSeen: Map<string, number> }).lastSeen = new Map()
+  ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
   return room
@@ -102,6 +105,89 @@ describe('DocRoom.handleMessage', () => {
   })
 })
 
+describe('DocRoom size caps (11f1)', () => {
+  const closable = (state: unknown) => ({ id: 'c', state, close: vi.fn(), send: () => undefined })
+  it('closes 1009 on an oversized binary message from an edit conn', () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, new Uint8Array(MAX_MESSAGE_BYTES + 1))
+    expect(c.close).toHaveBeenCalledWith(1009, 'too large')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('closes 1009 on an oversized string message', () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, 'x'.repeat(MAX_MESSAGE_BYTES + 1))
+    expect(c.close).toHaveBeenCalledWith(1009, 'too large')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('closes 4413 when the room is already full', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg())
+    expect(c.close).toHaveBeenCalledWith(4413, 'room full')
+    expect(room.droppedWrites).toBe(1)
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('applies an update that merely crosses the cap when not yet full', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES - 10
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg('x'.repeat(20)))
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('roomBytes resets to the real state size after compact', async () => {
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    await room.onLoad()
+    room.document.getText('t').insert(0, 'hello')
+    ;(room as unknown as { roomBytes: number }).roomBytes = 50_000_000
+    await room.onSave() // phòng rỗng + updates > 0 → compact
+    const rb = (room as unknown as { roomBytes: number }).roomBytes
+    expect(rb).toBe(Y.encodeStateAsUpdate(room.document).length)
+  })
+  it('accepts small updates while there is room', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = 100
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg())
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('still allows step1 when the room is full', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES
+    const spy = spyOnSuper(true)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, step1Msg())
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('onLoad sets roomBytes from state and updates add to it', async () => {
+    const d = new Y.Doc()
+    d.getText('t').insert(0, 'hello')
+    const st = fakeStorage({ snap: Y.encodeStateAsUpdate(d) })
+    const room = makePurgeRoom(st)
+    await room.onLoad()
+    const before = (room as unknown as { roomBytes: number }).roomBytes
+    room.document.getText('t').insert(0, 'more')
+    expect((room as unknown as { roomBytes: number }).roomBytes).toBeGreaterThan(before)
+  })
+})
+
 function fakeStorage(init: Record<string, unknown> = {}) {
   const m = new Map<string, unknown>(Object.entries(init))
   return {
@@ -112,6 +198,16 @@ function fakeStorage(init: Record<string, unknown> = {}) {
     list: async (o: { prefix?: string } = {}) =>
       new Map([...m].filter(([k]) => k.startsWith(o.prefix ?? ''))),
     deleteAll: async () => void m.clear(),
+    deleteAlarm: vi.fn(async function (this: { alarm: number | null }) {
+      this.alarm = null
+    }),
+    alarm: null as number | null,
+    getAlarm: async function (this: { alarm: number | null }) {
+      return this.alarm
+    },
+    setAlarm: vi.fn(async function (this: { alarm: number | null }, t: number) {
+      this.alarm = t
+    }),
   }
 }
 function makePurgeRoom(storage = fakeStorage(), conns: Array<ReturnType<typeof fakeConn>> = []) {
@@ -201,5 +297,249 @@ describe('DocRoom.purge', () => {
     await (room as unknown as { queue: Promise<unknown> }).queue
     closeSpy.mockRestore()
     expect([...st.m.keys()]).toEqual(['tombstone'])
+  })
+})
+
+describe('DocRoom revoke (11c)', () => {
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const revokeReq = (prefix: unknown, internal = true) =>
+    new Request('http://x/parties/doc-room/r/revoke', {
+      method: 'POST',
+      headers: internal ? { 'x-mdr-internal': '1' } : {},
+      body: JSON.stringify({ prefix }),
+    })
+
+  it('revoke closes conns with the same prefix only', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const b = { ...fakeConn(), state: { role: 'edit', prefix: 'xyz' } }
+    const room = makePurgeRoom(st, [a, b])
+    const r = await room.onRequest(revokeReq('abc'))
+    expect(r.status).toBe(204)
+    expect(a.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(b.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(true)
+  })
+  it('rejects bad prefix with 400', async () => {
+    const room = makePurgeRoom()
+    expect((await room.onRequest(revokeReq(''))).status).toBe(400)
+    expect((await room.onRequest(revokeReq('x'.repeat(33)))).status).toBe(400)
+    expect((await room.onRequest(revokeReq(5))).status).toBe(400)
+  })
+  it('onConnect with revoked prefix closes 4410', async () => {
+    const room = makePurgeRoom()
+    await room.onRequest(revokeReq('abc'))
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('onConnect with past expiry closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-expires': String(Date.now() - 1000) }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('handleMessage closes and drops when state expired', () => {
+    const room = makePurgeRoom()
+    const spy = spyOnSuper(false)
+    const c = { ...fakeConn(), state: { role: 'edit', expiresAt: Date.now() - 1 } }
+    room.handleMessage(c as never, updateMsg())
+    expect(spy).not.toHaveBeenCalled()
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    spy.mockRestore()
+  })
+  it('revoked set is reloaded in onLoad', async () => {
+    const room = makePurgeRoom(fakeStorage({ 'revoked:abc': 1 }))
+    await room.onLoad()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-role': 'edit', 'x-mdr-prefix': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+  })
+  it('/revoke without x-mdr-internal does not revoke', async () => {
+    const st = fakeStorage()
+    const a = { ...fakeConn(), state: { role: 'edit', prefix: 'abc' } }
+    const room = makePurgeRoom(st, [a])
+    const r = await room.onRequest(revokeReq('abc', false))
+    expect(r.status).toBe(404)
+    expect(a.close).not.toHaveBeenCalled()
+    expect(st.m.has('revoked:abc')).toBe(false)
+  })
+})
+
+describe('DocRoom expiry alarm (11c T4)', () => {
+  vi.spyOn(YServer.prototype as unknown as { onAlarm: () => Promise<void> }, 'onAlarm').mockResolvedValue(undefined)
+  const reqWith = (h: Record<string, string>) => ({ request: new Request('http://x/', { headers: h }) }) as never
+  const withState = (expiresAt?: number) => ({ ...fakeConn(), state: { role: 'view', expiresAt } })
+
+  it('onAlarm closes only expired conns', async () => {
+    const a = withState(Date.now() - 1)
+    const b = withState(undefined)
+    const room = makePurgeRoom(fakeStorage(), [a, b])
+    await room.onAlarm()
+    expect(a.close).toHaveBeenCalledWith(4410, 'expired')
+    expect(b.close).not.toHaveBeenCalled()
+  })
+  it('onConnect with future expiry sets alarm; earlier existing alarm is kept', async () => {
+    const sup = vi.spyOn(YServer.prototype as unknown as { onConnect: () => void }, 'onConnect').mockImplementation(() => undefined)
+    const t = Date.now() + 60_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st)
+    room.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st.setAlarm).toHaveBeenCalledWith(t)
+
+    const st2 = fakeStorage()
+    st2.alarm = t - 1000
+    const room2 = makePurgeRoom(st2)
+    room2.onConnect(fakeConn() as never, reqWith({ 'x-mdr-expires': String(t) }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(st2.setAlarm).not.toHaveBeenCalled()
+    sup.mockRestore()
+  })
+  it('onAlarm re-arms for the earliest future expiry', async () => {
+    const t1 = Date.now() + 90_000
+    const t2 = Date.now() + 30_000
+    const st = fakeStorage()
+    const room = makePurgeRoom(st, [withState(Date.now() - 1), withState(t1), withState(t2)])
+    await room.onAlarm()
+    expect(st.setAlarm).toHaveBeenCalledWith(t2)
+  })
+  it('unparsable x-mdr-expires closes 4410', () => {
+    const room = makePurgeRoom()
+    const c = fakeConn()
+    room.onConnect(c as never, reqWith({ 'x-mdr-expires': 'abc' }))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(c.setState).not.toHaveBeenCalled()
+  })
+  it('purge deletes the alarm before deleteAll; onAlarm on a purged room does nothing', async () => {
+    const a = withState(Date.now() - 1)
+    const st = fakeStorage()
+    const order: string[] = []
+    st.deleteAlarm.mockImplementation(async () => void order.push('alarm'))
+    const origDel = st.deleteAll
+    st.deleteAll = async () => {
+      order.push('all')
+      await origDel()
+    }
+    const room = makePurgeRoom(st, [a])
+    await room.purge()
+    expect(order).toEqual(['alarm', 'all'])
+    a.close.mockClear()
+    await room.onAlarm()
+    expect(a.close).not.toHaveBeenCalled()
+    expect(st.setAlarm).not.toHaveBeenCalled()
+  })
+  it('purge still completes if deleteAlarm throws', async () => {
+    const st = fakeStorage({ x: 1 })
+    st.deleteAlarm.mockRejectedValue(new Error('boom'))
+    const room = makePurgeRoom(st)
+    await room.purge()
+    expect(st.m.has('x')).toBe(false)
+    expect(st.m.get('tombstone')).toBe(1)
+  })
+})
+
+describe('DocRoom awareness ownership', () => {
+  function awFor(id: number, state: unknown = { user: { name: 'A', color: 'var(--peer-1)' } }): Uint8Array {
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, id)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, JSON.stringify(state))
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    return encoding.toUint8Array(e)
+  }
+  const idsIn = (m: Uint8Array): number[] => {
+    const d = decoding.createDecoder(m)
+    decoding.readVarUint(d)
+    const u = decoding.createDecoder(decoding.readVarUint8Array(d))
+    const n = decoding.readVarUint(u)
+    const out: number[] = []
+    for (let i = 0; i < n; i++) {
+      out.push(decoding.readVarUint(u))
+      decoding.readVarUint(u)
+      decoding.readVarString(u)
+    }
+    return out
+  }
+  const cn = (id: string) => ({ id, state: { role: 'edit' }, readyState: 1, send: () => undefined }) as never
+  const setup = () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false).mockImplementation(() => undefined)
+    return { room, spy }
+  }
+  it('forwards owner, blocks others (state and null)', () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    room.handleMessage(b, awFor(100))
+    room.handleMessage(b, awFor(100, null))
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  const seen = (room: DocRoom, id: string, t: number) =>
+    (room as unknown as { lastSeen: Map<string, number> }).lastSeen.set(id, t)
+  const ownerOf = (room: DocRoom, id: number) =>
+    (room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner.get(id)
+  it('transfers ownership when the old owner is silent over the stale window', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - AWARENESS_STALE_MS - 1000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(ownerOf(room, 100)).toBe('B')
+    spy.mockRestore()
+  })
+  it('keeps ownership when the old owner was seen 60 s ago (throttled hidden tab)', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - 60_000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(ownerOf(room, 100)).toBe('A')
+    spy.mockRestore()
+  })
+  it('does not claim an id with a malformed entry', () => {
+    const { room, spy } = setup()
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, 200)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, '{bad')
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    room.handleMessage(cn('A'), encoding.toUint8Array(e))
+    expect(ownerOf(room, 200)).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('rejects null removal for an unowned id and creates no owner', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(300, null))
+    expect(spy).not.toHaveBeenCalled()
+    expect(ownerOf(room, 300)).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('frees ids when owner closes', async () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    await room.onClose(a, 1000, '', true).catch(() => undefined)
+    room.handleMessage(b, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(idsIn(spy.mock.calls[1]![1] as Uint8Array)).toEqual([100])
+    spy.mockRestore()
+  })
+  it('caps ids per connection', () => {
+    const { room, spy } = setup()
+    const a = cn('A')
+    for (let i = 1; i <= 4; i++) room.handleMessage(a, awFor(i))
+    room.handleMessage(a, awFor(5))
+    expect(spy).toHaveBeenCalledTimes(4)
+    spy.mockRestore()
   })
 })

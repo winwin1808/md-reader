@@ -128,6 +128,24 @@ describe('bindRoom', () => {
     p.emit('synced', [true])
     expect(seen).toEqual(['connecting', 'offline', 'online'])
   })
+  it('terminal close codes stop reconnecting and go offline', () => {
+    for (const code of [1009, 4410, 4413]) {
+      const { conn, p } = mk() as any
+      ;(p as any).shouldConnect = true
+      const seen: SyncStatus[] = []
+      conn.status$((s: SyncStatus) => seen.push(s))
+      p.emit('synced', [true])
+      p.emit('connection-close', [{ code }])
+      expect((p as any).shouldConnect).toBe(false)
+      expect(seen).toEqual(['connecting', 'online', 'offline'])
+    }
+  })
+  it('non-terminal close (1006) keeps reconnecting', () => {
+    const { p } = mk()
+    ;(p as any).shouldConnect = true
+    p.emit('connection-close', [{ code: 1006 }])
+    expect((p as any).shouldConnect).toBe(true)
+  })
   it('destroy before connect resolves disconnects afterwards', async () => {
     const { conn, p } = mk()
     const seen: SyncStatus[] = []

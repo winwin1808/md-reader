@@ -13,6 +13,11 @@ import {
   type BridgeResultMap,
   type BridgeTool,
 } from '@md-reader/core/bridge'
+import { authPayload, fingerprint, importPublicKey, keyId, newNonce, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
+import type { ServerIdentity } from './pairing'
+
+export const PAIR_WINDOW_MS = 10 * 60_000
+export const AUTH_DEADLINE_MS = 10_000
 
 export class BridgeCallError extends Error {
   constructor(readonly code: BridgeErrorCode, message: string) {
@@ -80,12 +85,23 @@ function listen(port: number, allowed: (o: string) => boolean, getPaired: () => 
 }
 
 export async function startBridgeServer(opts: {
-  pairKey: string
+  identity: ServerIdentity
   client: string
   ports?: readonly number[]
   connectWaitMs?: number
   allowedOrigin?: (origin: string) => boolean
+  now?: () => number
+  authDeadlineMs?: number
 }): Promise<BridgeServer> {
+  const now = opts.now ?? Date.now
+  const startedAt = now()
+  const authDeadlineMs = opts.authDeadlineMs ?? AUTH_DEADLINE_MS
+  let pinChain: Promise<unknown> = Promise.resolve()
+  const pinLocked = <T,>(fn: () => Promise<T>): Promise<T> => {
+    const r = pinChain.then(fn, fn)
+    pinChain = r.catch(() => undefined)
+    return r
+  }
   const allowed = opts.allowedOrigin ?? defaultAllowedOrigin
   const connectWaitMs = opts.connectWaitMs ?? 35_000
   let client = opts.client
@@ -124,24 +140,64 @@ export async function startBridgeServer(opts: {
       const old = findReplaceable(server, paired, ws)
       if (old) old.close(4000, 'replaced')
     }
-    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, pairKey: opts.pairKey }))
+    const nonce = newNonce()
+    let authStarted = false
+    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, serverKey: opts.identity.publicKey, nonce }))
+    const deadline = setTimeout(() => {
+      if (paired !== ws) ws.close()
+    }, authDeadlineMs)
+    ws.on('close', () => clearTimeout(deadline))
+    const deny = () => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'reject', code: 'DENIED' }))
+      ws.close()
+    }
+    const authenticate = async (msg: { extKey: string; nonce: string; sig: string }) => {
+      const id = opts.identity
+      try {
+        const extPub = await importPublicKey(msg.extKey)
+        const ok = await verifyPayload(extPub, authPayload('ext', nonce, await keyId(id.publicKey), port), msg.sig)
+        if (!ok) return deny()
+        const allowedKey = await pinLocked(async () => {
+          if (id.extKey === null) {
+            if (now() - startedAt > PAIR_WINDOW_MS) return false
+            try {
+              await id.pinExtKey(msg.extKey)
+            } catch {
+              return false
+            }
+            process.stderr.write(`le-sach-mcp: đã ghép cặp với MD Reader ${fingerprint(await keyId(msg.extKey))}\n`)
+            return true
+          }
+          return id.extKey === msg.extKey
+        })
+        if (!allowedKey) return deny()
+        const sig = await signPayload(id.privateKey, authPayload('srv', msg.nonce, await keyId(msg.extKey), port))
+        if (ws.readyState !== WebSocket.OPEN || closing) return
+        ws.send(JSON.stringify({ type: 'auth-ok', sig }))
+      } catch {
+        return deny()
+      }
+      if (paired === ws) return
+      if (paired) {
+        const old = paired
+        paired = ws
+        failPendingOn(old)
+        old.close()
+      } else paired = ws
+      for (const w of waiters) {
+        clearTimeout(w.timer)
+        w.resolve(ws)
+      }
+      waiters.clear()
+    }
     ws.on('message', (data) => {
       const msg = parseBridgeMessage(String(data))
       if (!msg) return
       switch (msg.type) {
-        case 'welcome':
-          if (!msg.paired || paired === ws) return
-          if (paired) {
-            const old = paired
-            paired = ws
-            failPendingOn(old)
-            old.close()
-          } else paired = ws
-          for (const w of waiters) {
-            clearTimeout(w.timer)
-            w.resolve(ws)
-          }
-          waiters.clear()
+        case 'auth':
+          if (authStarted) return
+          authStarted = true
+          void authenticate(msg)
           return
         case 'reject':
           ws.close()

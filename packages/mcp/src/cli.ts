@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { startBridgeServer } from './bridge-server'
-import { loadOrCreatePairKey } from './pairing'
+import { loadOrCreateIdentity } from './pairing'
 import { registerTools } from './tools'
 
 export const VERSION = '1.3.0'
@@ -18,8 +18,8 @@ export async function main(
   } = {},
 ): Promise<{ close(): Promise<void> }> {
   const stderr = deps.stderr ?? process.stderr
-  const pairKey = await loadOrCreatePairKey(deps.pairPath)
-  const bridge = await startBridgeServer({ pairKey, client: 'MCP', ports: deps.ports })
+  const identity = await loadOrCreateIdentity(deps.pairPath)
+  const bridge = await startBridgeServer({ identity, client: 'MCP', ports: deps.ports })
   const server = new McpServer({ name: 'md-reader', version: VERSION })
   registerTools(server, bridge)
   server.server.oninitialized = () => {
