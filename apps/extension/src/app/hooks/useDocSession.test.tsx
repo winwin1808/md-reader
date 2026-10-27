@@ -5,6 +5,15 @@ import * as Y from 'yjs'
 import { hashText, ORIGIN_LOAD, applyTextChangeAsActor } from '@md-reader/core'
 import { __resetForTests, createRecord, findByOrigin, listRecent, storeBase, getRecord, docParam } from '../doc-registry'
 
+const ensureFail = vi.hoisted(() => ({ on: false }))
+vi.mock('@md-reader/core', async (orig) => {
+  const actual = await orig<typeof import('@md-reader/core')>()
+  return { ...actual, ensureDoc: ((...a: Parameters<typeof actual.ensureDoc>) => {
+    if (ensureFail.on) throw new Error('boom')
+    return actual.ensureDoc(...a)
+  }) as typeof actual.ensureDoc }
+})
+
 vi.mock('../doc-registry', async (orig) => {
   const actual = await orig<typeof import('../doc-registry')>()
   return { ...actual, storeBase: vi.fn(actual.storeBase) }
@@ -533,5 +542,33 @@ describe('useDocSession aiUnsaved (11g)', () => {
     const h = setup('hello')
     await flush(); await syncNow()
     await waitFor(() => expect(h.result.current.aiUnsaved).toBe(true), LOAD_WAIT)
+  })
+})
+
+describe('useDocSession formatVersion tolerance (11h)', () => {
+  beforeEach(async () => {
+    idbUpdate = null; names = []; namesBefore = 0
+    await __resetForTests()
+  })
+
+  it('doc with formatVersion 99 opens: synced, checkpoints set, no error', async () => {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'hello')
+    d.getMap('meta').set('formatVersion', 99)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.checkpoints).not.toBeNull(), LOAD_WAIT)
+    expect(h.result.current.error).toBeNull()
+  })
+
+  it('other ensureDoc failure sets error and does not hang', async () => {
+    ensureFail.on = true
+    try {
+      const h = setup('hello')
+      await flush(); await syncNow()
+      await waitFor(() => expect(h.result.current.error).not.toBeNull(), LOAD_WAIT)
+      expect(h.result.current.checkpoints).toBeNull()
+    } finally { ensureFail.on = false }
   })
 })

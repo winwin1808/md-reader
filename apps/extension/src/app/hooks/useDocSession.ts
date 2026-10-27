@@ -146,14 +146,20 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     const rec = record
     const whenSynced = persistence ? persistence.whenSynced : Promise.resolve()
     syncedPromiseRef.current = (async () => {
-      await whenSynced
-      if (rec && !cancelled) {
-        ensureDoc(doc, { title: rec.title })
-        registerActor(doc, 'Bạn')
-        tracker = createCheckpointTracker(doc, { actor: 'Bạn' })
-        checkpointsRef.current = tracker
-        setCheckpoints(tracker)
-        touchRecord(rec.docId).catch(console.error)
+      try {
+        await whenSynced
+        if (rec && !cancelled) {
+          const res = ensureDoc(doc, { title: rec.title }, { tolerateNewer: true })
+          if (res.newer) console.warn('Doc has a newer formatVersion than this build; opening as-is')
+          registerActor(doc, 'Bạn')
+          tracker = createCheckpointTracker(doc, { actor: 'Bạn' })
+          checkpointsRef.current = tracker
+          setCheckpoints(tracker)
+          touchRecord(rec.docId).catch(console.error)
+        }
+      } catch (err) {
+        console.error('Failed to open doc:', err)
+        if (!cancelled) setError(tRef.current('ext.session.openFailed'))
       }
     })()
 
