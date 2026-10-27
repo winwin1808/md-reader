@@ -40,7 +40,7 @@ function cursorOk(c: unknown): boolean {
   }
 }
 
-export function sanitizeAwarenessMessage(buf: Uint8Array, accept?: (clientId: number) => boolean): Uint8Array | null {
+export function sanitizeAwarenessMessage(buf: Uint8Array, accept?: (clientId: number, removal: boolean) => boolean): Uint8Array | null {
   if (buf.length > MAX_AWARENESS_BYTES) return null
   try {
     const d = decoding.createDecoder(buf)
@@ -52,8 +52,8 @@ export function sanitizeAwarenessMessage(buf: Uint8Array, accept?: (clientId: nu
       const id = decoding.readVarUint(upd)
       const clock = decoding.readVarUint(upd)
       const raw = decoding.readVarString(upd)
-      if (accept && !accept(id)) continue
       if (raw === 'null') {
+        if (accept && !accept(id, true)) continue
         entries.push([id, clock, raw])
         continue
       }
@@ -64,6 +64,7 @@ export function sanitizeAwarenessMessage(buf: Uint8Array, accept?: (clientId: nu
         continue
       }
       if (typeof state !== 'object' || state === null || Array.isArray(state)) continue
+      if (accept && !accept(id, false)) continue
       const s = state as Record<string, unknown>
       const out: Record<string, unknown> = {}
       const user = sanitizeUser(s.user)

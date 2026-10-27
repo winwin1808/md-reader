@@ -147,6 +147,21 @@ describe('sanitizeAwarenessMessage accept', () => {
     const out = sanitizeAwarenessMessage(multi([7, 8]), (id) => id !== 7)
     expect(idsOf(out!)).toEqual([8])
   })
+  it('calls accept only after state validation, with removal flag', () => {
+    const calls: Array<[number, boolean]> = []
+    const e0 = encoding.createEncoder()
+    encoding.writeVarUint(e0, 2)
+    for (const [id, raw] of [[1, '{bad'], [2, 'null']] as const) {
+      encoding.writeVarUint(e0, id)
+      encoding.writeVarUint(e0, 1)
+      encoding.writeVarString(e0, raw)
+    }
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(e0))
+    sanitizeAwarenessMessage(encoding.toUint8Array(e), (id, removal) => (calls.push([id, removal]), true))
+    expect(calls).toEqual([[2, true]])
+  })
   it('null when all rejected', () => {
     expect(sanitizeAwarenessMessage(multi([7]), () => false)).toBeNull()
   })

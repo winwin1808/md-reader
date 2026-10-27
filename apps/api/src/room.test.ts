@@ -16,6 +16,7 @@ function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
   ;(room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner = new Map()
+  ;(room as unknown as { lastSeen: Map<string, number> }).lastSeen = new Map()
   ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
@@ -478,6 +479,49 @@ describe('DocRoom awareness ownership', () => {
     room.handleMessage(b, awFor(100))
     room.handleMessage(b, awFor(100, null))
     expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  const seen = (room: DocRoom, id: string, t: number) =>
+    (room as unknown as { lastSeen: Map<string, number> }).lastSeen.set(id, t)
+  const ownerOf = (room: DocRoom, id: number) =>
+    (room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner.get(id)
+  it('transfers ownership when the old owner is silent over 30 s', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - 31_000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(ownerOf(room, 100)).toBe('B')
+    spy.mockRestore()
+  })
+  it('keeps ownership when the old owner was seen 5 s ago', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(100))
+    seen(room, 'A', Date.now() - 5_000)
+    room.handleMessage(cn('B'), awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(ownerOf(room, 100)).toBe('A')
+    spy.mockRestore()
+  })
+  it('does not claim an id with a malformed entry', () => {
+    const { room, spy } = setup()
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, 200)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, '{bad')
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    room.handleMessage(cn('A'), encoding.toUint8Array(e))
+    expect(ownerOf(room, 200)).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('rejects null removal for an unowned id and creates no owner', () => {
+    const { room, spy } = setup()
+    room.handleMessage(cn('A'), awFor(300, null))
+    expect(spy).not.toHaveBeenCalled()
+    expect(ownerOf(room, 300)).toBeUndefined()
     spy.mockRestore()
   })
   it('frees ids when owner closes', async () => {
