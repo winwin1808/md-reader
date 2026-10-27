@@ -693,7 +693,7 @@ export function App(): React.JSX.Element {
         : ss.kind === 'needs-permission'
           ? { kind: 'needs-permission', onGrant: () => { void fileSave.grantPermission() } }
           : isDirty || ss.kind === 'conflict'
-            ? { kind: 'dirty' }
+            ? { kind: 'dirty', ai: session.aiUnsaved }
             : ss.kind === 'saved'
               ? { kind: 'saved', at: ss.at }
               : { kind: 'none' }

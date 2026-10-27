@@ -6,6 +6,7 @@ import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, O
 import type { CheckpointTracker } from '@md-reader/core'
 import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase, resolveDocParam, docQuery } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
+import { ORIGIN_MCP } from '../bridge-executor'
 import { readCacheEntry } from '../../shared/md-url'
 import type { SyncStatus } from '../../shared/collab'
 import { bindRoom } from '../collab/bindRoom'
@@ -29,6 +30,8 @@ export interface DocSession {
   hasContent: boolean
   isDirty: boolean
   setDirty(dirty: boolean): void
+  aiUnsaved: boolean
+  ackAi(savedText: string): void
   error: string | null
   setError(message: string | null): void
   synced: boolean
@@ -52,6 +55,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [docTitle, setDocTitle] = useState<string>('')
   const [hasContent, setHasContent] = useState(false)
   const [isDirty, setIsDirty] = useState<boolean>(false)
+  const [aiUnsaved, setAiUnsaved] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
   const [record, setRecord] = useState<DocRecord | null>(null)
   const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
@@ -107,6 +111,13 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
   const doc = useMemo(() => new Y.Doc({ gc: false }), [record?.docId])
   const yText = useMemo(() => doc.getText('source'), [doc])
+  // The AI-unsaved flag lives in meta so it survives reloads (absent = false).
+  const ackAi = useCallback((savedText: string) => {
+    if (savedText === yText.toString()) {
+      const m = getMeta(doc)
+      if (m.has('aiUnsaved')) m.delete('aiUnsaved')
+    }
+  }, [doc, yText])
   const undoManager = useMemo(() => new Y.UndoManager(yText), [yText])
 
   useEffect(() => {
@@ -164,6 +175,11 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       const origin = event.transaction.origin
       if (origin !== ORIGIN_LOAD && origin !== ORIGIN_FORMAT && origin !== ORIGIN_REVERT) {
         setIsDirty(true)
+        if (origin === ORIGIN_MCP) {
+          if (meta.get('aiUnsaved') !== true) meta.set('aiUnsaved', true)
+        } else if (meta.get('aiUnsaved') === true && event.transaction.local && isUserOrigin(origin)) {
+          meta.delete('aiUnsaved')
+        }
       }
       clearContentTimer()
       if (origin === ORIGIN_LOAD || origin === ORIGIN_REVERT) {
@@ -177,12 +193,19 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       updateTitle()
     }
     text.observe(observer)
-    meta.observe(updateTitle)
+    const isUserOrigin = (o: unknown) =>
+      o === undoManager ||
+      (typeof o === 'object' && o !== null && (o as { ytext?: unknown }).ytext === text && 'awareness' in o)
+    const syncAi = () => setAiUnsaved(meta.get('aiUnsaved') === true)
+    const metaObserver = () => { updateTitle(); syncAi() }
+    syncAi()
+    meta.observe(metaObserver)
     const onPageHide = () => { tracker?.flush('auto', 'Bạn') }
     window.addEventListener('pagehide', onPageHide)
     // Wait for initial sync from IDB
     if (persistence) {
       persistence.once('synced', () => {
+        syncAi()
         setSynced(true)
         if (!isFileContentSetRef.current) {
           setHasContent(text.length > 0)
@@ -201,7 +224,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       if (checkpointsRef.current === tracker) checkpointsRef.current = null
       clearContentTimer()
       text.unobserve(observer)
-      meta.unobserve(updateTitle)
+      meta.unobserve(metaObserver)
       if (persistence) {
         persistence.destroy()
       }
@@ -420,6 +443,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     hasContent,
     isDirty,
     setDirty: setIsDirty,
+    aiUnsaved,
+    ackAi,
     error,
     setError,
     synced,

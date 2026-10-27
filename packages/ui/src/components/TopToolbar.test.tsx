@@ -139,6 +139,15 @@ describe('TopToolbar', () => {
     expect(onOpenMindmap).toHaveBeenCalledTimes(1)
   })
 
+  it('shows AI-edited label when dirty with ai', () => {
+    const { rerender } = render(<TopToolbar {...defaultProps} saveStatus={{ kind: 'dirty', ai: true }} />)
+    const el = document.querySelector('.tb-status.dirty-indicator') as HTMLElement
+    expect(el.textContent).toBe('AI đã sửa — chưa lưu')
+    expect(el.getAttribute('title')).toBe('Bấm Lưu (⌘S) để ghi thay đổi của AI ra file.')
+    rerender(<TopToolbar {...defaultProps} saveStatus={{ kind: 'dirty' }} />)
+    expect(screen.getByText('Chưa lưu')).toBeTruthy()
+  })
+
   it('renders each SaveStatus text', () => {
     const at = new Date(2026, 0, 5, 14, 2).getTime()
     const { rerender } = render(<TopToolbar {...defaultProps} saveStatus={{ kind: 'none' }} />)
