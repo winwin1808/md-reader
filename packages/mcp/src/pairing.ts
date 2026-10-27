@@ -1,6 +1,7 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, type webcrypto } from 'node:crypto';
 import { chmod, link, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, importPrivateJwk } from '@md-reader/core';
 import { dirname, join } from 'node:path';
 
 export interface PairFile {
@@ -81,4 +82,85 @@ export async function loadOrCreatePairKey(path: string = defaultPairPath()): Pro
   }
   await tighten(path);
   return key;
+}
+
+type JsonWebKey = webcrypto.JsonWebKey;
+type CryptoKey = webcrypto.CryptoKey;
+
+export interface PairFileV2 {
+  version: 2;
+  privateKey: JsonWebKey;
+  publicKey: string;
+  extKey?: string;
+}
+
+export interface ServerIdentity {
+  privateKey: CryptoKey;
+  publicKey: string;
+  extKey: string | null;
+  pinExtKey(k: string): Promise<void>;
+}
+
+function parseV2(raw: string): PairFileV2 | null {
+  try {
+    const f = JSON.parse(raw) as Partial<PairFileV2> | null;
+    if (!f || f.version !== 2) return null;
+    if (!f.privateKey || typeof f.privateKey !== 'object') return null;
+    if (typeof f.publicKey !== 'string' || !f.publicKey) return null;
+    if (f.extKey !== undefined && typeof f.extKey !== 'string') return null;
+    return f as PairFileV2;
+  } catch {
+    return null;
+  }
+}
+
+async function writeAtomic(path: string, file: PairFileV2): Promise<void> {
+  const dir = dirname(path);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const tmp = join(dir, `.mcp-${process.pid}-${randomBytes(4).toString('hex')}.tmp`);
+  try {
+    await writeFile(tmp, JSON.stringify(file), { mode: 0o600 });
+    await rename(tmp, path);
+  } finally {
+    await rm(tmp, { force: true });
+  }
+  await tighten(path);
+}
+
+export async function loadOrCreateIdentity(path: string = defaultPairPath()): Promise<ServerIdentity> {
+  let file: PairFileV2 | null = null;
+  try {
+    file = parseV2(await readFile(path, 'utf8'));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+  }
+  let privateKey: CryptoKey | null = null;
+  if (file) {
+    try {
+      privateKey = await importPrivateJwk(file.privateKey);
+    } catch {
+      file = null;
+    }
+  }
+  if (!file || !privateKey) {
+    const pair = await generateBridgeKeyPair();
+    privateKey = pair.privateKey;
+    file = { version: 2, privateKey: await exportPrivateJwk(pair.privateKey), publicKey: await exportPublicKey(pair.publicKey) };
+    await writeAtomic(path, file);
+  } else {
+    await tighten(path);
+  }
+  const current = file;
+  const key = privateKey as CryptoKey;
+  const identity: ServerIdentity = {
+    privateKey: key,
+    publicKey: current.publicKey,
+    extKey: current.extKey ?? null,
+    async pinExtKey(k: string) {
+      current.extKey = k;
+      await writeAtomic(path, current);
+      identity.extKey = k;
+    },
+  };
+  return identity;
 }
