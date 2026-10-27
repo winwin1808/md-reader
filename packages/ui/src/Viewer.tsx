@@ -224,42 +224,48 @@ export function Viewer(props: ViewerProps): React.JSX.Element {
       if (!code) return
       if (code.classList.contains('language-mermaid') || code.classList.contains('language-excalidraw')) return
 
-      // Extract language
-      let lang = 'text'
-      const match = code.className.match(/language-([a-zA-Z0-9_-]+)/)
-      if (match && match[1]) {
-        lang = match[1]
-      } else {
-        const classes = typeof code.className === 'string' ? code.className.split(/\s+/) : []
-        for (const cls of classes) {
-          if (cls && cls !== 'hljs' && !cls.startsWith('hljs-')) {
-            lang = cls
-            break
-          }
+      // Extract language (strict allowlist; never fall back to arbitrary class tokens)
+      let lang: string | null = null
+      for (const cls of Array.from(code.classList)) {
+        const m = /^language-([A-Za-z0-9_+#.-]{1,40})$/.exec(cls)
+        if (m && m[1]) {
+          lang = m[1]
+          break
         }
       }
 
       const header = document.createElement('div')
       header.className = 'code-block-header md-no-print'
-      const copyIcon = iconSvg('copy', 16)
-      const copyLabel = (text: string) => `${copyIcon}<span>${text}</span>`
-      header.innerHTML = `<span class="code-lang-badge">${lang}</span><button class="code-copy-btn" aria-label="${t('settings.code.copyAria')}">${copyLabel(t('common.copy'))}</button>`
+      if (lang) {
+        const badge = document.createElement('span')
+        badge.className = 'code-lang-badge'
+        badge.textContent = lang
+        header.appendChild(badge)
+      }
 
-      const copyBtn = header.querySelector<HTMLButtonElement>('.code-copy-btn')
-      if (copyBtn) {
+      const copyBtn = document.createElement('button')
+      copyBtn.className = 'code-copy-btn'
+      copyBtn.setAttribute('aria-label', t('settings.code.copyAria'))
+      copyBtn.innerHTML = iconSvg('copy', 16) // static constant, not document data
+      const labelEl = document.createElement('span')
+      labelEl.textContent = t('common.copy')
+      copyBtn.appendChild(labelEl)
+      header.appendChild(copyBtn)
+
+      {
         let timeoutId: ReturnType<typeof setTimeout> | null = null
         copyBtn.addEventListener('click', async () => {
           const codeText = code.textContent || ''
           try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
               await navigator.clipboard.writeText(codeText)
-              copyBtn.innerHTML = copyLabel(t('common.copied'))
+              labelEl.textContent = t('common.copied')
               copyBtn.classList.add('copied')
               if (timeoutId) {
                 clearTimeout(timeoutId)
               }
               timeoutId = setTimeout(() => {
-                copyBtn.innerHTML = copyLabel(t('common.copy'))
+                labelEl.textContent = t('common.copy')
                 copyBtn.classList.remove('copied')
                 timeoutId = null
               }, 1500)
