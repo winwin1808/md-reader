@@ -1,5 +1,5 @@
 # Design: Phase 11 — Vá bảo mật trước khi phát hành 1.3.0
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 11
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 11
 Intent: docs/superpowers/intent/2026-10-27-phase-11-va-bao-mat.md
 Audit nguồn: `~/security-audit-skill/md-reader/run-1/NEEDS-VALIDATION.md` (8 mục, id ghi trong ngoặc).
 
@@ -26,7 +26,7 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 - 11h: done
 - 11i: done
 - 11j: done
-- 11k: pending
+- 11k: done
 
 ## Sub-phases
 
