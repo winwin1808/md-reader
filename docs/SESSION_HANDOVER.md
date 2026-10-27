@@ -28,12 +28,12 @@ version                    1.3.0 (extension + le-sach-mcp)
 1. ~~Duyệt + merge MR #7~~ — đã merge 2026-10-26 (`28c06c5`), CI check + e2e xanh.
 2. Máy chủ: `set -a; . ~/.config/md-reader/cloudflare.env` rồi `wrangler d1 migrations apply <DB> --remote` (migration `0003_tenancy`),
    `wrangler secret put ADMIN_SECRET`, `pnpm deploy:api`; chạy `scripts/smoke.mjs` với URL thật. Gỡ nội dung: `apps/api/scripts/takedown.mjs`.
-3. `npm publish` `le-sach-mcp@1.3.0` (cần `pnpm --filter le-sach-mcp build` trước).
+3. `npm publish` `le-sach-mcp@1.3.0`: tài khoản npm `winwin1808` bật 2FA → `cd packages/mcp && pnpm publish --access public --no-git-checks --otp=<mã>` (build trước).
 4. Chrome Web Store: `node apps/extension/scripts/package.mjs` (zip đã bỏ `key`), nộp 1.3.0; khi có ID store → thêm vào
    `KNOWN_EXTENSION_IDS` (`packages/core/src/bridge/protocol.ts`) và phát hành mcp bản vá.
 5. Điền liên hệ trong `docs/store/privacy-policy.md`; form Data usage khớp `listing.md`.
 6. Khuyến nghị: chạy skill `security-audit` (đã thêm ở `.claude/skills/security-audit`, MIT, Cloudflare) ở chế độ audit đầy đủ trước khi nộp store.
-7. Site `le-sach.github.io`: tạo org GitHub `le-sach` (web UI), rồi repo `le-sach/le-sach.github.io` từ `site/`, đổi URL tuyệt đối `md-reader-winwin.pages.dev` → `le-sach.github.io`, bật Pages.
+7. ~~Site~~ — không tạo org; site deploy từ `site/` lên GitHub Pages của repo: https://winwin1808.github.io/md-reader/ (workflow `.github/workflows/pages.yml`, chạy khi `site/**` đổi trên `main`).
 
 ### Khoá / bí mật (ngoài repo, không commit)
 - Khoá riêng extension: `~/.config/md-reader/extension-key.pem` (0600) — sinh ra `key` trong manifest để ID cố định `ojcemoafaibjfghljkbagnkbgljakbji`.
