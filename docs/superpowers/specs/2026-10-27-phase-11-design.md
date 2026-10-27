@@ -25,7 +25,7 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 - 11g: done
 - 11h: done
 - 11i: done
-- 11j: planned
+- 11j: done
 - 11k: pending
 
 ## Sub-phases
