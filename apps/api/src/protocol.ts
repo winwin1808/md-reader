@@ -40,7 +40,7 @@ function cursorOk(c: unknown): boolean {
   }
 }
 
-export function sanitizeAwarenessMessage(buf: Uint8Array): Uint8Array | null {
+export function sanitizeAwarenessMessage(buf: Uint8Array, accept?: (clientId: number) => boolean): Uint8Array | null {
   if (buf.length > MAX_AWARENESS_BYTES) return null
   try {
     const d = decoding.createDecoder(buf)
@@ -52,6 +52,7 @@ export function sanitizeAwarenessMessage(buf: Uint8Array): Uint8Array | null {
       const id = decoding.readVarUint(upd)
       const clock = decoding.readVarUint(upd)
       const raw = decoding.readVarString(upd)
+      if (accept && !accept(id)) continue
       if (raw === 'null') {
         entries.push([id, clock, raw])
         continue
@@ -70,6 +71,7 @@ export function sanitizeAwarenessMessage(buf: Uint8Array): Uint8Array | null {
       if ('cursor' in s && cursorOk(s.cursor)) out.cursor = s.cursor
       entries.push([id, clock, JSON.stringify(out)])
     }
+    if (accept && entries.length === 0) return null
     const inner = encoding.createEncoder()
     encoding.writeVarUint(inner, entries.length)
     for (const [id, clock, st] of entries) {

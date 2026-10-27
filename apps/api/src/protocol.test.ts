@@ -117,3 +117,37 @@ function await_decode(buf: Uint8Array): Awareness {
   applyAwarenessUpdate(aw, inner(buf), 'x')
   return aw
 }
+
+describe('sanitizeAwarenessMessage accept', () => {
+  function multi(ids: number[]): Uint8Array {
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, ids.length)
+    for (const id of ids) {
+      encoding.writeVarUint(inner, id)
+      encoding.writeVarUint(inner, 1)
+      encoding.writeVarString(inner, JSON.stringify({ user: { name: 'A', color: 'var(--peer-1)' } }))
+    }
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    return encoding.toUint8Array(e)
+  }
+  function idsOf(buf: Uint8Array): number[] {
+    const d = decoding.createDecoder(inner(buf))
+    const n = decoding.readVarUint(d)
+    const out: number[] = []
+    for (let i = 0; i < n; i++) {
+      out.push(decoding.readVarUint(d))
+      decoding.readVarUint(d)
+      decoding.readVarString(d)
+    }
+    return out
+  }
+  it('drops rejected ids', () => {
+    const out = sanitizeAwarenessMessage(multi([7, 8]), (id) => id !== 7)
+    expect(idsOf(out!)).toEqual([8])
+  })
+  it('null when all rejected', () => {
+    expect(sanitizeAwarenessMessage(multi([7]), () => false)).toBeNull()
+  })
+})

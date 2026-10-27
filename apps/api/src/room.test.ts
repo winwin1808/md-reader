@@ -15,6 +15,7 @@ function spyOnSuper(stub: boolean) {
 function makeRoom(): DocRoom {
   const room = Object.create(DocRoom.prototype) as DocRoom
   room.droppedWrites = 0
+  ;(room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner = new Map()
   ;(room as unknown as { revoked: Set<string> }).revoked = new Set()
   Object.defineProperty(room, 'document', { value: new Y.Doc() })
   ;(room as unknown as { getConnections: () => unknown[] }).getConnections = () => []
@@ -435,5 +436,66 @@ describe('DocRoom expiry alarm (11c T4)', () => {
     await room.purge()
     expect(st.m.has('x')).toBe(false)
     expect(st.m.get('tombstone')).toBe(1)
+  })
+})
+
+describe('DocRoom awareness ownership', () => {
+  function awFor(id: number, state: unknown = { user: { name: 'A', color: 'var(--peer-1)' } }): Uint8Array {
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, id)
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarString(inner, JSON.stringify(state))
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    return encoding.toUint8Array(e)
+  }
+  const idsIn = (m: Uint8Array): number[] => {
+    const d = decoding.createDecoder(m)
+    decoding.readVarUint(d)
+    const u = decoding.createDecoder(decoding.readVarUint8Array(d))
+    const n = decoding.readVarUint(u)
+    const out: number[] = []
+    for (let i = 0; i < n; i++) {
+      out.push(decoding.readVarUint(u))
+      decoding.readVarUint(u)
+      decoding.readVarString(u)
+    }
+    return out
+  }
+  const cn = (id: string) => ({ id, state: { role: 'edit' }, readyState: 1, send: () => undefined }) as never
+  const setup = () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false).mockImplementation(() => undefined)
+    return { room, spy }
+  }
+  it('forwards owner, blocks others (state and null)', () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(1)
+    room.handleMessage(b, awFor(100))
+    room.handleMessage(b, awFor(100, null))
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  it('frees ids when owner closes', async () => {
+    const { room, spy } = setup()
+    const a = cn('A'), b = cn('B')
+    room.handleMessage(a, awFor(100))
+    await room.onClose(a, 1000, '', true).catch(() => undefined)
+    room.handleMessage(b, awFor(100))
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(idsIn(spy.mock.calls[1]![1] as Uint8Array)).toEqual([100])
+    spy.mockRestore()
+  })
+  it('caps ids per connection', () => {
+    const { room, spy } = setup()
+    const a = cn('A')
+    for (let i = 1; i <= 4; i++) room.handleMessage(a, awFor(i))
+    room.handleMessage(a, awFor(5))
+    expect(spy).toHaveBeenCalledTimes(4)
+    spy.mockRestore()
   })
 })

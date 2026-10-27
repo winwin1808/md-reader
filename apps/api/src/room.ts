@@ -7,6 +7,7 @@ import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike
 
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 export const MAX_ROOM_BYTES = 64 * 1024 * 1024
+export const MAX_AWARENESS_IDS_PER_CONN = 4
 
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }
@@ -16,6 +17,7 @@ export class DocRoom extends YServer<Env> {
   private purged = false
   private roomBytes = 0
   private revoked = new Set<string>()
+  private awarenessOwner = new Map<number, string>()
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -95,6 +97,7 @@ export class DocRoom extends YServer<Env> {
   }
 
   async onClose(conn: Connection, code: number, reason: string, wasClean: boolean): Promise<void> {
+    for (const [id, owner] of [...this.awarenessOwner]) if (owner === conn.id) this.awarenessOwner.delete(id)
     await super.onClose(conn, code, reason, wasClean)
     this.compactIfEmpty(conn)
   }
@@ -182,7 +185,15 @@ export class DocRoom extends YServer<Env> {
       return
     }
     if (k === 'awareness') {
-      const s = sanitizeAwarenessMessage(bytes)
+      const s = sanitizeAwarenessMessage(bytes, (id) => {
+        const owner = this.awarenessOwner.get(id)
+        if (owner !== undefined) return owner === conn.id
+        let held = 0
+        for (const o of this.awarenessOwner.values()) if (o === conn.id) held++
+        if (held >= MAX_AWARENESS_IDS_PER_CONN) return false
+        this.awarenessOwner.set(id, conn.id)
+        return true
+      })
       if (!s) return
       return super.handleMessage(conn, s)
     }
