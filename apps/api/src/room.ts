@@ -8,7 +8,8 @@ import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 export const MAX_ROOM_BYTES = 64 * 1024 * 1024
 export const MAX_AWARENESS_IDS_PER_CONN = 4
-export const AWARENESS_STALE_MS = 30_000
+// Browsers throttle timers in hidden tabs to ~1/min, so 2 min exceeds one throttled renew cycle.
+export const AWARENESS_STALE_MS = 120_000
 
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }

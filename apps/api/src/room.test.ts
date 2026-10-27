@@ -5,7 +5,7 @@ import * as decoding from 'lib0/decoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { YServer } from 'y-partyserver'
-import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES } from './room'
+import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES, AWARENESS_STALE_MS } from './room'
 
 function spyOnSuper(stub: boolean) {
   const spy = vi.spyOn(YServer.prototype as unknown as { handleMessage: (c: unknown, m: unknown) => void }, 'handleMessage')
@@ -485,19 +485,19 @@ describe('DocRoom awareness ownership', () => {
     (room as unknown as { lastSeen: Map<string, number> }).lastSeen.set(id, t)
   const ownerOf = (room: DocRoom, id: number) =>
     (room as unknown as { awarenessOwner: Map<number, string> }).awarenessOwner.get(id)
-  it('transfers ownership when the old owner is silent over 30 s', () => {
+  it('transfers ownership when the old owner is silent over the stale window', () => {
     const { room, spy } = setup()
     room.handleMessage(cn('A'), awFor(100))
-    seen(room, 'A', Date.now() - 31_000)
+    seen(room, 'A', Date.now() - AWARENESS_STALE_MS - 1000)
     room.handleMessage(cn('B'), awFor(100))
     expect(spy).toHaveBeenCalledTimes(2)
     expect(ownerOf(room, 100)).toBe('B')
     spy.mockRestore()
   })
-  it('keeps ownership when the old owner was seen 5 s ago', () => {
+  it('keeps ownership when the old owner was seen 60 s ago (throttled hidden tab)', () => {
     const { room, spy } = setup()
     room.handleMessage(cn('A'), awFor(100))
-    seen(room, 'A', Date.now() - 5_000)
+    seen(room, 'A', Date.now() - 60_000)
     room.handleMessage(cn('B'), awFor(100))
     expect(spy).toHaveBeenCalledTimes(1)
     expect(ownerOf(room, 100)).toBe('A')
