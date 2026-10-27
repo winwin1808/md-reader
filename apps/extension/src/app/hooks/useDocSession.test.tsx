@@ -476,3 +476,37 @@ describe('useDocSession room binding', () => {
     expect(bind.conns[0].awareness.setLocalStateField).toHaveBeenCalledWith('user', expect.objectContaining({ name: 'Lan' }))
   })
 })
+
+describe('useDocSession aiUnsaved (11g)', () => {
+  beforeEach(async () => {
+    idbUpdate = null; names = []; namesBefore = 0
+    await __resetForTests()
+  })
+  const ready = async () => {
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.yText.toString()).toBe('hello'), LOAD_WAIT)
+    return h
+  }
+
+  it('mcp origin sets aiUnsaved + dirty; local typing clears; peer does not; ackAi clears', async () => {
+    const { result } = await ready()
+    expect(result.current.aiUnsaved).toBe(false)
+    act(() => { result.current.doc.transact(() => { result.current.yText.insert(5, ' AI') }, 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    expect(result.current.isDirty).toBe(true)
+    // peer update (local === false) leaves the flag
+    const peer = new Y.Doc()
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(result.current.doc))
+    peer.getText('source').insert(0, 'P')
+    act(() => { Y.applyUpdate(result.current.doc, Y.encodeStateAsUpdate(peer), 'remote') })
+    expect(result.current.aiUnsaved).toBe(true)
+    // user typing
+    act(() => { result.current.yText.insert(0, 'x') })
+    expect(result.current.aiUnsaved).toBe(false)
+    act(() => { result.current.doc.transact(() => { result.current.yText.insert(0, 'y') }, 'mcp') })
+    expect(result.current.aiUnsaved).toBe(true)
+    act(() => result.current.ackAi())
+    expect(result.current.aiUnsaved).toBe(false)
+  })
+})

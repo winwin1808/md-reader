@@ -6,6 +6,7 @@ import { hashText, applyTextChange, ensureDoc, readMeta, getMeta, ORIGIN_LOAD, O
 import type { CheckpointTracker } from '@md-reader/core'
 import { findOrCreateByOrigin, getRecord, touchRecord, migrateLegacyRegistry, storeBase, resolveDocParam, docQuery } from '../doc-registry'
 import type { DocRecord } from '../doc-registry'
+import { ORIGIN_MCP } from '../bridge-executor'
 import { readCacheEntry } from '../../shared/md-url'
 import type { SyncStatus } from '../../shared/collab'
 import { bindRoom } from '../collab/bindRoom'
@@ -29,6 +30,8 @@ export interface DocSession {
   hasContent: boolean
   isDirty: boolean
   setDirty(dirty: boolean): void
+  aiUnsaved: boolean
+  ackAi(): void
   error: string | null
   setError(message: string | null): void
   synced: boolean
@@ -52,6 +55,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [docTitle, setDocTitle] = useState<string>('')
   const [hasContent, setHasContent] = useState(false)
   const [isDirty, setIsDirty] = useState<boolean>(false)
+  const [aiUnsaved, setAiUnsaved] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
   const [record, setRecord] = useState<DocRecord | null>(null)
   const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
@@ -102,6 +106,9 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     })()
     return () => { cancelled = true }
   }, [docIdParam, fileUrlParam])
+
+  useEffect(() => { setAiUnsaved(false) }, [record?.docId])
+  const ackAi = useCallback(() => setAiUnsaved(false), [])
 
   const persistenceName = record ? record.persistenceName : null
 
@@ -164,6 +171,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       const origin = event.transaction.origin
       if (origin !== ORIGIN_LOAD && origin !== ORIGIN_FORMAT && origin !== ORIGIN_REVERT) {
         setIsDirty(true)
+        if (origin === ORIGIN_MCP) setAiUnsaved(true)
+        else if (event.transaction.local) setAiUnsaved(false)
       }
       clearContentTimer()
       if (origin === ORIGIN_LOAD || origin === ORIGIN_REVERT) {
@@ -420,6 +429,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     hasContent,
     isDirty,
     setDirty: setIsDirty,
+    aiUnsaved,
+    ackAi,
     error,
     setError,
     synced,

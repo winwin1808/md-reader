@@ -111,6 +111,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
     const newHash = await hashText(savedContent)
     doc.getMap('meta').set('originHash', newHash)
     rememberBase(savedContent)
+    session.ackAi()
     // Accepted: the snapshot may include keystrokes typed during the disk write.
     // Autosave stays quiet: the 30 s quiet 'auto' checkpoint covers typing sessions.
     if (explicit) session.checkpoints?.flush('save', 'Bạn', { force: true })
@@ -223,7 +224,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
 
   // Debounced auto-save (2000ms after last edit if activeHandle exists)
   useEffect(() => {
-    if (!isDirty || !activeHandle || saveState.kind === 'conflict' || saveState.kind === 'error' || saveState.kind === 'needs-permission') return
+    if (!isDirty || session.aiUnsaved || !activeHandle || saveState.kind === 'conflict' || saveState.kind === 'error' || saveState.kind === 'needs-permission') return
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
       autoSaveTimerRef.current = null
@@ -238,7 +239,7 @@ export function useFileSave(session: DocSession, settings: { formatOnSave: boole
         autoSaveTimerRef.current = null
       }
     }
-  }, [isDirty, content, activeHandle, saveState.kind])
+  }, [isDirty, session.aiUnsaved, content, activeHandle, saveState.kind])
 
   // Saved -> idle once the user edits again
   useEffect(() => {
