@@ -6,7 +6,7 @@ import {
 } from '@md-reader/core/bridge'
 import { authPayload, exportPublicKey, generateBridgeKeyPair, importPublicKey, keyId, newNonce, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
 import type { ServerIdentity } from './pairing'
-import { BridgeCallError, startBridgeServer, type BridgeServer } from './bridge-server'
+import { AUTH_DEADLINE_MS, BridgeCallError, PAIR_WINDOW_MS, startBridgeServer, type BridgeServer } from './bridge-server'
 
 const ORIGIN = `chrome-extension://${KNOWN_EXTENSION_IDS[0]}`
 const FOREIGN = 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
@@ -43,10 +43,10 @@ async function makeIdentity(extKey: string | null = null): Promise<ServerIdentit
 }
 
 let lastIdentity: ServerIdentity & { pinned: string[] }
-async function start(opts: { connectWaitMs?: number; ports?: number[]; identity?: ServerIdentity & { pinned: string[] } } = {}) {
+async function start(opts: { connectWaitMs?: number; ports?: number[]; identity?: ServerIdentity & { pinned: string[] }; now?: () => number; authDeadlineMs?: number } = {}) {
   const ports = opts.ports ?? [await freePort()]
   lastIdentity = opts.identity ?? (await makeIdentity())
-  const s = await startBridgeServer({ identity: lastIdentity, client: 'test-client', ports, connectWaitMs: opts.connectWaitMs ?? 2000 })
+  const s = await startBridgeServer({ identity: lastIdentity, client: 'test-client', ports, connectWaitMs: opts.connectWaitMs ?? 2000, now: opts.now, authDeadlineMs: opts.authDeadlineMs })
   servers.push(s)
   return s
 }
@@ -350,5 +350,41 @@ describe('bridge server', () => {
     e.ws.send(JSON.stringify({ type: 'welcome', paired: true }))
     await expect(s.call('get_doc', { docId: 'x' })).rejects.toMatchObject({ code: 'NOT_CONNECTED' })
     expect(e.msgs.some((m) => m.type === 'req')).toBe(false)
+  })
+  it('concurrent auth from two different keys while unpinned: exactly one pairs', async () => {
+    const s = await start({ connectWaitMs: 150 })
+    const a = await connect(s.port)
+    const b = await connect(s.port)
+    const ha = await a.next((m) => m.type === 'hello')
+    const hb = await b.next((m) => m.type === 'hello')
+    const [ka, kb] = await Promise.all([sendAuth(a, ha, s.port), sendAuth(b, hb, s.port)])
+    const results = await Promise.all(
+      [a, b].map((e) => e.next((m) => m.type === 'auth-ok' || m.type === 'reject')),
+    )
+    expect(results.filter((r) => r.type === 'auth-ok').length).toBe(1)
+    expect(results.filter((r) => r.type === 'reject').length).toBe(1)
+    expect(lastIdentity.pinned.length).toBe(1)
+    const winner = results[0].type === 'auth-ok' ? ka : kb
+    expect(lastIdentity.pinned[0]).toBe(winner.extKey)
+  })
+
+  it('outside the pairing window an unpinned identity rejects', async () => {
+    const t0 = 1_000_000
+    let t = t0
+    const s = await start({ connectWaitMs: 150, now: () => t })
+    t = t0 + PAIR_WINDOW_MS + 60_000
+    const e = await connect(s.port)
+    const hello = await e.next((m) => m.type === 'hello')
+    await sendAuth(e, hello, s.port)
+    expect((await e.next((m) => m.type === 'reject')).code).toBe('DENIED')
+    expect(lastIdentity.pinned).toEqual([])
+    expect(AUTH_DEADLINE_MS).toBe(10_000)
+  })
+
+  it('a connection that never authenticates is closed after the deadline', async () => {
+    const s = await start({ authDeadlineMs: 100 })
+    const e = await connect(s.port)
+    await e.next((m) => m.type === 'hello')
+    await closed(e.ws)
   })
 })

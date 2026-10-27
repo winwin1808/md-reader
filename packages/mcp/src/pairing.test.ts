@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { chmod, mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -56,5 +56,41 @@ describe('identity v2', () => {
     await writeFile(p, '{nope');
     const a = await loadOrCreateIdentity(p);
     expect(JSON.parse(await readFile(p, 'utf8')).publicKey).toBe(a.publicKey);
+  });
+  it('parallel loadOrCreateIdentity on an empty path share one publicKey', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    const ids = await Promise.all([1, 2, 3, 4].map(() => loadOrCreateIdentity(p)));
+    expect(new Set(ids.map((i) => i.publicKey)).size).toBe(1);
+    expect(JSON.parse(await readFile(p, 'utf8')).publicKey).toBe(ids[0]!.publicKey);
+  });
+  it('pinExtKey throws PINNED when the file already pins another key; memory unchanged', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    const a = await loadOrCreateIdentity(p);
+    const b = await loadOrCreateIdentity(p);
+    await a.pinExtKey('KEY_A');
+    await expect(b.pinExtKey('KEY_B')).rejects.toThrow('PINNED');
+    expect(b.extKey).toBeNull();
+    await b.pinExtKey('KEY_A');
+    expect(b.extKey).toBe('KEY_A');
+    expect(JSON.parse(await readFile(p, 'utf8')).extKey).toBe('KEY_A');
+  });
+  it('corrupt file is backed up and a stderr notice is written', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    await writeFile(p, '{nope', { mode: 0o600 });
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      await loadOrCreateIdentity(p);
+      const out = spy.mock.calls.map((c) => String(c[0])).join('');
+      expect(out).toContain('le-sach-mcp: tạo khoá ghép cặp mới (file cũ:');
+      expect(out).toContain('cần ghép cặp lại trong MD Reader');
+    } finally {
+      spy.mockRestore();
+    }
+    const baks = (await readdir(dir)).filter((f) => f.startsWith('mcp.json.bak-'));
+    expect(baks.length).toBe(1);
+    expect(await readFile(join(dir, baks[0]!), 'utf8')).toBe('{nope');
   });
 });

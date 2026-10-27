@@ -1,5 +1,5 @@
 import { randomBytes, type webcrypto } from 'node:crypto';
-import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, importPrivateJwk } from '@md-reader/core/bridge-auth';
 import { dirname, join } from 'node:path';
@@ -70,38 +70,88 @@ async function writeAtomic(path: string, file: PairFileV2): Promise<void> {
   await tighten(path);
 }
 
+async function createExclusive(path: string, file: PairFileV2): Promise<boolean> {
+  const dir = dirname(path);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const tmp = join(dir, `.mcp-${process.pid}-${randomBytes(4).toString('hex')}.tmp`);
+  try {
+    await writeFile(tmp, JSON.stringify(file), { mode: 0o600 });
+    try {
+      await link(tmp, path);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'EEXIST') return false;
+      throw e;
+    }
+  } finally {
+    await rm(tmp, { force: true });
+  }
+  await tighten(path);
+  return true;
+}
+
+async function readState(path: string): Promise<{ file: PairFileV2 | null; privateKey: CryptoKey | null; reason: string }> {
+  let raw: string;
+  try {
+    raw = await readFile(path, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { file: null, privateKey: null, reason: 'missing' };
+    throw e;
+  }
+  const file = parseV2(raw);
+  if (!file) return { file: null, privateKey: null, reason: 'v1 hoặc JSON hỏng' };
+  try {
+    return { file, privateKey: await importPrivateJwk(file.privateKey), reason: '' };
+  } catch {
+    return { file: null, privateKey: null, reason: 'khoá không import được' };
+  }
+}
+
 export async function loadOrCreateIdentity(path: string = defaultPairPath()): Promise<ServerIdentity> {
   let file: PairFileV2 | null = null;
-  try {
-    file = parseV2(await readFile(path, 'utf8'));
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
-  }
   let privateKey: CryptoKey | null = null;
-  if (file) {
-    try {
-      privateKey = await importPrivateJwk(file.privateKey);
-    } catch {
-      file = null;
+  for (let attempt = 0; attempt < 3 && !file; attempt++) {
+    const st = await readState(path);
+    if (st.file && st.privateKey) {
+      file = st.file;
+      privateKey = st.privateKey;
+      await tighten(path);
+      break;
     }
-  }
-  if (!file || !privateKey) {
+    if (st.reason !== 'missing') {
+      try {
+        const bak = `${path}.bak-${Date.now()}`;
+        await rename(path, bak);
+        if (process.platform !== 'win32') await chmod(bak, 0o600);
+        process.stderr.write(
+          `le-sach-mcp: tạo khoá ghép cặp mới (file cũ: ${st.reason}) — cần ghép cặp lại trong MD Reader\n`,
+        );
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+      }
+    }
     const pair = await generateBridgeKeyPair();
-    privateKey = pair.privateKey;
-    file = { version: 2, privateKey: await exportPrivateJwk(pair.privateKey), publicKey: await exportPublicKey(pair.publicKey) };
-    await writeAtomic(path, file);
-  } else {
-    await tighten(path);
+    const fresh: PairFileV2 = {
+      version: 2,
+      privateKey: await exportPrivateJwk(pair.privateKey),
+      publicKey: await exportPublicKey(pair.publicKey),
+    };
+    if (await createExclusive(path, fresh)) {
+      file = fresh;
+      privateKey = pair.privateKey;
+    }
+    // else: another process created it first; loop re-reads and uses that identity
   }
+  if (!file || !privateKey) throw new Error('cannot load or create pairing identity');
   const current = file;
-  const key = privateKey as CryptoKey;
   const identity: ServerIdentity = {
-    privateKey: key,
+    privateKey,
     publicKey: current.publicKey,
     extKey: current.extKey ?? null,
     async pinExtKey(k: string) {
-      current.extKey = k;
-      await writeAtomic(path, current);
+      const st = await readState(path);
+      if (!st.file) throw new Error('pairing file unreadable');
+      if (st.file.extKey !== undefined && st.file.extKey !== k) throw new Error('PINNED');
+      if (st.file.extKey !== k) await writeAtomic(path, { ...st.file, extKey: k });
       identity.extKey = k;
     },
   };
