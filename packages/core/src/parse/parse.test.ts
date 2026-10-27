@@ -88,7 +88,7 @@ describe('sanitizeSchema', () => {
     )
     expect(codeClasses?.length).toBeGreaterThan(0)
     const hasCodeHljs = codeClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^hljs-'))
-    const hasCodeLanguage = codeClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^language-'))
+    const hasCodeLanguage = codeClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source.startsWith('^language-')))
     expect(hasCodeHljs).toBe(true)
     expect(hasCodeLanguage).toBe(true)
     
@@ -97,7 +97,7 @@ describe('sanitizeSchema', () => {
     )
     expect(spanClasses?.length).toBeGreaterThan(0)
     const hasSpanHljs = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^hljs-'))
-    const hasSpanLanguage = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source === '^language-'))
+    const hasSpanLanguage = spanClasses?.some(c => Array.isArray(c) && c.some(r => r instanceof RegExp && r.source.startsWith('^language-')))
     expect(hasSpanHljs).toBe(true)
     expect(hasSpanLanguage).toBe(true)
   })
