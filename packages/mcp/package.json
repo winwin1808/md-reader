@@ -1,13 +1,45 @@
 {
-  "name": "@md-reader/mcp",
+  "name": "le-sach-mcp",
   "version": "1.3.0",
   "type": "module",
   "license": "MIT",
   "description": "MCP server that lets AI apps publish Markdown into the MD Reader Chrome extension on this machine",
-  "bin": { "md-reader-mcp": "dist/cli.js" },
-  "files": ["dist"],
-  "engines": { "node": ">=20" },
-  "scripts": { "test": "vitest run", "build": "vite build", "typecheck": "tsc --noEmit -p tsconfig.json" },
-  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "ws": "8.22.0", "zod": "4.6.5" },
-  "devDependencies": { "@md-reader/core": "workspace:*", "@types/ws": "8.18.2", "@types/node": "22.20.5", "vite": "8.2.2" }
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "markdown",
+    "claude",
+    "chrome-extension"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winwin1808/md-reader.git",
+    "directory": "packages/mcp"
+  },
+  "bin": {
+    "le-sach-mcp": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "ws": "8.22.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@md-reader/core": "workspace:*",
+    "@types/ws": "8.18.2",
+    "@types/node": "22.20.5",
+    "vite": "8.2.2"
+  }
 }

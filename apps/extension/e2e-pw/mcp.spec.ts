@@ -50,7 +50,7 @@ class McpClient {
 }
 
 test.describe('MCP CLI <-> extension', () => {
-  test.skip(!fs.existsSync(cliPath), 'packages/mcp/dist/cli.js missing: run `pnpm --filter @md-reader/mcp build`')
+  test.skip(!fs.existsSync(cliPath), 'packages/mcp/dist/cli.js missing: run `pnpm --filter le-sach-mcp build`')
   test.setTimeout(240_000)
 
   test('publish / get / update / share-deny', async ({ context, extensionId }) => {

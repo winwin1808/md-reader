@@ -21,14 +21,14 @@ api smoke:tenancy          OK (wrangler dev + D1 --local; 429 ở phòng thứ 2
 pnpm -r typecheck / build  exit 0
 dist/content.js gz         13 615 B (ngân sách 61 440)
 dist/worker.js gz          ~101 KB (tăng từ ~72 KB: worker kéo yjs/y-indexeddb cho publish_doc)
-version                    1.3.0 (extension + @md-reader/mcp)
+version                    1.3.0 (extension + le-sach-mcp)
 ```
 
 ### Việc người làm trước khi phát hành 1.3.0
 1. ~~Duyệt + merge MR #7~~ — đã merge 2026-10-26 (`28c06c5`), CI check + e2e xanh.
 2. Máy chủ: `set -a; . ~/.config/md-reader/cloudflare.env` rồi `wrangler d1 migrations apply <DB> --remote` (migration `0003_tenancy`),
    `wrangler secret put ADMIN_SECRET`, `pnpm deploy:api`; chạy `scripts/smoke.mjs` với URL thật. Gỡ nội dung: `apps/api/scripts/takedown.mjs`.
-3. `npm publish` `@md-reader/mcp@1.3.0` (cần `pnpm --filter @md-reader/mcp build` trước).
+3. `npm publish` `le-sach-mcp@1.3.0` (cần `pnpm --filter le-sach-mcp build` trước).
 4. Chrome Web Store: `node apps/extension/scripts/package.mjs` (zip đã bỏ `key`), nộp 1.3.0; khi có ID store → thêm vào
    `KNOWN_EXTENSION_IDS` (`packages/core/src/bridge/protocol.ts`) và phát hành mcp bản vá.
 5. Điền liên hệ trong `docs/store/privacy-policy.md`; form Data usage khớp `listing.md`.
