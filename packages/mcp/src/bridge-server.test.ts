@@ -3,15 +3,8 @@ import net from 'node:net'
 import WebSocket from 'ws'
 import {
   KNOWN_EXTENSION_IDS,
-  authPayload,
-  exportPublicKey,
-  generateBridgeKeyPair,
-  importPublicKey,
-  keyId,
-  newNonce,
-  signPayload,
-  verifyPayload,
 } from '@md-reader/core/bridge'
+import { authPayload, exportPublicKey, generateBridgeKeyPair, importPublicKey, keyId, newNonce, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
 import type { ServerIdentity } from './pairing'
 import { BridgeCallError, startBridgeServer, type BridgeServer } from './bridge-server'
 

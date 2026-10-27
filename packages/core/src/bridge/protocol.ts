@@ -164,4 +164,3 @@ export function sanitizeClientName(raw: unknown): string {
   const cut = Array.from(cleaned).slice(0, BRIDGE_MAX_CLIENT).join('').trim()
   return cut || 'AI'
 }
-export * from './auth.js'

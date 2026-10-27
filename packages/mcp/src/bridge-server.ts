@@ -7,18 +7,13 @@ import {
   KNOWN_EXTENSION_IDS,
   isAllowedExtensionOrigin,
   BRIDGE_PROTOCOL_V2,
-  authPayload,
-  importPublicKey,
-  keyId,
-  newNonce,
   parseBridgeMessage,
-  signPayload,
-  verifyPayload,
   type BridgeArgsMap,
   type BridgeErrorCode,
   type BridgeResultMap,
   type BridgeTool,
 } from '@md-reader/core/bridge'
+import { authPayload, importPublicKey, keyId, newNonce, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
 import type { ServerIdentity } from './pairing'
 
 export class BridgeCallError extends Error {

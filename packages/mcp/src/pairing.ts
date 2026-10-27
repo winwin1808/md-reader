@@ -1,7 +1,7 @@
 import { randomBytes, type webcrypto } from 'node:crypto';
 import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, importPrivateJwk } from '@md-reader/core/bridge';
+import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, importPrivateJwk } from '@md-reader/core/bridge-auth';
 import { dirname, join } from 'node:path';
 
 export function defaultPairPath(
