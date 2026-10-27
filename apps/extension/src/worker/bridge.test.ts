@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { textHash } from '@md-reader/core/bridge'
+import {
+  generateBridgeKeyPair, exportPublicKey, importPublicKey, keyId, newNonce, authPayload, signPayload, verifyPayload,
+} from '@md-reader/core/bridge-auth'
 import { createBridge, PING_MS, type BridgeDeps, type WsLike, type ApprovedClient } from './bridge'
 
 class FakeWs implements WsLike {
@@ -17,10 +19,17 @@ class FakeWs implements WsLike {
 }
 
 const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); await new Promise((r) => setTimeout(r, 0)) }
-const PAIR_KEY = 'k'.repeat(32)
+
+const srvPair = await generateBridgeKeyPair()
+const srvPub = await exportPublicKey(srvPair.publicKey)
+const srvKid = await keyId(srvPub)
+const otherPair = await generateBridgeKeyPair()
+const extPair = await generateBridgeKeyPair()
+const extPub = await exportPublicKey(extPair.publicKey)
+const PORT = 47821
 
 function setup(opts: { openPorts?: number[]; approved?: ApprovedClient[] } = {}) {
-  const open = new Set(opts.openPorts ?? [47821])
+  const open = new Set(opts.openPorts ?? [PORT])
   const sockets: FakeWs[] = []
   const timers: Array<{ fn: () => void; ms: number; cleared: boolean }> = []
   const deps = {
@@ -34,6 +43,7 @@ function setup(opts: { openPorts?: number[]; approved?: ApprovedClient[] } = {})
       return ws
     }),
     approved: vi.fn(async () => opts.approved ?? []),
+    extKey: vi.fn(async () => ({ privateKey: extPair.privateKey, publicKey: extPub })),
     requestPairing: vi.fn(),
     execute: vi.fn(async (req: { id: string }) => ({ type: 'res' as const, id: req.id, ok: true as const, result: { x: 1 } })),
     setTimer: (fn: () => void, ms: number) => { const t = { fn, ms, cleared: false }; timers.push(t); return t },
@@ -42,9 +52,22 @@ function setup(opts: { openPorts?: number[]; approved?: ApprovedClient[] } = {})
   const bridge = createBridge(deps as unknown as BridgeDeps)
   return { bridge, deps, sockets, timers }
 }
-const hello = { type: 'hello', protocol: 1, client: 'claude-code', pairKey: PAIR_KEY }
+const SNONCE = newNonce()
+const hello = { type: 'hello', protocol: 2, client: 'claude-code', serverKey: srvPub, nonce: SNONCE }
+const approvedOk: ApprovedClient = { keyHash: srvKid, client: 'claude-code', at: 1, serverKey: srvPub }
+const authOf = (ws: FakeWs) => ws.sent.find((m) => (m as { type: string }).type === 'auth') as { extKey: string; nonce: string; sig: string } | undefined
+async function srvAuthOk(auth: { nonce: string }, signer: CryptoKey = srvPair.privateKey) {
+  return { type: 'auth-ok', sig: await signPayload(signer, authPayload('srv', auth.nonce, await keyId(extPub), PORT)) }
+}
+async function pairedSetup() {
+  const t = setup({ approved: [approvedOk] })
+  await t.bridge.scan([PORT])
+  t.sockets[0]!.recv(hello)
+  await vi.waitFor(() => expect(authOf(t.sockets[0]!)).toBeTruthy())
+  return t
+}
 
-describe('bridge', () => {
+describe('bridge v2', () => {
   it('scan opens connections for open ports only', async () => {
     const { bridge, deps } = setup({ openPorts: [47822] })
     const n = await bridge.scan([47821, 47822, 47823])
@@ -55,87 +78,114 @@ describe('bridge', () => {
 
   it('second scan does not duplicate open connections', async () => {
     const { bridge, deps } = setup()
-    await bridge.scan([47821])
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
+    await bridge.scan([PORT])
     expect(deps.connect).toHaveBeenCalledTimes(1)
   })
 
-  it('approved hello -> welcome paired:true', async () => {
-    const keyHash = await textHash(PAIR_KEY)
-    const { bridge, sockets, deps } = setup({ approved: [{ keyHash, client: 'claude-code', at: 1 }] })
-    await bridge.scan([47821])
+  it('(a) unapproved hello -> requestPairing with keyId, no auth sent', async () => {
+    const { bridge, sockets, deps } = setup()
+    await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: true }))
-    expect(bridge.conns()[0]!.state).toBe('paired')
-    expect(deps.requestPairing).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
+    expect(deps.requestPairing).toHaveBeenCalledWith({ port: PORT, client: 'claude-code', keyHash: srvKid })
+    expect(authOf(sockets[0]!)).toBeUndefined()
+    expect(bridge.conns()[0]!.state).toBe('pending')
   })
 
   it('sanitizes client name', async () => {
     const { bridge, sockets, deps } = setup()
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
     sockets[0]!.recv({ ...hello, client: '\u202EevilName\n' })
     await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
     expect(bridge.conns()[0]!.client).toBe('evilName')
-    expect(deps.requestPairing.mock.calls[0]![0].client).toBe('evilName')
   })
 
-  it('unknown hello -> welcome paired:false + requestPairing', async () => {
-    const { bridge, sockets, deps } = setup()
-    await bridge.scan([47821])
-    sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
-    const keyHash = await textHash(PAIR_KEY)
-    expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false })
-    expect(deps.requestPairing).toHaveBeenCalledWith({ port: 47821, client: 'claude-code', keyHash })
-    expect(bridge.conns()[0]!.state).toBe('pending')
-    expect(JSON.stringify(deps.requestPairing.mock.calls)).not.toContain(PAIR_KEY)
-  })
-
-  it('decide allow calls add and welcomes paired', async () => {
+  it('(b) decide allow stores serverKey and sends verifiable auth', async () => {
     const { bridge, sockets } = setup()
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).not.toBe(''))
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false }))
+    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
     const add = vi.fn(async () => {})
-    await bridge.decide(47821, true, add)
-    const keyHash = await textHash(PAIR_KEY)
-    expect(add).toHaveBeenCalledWith(expect.objectContaining({ keyHash, client: 'claude-code', at: expect.any(Number) }))
-    expect(sockets[0]!.sent.at(-1)).toEqual({ type: 'welcome', paired: true })
-    expect(bridge.conns()[0]!.state).toBe('paired')
+    await bridge.decide(PORT, true, add)
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ keyHash: srvKid, client: 'claude-code', serverKey: srvPub }))
+    const a = authOf(sockets[0]!)!
+    expect(a.extKey).toBe(extPub)
+    expect(sockets[0]!.sent).not.toContainEqual(expect.objectContaining({ type: 'welcome' }))
+    const ok = await verifyPayload(await importPublicKey(extPub), authPayload('ext', SNONCE, srvKid, PORT), a.sig)
+    expect(ok).toBe(true)
+    expect(bridge.conns()[0]!.state).toBe('authing')
   })
 
-  it('decide deny rejects and closes', async () => {
-    const { bridge, sockets } = setup()
-    await bridge.scan([47821])
-    sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false }))
-    await bridge.decide(47821, false)
-    expect(sockets[0]!.sent.at(-1)).toEqual({ type: 'reject', code: 'DENIED' })
-    expect(sockets[0]!.closed).toBe(true)
+  it('approved hello authenticates directly without pairing', async () => {
+    const { bridge, sockets, deps } = await pairedSetup()
+    expect(deps.requestPairing).not.toHaveBeenCalled()
+    expect(bridge.conns()[0]!.state).toBe('authing')
+    expect(sockets[0]!.sent).not.toContainEqual(expect.objectContaining({ type: 'welcome' }))
   })
 
-  it('req ignored while pending, executed when paired', async () => {
-    const { bridge, sockets, deps } = setup()
-    await bridge.scan([47821])
-    sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false }))
+  it('(c) valid auth-ok -> paired, req executed; req before auth-ok ignored', async () => {
+    const { bridge, sockets, deps } = await pairedSetup()
     const req = { type: 'req', id: 'r1', tool: 'list_docs', args: {} }
     sockets[0]!.recv(req)
     await flush()
     expect(deps.execute).not.toHaveBeenCalled()
-    await bridge.decide(47821, true, async () => {})
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await vi.waitFor(() => expect(bridge.conns()[0]!.state).toBe('paired'))
     sockets[0]!.recv(req)
     await vi.waitFor(() => expect(sockets[0]!.sent.at(-1)).toEqual({ type: 'res', id: 'r1', ok: true, result: { x: 1 } }))
     expect(deps.execute).toHaveBeenCalledTimes(1)
   })
 
-  it('execute throwing yields INTERNAL res; garbage ignored', async () => {
-    const { bridge, sockets, deps } = setup()
-    await bridge.scan([47821])
+  it('(c) auth-ok signed by another key -> closed, req not executed', async () => {
+    const { bridge, sockets, deps } = await pairedSetup()
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!, otherPair.privateKey))
+    await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
+    sockets[0]!.recv({ type: 'req', id: 'r1', tool: 'list_docs', args: {} })
+    await flush()
+    expect(deps.execute).not.toHaveBeenCalled()
+    expect(bridge.conns()).toEqual([])
+  })
+
+  it('(d) approved client but different serverKey -> no auth, requestPairing', async () => {
+    const { bridge, sockets, deps } = setup({ approved: [{ ...approvedOk, serverKey: 'different' }] })
+    await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false }))
-    await bridge.decide(47821, true, async () => {})
+    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
+    expect(authOf(sockets[0]!)).toBeUndefined()
+    expect(bridge.conns()[0]!.state).toBe('pending')
+  })
+
+  it('(e) hello v1 -> closed', async () => {
+    const { sockets, deps } = setup()
+    const { bridge } = { bridge: createBridge(deps as unknown as BridgeDeps) }
+    await bridge.scan([PORT])
+    sockets[0]!.recv({ type: 'hello', protocol: 1, client: 'c', pairKey: 'k'.repeat(32) })
+    await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
+    expect(deps.requestPairing).not.toHaveBeenCalled()
+  })
+
+  it('reject closes and drops', async () => {
+    const { bridge, sockets } = await pairedSetup()
+    sockets[0]!.recv({ type: 'reject', code: 'DENIED' })
+    await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
+    expect(bridge.conns()).toEqual([])
+  })
+
+  it('decide deny rejects and closes', async () => {
+    const { bridge, sockets } = setup()
+    await bridge.scan([PORT])
+    sockets[0]!.recv(hello)
+    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
+    await bridge.decide(PORT, false)
+    expect(sockets[0]!.sent.at(-1)).toEqual({ type: 'reject', code: 'DENIED' })
+    expect(sockets[0]!.closed).toBe(true)
+  })
+
+  it('execute throwing yields INTERNAL res; garbage ignored', async () => {
+    const { bridge, sockets, deps } = await pairedSetup()
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await vi.waitFor(() => expect(bridge.conns()[0]!.state).toBe('paired'))
     deps.execute.mockRejectedValueOnce(new Error('boom'))
     sockets[0]!.onmessage?.({ data: 'not json' })
     sockets[0]!.recv({ type: 'req', id: 'r2', tool: 'list_docs', args: {} })
@@ -144,7 +194,7 @@ describe('bridge', () => {
 
   it('pings every PING_MS and stops on close', async () => {
     const { bridge, sockets, timers } = setup()
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
     const t = timers.find((x) => x.ms === PING_MS)!
     expect(t).toBeTruthy()
     t.fn()
@@ -155,12 +205,11 @@ describe('bridge', () => {
   })
 
   it('revoke closes the matching connection only', async () => {
-    const keyHash = await textHash(PAIR_KEY)
-    const { bridge, sockets } = setup({ openPorts: [47821, 47822], approved: [{ keyHash, client: 'c', at: 1 }] })
+    const { bridge, sockets } = setup({ openPorts: [47821, 47822], approved: [approvedOk] })
     await bridge.scan([47821, 47822])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(keyHash))
-    bridge.revoke(keyHash)
+    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
+    bridge.revoke(srvKid)
     expect(sockets[0]!.closed).toBe(true)
     expect(sockets[1]!.closed).toBe(false)
   })
@@ -172,25 +221,25 @@ describe('bridge', () => {
     expect(bridge.conns().length).toBe(2)
   })
 
-  it('hello on a socket closed before textHash finishes is ignored', async () => {
+  it('hello on a socket closed before hashing finishes is ignored', async () => {
     const { bridge, sockets, deps } = setup()
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
     sockets[0]!.recv(hello)
     sockets[0]!.close()
     await new Promise((r) => setTimeout(r, 100))
     expect(deps.requestPairing).not.toHaveBeenCalled()
-    expect(sockets[0]!.sent).not.toContainEqual(expect.objectContaining({ type: 'welcome' }))
+    expect(authOf(sockets[0]!)).toBeUndefined()
   })
 
   it('decide with a mismatching keyHash does nothing', async () => {
     const { bridge, sockets } = setup()
-    await bridge.scan([47821])
+    await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(sockets[0]!.sent).toContainEqual({ type: 'welcome', paired: false }))
+    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
     const add = vi.fn(async () => {})
-    await bridge.decide(47821, true, add, 'wrong')
+    await bridge.decide(PORT, true, add, 'wrong')
     expect(add).not.toHaveBeenCalled()
-    expect(sockets[0]!.sent).not.toContainEqual({ type: 'welcome', paired: true })
+    expect(authOf(sockets[0]!)).toBeUndefined()
     expect(bridge.conns()[0]!.state).toBe('pending')
   })
 })

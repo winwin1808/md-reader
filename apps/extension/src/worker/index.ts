@@ -3,7 +3,7 @@ import { createBridge } from './bridge'
 import { createExecuteInApp } from './bridge-route'
 import { createRecord, writeDocText, deleteRecord, listRecent, getRecord, docQuery, ensureShortKey, docParam } from '../app/doc-registry'
 import {
-  BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
+  BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
 import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry } from '../shared/md-url'
 
@@ -128,7 +128,10 @@ const execute = createExecuteInApp({
   },
 })
 
+let extKeyP: ReturnType<typeof loadOrCreateExtKey> | null = null
+
 const bridge = createBridge({
+  extKey: () => (extKeyP ??= loadOrCreateExtKey(chrome.storage.local)),
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
   requestPairing: ({ port, client, keyHash }) => {

@@ -1,4 +1,5 @@
 import { BRIDGE_PORTS } from '@md-reader/core/bridge'
+import { generateBridgeKeyPair, exportPublicKey, exportPrivateJwk, importPrivateJwk } from '@md-reader/core/bridge-auth'
 import { IDLE_SCANS_BEFORE_BACKOFF, type ApprovedClient } from './bridge'
 
 export const BRIDGE_STORAGE_KEY = 'mdr.bridge'
@@ -21,7 +22,8 @@ export function parseBridgeSettings(v: unknown): BridgeSettings {
     if (!a || typeof a !== 'object') return none
     const r = a as Record<string, unknown>
     if (typeof r.keyHash !== 'string' || typeof r.client !== 'string' || typeof r.at !== 'number') return none
-    approved.push({ keyHash: r.keyHash, client: r.client, at: r.at })
+    if (typeof r.serverKey !== 'string') continue
+    approved.push({ keyHash: r.keyHash, client: r.client, at: r.at, serverKey: r.serverKey })
   }
   return { enabled: o.enabled, approved }
 }
@@ -63,4 +65,22 @@ export function parsePairDecision(v: unknown): PairDecisionMsg | null {
   if (typeof o.allow !== 'boolean') return null
   if (typeof o.keyHash !== 'string' || !/^[0-9a-f]{64}$/.test(o.keyHash)) return null
   return { type: PAIR_DECISION_MSG, port: o.port, allow: o.allow, keyHash: o.keyHash }
+}
+
+export const BRIDGE_KEY_STORAGE = 'mdr.bridgeKey'
+
+export async function loadOrCreateExtKey(store: StoreLike): Promise<{ privateKey: CryptoKey; publicKey: string }> {
+  const r = (await store.get(BRIDGE_KEY_STORAGE))[BRIDGE_KEY_STORAGE]
+  if (r && typeof r === 'object') {
+    const o = r as Record<string, unknown>
+    if (o.jwk && typeof o.jwk === 'object' && typeof o.publicKey === 'string') {
+      try {
+        return { privateKey: await importPrivateJwk(o.jwk as JsonWebKey), publicKey: o.publicKey }
+      } catch { /* corrupt: regenerate */ }
+    }
+  }
+  const pair = await generateBridgeKeyPair()
+  const publicKey = await exportPublicKey(pair.publicKey)
+  await store.set({ [BRIDGE_KEY_STORAGE]: { jwk: await exportPrivateJwk(pair.privateKey), publicKey } })
+  return { privateKey: pair.privateKey, publicKey }
 }
