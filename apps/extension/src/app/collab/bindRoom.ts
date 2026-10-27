@@ -4,6 +4,8 @@ import { API_PATHS, wsHost } from '@md-reader/core'
 import { peerUser } from '@md-reader/ui'
 import type { SyncStatus } from '../../shared/collab'
 
+const TERMINAL_CLOSE = new Set([1009, 4410, 4413])
+
 type Awareness = YProvider['awareness']
 
 export interface BindRoomOptions {
@@ -51,12 +53,20 @@ export function bindRoom(
   const onConnFail = () => {
     if (status === 'connecting') set('offline')
   }
+  const onClose = (event?: { code?: number }) => {
+    if (event?.code !== undefined && TERMINAL_CLOSE.has(event.code)) {
+      provider.shouldConnect = false
+      set('offline')
+      return
+    }
+    onConnFail()
+  }
   const onSynced = (synced: boolean) => {
     if (synced) set('online')
   }
   provider.on('status', onStatus)
   provider.on('synced', onSynced)
-  provider.on('connection-close', onConnFail)
+  provider.on('connection-close', onClose)
   provider.on('connection-error', onConnFail)
 
   void provider.connect().then(
@@ -83,7 +93,7 @@ export function bindRoom(
       destroyed = true
       provider.off('status', onStatus)
       provider.off('synced', onSynced)
-      provider.off('connection-close', onConnFail)
+      provider.off('connection-close', onClose)
       provider.off('connection-error', onConnFail)
       provider.destroy()
       set('off')
