@@ -5,12 +5,16 @@ import type { Env } from './env.js'
 import { classifyMessage, sanitizeAwarenessMessage } from './protocol'
 import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike, type LogStats } from './persistence.js'
 
+export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
+export const MAX_ROOM_BYTES = 64 * 1024 * 1024
+
 export class DocRoom extends YServer<Env> {
   static callbackOptions = { debounceWait: 2000, debounceMaxWait: 10000, timeout: 5000 }
 
   private stats: LogStats = { updates: 0, bytes: 0 }
   private queue: Promise<unknown> = Promise.resolve()
   private purged = false
+  private roomBytes = 0
   private revoked = new Set<string>()
 
   private get kv(): KVLike {
@@ -60,7 +64,9 @@ export class DocRoom extends YServer<Env> {
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
+    this.roomBytes = state ? state.length : 0
     this.document.on('update', (u: Uint8Array) => {
+      this.roomBytes += u.length
       void this.persistUpdate(u).catch((e) => console.error('persist failed', e))
     })
   }
@@ -147,6 +153,11 @@ export class DocRoom extends YServer<Env> {
       conn.close(4410, 'revoked')
       return
     }
+    const size = typeof message === 'string' ? message.length : message.byteLength
+    if (size > MAX_MESSAGE_BYTES) {
+      conn.close(1009, 'too large')
+      return
+    }
     if (typeof message === 'string') return super.handleMessage(conn, message)
     const bytes =
       message instanceof Uint8Array
@@ -157,6 +168,11 @@ export class DocRoom extends YServer<Env> {
     const k = classifyMessage(bytes)
     if ((k === 'step2' || k === 'update') && this.isReadOnly(conn)) {
       this.droppedWrites++
+      return
+    }
+    if ((k === 'step2' || k === 'update') && this.roomBytes + bytes.length > MAX_ROOM_BYTES) {
+      this.droppedWrites++
+      conn.close(4413, 'room full')
       return
     }
     if (k === 'awareness') {

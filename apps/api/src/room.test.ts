@@ -5,7 +5,7 @@ import * as decoding from 'lib0/decoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { YServer } from 'y-partyserver'
-import { DocRoom } from './room'
+import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES } from './room'
 
 function spyOnSuper(stub: boolean) {
   const spy = vi.spyOn(YServer.prototype as unknown as { handleMessage: (c: unknown, m: unknown) => void }, 'handleMessage')
@@ -100,6 +100,69 @@ describe('DocRoom.handleMessage', () => {
     expect(room.isReadOnly(conn({ role: 'edit' }))).toBe(false)
     room.handleMessage(conn(null), updateMsg())
     expect(room.droppedWrites).toBe(1)
+  })
+})
+
+describe('DocRoom size caps (11f1)', () => {
+  const closable = (state: unknown) => ({ id: 'c', state, close: vi.fn(), send: () => undefined })
+  it('closes 1009 on an oversized binary message from an edit conn', () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, new Uint8Array(MAX_MESSAGE_BYTES + 1))
+    expect(c.close).toHaveBeenCalledWith(1009, 'too large')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('closes 1009 on an oversized string message', () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, 'x'.repeat(MAX_MESSAGE_BYTES + 1))
+    expect(c.close).toHaveBeenCalledWith(1009, 'too large')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('closes 4413 when the room would exceed the cap', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES - 10
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg('x'.repeat(40)))
+    expect(c.close).toHaveBeenCalledWith(4413, 'room full')
+    expect(room.droppedWrites).toBe(1)
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('accepts small updates while there is room', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = 100
+    const spy = spyOnSuper(false)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, updateMsg())
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('still allows step1 when the room is full', () => {
+    const room = makeRoom()
+    ;(room as unknown as { roomBytes: number }).roomBytes = MAX_ROOM_BYTES
+    const spy = spyOnSuper(true)
+    const c = closable({ role: 'edit' })
+    room.handleMessage(c as never, step1Msg())
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('onLoad sets roomBytes from state and updates add to it', async () => {
+    const d = new Y.Doc()
+    d.getText('t').insert(0, 'hello')
+    const st = fakeStorage({ snap: Y.encodeStateAsUpdate(d) })
+    const room = makePurgeRoom(st)
+    await room.onLoad()
+    const before = (room as unknown as { roomBytes: number }).roomBytes
+    room.document.getText('t').insert(0, 'more')
+    expect((room as unknown as { roomBytes: number }).roomBytes).toBeGreaterThan(before)
   })
 })
 
