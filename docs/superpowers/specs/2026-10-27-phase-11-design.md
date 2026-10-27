@@ -19,8 +19,9 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
 - 11b: done
 - 11c: done
 - 11d: done
-- 11e: planned
-- 11f: pending
+- 11e: done
+- 11f1: pending
+- 11f2: pending
 - 11g: pending
 - 11h: pending
 - 11i: pending
@@ -76,6 +77,7 @@ Phiên bản vẫn 1.3.0. Không đổi schema Y.Doc.
   dùng chung bộ đếm.
 
 ### 11f — Trần kích thước Yjs + awareness (audit #7 phần storage, mục chưa soi về awareness)
+> Tách lúc plan: **11f1** trần kích thước (room.ts + persistence.ts), **11f2** awareness (protocol.ts + room.ts). Trần message nâng từ 2 MiB lên **16 MiB**: lần chia sẻ đầu gửi cả doc trong một step2 (spike phase 9: doc 2.4 MB ảnh nhúng) — 2 MiB sẽ làm hỏng; 16 MiB < giới hạn 32 MiB message WebSocket của Cloudflare.
 - `room.ts`: message nhị phân > `MAX_MESSAGE_BYTES = 2 MiB` → đóng 1009, không áp. Tổng dung lượng phòng (snapshot + updates theo
   `stats`) > `MAX_ROOM_BYTES = 64 MiB` → bỏ update mới từ mọi kết nối, gửi lỗi (đóng 4413 cho kết nối gửi).
 - Awareness: relay chỉ chấp nhận entry có clientID đã gắn với chính kết nối đó (clientID đầu tiên kết nối khai báo được ghi vào
