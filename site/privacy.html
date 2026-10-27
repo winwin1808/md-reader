@@ -24,37 +24,45 @@ document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
 <main class="doc">
 <div lang="vi">
 <h1>Chính sách quyền riêng tư</h1>
-<p><small>Cập nhật / Last updated: 2026-10-24</small></p>
+<p><small>Cập nhật: 2026-10-27</small></p>
 <p>MD Reader là extension Chrome để đọc, soạn và trình bày file Markdown.</p>
 <ul>
 <li><strong>Mặc định mọi dữ liệu ở lại trên máy bạn.</strong> Tài liệu bạn mở, bản chỉnh sửa, lịch sử và cài đặt được lưu trong bộ nhớ của trình duyệt (IndexedDB, <code>chrome.storage</code>) trên chính thiết bị của bạn. Cài đặt có thể được Chrome đồng bộ giữa các máy của bạn nếu bạn bật Chrome Sync — việc này do Google thực hiện.</li>
 <li><strong>Chỉ rời máy khi bạn bật chia sẻ cho một tài liệu.</strong> Khi đó, các dữ liệu sau được gửi đi và lưu trên máy chủ cộng tác: nội dung tài liệu (các bản cập nhật Yjs và ảnh chụp trạng thái), tên hiển thị do người sửa tự khai, tiêu đề và thời điểm tạo phòng; với mỗi liên kết: vai trò xem/sửa, hạn dùng, thời điểm thu hồi, nhãn (nếu có), mã băm SHA-256 của token và một đoạn đầu ngắn của token được lưu dạng văn bản thường để nhận diện và thu hồi liên kết. Token gốc không bao giờ được lưu. Tài liệu chưa bật chia sẻ thì không được gửi đi.</li>
 <li><strong>Ai vận hành máy chủ.</strong> MD Reader không kèm máy chủ nào. Chia sẻ chỉ dùng được khi bạn nhập địa chỉ máy chủ đồng bộ của riêng bạn (Cloudflare Worker tự dựng, xem <code>docs/SELF_HOST.md</code>); người chạy Worker ở địa chỉ đó vận hành nơi lưu dữ liệu.</li>
-<li><strong>Thời gian lưu.</strong> Tắt chia sẻ hoặc thu hồi liên kết chỉ chặn truy cập (người dùng liên kết nhận lỗi 410, liên kết hết hạn cũng vậy). Thao tác này KHÔNG xoá nội dung và siêu dữ liệu đã lưu; chúng vẫn nằm trên máy chủ. Muốn xoá, hãy liên hệ người vận hành máy chủ, hoặc với máy chủ riêng thì tự xoá dữ liệu Worker/D1 của bạn.</li>
+<li><strong>Thời gian lưu và xoá dữ liệu trên máy chủ.</strong> Tắt chia sẻ hoặc thu hồi liên kết chỉ chặn truy cập (người dùng liên kết nhận lỗi 410, liên kết hết hạn cũng vậy); riêng thao tác này không xoá dữ liệu. Để xoá, dùng nút "Xoá dữ liệu trên máy chủ" trong hộp Chia sẻ: nút này xoá phòng, các liên kết, ảnh đã tải lên và liên kết giữa phòng với bản cài của tài liệu đó trên máy chủ. Bộ đếm giới hạn theo ngày (chỉ gồm mã băm khoá bản cài hoặc mã băm IP cùng số đếm) được giữ lại để chống lạm dụng, nhờ vậy xoá rồi tạo lại không lách được giới hạn; hiện máy chủ chưa tự xoá các bộ đếm này theo thời hạn. Báo cáo nội dung đã gửi về phòng đó (xem bên dưới) không bị xoá cùng.</li>
+<li><strong>Khoá bản cài ẩn danh.</strong> Khi dùng máy chủ đồng bộ, extension gửi kèm header <code>x-mdr-install</code>: một chuỗi ngẫu nhiên tạo ra trên máy bạn, không gắn với tài khoản hay danh tính. Máy chủ chỉ lưu mã băm của nó, dùng để giới hạn lạm dụng (số tài liệu, dung lượng, số thao tác mỗi ngày). Địa chỉ IP chỉ được lưu dạng mã băm, để đếm giới hạn theo ngày.</li>
+<li><strong>Báo cáo nội dung.</strong> Trang xem có form báo cáo nội dung vi phạm. Khi bạn gửi, máy chủ lưu phòng bị báo cáo, lý do bạn nhập và mã băm IP của bạn.</li>
+<li><strong>Kết nối AI cục bộ (MCP).</strong> Cầu nối cho trợ lý AI chỉ nghe ở <code>127.0.0.1</code> (máy bạn), mặc định tắt, và không tự gửi gì ra internet. Chỉ khi bạn đồng ý chia sẻ một tài liệu thì tài liệu đó mới được gửi lên máy chủ đồng bộ, như mục chia sẻ ở trên.</li>
 <li><strong>Hiện diện trực tiếp.</strong> Tên, màu và vị trí con trỏ của người đang sửa chỉ được chuyển tiếp theo thời gian thực, không được lưu.</li>
 <li><strong>Không phân tích, không theo dõi, không quảng cáo, không bán dữ liệu, không tài khoản.</strong></li>
 <li><strong>Không gọi ra ngoài ngoài chia sẻ.</strong> Font chữ và mọi mã chạy đều đóng gói sẵn trong extension. Khi đọc tài liệu mà không bật chia sẻ, extension không gửi yêu cầu mạng nào ngoài việc tải chính tài liệu bạn mở. Ảnh hoặc liên kết nằm trong tài liệu được trình duyệt tải như bình thường.</li>
 <li><strong>Ảnh trong tài liệu đã chia sẻ.</strong> Ảnh dán vào một tài liệu ĐÃ chia sẻ được tải lên máy chủ đồng bộ và bất kỳ ai có liên kết ảnh đều xem được; tài liệu chưa chia sẻ không bao giờ tải ảnh lên.</li>
-<li><strong>Quyền truy cập.</strong> Extension chỉ đọc nội dung các trang Markdown (.md) để hiển thị chúng, và chỉ ghi vào file trên đĩa khi bạn bấm Lưu. Quyền của extension: <code>storage</code>, <code>activeTab</code> và truy cập các URL Markdown.</li>
-<li><strong>Xoá dữ liệu.</strong> Gỡ extension sẽ xoá toàn bộ dữ liệu nó đã lưu trong trình duyệt. Dữ liệu đã chia sẻ nằm trên máy chủ cộng tác thì theo mục Thời gian lưu ở trên.</li>
+<li><strong>Quyền truy cập.</strong> Extension chỉ đọc nội dung các trang Markdown (.md) để hiển thị chúng, và chỉ ghi vào file trên đĩa khi bạn bấm Lưu. Quyền của extension: <code>storage</code>, <code>activeTab</code>, <code>alarms</code> (đánh thức cầu nối AI cục bộ) và truy cập các URL Markdown.</li>
+<li><strong>Xoá dữ liệu.</strong> Gỡ extension sẽ xoá toàn bộ dữ liệu nó đã lưu trong trình duyệt. Dữ liệu đã chia sẻ nằm trên máy chủ cộng tác thì theo mục Thời gian lưu và xoá dữ liệu ở trên.</li>
 </ul>
+<p>Liên hệ: <a href="mailto:nguyenquanghao1808@gmail.com">nguyenquanghao1808@gmail.com</a></p>
 </div>
 <div lang="en">
 <h1>Privacy Policy</h1>
-<p><small>Cập nhật / Last updated: 2026-10-24</small></p>
-</ul>
+<p><small>Last updated: 2026-10-27</small></p>
 <p>MD Reader is a Chrome extension for reading, editing and presenting Markdown files.</p>
 <ul>
 <li><strong>By default all data stays on your device.</strong> Documents you open, edits, history and settings are stored in your browser's local storage (IndexedDB, <code>chrome.storage</code>) on your own device. Settings may be synced across your devices by Chrome Sync if you enable it — that is done by Google.</li>
 <li><strong>Data leaves your device only when you turn on sharing for a document.</strong> Then the following is sent to and stored on the collaboration server: the document content (Yjs updates and snapshot), the self-declared display names of the people editing, the room title and creation time; and for each link: role (view/edit), expiry, revoked time, optional label, the SHA-256 hash of the token and a short plaintext token prefix used to identify and revoke the link. The full token is never stored. Documents you have not shared are not sent.</li>
 <li><strong>Who runs the server.</strong> MD Reader ships with no server. Sharing works only after you enter the URL of your own sync server (a self-hosted Cloudflare Worker, see <code>docs/SELF_HOST.md</code>); whoever runs that Worker operates the storage.</li>
-<li><strong>Retention.</strong> Turning sharing off or revoking a link only stops access (anyone using it gets a 410 error, as with expired links). It does NOT delete the stored content or metadata; they stay on the server. To have them deleted, contact the server operator, or with your own server delete the Worker/D1 data yourself.</li>
+<li><strong>Retention and deleting server data.</strong> Turning sharing off or revoking a link only stops access (anyone using it gets a 410 error, as with expired links); by itself it does not delete data. To delete, use the "Delete data on server" button in the Share dialog: it removes that document's room, links, uploaded images and the room-to-install link on the server. Daily rate-limit counters (only a hash of the install key or of the IP, plus a count) are kept to prevent abuse, so deleting and recreating cannot bypass the limits; the server does not yet automatically delete these counters after a retention period. Content reports filed against that room (see below) are not removed with it.</li>
+<li><strong>Anonymous install key.</strong> When using the sync server, the extension sends an <code>x-mdr-install</code> header: a random string generated on your device, tied to no account or identity. The server stores only its hash and uses it to limit abuse (document count, size, daily operations). IP addresses are stored only as a hash, to count the daily limit.</li>
+<li><strong>Content reports.</strong> The view page has a form to report content. When you submit, the server stores the reported room, the reason you typed and a hash of your IP.</li>
+<li><strong>Local AI connection (MCP).</strong> The bridge for AI assistants listens only on <code>127.0.0.1</code> (your machine), is off by default, and sends nothing to the internet by itself. Only when you agree to share a document is that document sent to the sync server, as in the sharing item above.</li>
 <li><strong>Live presence.</strong> The name, colour and cursor of people editing are relayed in real time and not stored.</li>
 <li><strong>No analytics, no tracking, no ads, no sale of data, no accounts.</strong></li>
 <li><strong>No outbound requests besides sharing.</strong> Fonts and all code are bundled in the extension. While you read without sharing, the extension makes no network requests other than loading the document you opened. Images or links inside a document are loaded by the browser as usual.</li>
 <li><strong>Images in shared documents.</strong> Images pasted into a SHARED document are uploaded to the sync server and readable by anyone with the image link; unshared documents never upload images.</li>
-<li><strong>Access.</strong> The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: <code>storage</code>, <code>activeTab</code> and access to Markdown URLs.</li>
-<li><strong>Deleting data.</strong> Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention item above.</li>
+<li><strong>Access.</strong> The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: <code>storage</code>, <code>activeTab</code>, <code>alarms</code> (wakes the local AI bridge) and access to Markdown URLs.</li>
+<li><strong>Deleting data.</strong> Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention and deleting server data item above.</li>
+</ul>
+<p>Contact: <a href="mailto:nguyenquanghao1808@gmail.com">nguyenquanghao1808@gmail.com</a></p>
 </div>
 </main>
 </div>
