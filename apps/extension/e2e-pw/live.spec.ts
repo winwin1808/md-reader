@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { apiBase } from './api-base'
 import type { BrowserContext, Page } from '@playwright/test'
 
 async function openViaContentScript(context: BrowserContext, url: string): Promise<Page> {
@@ -36,7 +37,7 @@ test('writing on the reading page renders bold live and persists to the reader',
 
 test('share modal keeps Sao chép enabled after reopen and copies the link', async ({ context, server }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-  const API = 'http://localhost:8787'
+  const API = apiBase()
   const TOKEN = 'tok_abcdef0123456789'
   const link = { tokenPrefix: 'tok_abcd', token: TOKEN, role: 'view', label: '', expiresAt: null, revokedAt: null, createdAt: Date.now() }
   await context.route(`${API}/api/**`, async (route) => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import worker, { handleRequest, runCleanup, ROOM_TTL_MS, type CleanupDeps } from './index.js'
-import { MemoryLimitStore, dayOf } from './limits.js'
+import worker, * as entry from './index.js'
+import { handleRequest, runCleanup, type CleanupDeps } from './index.js'
+import { MemoryLimitStore, dayOf, ROOM_TTL_MS } from './limits.js'
 import { _resetAuthCache } from './api.js'
 import { MemoryTokenStore } from './tokens.js'
 import type { AssetStore } from "./assets.js"
@@ -408,5 +409,14 @@ describe('runCleanup', () => {
     const spy = vi.spyOn(limits, 'pruneUsage')
     await runCleanup({ store, limits } as CleanupDeps, NOW)
     expect(spy).toHaveBeenCalledWith(dayOf(NOW) - 2)
+  })
+})
+
+describe('worker entry exports', () => {
+  it('only exports functions or classes (workerd treats every export as an entrypoint)', () => {
+    for (const [name, value] of Object.entries(entry)) {
+      if (name === 'default') continue
+      expect(typeof value, name).toBe('function')
+    }
   })
 })

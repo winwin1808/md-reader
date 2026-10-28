@@ -2,6 +2,15 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 16 — Trả nợ test, bổ sung test case (2026-10-28)
+
+Plan `docs/superpowers/plans/2026-10-28-phase-16-plan.md` (16a..16g). Sửa thật: Worker entry export hằng số làm `wrangler dev` chết (chuyển sang limits.ts + test chặn export không phải hàm/class).
+e2e cộng tác: cổng `MDR_E2E_PORT` hoặc tự chọn cổng trống; spec cập nhật theo ShareModal mới (trước đó đã đỏ), khách `locale vi-VN`; kịch bản presence tên, link xem chỉ đọc, link sửa gõ được, Thu hồi tất cả → banner.
+Test làm chặt: revokeAll đổi tài liệu, khoá import 8i, 6 vector XSS tại chỗ; kiểm đỏ mọi test phase 15 (tất cả đỏ trên mã cũ); test worker `revokedUntil`;
+7 test tích hợp App (làm gọn 4 nhánh, xuất khi lỗi công thức, banner). Flake IDB: 18 lượt không tái hiện → `test-setup.ts` in tên test + stack nếu xuất hiện.
+Test độc lập thứ tự: extension (timer/spy/DOM/location) và ui (barrel import, cache Mermaid, spy createElement) — 6/6 lượt `--sequence.shuffle` xanh mỗi gói.
+Test: core 278 · ui 484 · extension 464 · web 64 · api 217 · mcp 46 · e2e 9 · e2e:collab 2. **Nợ test còn:** e2e chưa kiểm blame theo dòng (chưa có selector ổn định).
+
 ## Phase 15 — Trả nợ phía người dùng và máy chủ (2026-10-28)
 
 Plan `docs/superpowers/plans/2026-10-28-phase-15-plan.md` (15a..15o). Đã làm: máy chủ `POST /api/rooms/:id/links/revoke-all` (extension dùng, fallback từng link),
@@ -11,7 +20,7 @@ ConfirmAgentDialog bẫy Tab đủ; manifest nhận `.Md/.Markdown/...`; `revoke
 trạng thái đồng bộ không nháy (connecting trễ 300 ms); MCP ghi tên client, tái dùng clientID lưu cục bộ theo máy (`chrome.storage.local`, KHÔNG trong Y.Doc);
 CLI MCP khoá file khi ghim; "Làm gọn tài liệu" khi phòng đầy (xoá phòng → dừng IDB → `compactStoredDoc` → reload, chặn nhập suốt luồng; mất lịch sử/blame, link cũ hết hiệu lực).
 Test: core 278 · ui 484 · extension 452 · web 64 · api 216 · mcp 46 · e2e 8; typecheck/build 0; content.js gz 13.66 KB.
-**Nợ còn:** test thuần (flake IDB, test yếu, cổng 8787 e2e); làm gọn không tạm dừng autosave đĩa đã xếp hàng (ghi đúng nội dung, vô hại).
+**Nợ còn:** làm gọn không tạm dừng autosave đĩa đã xếp hàng (ghi đúng nội dung, vô hại).
 
 ## Phase 14 — Đóng nợ rủi ro trước khi nộp store (2026-10-28)
 

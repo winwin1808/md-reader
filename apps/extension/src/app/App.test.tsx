@@ -117,6 +117,23 @@ describe('App', () => {
     cleanup()
     vi.clearAllTimers()
     vi.useRealTimers()
+    // 16f: nothing may leak into the next (shuffled) test
+    vi.unstubAllGlobals()
+    // Spies must not leak across tests. mockReset (not restoreAllMocks): App's React.lazy captures the
+    // Deck export once per module, so the spy object itself has to stay installed; reset returns it to the real impl.
+    for (const ns of [ui, deckMod, core, docxMod, fsSystem] as Record<string, unknown>[]) {
+      for (const v of Object.values(ns)) if (vi.isMockFunction(v)) v.mockReset()
+    }
+    vi.mocked(HTMLAnchorElement.prototype.click).mockRestore?.()
+    Object.assign(saveOverride, { state: null, canSaveAs: false })
+    Object.assign(docOverride, { syncStatus: null, shareDoc: false, external: false, accept: null, dismiss: null, awareness: null })
+    lastSession.s = null
+    useSessionCalls.length = 0
+    document.body.innerHTML = ''
+    for (const a of Array.from(document.documentElement.attributes)) {
+      if (a.name.startsWith('data-') || a.name === 'style' || a.name === 'lang') document.documentElement.removeAttribute(a.name)
+    }
+    try { localStorage.clear(); sessionStorage.clear() } catch {}
     delete (window as any).location
     window.location = new URL('http://localhost/') as any
   })
@@ -1632,7 +1649,7 @@ describe('App', () => {
     it('toolbar hiện trạng thái đồng bộ', async () => {
       docOverride.syncStatus = 'online'
       await act(async () => { render(<App />) })
-      expect(screen.getByRole('status').textContent).toContain('Đã đồng bộ')
+      expect(screen.getAllByRole('status').find((e) => e.classList.contains('tb-status'))!.textContent).toContain('Đã đồng bộ')
     })
     it('hiện presence khi đã bind và awareness đổi; không bind thì không có', async () => {
       const handlers = new Set<() => void>()
@@ -1714,7 +1731,7 @@ describe('App', () => {
       expect(screen.getByText(/Đây là bản chỉ đọc/)).toBeTruthy()
       expect(document.body.textContent).toContain('Bản đầu')
       expect(document.body.textContent).not.toContain('Bản sau')
-      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      await act(async () => { fireEvent.click(within(screen.getAllByRole('status').find((e) => !e.classList.contains('word-count-bar') && e.textContent?.includes('Thoát xem'))!).getByRole('button', { name: 'Thoát xem' })) })
       expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
       expect(document.body.textContent).toContain('Bản sau')
     })
@@ -1727,7 +1744,7 @@ describe('App', () => {
       const rows = screen.getAllByRole('option')
       await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
       expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
-      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      await act(async () => { fireEvent.click(within(screen.getAllByRole('status').find((e) => !e.classList.contains('word-count-bar') && e.textContent?.includes('Thoát xem'))!).getByRole('button', { name: 'Thoát xem' })) })
       expect(d.getText('source').toString()).toBe(src)
       expect(core.listHistory(d).length).toBe(len)
       expect(document.querySelector('.dirty-indicator') !== null).toBe(dirtyBefore)
@@ -1741,7 +1758,7 @@ describe('App', () => {
       await act(async () => { fireEvent.click(within(rows[rows.length - 1]!).getByText('Xem')) })
       expect(screen.getByText(/Đây là bản chỉ đọc/)).toBeTruthy()
       expect(document.body.textContent).toContain('Bản đầu')
-      await act(async () => { fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Thoát xem' })) })
+      await act(async () => { fireEvent.click(within(screen.getAllByRole('status').find((e) => !e.classList.contains('word-count-bar') && e.textContent?.includes('Thoát xem'))!).getByRole('button', { name: 'Thoát xem' })) })
       expect(screen.queryByText(/Đây là bản chỉ đọc/)).toBeNull()
       await waitFor(() => expect(document.querySelector('.editor-mode-container')).not.toBeNull())
     })

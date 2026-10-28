@@ -115,6 +115,7 @@ describe('exportMindmapToPng', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     global.Image = originalImage
     document.createElement = originalCreateElement
   })
@@ -170,6 +171,11 @@ describe('exportMindmapToPng', () => {
 })
 
 describe('downloadBlob', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+
   it('creates temporary object URL and anchor download link, clicks it, and revokes URL asynchronously', () => {
     vi.useFakeTimers()
     try {

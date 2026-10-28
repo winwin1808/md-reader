@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const flags = vi.hoisted(() => ({ real: false, roots: [] as any[] }))
+const flags = vi.hoisted(() => ({ real: false, roots: [] as any[], timers: [] as any[] }))
 vi.mock('react-dom/client', async (orig) => {
   const actual: any = await orig()
   return {
@@ -17,6 +17,8 @@ vi.mock('./ContentApp', async (orig) => {
   const actual: any = await orig()
   return { ...actual, ContentApp: (props: any) => (flags.real ? actual.ContentApp(props) : null) }
 })
+
+import * as createRootMod from 'react-dom/client'
 
 describe('Content script entry point', () => {
   beforeEach(() => {
@@ -44,8 +46,15 @@ describe('Content script entry point', () => {
 
   afterEach(() => {
     for (const r of flags.roots.splice(0)) r.unmount()
+    // 16f: pending worker-answer timers must not outlive the test (they fire after chrome is deleted)
+    for (const t of flags.timers.splice(0)) clearTimeout(t)
     document.getElementById('md-reader-root')?.remove()
+    document.body.innerHTML = ''
+    document.head.innerHTML = ''
     vi.clearAllMocks()
+    // clearAllMocks keeps unconsumed mockImplementationOnce queues; reset createRoot so they cannot leak
+    vi.mocked(createRootMod.createRoot).mockReset()
+    vi.restoreAllMocks()
     delete (globalThis as any).chrome
   })
 
@@ -182,7 +191,7 @@ describe('Content script entry point', () => {
       })
     const answer = (ok: boolean, delay = 0, html = '<h1 id="user-content-t">T</h1><p>body</p>') => {
       ;(chrome.runtime as any).sendMessage = vi.fn((_m: any, cb?: any) => {
-        setTimeout(() => cb?.(ok ? { ok: true, html, title: 'T' } : { ok: false }), delay)
+        flags.timers.push(setTimeout(() => cb?.(ok ? { ok: true, html, title: 'T' } : { ok: false }), delay))
       })
     }
 

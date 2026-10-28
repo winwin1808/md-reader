@@ -6,7 +6,12 @@ import React from 'react'
 
 const FAIL = 'Không mở được MD Reader. Thử bấm biểu tượng MD Reader trên thanh công cụ.'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  // 16f: anchor-click tests move the hash; later tests build storage keys from location.href
+  history.replaceState(null, '', '/')
+  vi.restoreAllMocks()
+})
 
 let removeMock: any
 

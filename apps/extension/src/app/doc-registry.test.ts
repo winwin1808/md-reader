@@ -136,6 +136,70 @@ describe('doc-registry', () => {
     })
   })
 
+  describe('import lock across two tabs (16b, 8i)', () => {
+    // Each dynamic import after resetModules is an independent "tab": own in-flight map and own
+    // IDB connection, so only the shared lock (not in-process dedupe) can order them.
+    async function tab() {
+      vi.resetModules()
+      return (await import('./doc-registry')) as typeof import('./doc-registry')
+    }
+    function sharedLocks() {
+      let tail: Promise<unknown> = Promise.resolve()
+      let active = 0
+      let maxActive = 0
+      const names: string[] = []
+      return {
+        names,
+        get maxActive() { return maxActive },
+        request: ((name: string, cb: () => Promise<unknown>) => {
+          names.push(name)
+          const run = tail.then(async () => {
+            active++; maxActive = Math.max(maxActive, active)
+            try { await sleep(3); return await cb() } finally { active-- }
+          })
+          tail = run.catch(() => {})
+          return run
+        }) as unknown as LockManager['request'],
+      }
+    }
+    const URL_ = 'https://x.com/two-tabs.md'
+
+    it('(a) two tabs importing the same URL: one docId, first wins, neither overwrites the other', async () => {
+      const t1 = await tab()
+      const t2 = await tab()
+      const locks = sharedLocks()
+      const [r1, r2] = await Promise.all([
+        t1.findOrCreateByOrigin({ title: 'first', originKind: 'url', originPath: URL_ }, locks),
+        t2.findOrCreateByOrigin({ title: 'second', originKind: 'url', originPath: URL_ }, locks),
+      ])
+      expect(r1.docId).toBe(r2.docId)
+      expect(locks.names).toEqual([`mdr:import:${URL_}`, `mdr:import:${URL_}`])
+      expect(locks.maxActive).toBe(1)
+      const all = (await t1.listRecent(50)).filter((r) => r.originPath === URL_)
+      expect(all.map((r) => r.title)).toEqual(['first'])
+    })
+
+    it('(b) import while writeDocText is running keeps the text exactly once', async () => {
+      const t1 = await tab()
+      const t2 = await tab()
+      const locks = sharedLocks()
+      const rec = await t1.findOrCreateByOrigin({ title: 'w', originKind: 'url', originPath: URL_ }, locks)
+      const [written, again] = await Promise.all([
+        t1.writeDocText(rec, 'hello world', 'replace'),
+        t2.findOrCreateByOrigin({ title: 'w2', originKind: 'url', originPath: URL_ }, locks)
+          .then((r2) => t2.writeDocText(r2, 'hello world', 'replace')),
+      ])
+      expect([written, again]).toEqual(['written', 'written'])
+      expect(locks.maxActive).toBe(1)
+      expect((await t1.listRecent(50)).filter((r) => r.originPath === URL_)).toHaveLength(1)
+      const doc = new Y.Doc({ gc: false })
+      const p = new IndexeddbPersistence(rec.persistenceName, doc)
+      await p.whenSynced
+      expect(getSource(doc).toString()).toBe('hello world')
+      await p.destroy()
+    })
+  })
+
   it('findOrCreateByOrigin is atomic across concurrent callers', async () => {
     const init = { title: 'A', originKind: 'url' as const, originPath: 'https://x.com/a.md' }
     const rs = await Promise.all([1, 2, 3, 4, 5].map(() => findOrCreateByOrigin(init)))
