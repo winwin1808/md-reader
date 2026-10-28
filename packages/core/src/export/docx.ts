@@ -16,7 +16,9 @@ import {
   LevelFormat,
   LineRuleType,
   UnderlineType,
+  type Math,
 } from 'docx'
+import { texToDocxMath } from './docx-math.js'
 import type {
   Root,
   RootContent,
@@ -85,7 +87,7 @@ function convertPhrasingNode(
   node: PhrasingContent | unknown,
   options: ExportDocxOptions,
   style: PhrasingStyle = {}
-): (TextRun | ImageRun | ExternalHyperlink)[] {
+): (TextRun | ImageRun | ExternalHyperlink | Math)[] {
   const n = node as Record<string, any>
   if (!n || typeof n.type !== 'string') return []
 
@@ -175,6 +177,10 @@ function convertPhrasingNode(
           ...style,
         }),
       ]
+    }
+    case 'inlineMath': {
+      const m = texToDocxMath(n.value ?? '')
+      return [m ?? new TextRun({ text: n.value ?? '', ...style })]
     }
     case 'break': {
       return [new TextRun({ break: 1 })]
@@ -420,6 +426,16 @@ function convertBlockNode(
     }
     case 'table': {
       return [convertTable(n as MdastTable, options)]
+    }
+    case 'math': {
+      const m = texToDocxMath(n.value ?? '')
+      return [
+        new Paragraph(
+          m
+            ? { alignment: AlignmentType.CENTER, children: [m] }
+            : { children: [new TextRun(n.value ?? '')] }
+        ),
+      ]
     }
     case 'thematicBreak': {
       return [convertThematicBreak()]
