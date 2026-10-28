@@ -196,6 +196,31 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const revokeAll = useCallback(() => run(async (stale) => {
     const b = need()
     const active = linksRef.current.filter((l) => l.revokedAt === null).map((l) => l.tokenPrefix)
+    const url = `${b.serverUrl}${API_PATHS.links(b.roomId)}/revoke-all`
+    let outcome: 'ok' | 'legacy' = 'legacy'
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (stale()) return
+      try {
+        await call<unknown>(t, url, { method: 'POST', headers: auth(b) })
+        outcome = 'ok'
+        break
+      } catch (e) {
+        const st = (e as { status?: number }).status
+        if (st === 404) break
+        if (st === 502 && attempt === 0) continue
+        if (st === 502) throw new Error(t('ext.share.revokeFailed', { count: active.length }))
+        throw e
+      }
+    }
+    if (outcome === 'ok') {
+      for (const prefix of active) await forgetLinkToken(b.roomId, prefix)
+      if (stale()) return
+      const now = Date.now()
+      for (const prefix of active) { tokens.current.delete(prefix); session.current.delete(prefix) }
+      put((cur) => cur.map((l) => (l.revokedAt === null ? { ...l, revokedAt: now } : l)))
+      try { await refresh() } catch { /* local marks stand */ }
+      return
+    }
     let failed = 0
     const causes = new Set<string>()
     for (const prefix of active) {
