@@ -68,7 +68,7 @@ describe('peerUpdateViolation (14a)', () => {
   function upd(doc: Y.Doc, fn: (p: Y.Doc) => void): Uint8Array {
     const p = new Y.Doc()
     Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
-    let u = new Uint8Array()
+    let u: Uint8Array = new Uint8Array()
     p.on('update', (x: Uint8Array) => (u = x))
     p.transact(() => fn(p))
     return u
