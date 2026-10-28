@@ -178,3 +178,86 @@ describe('Service Worker', () => {
     expect(r2).toHaveBeenCalledWith({ ok: false, error: 'too-large' })
   })
 })
+
+describe('Service Worker revokedUntil expiry (15g)', () => {
+  const approved = [{ keyHash: 'k1', client: 'c', at: 1, serverKey: 's' }]
+  let changed: ((c: any, area: string) => void) | null = null
+  let reqPairing: ((a: { port: number; client: string; keyHash: string }) => void) | null = null
+  let tabsCreate: ReturnType<typeof vi.fn>
+  let expiryMap: Map<string, number> | null = null
+
+  beforeEach(async () => {
+    vi.resetModules()
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    changed = null
+    reqPairing = null
+    expiryMap = null
+    tabsCreate = vi.fn().mockResolvedValue(undefined)
+    vi.doMock('./bridge', async (orig) => {
+      const actual = await orig<typeof import('./bridge')>()
+      return {
+        ...actual,
+        createBridge: (deps: any) => {
+          reqPairing = deps.requestPairing
+          return actual.createBridge(deps)
+        },
+      }
+    })
+    vi.doMock('../shared/md-url', async (orig) => {
+      const actual = await orig<typeof import('../shared/md-url')>()
+      return {
+        ...actual,
+        isExpiryActive: (m: Map<string, number>, k: string, n?: number) => { expiryMap = m; return actual.isExpiryActive(m, k, n) },
+        setExpiry: (m: Map<string, number>, k: string, u: number, n?: number) => { expiryMap = m; return actual.setExpiry(m, k, u, n) },
+      }
+    })
+    globalThis.chrome = {
+      runtime: {
+        id: 'x', getURL: (p: string) => `chrome-extension://x/${p}`,
+        onStartup: { addListener: vi.fn() }, onInstalled: { addListener: vi.fn() }, onMessage: { addListener: vi.fn() },
+      },
+      action: { onClicked: { addListener: vi.fn() } },
+      tabs: { create: tabsCreate, update: vi.fn(), onUpdated: { addListener: vi.fn() } },
+      storage: {
+        sync: { get: vi.fn().mockResolvedValue({}) },
+        local: { set: vi.fn(), get: vi.fn().mockResolvedValue({}), remove: vi.fn() },
+        onChanged: { addListener: vi.fn((cb) => { changed = cb }) },
+      },
+    } as any
+    await import('./index')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.doUnmock('./bridge')
+    vi.doUnmock('../shared/md-url')
+    delete (globalThis as any).chrome
+  })
+
+  const revoke = () => changed!({ 'mdr.bridge': { oldValue: { enabled: true, approved }, newValue: { enabled: true, approved: [] } } }, 'local')
+  const pair = () => reqPairing!({ port: 47821, client: 'c', keyHash: 'k1' })
+
+  it('ignores pairing from a revoked keyHash for 60s, accepts after, and drops the expired entry', () => {
+    revoke()
+    pair()
+    expect(tabsCreate).not.toHaveBeenCalled()
+    vi.setSystemTime(1_000_000 + 59_000)
+    pair()
+    expect(tabsCreate).not.toHaveBeenCalled()
+    vi.setSystemTime(1_000_000 + 61_000)
+    pair()
+    expect(tabsCreate).toHaveBeenCalledTimes(1)
+    expect(expiryMap!.has('k1')).toBe(false)
+  })
+
+  it('sweeps other expired entries when a new revocation is recorded', () => {
+    revoke()
+    vi.setSystemTime(1_000_000 + 61_000)
+    changed!({ 'mdr.bridge': {
+      oldValue: { enabled: true, approved: [{ keyHash: 'k2', client: 'c', at: 1, serverKey: 's' }] },
+      newValue: { enabled: true, approved: [] },
+    } }, 'local')
+    expect([...expiryMap!.keys()]).toEqual(['k2'])
+  })
+})
