@@ -44,7 +44,7 @@ import {
   computeBlame,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
-import { defaultRenderPlugins, parseYaml } from '@md-reader/core/plugins'
+import { defaultRenderPlugins, parseYaml, onMathLoaded, loadMathPlugin } from '@md-reader/core/plugins'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { openLocalFileAsDoc } from './fs/file-system'
@@ -529,6 +529,9 @@ export function App(): React.JSX.Element {
     handleSettingChange('mode', mode)
   }
 
+  const [mathRev, setMathRev] = useState(0)
+  useEffect(() => onMathLoaded(() => setMathRev((n) => n + 1)), [])
+
   const renderHtmlFor = useCallback((text: string) => {
     const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false, parseYaml })
     const rendered = renderToHtml(parsed, {
@@ -542,7 +545,7 @@ export function App(): React.JSX.Element {
       plugins: PLUGINS,
     })
     return { parsed, rendered }
-  }, [readerSettings])
+  }, [readerSettings, mathRev])
   const previewHtml = useMemo(
     () => (history.previewText === null ? null : renderHtmlFor(history.previewText).rendered.html),
     [history.previewText, renderHtmlFor],
@@ -601,6 +604,7 @@ export function App(): React.JSX.Element {
   const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
     if (preparingSlides) return
+    if (/\$/.test(content)) await loadMathPlugin()
     if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
       setPreparingSlides(true)
       try {

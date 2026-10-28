@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { splitIntoSlides } from './index.js'
-import { defaultRenderPlugins } from '../plugins/index.js'
+import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
+beforeAll(() => loadMathPlugin())
 
 describe('splitIntoSlides', () => {
   it('returns a single empty slide for empty source', () => {

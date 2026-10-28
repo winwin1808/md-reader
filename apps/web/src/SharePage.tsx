@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Viewer, useT, useLocale } from '@md-reader/ui'
 import { EditPage, PageHeader, firstH1 } from './EditPage'
 import { loadShare, renderShareHtml, sendReport, type ShareState } from './share-client'
+import { onMathLoaded } from '@md-reader/core/plugins'
 import { NoticeStack, useNotices } from './Notice'
 
 const REPO = 'https://github.com/winwin1808/md-reader'
@@ -41,7 +42,9 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     if (state.kind === 'ready') document.title = state.info.title ?? t('web.appName')
   }, [state])
 
-  const html = useMemo(() => (state.kind === 'ready' && state.info.role !== 'edit' ? renderShareHtml(state.text, locale) : ''), [state, locale])
+  const [mathRev, setMathRev] = useState(0)
+  useEffect(() => onMathLoaded(() => setMathRev((n) => n + 1)), [])
+  const html = useMemo(() => (state.kind === 'ready' && state.info.role !== 'edit' ? renderShareHtml(state.text, locale) : ''), [state, locale, mathRev])
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   let body: React.JSX.Element

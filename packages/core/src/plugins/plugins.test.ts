@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from '../render/index.js'
-import { defaultRenderPlugins, parseYaml } from './index.js'
+import { defaultRenderPlugins, parseYaml, loadMathPlugin } from './index.js'
+beforeAll(() => loadMathPlugin())
 
 describe('plugins entry', () => {
   it('renders hljs and katex with default plugins', () => {

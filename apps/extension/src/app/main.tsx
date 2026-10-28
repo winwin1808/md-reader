@@ -6,7 +6,7 @@ import { App } from './App'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { LocaleRoot } from './LocaleRoot'
 import { PAIR_DECISION_MSG } from '../worker/bridge-storage'
-import 'katex/dist/katex.min.css'
+import { onMathLoaded } from '@md-reader/core/plugins'
 import '@md-reader/ui/fonts.css'
 
 function PairPage({ port, client, keyHash }: { port: number; client: string; keyHash: string }): React.JSX.Element {
@@ -32,6 +32,8 @@ function pairParams(): { port: number; client: string; keyHash: string } | 'inva
   if (!/^[0-9a-f]{64}$/.test(keyHash)) return 'invalid'
   return { port, client: q.get('client') ?? '', keyHash }
 }
+
+onMathLoaded(() => { void import('katex/dist/katex.min.css') })
 
 const container = document.getElementById('root')
 if (container) {

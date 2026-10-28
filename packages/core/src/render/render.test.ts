@@ -1,8 +1,9 @@
-import { test, expect, describe } from 'vitest'
+import { test, expect, describe, beforeAll } from 'vitest'
 import { extractToc, renderToHtml } from './index.js'
 import { Slugger } from './slug.js'
 import { parseMarkdown } from '../parse/index.js'
-import { defaultRenderPlugins } from '../plugins/index.js'
+import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
+beforeAll(() => loadMathPlugin())
 
 describe('Slugger', () => {
   test('slug generation', () => {

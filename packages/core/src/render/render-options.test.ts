@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { processFrontmatter } from './options.js'
 import { parseMarkdown } from '../parse/index.js'
 import { renderToHtml } from './render.js'
-import { defaultRenderPlugins, parseYaml } from '../plugins/index.js'
+import { defaultRenderPlugins, parseYaml, loadMathPlugin } from '../plugins/index.js'
+beforeAll(() => loadMathPlugin())
 
 describe('Render Options', () => {
   const r = (md: string, o: Record<string, unknown>) => renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), ...o } as any).html
