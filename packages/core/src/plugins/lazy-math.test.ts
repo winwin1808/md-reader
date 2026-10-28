@@ -28,4 +28,16 @@ describe('lazy KaTeX', () => {
     expect(isMathLoaded()).toBe(true)
     expect(renderToHtml(parsed, { plugins }).html).toContain('katex')
   })
+
+  it('loadMathPlugin rejects when the import fails and retries next call (15o)', async () => {
+    let fail = true
+    vi.doMock('rehype-katex', () => { if (fail) throw new Error('chunk failed'); return { default: () => () => {} } })
+    const { loadMathPlugin, isMathLoaded } = await import('./index.js')
+    await expect(loadMathPlugin()).rejects.toThrow()
+    expect(isMathLoaded()).toBe(false)
+    fail = false
+    await expect(loadMathPlugin()).resolves.toBeUndefined()
+    expect(isMathLoaded()).toBe(true)
+    vi.doUnmock('rehype-katex')
+  })
 })

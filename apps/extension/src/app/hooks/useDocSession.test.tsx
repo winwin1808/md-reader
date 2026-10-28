@@ -23,6 +23,7 @@ let idbUpdate: Uint8Array | null = null
 let resolveSync: () => void = () => {}
 let emitSynced: () => void = () => {}
 let names: string[] = []
+let destroyCalls = 0
 
 vi.mock('y-indexeddb', () => ({
   IndexeddbPersistence: class {
@@ -40,7 +41,7 @@ vi.mock('y-indexeddb', () => ({
       emitSynced = () => {}
     }
     once(_e: string, h: () => void) { this.handlers.push(h) }
-    destroy() {}
+    destroy() { destroyCalls++; return Promise.resolve() }
   },
 }))
 
@@ -457,6 +458,26 @@ describe('useDocSession room binding', () => {
     expect(result.current.awareness).toBe(bind.conns[0].awareness)
     act(() => bind.conns[0].emit('online'))
     expect(result.current.syncStatus).toBe('online')
+  })
+
+  it('suspendPersistence destroys the IDB persistence and resolves (15o)', async () => {
+    const { result } = mount({ room: null })
+    await flush(); await syncNow(); await flush()
+    const before = destroyCalls
+    await act(async () => { await (result.current as any).suspendPersistence() })
+    expect(destroyCalls).toBe(before + 1)
+  })
+
+  it('record null while a room is configured -> off, no awareness (15o)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => '' })))
+    const { result, rerender } = renderHook((p: { id: string | null }) => useDocSession({ docId: p.id, fileUrl: null, room }), { initialProps: { id: recId as string | null } })
+    await flush(); await syncNow(); await flush()
+    act(() => bind.conns[0].emit('online'))
+    expect(result.current.syncStatus).toBe('online')
+    rerender({ id: null })
+    await flush()
+    expect(result.current.syncStatus).toBe('off')
+    expect(result.current.awareness).toBeNull()
   })
 
   it('room becoming null destroys the connection', async () => {

@@ -45,6 +45,7 @@ export interface DocSession {
   syncStatus: SyncStatus
   awareness: RoomConnection['awareness'] | null
   persisted?: () => Promise<void>
+  suspendPersistence(): Promise<void>
 }
 
 export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null; room?: RoomBinding | null; displayName?: string }): DocSession {
@@ -65,6 +66,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
   const checkpointsRef = useRef<CheckpointTracker | null>(null)
   const isFileContentSetRef = useRef<boolean>(false)
+  const suspendRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const syncedPromiseRef = useRef<Promise<unknown>>(Promise.resolve())
   const [externalChange, setExternalChange] = useState<{ remoteText: string; remoteHash: string } | null>(null)
 
@@ -129,6 +131,11 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     setNewerFormat(false)
     let cancelled = false
     let persistence: IndexeddbPersistence | null = null
+    suspendRef.current = async () => {
+      const p = persistence
+      persistence = null
+      if (p) await p.destroy()
+    }
     if (persistenceName) {
       try {
         persistence = new IndexeddbPersistence(persistenceName, doc)
@@ -246,6 +253,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   }, [doc, persistenceName, record])
 
   const persistedRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const suspendPersistence = useCallback(() => suspendRef.current(), [])
   const persisted = useCallback(() => persistedRef.current(), [])
   // rawStatus is the real state; syncStatus is what the toolbar shows: 'connecting' only
   // after CONNECTING_DISPLAY_DELAY_MS, every other state immediately.
@@ -273,7 +281,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     if (!roomServerUrl || !roomId || !roomToken) { boundRoomRef.current = null; setSyncStatus('off'); setAwareness(null); return }
     // Different room than the last bind: drop the old room's peers now (same room keeps them, no flicker).
     if (boundRoomRef.current !== roomId) { boundRoomRef.current = null; setAwareness(null) }
-    if (!record) return
+    if (!record) { setSyncStatus('off'); setAwareness(null); return }
     let cancelled = false
     let conn: RoomConnection | null = null
     let unsub: (() => void) | null = null
@@ -483,5 +491,6 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     syncStatus,
     awareness,
     persisted,
+    suspendPersistence,
   }
 }

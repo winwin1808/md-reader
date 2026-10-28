@@ -9,7 +9,7 @@ let loaded: MathPlugin | null = null
 let loading: Promise<void> | null = null
 const listeners = new Set<() => void>()
 
-/** Loads KaTeX (rehype-katex) as a separate chunk. Idempotent. */
+/** Loads KaTeX (rehype-katex) as a separate chunk. Idempotent. Rejects on load failure (next call retries). */
 export function loadMathPlugin(): Promise<void> {
   if (loaded) return Promise.resolve()
   if (!loading) {
@@ -18,7 +18,7 @@ export function loadMathPlugin(): Promise<void> {
         loaded = m.default as unknown as MathPlugin
         for (const cb of [...listeners]) cb()
       })
-      .catch(() => { loading = null })
+      .catch((err) => { loading = null; throw err })
   }
   return loading
 }
@@ -44,7 +44,7 @@ const lazyKatex = function (this: any, ...args: any[]) {
   const self = this
   return (tree: any, file: any) => {
     if (!loaded) {
-      if (hasMathNode(tree)) void loadMathPlugin()
+      if (hasMathNode(tree)) loadMathPlugin().catch(() => {})
       return
     }
     const t = loaded.apply(self, args)

@@ -185,6 +185,15 @@ export function App(): React.JSX.Element {
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | undefined>(undefined)
   const [imageNotice, setImageNotice] = useState<string | null>(null)
+  const [compacting, setCompacting] = useState(false)
+  const [compactFailed, setCompactFailed] = useState(false)
+  useEffect(() => {
+    if (!session.docId) return
+    const k = 'mdr-compact-failed:' + session.docId
+    try {
+      if (sessionStorage.getItem(k)) { sessionStorage.removeItem(k); setCompactFailed(true) }
+    } catch { /* ignore */ }
+  }, [session.docId])
   useEffect(() => {
     let cancelled = false
     setDirHandle(undefined)
@@ -612,7 +621,9 @@ export function App(): React.JSX.Element {
   const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
     if (preparingSlides) return
-    if (/\$/.test(content)) await loadMathPlugin()
+    if (/\$/.test(content)) {
+      try { await loadMathPlugin() } catch { setImageNotice(t('ext.export.mathFailed')) }
+    }
     if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
       setPreparingSlides(true)
       try {
@@ -669,7 +680,7 @@ export function App(): React.JSX.Element {
               plugins: PLUGINS,
             },
           }) : []),
-    [content, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
+    [content, mathRev, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
 
   useShortcuts({
@@ -837,9 +848,21 @@ export function App(): React.JSX.Element {
             roomFull={session.syncStatus === 'full'}
             onCompact={async () => {
               if (!session.docId || !doc) return
-              await share.deleteRemote()
-              await compactStoredDoc(session.docId, doc)
-              try { sessionStorage.setItem('mdr-compacted:' + session.docId, '1') } catch { /* ignore */ }
+              setCompacting(true) // lock input first: nothing typed after this point can be lost
+              try {
+                await share.deleteRemote()
+              } catch (err) {
+                setCompacting(false)
+                throw err
+              }
+              try {
+                await session.suspendPersistence()
+                await compactStoredDoc(session.docId, doc)
+                try { sessionStorage.setItem('mdr-compacted:' + session.docId, '1') } catch { /* ignore */ }
+              } catch {
+                // Room is already gone; content untouched. Reload reopens persistence, no compacted flag.
+                try { sessionStorage.setItem('mdr-compact-failed:' + session.docId, '1') } catch { /* ignore */ }
+              }
               location.reload()
             }}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl ?? '', t)}
@@ -860,7 +883,16 @@ export function App(): React.JSX.Element {
             {t('ext.app.exitReading')}
           </button>
         )}
+        {compacting && <div className="md-no-print" aria-busy="true" style={{ position: 'fixed', inset: 0, zIndex: 2000, cursor: 'progress', background: 'transparent' }} />}
         <FileDrop>
+          {compactFailed && (
+            <div className="error-banner notice" role="alert">
+              <span>{t('ext.compact.failed')}</span>
+              <div className="notice__actions">
+                <button type="button" onClick={() => setCompactFailed(false)}>{t('ext.close')}</button>
+              </div>
+            </div>
+          )}
           {imageNotice && (
             <div className="error-banner notice" role="status">
               <span>{imageNotice}</span>
