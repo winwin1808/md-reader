@@ -59,8 +59,9 @@ export function createBridgeExecutor(
       const doc = s.yText.doc
       if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
       s.checkpoints?.flush('auto', 'Bạn')
-      const changed = applyTextChangeAsActor(doc, markdown, 'AI', ORIGIN_MCP)
-      if (changed) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, 'AI', { force: true })
+      const actor = client.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) || 'AI'
+      const changed = applyTextChangeAsActor(doc, markdown, actor, ORIGIN_MCP)
+      if (changed) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, actor, { force: true })
       const yText = s.yText
       await Promise.race([s.persisted?.() ?? Promise.resolve(), sleep(2000)])
       return { type: 'res', id: req.id, ok: true, result: { hash: await textHash(yText.toString()) } } as BridgeResponse

@@ -76,4 +76,28 @@ describe('applyTextChangeAsActor', () => {
     expect(getSource(a).toString()).toBe(getSource(b).toString())
     expect(getSource(a).toString()).toBe('line ONE\n\nline two\ntail\n')
   })
+
+  it('reuses one clientID per actor name; actors map does not grow', () => {
+    const d = seeded('a b c')
+    applyTextChangeAsActor(d, 'A b c', 'Claude Code')
+    const n = actors(d)!.size
+    applyTextChangeAsActor(d, 'A B c', 'Claude Code')
+    applyTextChangeAsActor(d, 'A B C', 'Claude Code')
+    expect(actors(d)!.size).toBe(n)
+    expect(getSource(d).toString()).toBe('A B C')
+    applyTextChangeAsActor(d, 'A B CC', 'Other')
+    expect(actors(d)!.size).toBe(n + 1)
+  })
+
+  it('never reuses a human clientID even if a name matches', () => {
+    const d = seeded('abc')
+    d.getMap('meta').set('actors', new Y.Map<string>())
+    actors(d)!.set(String(d.clientID), 'Human')
+    applyTextChangeAsActor(d, 'abd', 'Human')
+    const e = d.getMap('meta').get('mcpActors') as Y.Map<string>
+    expect(e.get('Human')).not.toBe(String(d.clientID))
+    applyTextChangeAsActor(d, 'abe', 'Human')
+    expect(getSource(d).toString()).toBe('abe')
+    expect(actors(d)!.get(String(d.clientID))).toBe('Human')
+  })
 })
