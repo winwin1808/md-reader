@@ -390,4 +390,26 @@ describe('ShareModal setup panel', () => {
       expect((await screen.findByRole('alert')).textContent).toContain('boom')
     })
   })
+
+  it('compact: hidden unless room is full and handler given', () => {
+    setup({ onCompact: vi.fn().mockResolvedValue(undefined) })
+    expect(screen.queryByRole('button', { name: 'Làm gọn tài liệu' })).toBeNull()
+  })
+
+  it('compact: full -> button, confirm step, onCompact on confirm', async () => {
+    const onCompact = vi.fn().mockResolvedValue(undefined)
+    setup({ roomFull: true, onCompact })
+    fireEvent.click(screen.getByRole('button', { name: 'Làm gọn tài liệu' }))
+    expect(onCompact).not.toHaveBeenCalled()
+    expect(screen.getByText(/link cũ ngừng hoạt động/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận làm gọn' }))
+    await waitFor(() => expect(onCompact).toHaveBeenCalledTimes(1))
+  })
+
+  it('compact: error shown in modal', async () => {
+    setup({ roomFull: true, onCompact: vi.fn().mockRejectedValue(new Error('boom')) })
+    fireEvent.click(screen.getByRole('button', { name: 'Làm gọn tài liệu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận làm gọn' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('boom'))
+  })
 })

@@ -63,7 +63,7 @@ import { createBridgeExecutor, type ExecSession } from './bridge-executor'
 import { FileAccessHint } from './FileAccessHint'
 import { createImageResolver } from './image-resolver'
 import { createImageSaver } from './image-saver'
-import { getHandle, getDirHandle, storeDirHandle } from './doc-registry'
+import { getHandle, getDirHandle, storeDirHandle, compactStoredDoc } from './doc-registry'
 import './app.css'
 
 const PLUGINS = defaultRenderPlugins()
@@ -164,6 +164,7 @@ export function App(): React.JSX.Element {
   })
   const fileUrlParam = urlParams.fileUrl
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
+  const [compactedNotice, setCompactedNotice] = useState<boolean>(false)
   const [room, setRoom] = useState<RoomBinding | null>(null)
   const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? (DEFAULT_SERVER_URL || null)
   const [retryNonce, setRetryNonce] = useState(0)
@@ -172,6 +173,13 @@ export function App(): React.JSX.Element {
   const [newerDismissed, setNewerDismissed] = useState<boolean>(false)
   useEffect(() => { setNewerDismissed(false) }, [session.docId])
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
+  useEffect(() => {
+    if (!session.docId) return
+    const key = 'mdr-compacted:' + session.docId
+    try {
+      if (sessionStorage.getItem(key)) { sessionStorage.removeItem(key); setCompactedNotice(true) }
+    } catch { /* storage unavailable */ }
+  }, [session.docId])
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
@@ -826,6 +834,14 @@ export function App(): React.JSX.Element {
             onRecreate={share.recreate}
             onRevokeAll={share.revokeAll}
             onDeleteRemote={share.deleteRemote}
+            roomFull={session.syncStatus === 'full'}
+            onCompact={async () => {
+              if (!session.docId || !doc) return
+              await share.deleteRemote()
+              await compactStoredDoc(session.docId, doc)
+              try { sessionStorage.setItem('mdr-compacted:' + session.docId, '1') } catch { /* ignore */ }
+              location.reload()
+            }}
             buildUrl={(t: string) => buildShareUrl(share.binding?.serverUrl ?? serverUrl ?? '', t)}
             busy={share.busy}
             error={share.error}
@@ -868,6 +884,14 @@ export function App(): React.JSX.Element {
               <span>{t('ext.notice.newerFormat')}</span>
               <div className="notice__actions">
                 <button type="button" onClick={() => setNewerDismissed(true)}>{t('ext.notice.dismiss')}</button>
+              </div>
+            </div>
+          )}
+          {compactedNotice && (
+            <div className="error-banner notice" role="status">
+              <span>{t('ext.notice.compacted')}</span>
+              <div className="notice__actions">
+                <button type="button" onClick={() => setCompactedNotice(false)}>{t('ext.notice.gotIt')}</button>
               </div>
             </div>
           )}

@@ -18,6 +18,8 @@ export function compactDoc(old: Y.Doc): Uint8Array {
       if (dropped.has(k)) return
       if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) meta.set(k, v)
     })
+    // Server forbids edit links from creating `actors`; the owner seeds an empty map.
+    meta.set('actors', new Y.Map())
     const text = getSource(old).toString()
     if (text) getSource(next).insert(0, text)
     const entry: HistoryEntry = {
