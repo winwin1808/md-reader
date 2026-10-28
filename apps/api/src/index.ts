@@ -100,6 +100,7 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
     const auth = await authorizeWs(req, store)
     if (auth instanceof Response) return auth
     if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
+    void store.touchRoom(auth.roomId).catch(() => {})
     const req2 = new Request(req)
     req2.headers.delete('x-mdr-internal')
     req2.headers.delete('x-mdr-prefix')

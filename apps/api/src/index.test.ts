@@ -122,6 +122,20 @@ describe('handleRequest', () => {
   })
 })
 
+describe('last_seen', () => {
+  it('valid ws calls touchRoom, invalid does not', async () => {
+    const { store, a } = await twoRooms()
+    const touch = vi.spyOn(store, 'touchRoom')
+    await handleRequest(new Request(`http://x/parties/doc-room/${a.roomId}?token=bad`), env, { routeParty: ok, store })
+    expect(touch).not.toHaveBeenCalled()
+    await handleRequest(new Request(`http://x/parties/doc-room/${a.roomId}?token=${a.ownerToken}`), env, {
+      routeParty: ok,
+      store,
+    })
+    expect(touch).toHaveBeenCalledWith(a.roomId)
+  })
+})
+
 describe('CORS', () => {
   it('OPTIONS preflight returns 204 without touching store', async () => {
     const store = new MemoryTokenStore()

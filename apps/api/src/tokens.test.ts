@@ -75,4 +75,18 @@ describe('tokens', () => {
       expiresAt: null,
     })
   })
+
+  it('last_seen: createRoom sets it; touchRoom throttles to 1 day', async () => {
+    let now = 1_000_000
+    const s = new MemoryTokenStore(() => now)
+    const { roomId } = await s.createRoom()
+    expect(await s.idleRooms(now + 1, 10)).toContain(roomId)
+    now += 2 * 86_400_000
+    await s.touchRoom(roomId)
+    expect(await s.idleRooms(now - 86_400_000, 10)).not.toContain(roomId)
+    const before = s.rooms.get(roomId)!.lastSeen
+    now += 1000
+    await s.touchRoom(roomId)
+    expect(s.rooms.get(roomId)!.lastSeen).toBe(before)
+  })
 })
