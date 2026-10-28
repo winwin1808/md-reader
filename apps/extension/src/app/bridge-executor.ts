@@ -60,8 +60,17 @@ export function createBridgeExecutor(
       if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
       s.checkpoints?.flush('auto', 'Bạn')
       const actor = client.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) || 'AI'
-      const changed = applyTextChangeAsActor(doc, markdown, actor, ORIGIN_MCP)
-      if (changed) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, actor, { force: true })
+      const key = `mdr-mcp-actor:${s.docId}:${actor}`
+      let reuseClientId: number | undefined
+      try {
+        const got = (await chrome.storage.local.get(key))[key]
+        if (typeof got === 'number') reuseClientId = got
+      } catch { /* không có storage: tạo id mới */ }
+      const used = applyTextChangeAsActor(doc, markdown, actor, ORIGIN_MCP, { reuseClientId })
+      if (used !== false && used !== reuseClientId) {
+        try { await chrome.storage.local.set({ [key]: used }) } catch { /* ignore */ }
+      }
+      if (used !== false) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, actor, { force: true })
       const yText = s.yText
       await Promise.race([s.persisted?.() ?? Promise.resolve(), sleep(2000)])
       return { type: 'res', id: req.id, ok: true, result: { hash: await textHash(yText.toString()) } } as BridgeResponse
