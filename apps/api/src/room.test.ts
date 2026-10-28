@@ -593,3 +593,80 @@ describe('DocRoom peer write guard (12a)', () => {
     expect(c.close).not.toHaveBeenCalled()
   })
 })
+
+describe('DocRoom pre-apply link filter (14a)', () => {
+  function server() {
+    const room = makeRoom()
+    const doc = room.document
+    doc.getMap('meta').set('formatVersion', 2)
+    doc.getMap('meta').set('actors', new Y.Map())
+    doc.getText('source').insert(0, 'hello')
+    doc.getArray('history')
+    ;(room as unknown as { installPeerGuard: () => void }).installPeerGuard()
+    return { room, doc }
+  }
+  function peerOf(doc: Y.Doc, fn: (p: Y.Doc) => void, clientID?: number): Uint8Array {
+    const p = new Y.Doc()
+    Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+    if (clientID !== undefined) p.clientID = clientID
+    let u: Uint8Array = new Uint8Array()
+    p.on('update', (x: Uint8Array) => (u = x))
+    p.transact(() => fn(p))
+    return u
+  }
+  const wrap = (u: Uint8Array, inner = 2) => {
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 0)
+    encoding.writeVarUint(e, inner)
+    encoding.writeVarUint8Array(e, u)
+    return encoding.toUint8Array(e)
+  }
+  const linkConn = () => ({ id: 'l', state: { role: 'edit', prefix: 'p' }, close: vi.fn(), send: () => undefined })
+
+  it('(a) meta.formatVersion write is not applied nor forwarded, closes 4403', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = linkConn()
+    const u = peerOf(doc, (p) => p.getMap('meta').set('formatVersion', 99))
+    room.handleMessage(c as never, wrap(u))
+    expect(spy).not.toHaveBeenCalled()
+    expect(doc.getMap('meta').get('formatVersion')).toBe(2)
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    spy.mockRestore()
+  })
+  it('(b) forging a struct with the owner clientID to set actors[owner] is blocked', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const owner = [...doc.store.clients.keys()][0]
+    const c = linkConn()
+    const u = peerOf(doc, (p) => (p.getMap('meta').get('actors') as Y.Map<string>).set(String(owner), 'Evil'), owner)
+    room.handleMessage(c as never, wrap(u))
+    expect(spy).not.toHaveBeenCalled()
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    spy.mockRestore()
+  })
+  it('(c) valid web flow: source edit + own actors entry passes (update and step2)', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = linkConn()
+    const u = peerOf(doc, (p) => {
+      p.getText('source').insert(5, ' world')
+      p.getText('source').delete(0, 1)
+      ;(p.getMap('meta').get('actors') as Y.Map<string>).set(String(p.clientID), 'Bob')
+    })
+    room.handleMessage(c as never, wrap(u, 1))
+    room.handleMessage(c as never, wrap(peerOf(doc, (p) => p.getText('source').insert(0, 'z'), undefined)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(spy).toHaveBeenCalledTimes(2)
+    spy.mockRestore()
+  })
+  it('owner connection (no prefix) is not filtered', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = { id: 'o', state: { role: 'edit', prefix: '' }, close: vi.fn(), send: () => undefined }
+    room.handleMessage(c as never, wrap(peerOf(doc, (p) => p.getMap('meta').set('formatVersion', 3))))
+    expect(spy).toHaveBeenCalled()
+    expect(c.close).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+})
