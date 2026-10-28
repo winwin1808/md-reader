@@ -14,6 +14,8 @@ import type { RoomConnection } from '../collab/bindRoom'
 import type { RoomBinding } from '@md-reader/core'
 import { peerUser } from '@md-reader/ui'
 
+const CONNECTING_DISPLAY_DELAY_MS = 300
+
 let migrationOnce: Promise<unknown> | null = null
 
 function safeName(url: string): string {
@@ -245,7 +247,15 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
   const persistedRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const persisted = useCallback(() => persistedRef.current(), [])
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('off')
+  // rawStatus is the real state; syncStatus is what the toolbar shows: 'connecting' only
+  // after CONNECTING_DISPLAY_DELAY_MS, every other state immediately.
+  const [rawStatus, setSyncStatus] = useState<SyncStatus>('off')
+  const [syncStatus, setDisplayStatus] = useState<SyncStatus>('off')
+  useEffect(() => {
+    if (rawStatus !== 'connecting') { setDisplayStatus(rawStatus); return }
+    const timer = setTimeout(() => setDisplayStatus('connecting'), CONNECTING_DISPLAY_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [rawStatus])
   const [awareness, setAwareness] = useState<RoomConnection['awareness'] | null>(null)
   const nameRef = useRef(displayName)
   const awarenessRef = useRef<RoomConnection['awareness'] | null>(null)
@@ -259,7 +269,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const roomId = room?.roomId
   const roomToken = room?.ownerToken
   useEffect(() => {
-    if (!record || !roomServerUrl || !roomId || !roomToken) return
+    if (!roomServerUrl || !roomId || !roomToken) { setSyncStatus('off'); setAwareness(null); return }
+    if (!record) return
     let cancelled = false
     let conn: RoomConnection | null = null
     let unsub: (() => void) | null = null
@@ -279,8 +290,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       untrack?.()
       conn?.destroy()
       awarenessRef.current = null
-      setSyncStatus('off')
-      setAwareness(null)
+      // No 'off' here: a rebind overwrites the status via status$, and the
+      // no-room branch above sets 'off' when sharing is really disabled.
     }
   }, [doc, record, roomServerUrl, roomId, roomToken])
 

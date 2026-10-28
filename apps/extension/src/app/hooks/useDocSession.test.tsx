@@ -452,7 +452,8 @@ describe('useDocSession room binding', () => {
     await syncNow(); await flush()
     expect(bindRoom).toHaveBeenCalledTimes(1)
     expect(bind.calls[0][1]).toEqual({ serverUrl: 'https://s.test', roomId: 'r1', token: 'tok', name: 'Bạn' })
-    expect(result.current.syncStatus).toBe('connecting')
+    expect(result.current.syncStatus).toBe('off')
+    await waitFor(() => expect(result.current.syncStatus).toBe('connecting'), { timeout: 1500 })
     expect(result.current.awareness).toBe(bind.conns[0].awareness)
     act(() => bind.conns[0].emit('online'))
     expect(result.current.syncStatus).toBe('online')
@@ -466,6 +467,41 @@ describe('useDocSession room binding', () => {
     expect(bind.conns[0].destroy).toHaveBeenCalled()
     expect(result.current.syncStatus).toBe('off')
     expect(result.current.awareness).toBeNull()
+  })
+
+  describe('display status (15i)', () => {
+    const seen = (r: { current: { syncStatus: string } }, log: string[]) => {
+      if (log[log.length - 1] !== r.current.syncStatus) log.push(r.current.syncStatus)
+    }
+    it('rebind same room while online: never shows off/connecting if resynced < 300ms', async () => {
+      const { result, rerender } = mount({ room })
+      await flush(); await syncNow(); await flush()
+      act(() => bind.conns[0].emit('online'))
+      expect(result.current.syncStatus).toBe('online')
+      vi.useFakeTimers()
+      try {
+        const log: string[] = ['online']
+        rerender({ room: { ...room, ownerToken: 'tok2' } })
+        seen(result, log)
+        await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+        seen(result, log)
+        expect(bind.conns.length).toBe(2)
+        act(() => bind.conns[1].emit('online'))
+        seen(result, log)
+        await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+        seen(result, log)
+        expect(log).toEqual(['online'])
+      } finally { vi.useRealTimers() }
+    })
+    it('disabling share -> off immediately; revoked immediately', async () => {
+      const { result, rerender } = mount({ room })
+      await flush(); await syncNow(); await flush()
+      act(() => bind.conns[0].emit('online'))
+      act(() => bind.conns[0].emit('revoked'))
+      expect(result.current.syncStatus).toBe('revoked')
+      rerender({ room: null })
+      expect(result.current.syncStatus).toBe('off')
+    })
   })
 
   it('unmount before whenSynced -> never binds', async () => {
