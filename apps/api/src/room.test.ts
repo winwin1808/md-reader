@@ -565,6 +565,18 @@ describe('DocRoom peer write guard (12a)', () => {
     expect(doc.getMap('meta').get('formatVersion')).toBe(2)
     expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
   })
+  it('reverts writes to an unknown root and closes 4403', () => {
+    const { r, doc } = guarded()
+    const c = { ...link, close: vi.fn() }
+    r.peerUndo.trackedOrigins.add(c)
+    doc.transact(() => {
+      doc.getMap('other').set('a', 1)
+      doc.getArray('other2').push([1])
+    }, c)
+    expect(doc.getMap('other').get('a')).toBeUndefined()
+    expect(doc.getArray('other2').length).toBe(0)
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+  })
   it('keeps source edits from link connection', () => {
     const { r, doc } = guarded()
     const c = { ...link, close: vi.fn() }

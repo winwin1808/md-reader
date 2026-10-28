@@ -98,10 +98,25 @@ export class DocRoom extends YServer<Env> {
       const bad = peerTxViolation(tr, doc)
       if (bad !== null) {
         this.peerUndo.undo()
+        this.clearForeignRoots(doc)
         ;(tr.origin as Connection).close(4403, 'forbidden write')
       }
       this.peerUndo.clear()
     })
+  }
+
+  /** Delete all content of roots other than source/meta/history (the UndoManager does not track them). */
+  private clearForeignRoots(doc: Y.Doc): void {
+    doc.transact((tr) => {
+      for (const [name, type] of doc.share) {
+        if (name === 'source' || name === 'meta' || name === 'history') continue
+        const t = type as unknown as { _start: Y.Item | null; _map: Map<string, Y.Item> }
+        const items: Y.Item[] = []
+        for (let i = t._start; i; i = i.right) items.push(i)
+        for (const i of t._map.values()) items.push(i)
+        for (const i of items) if (!i.deleted) i.delete(tr)
+      }
+    }, this.peerUndo)
   }
 
   async onSave(): Promise<void> {
