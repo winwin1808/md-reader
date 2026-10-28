@@ -2,6 +2,15 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 12 — Gia cố máy chủ (2026-10-28)
+
+Branch `phase-12` (12a..12e), spec `docs/superpowers/specs/2026-10-28-phase-12-design.md` (shipped). Đã làm: link sửa chỉ được ghi `source`
++ `meta.actors[clientID của mình]` — ghi sai chỗ (meta/history/root lạ) bị hoàn tác và đóng 4403 (`apps/api/src/peer-guard.ts`); `rooms.last_seen`
+(migration `0004_last_seen`, cập nhật ≤1 lần/ngày khi nối WS); trần toàn cục ảnh 3 GiB lưu / 1 GiB mỗi ngày; cron `17 3 * * *` xoá phòng
+không ai mở 90 ngày qua `deleteRoomEverywhere` (≤25 phòng/lượt) và dọn `usage_daily` cũ hơn 2 ngày. Privacy cập nhật.
+Test: api 195; typecheck 0. **Nợ:** update vi phạm vẫn được phát/lưu một nhịp trước khi hoàn tác (cuối cùng hội tụ — kiểm trước khi áp sẽ chặt hơn);
+peer có thể giả struct clientID khác để đặt `actors[id]` (thấp); `touchRoom` chưa qua `ctx.waitUntil`; `SUM(size)` assets mỗi lần upload (rẻ ở quy mô hiện tại).
+
 ## Phase 13 — Hoàn thiện trải nghiệm (2026-10-28)
 
 Branch `phase-13` (13a1..13f), spec `docs/superpowers/specs/2026-10-28-phase-13-design.md` (shipped). Đã làm: toolbar extension + web báo rõ

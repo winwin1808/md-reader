@@ -1,5 +1,5 @@
 # Design: Phase 12 — Gia cố máy chủ tiếp
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 12
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 12
 Intent: docs/superpowers/intent/2026-10-28-phase-12-gia-co-may-chu.md
 
 ## Approach chosen
@@ -14,11 +14,11 @@ Intent: docs/superpowers/intent/2026-10-28-phase-12-gia-co-may-chu.md
 Bỏ qua sub-phase branch: các task song song commit thẳng lên `phase-12` bằng pathspec (khác §8 DESIGN — để tăng tốc, review theo dải commit của từng sub-phase).
 
 ## Sub-phase queue
-- 12a: planned
-- 12b: planned
-- 12c: planned
-- 12d: planned
-- 12e: pending
+- 12a: done
+- 12b: done
+- 12c: done
+- 12d: done
+- 12e: done
 
 ## Sizing
 12a room.ts + test (2) · 12b migration + tokens(2) + index + tests (≤5) · 12c limits + test (2) · 12d index + limits + wrangler + tests (≤5) · 12e docs.
