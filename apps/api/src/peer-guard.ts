@@ -155,9 +155,13 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
       const end = clock + len
       let at = clock
       while (at < end) {
-        const s = find(client, at)
+        // Structs already integrated in the server doc win over the update's copy; re-deleting one that is
+        // already deleted (or GC'd) is a no-op, e.g. the full delete set in a sync step2.
+        const inDoc = at < Y.getState(doc.store, client) ? (Y.getItem(doc.store, Y.createID(client, at)) as Struct) : null
+        const s = inDoc ?? find(client, at)
         if (!s) return 'delete of unknown struct'
         at = s.id.clock + s.length
+        if (inDoc && (inDoc instanceof Y.GC || (inDoc instanceof Y.Item && inDoc.deleted))) continue
         if (!(s instanceof Y.Item)) {
           if (s instanceof Y.Skip) return 'delete of unknown struct'
           continue // GC: already deleted
