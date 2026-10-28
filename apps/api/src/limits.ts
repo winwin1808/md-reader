@@ -15,6 +15,10 @@ export const LIMITS = {
   assetBytesGlobalPerDay: 1024 ** 3,
 } as const
 
+// Kept out of index.ts: workerd rejects non-function exports from the entry module.
+export const ROOM_TTL_MS = 90 * 86_400_000
+export const CLEANUP_MAX_ROOMS = 100
+
 export type LimitKind = 'room' | 'asset' | 'report'
 export interface LimitSubject {
   installHash: string | null

@@ -1,6 +1,6 @@
 import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
-import { D1LimitStore, dayOf, type LimitStore } from './limits.js'
+import { D1LimitStore, dayOf, ROOM_TTL_MS, CLEANUP_MAX_ROOMS, type LimitStore } from './limits.js'
 import { authorizeWs, deleteRoomEverywhere, handleApi, safeDecode } from './api.js'
 import { D1ModerationStore } from './moderation.js'
 import { D1AssetStore, type AssetStore } from './assets.js'
@@ -136,8 +136,6 @@ export async function handleRequest(
   return json({ error: 'not found' }, 404)
 }
 
-export const ROOM_TTL_MS = 90 * 86_400_000
-export const CLEANUP_MAX_ROOMS = 100
 
 export interface CleanupDeps {
   store: TokenStore
