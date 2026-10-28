@@ -2,11 +2,11 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
-import { getMeta, getSource, hashText } from '@md-reader/core'
+import { getMeta, getSource, hashText, createDoc } from '@md-reader/core'
 import {
   __resetForTests, createRecord, findByOrigin, getRecord, touchRecord, listRecent,
   storeHandle, getHandle, storeBase, getBase, migrateLegacyRegistry, writeDocText, findOrCreateByOrigin,
-  docSlug, docParam, resolveDocParam, ensureShortKey,
+  docSlug, docParam, resolveDocParam, ensureShortKey, compactStoredDoc,
 } from './doc-registry'
 
 let legacy: unknown[] = []
@@ -319,5 +319,25 @@ describe('short links', () => {
     for (let i = 0; i < 30; i++) keys.add((await createRecord({ title: 'n', originKind: 'drop', originPath: null })).shortKey)
     expect(keys.size).toBe(31)
     expect((await ensureShortKey(r.docId)).shortKey).toBe(r.shortKey)
+  })
+
+  it('compactStoredDoc replaces stored doc with a small one', async () => {
+    const r = await createRecord({ title: 'C', originKind: 'drop', originPath: null })
+    const doc = createDoc({ title: 'C', source: 'hello' })
+    const src = getSource(doc)
+    for (let i = 0; i < 300; i++) { src.insert(src.length, 'x' + i); src.delete(5, src.length - 5) }
+    const p = new IndexeddbPersistence(r.persistenceName, doc)
+    await p.whenSynced
+    await p.destroy()
+    const big = Y.encodeStateAsUpdate(doc).length
+    await compactStoredDoc(r.docId, doc)
+    const d2 = new Y.Doc({ gc: false })
+    const p2 = new IndexeddbPersistence(r.persistenceName, d2)
+    await p2.whenSynced
+    expect(getSource(d2).toString()).toBe(src.toString())
+    const small = Y.encodeStateAsUpdate(d2).length
+    console.log('registry compact sizes', big, small)
+    expect(small).toBeLessThan(big / 2)
+    await p2.destroy()
   })
 })

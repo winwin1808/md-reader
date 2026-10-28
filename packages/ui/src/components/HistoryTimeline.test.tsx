@@ -105,4 +105,25 @@ describe('HistoryTimeline', () => {
   it('(f) historyLabel Khôi phục', () => {
     expect(historyLabel('Khôi phục: save')).toBe('Khôi phục: Đã lưu')
   })
+  it('trả focus về nút đã mở khi đóng', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const { unmount } = setup()
+    expect(document.activeElement).not.toBe(opener)
+    unmount()
+    expect(document.activeElement).toBe(opener)
+    opener.remove()
+  })
+  it('phân trang 50 mục, Xem thêm nạp thêm 50', () => {
+    const many: HistoryEntry[] = Array.from({ length: 120 }, (_, i) => ({
+      id: 'e' + i, actor: 'An', ts: i, label: 'save', clientIds: [1], snapshot: snap,
+    }))
+    const { container, getByText } = setup({ entries: many })
+    expect(opts(container)).toHaveLength(50)
+    fireEvent.click(getByText('Xem thêm'))
+    expect(opts(container)).toHaveLength(100)
+    fireEvent.click(getByText('Xem thêm'))
+    expect(opts(container)).toHaveLength(120)
+  })
 })

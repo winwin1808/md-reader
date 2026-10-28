@@ -56,6 +56,25 @@ export function ConfirmAgentDialog(p: {
         aria-modal="true"
         aria-labelledby={titleId}
         style={{ maxWidth: 440, height: 'auto' }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Tab') return
+          const items = Array.from(
+            e.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ),
+          )
+          const first = items[0]
+          const last = items[items.length - 1]
+          if (!first || !last) return
+          const cur = document.activeElement
+          if (!e.shiftKey && cur === last) {
+            e.preventDefault()
+            first.focus()
+          } else if (e.shiftKey && cur === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        }}
       >
         <div className="conflict-modal-header">
           <h2 id={titleId}>{t('agent.title')}</h2>
@@ -63,19 +82,6 @@ export function ConfirmAgentDialog(p: {
         <div style={{ padding: '16px 20px' }}>
           <p style={{ margin: 0 }}>{body}</p>
           <div
-            onKeyDown={(e) => {
-              if (e.key !== 'Tab') return
-              const first = denyRef.current
-              const last = allowRef.current
-              if (!first || !last) return
-              if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault()
-                first.focus()
-              } else if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault()
-                last.focus()
-              }
-            }}
             style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button type="button" className="conflict-btn" ref={denyRef} onClick={p.onDeny}>
               {t('agent.deny')}

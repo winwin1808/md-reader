@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, onTestFinished } from 'vitest'
 import * as Y from 'yjs'
 import { createDoc, ensureDoc, getHistory, getSource, createCheckpointTracker } from '@md-reader/core'
 import { textHash, type BridgeRequest } from '@md-reader/core/bridge'
@@ -94,6 +94,22 @@ describe('createBridgeExecutor', () => {
       expect(all.filter((d) => 'insert' in d)).toHaveLength(1)
       void doc
     })
+    it('reuses the MCP client id on this machine across updates (local map, not in the doc)', async () => {
+      const store: Record<string, unknown> = {}
+      vi.stubGlobal('chrome', { storage: { local: { get: async (k: string) => ({ [k]: store[k] }), set: async (o: Record<string, unknown>) => { Object.assign(store, o) } } } })
+      try {
+        const { doc, s } = real('one two three')
+        const run = createBridgeExecutor(() => s)
+        await run(upd('ONE two three', await textHash('one two three')))
+        const actors = doc.getMap('meta').get('actors') as Y.Map<string>
+        const n = [...actors.values()].filter((v) => v === 'test').length
+        expect(n).toBe(1)
+        expect(Object.keys(store)).toEqual(['mdr-mcp-actor:d1:test'])
+        await run(upd('ONE TWO three', await textHash('ONE two three')))
+        expect([...actors.values()].filter((v) => v === 'test').length).toBe(1)
+        expect(doc.getMap('meta').has('mcpActors')).toBe(false)
+      } finally { vi.unstubAllGlobals() }
+    })
     it('converges with a concurrent replica edit', async () => {
       const a = real('first para\n\nlast para')
       const bDoc = new Y.Doc({ gc: false })
@@ -131,7 +147,25 @@ describe('createBridgeExecutor', () => {
       const ai = [...ids].filter((c) => c !== doc.clientID)
       expect(ai.length).toBeGreaterThan(0)
       const actors = doc.getMap('meta').get('actors') as Y.Map<string>
-      for (const c of ai) expect(actors.get(String(c))).toBe('AI')
+      for (const c of ai) expect(actors.get(String(c))).toBe('test')
+    })
+    it('two updates from one client share one actor entry named after it; other client adds a second', async () => {
+      const store: Record<string, unknown> = {}
+      vi.stubGlobal('chrome', { storage: { local: { get: async (k: string) => ({ [k]: store[k] }), set: async (o: Record<string, unknown>) => { Object.assign(store, o) } } } })
+      onTestFinished(() => { vi.unstubAllGlobals() })
+      const { doc, yText, s } = real('one two three')
+      const run = (c: string) => createRaw(() => s)
+      const exec = createRaw(() => s)
+      const before = Object.keys((doc.getMap('meta').get('actors') as Y.Map<string>).toJSON()).length
+      await exec(upd('ONE two three', await textHash('one two three')), 'Claude Code')
+      await exec(upd('ONE TWO three', await textHash('ONE two three')), 'Claude Code')
+      const actors = doc.getMap('meta').get('actors') as Y.Map<string>
+      expect(Object.keys(actors.toJSON()).length).toBe(before + 1)
+      expect([...actors.values()].filter((v) => v.includes('Claude Code'))).toHaveLength(1)
+      await exec(upd('ONE TWO THREE', await textHash('ONE TWO three')), 'Cursor')
+      expect(Object.keys(actors.toJSON()).length).toBe(before + 2)
+      expect(yText.toString()).toBe('ONE TWO THREE')
+      void run
     })
     it('waits for checkpoints then applies; never ready -> TIMEOUT', async () => {
       const { doc, yText, s } = real('one')
@@ -171,7 +205,7 @@ describe('createBridgeExecutor', () => {
       expect(labels()).toHaveLength(0)
       await run(upd('two', await textHash('one')))
       expect(labels()).toHaveLength(1)
-      expect(labels()[0]!.actor).toBe('AI')
+      expect(labels()[0]!.actor).toBe('test')
     })
   })
 

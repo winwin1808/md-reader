@@ -296,6 +296,13 @@ export class DocRoom extends YServer<Env> {
       if (typeof prefix !== 'string' || prefix.length < 1 || prefix.length > 32) return new Response('bad request', { status: 400 })
       this.revoked.add(prefix)
       await this.ctx.storage.put('revoked:' + prefix, Date.now())
+      const owners = (this.clientOwners ??= new Map())
+      for (const [k, v] of await this.ctx.storage.list({ prefix: 'owner:' })) {
+        if (v === prefix) {
+          await this.ctx.storage.delete(k)
+          owners.delete(Number(k.slice('owner:'.length)))
+        }
+      }
       for (const c of [...this.getConnections()]) {
         if ((c.state as { prefix?: string } | null)?.prefix === prefix) c.close(4410, 'revoked')
       }

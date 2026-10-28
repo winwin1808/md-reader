@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { chmod, mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defaultPairPath, loadOrCreateIdentity } from './pairing';
@@ -92,5 +92,37 @@ describe('identity v2', () => {
     const baks = (await readdir(dir)).filter((f) => f.startsWith('mcp.json.bak-'));
     expect(baks.length).toBe(1);
     expect(await readFile(join(dir, baks[0]!), 'utf8')).toBe('{nope');
+  });
+});
+
+describe('15k concurrency', () => {
+  it('parallel create returns the same key, file 0600', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    const ids = await Promise.all([1, 2, 3, 4].map(() => loadOrCreateIdentity(p)));
+    expect(new Set(ids.map((i) => i.publicKey)).size).toBe(1);
+    if (process.platform !== 'win32') expect((await stat(p)).mode & 0o777).toBe(0o600);
+  });
+  it('parallel pins of different keys: exactly one wins, no lost update', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    const a = await loadOrCreateIdentity(p);
+    const b = await loadOrCreateIdentity(p);
+    const r = await Promise.allSettled([a.pinExtKey('K1'), b.pinExtKey('K2')]);
+    expect(r.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    const f = JSON.parse(await readFile(p, 'utf8'));
+    expect(['K1', 'K2']).toContain(f.extKey);
+    expect(f.privateKey).toBeTruthy();
+    expect((await readdir(dir)).filter((n) => n.endsWith('.lock'))).toEqual([]);
+  });
+  it('removes a stale lock older than 30s', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mdr-'));
+    const p = join(dir, 'mcp.json');
+    const a = await loadOrCreateIdentity(p);
+    await writeFile(`${p}.lock`, '');
+    const old = new Date(Date.now() - 60_000);
+    await utimes(`${p}.lock`, old, old);
+    await a.pinExtKey('K1');
+    expect(JSON.parse(await readFile(p, 'utf8')).extKey).toBe('K1');
   });
 });

@@ -8,10 +8,19 @@ export function peerColor(clientId: number): string {
   return `var(--peer-${n})`
 }
 
+function firstGrapheme(w: string): string {
+  const n = w.normalize('NFC')
+  const Seg = (Intl as unknown as { Segmenter?: new (l?: string, o?: { granularity: string }) => { segment(s: string): Iterable<{ segment: string }> } }).Segmenter
+  if (Seg) {
+    for (const g of new Seg(undefined, { granularity: 'grapheme' }).segment(n)) return g.segment
+  }
+  return Array.from(n)[0] ?? ''
+}
+
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
   if (words.length === 0) return '?'
-  return words.map((w) => Array.from(w)[0]!.toUpperCase()).join('')
+  return words.map((w) => firstGrapheme(w).toLocaleUpperCase()).join('')
 }
 
 export function PresenceBar({ peers, max = 5 }: { peers: Peer[]; max?: number }) {

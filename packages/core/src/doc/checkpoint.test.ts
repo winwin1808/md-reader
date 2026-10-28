@@ -144,3 +144,21 @@ describe('checkpoint tracker', () => {
     t.dispose()
   })
 })
+
+describe('registerActor bounded wait', () => {
+  it('stops observing after timeout', () => {
+    vi.useFakeTimers()
+    const d = new Y.Doc({ gc: false })
+    registerActor(d, 'Z', 1000)
+    vi.advanceTimersByTime(1001)
+    d.getMap('meta').set('actors', new Y.Map())
+    expect((d.getMap('meta').get('actors') as Y.Map<string>).size).toBe(0)
+  })
+  it('registers if map appears before timeout', () => {
+    vi.useFakeTimers()
+    const d = new Y.Doc({ gc: false })
+    registerActor(d, 'Z', 1000)
+    d.getMap('meta').set('actors', new Y.Map())
+    expect((d.getMap('meta').get('actors') as Y.Map<string>).get(String(d.clientID))).toBe('Z')
+  })
+})

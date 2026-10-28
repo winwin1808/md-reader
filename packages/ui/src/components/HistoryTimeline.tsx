@@ -14,6 +14,8 @@ export interface HistoryTimelineProps {
   now?: () => number
 }
 
+const PAGE = 50
+
 export function historyLabel(label: string, t: TFunction = createT('vi')): string {
   if (label === 'save') return t('history.save')
   if (label === 'auto') return t('history.auto')
@@ -32,6 +34,11 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
   const listRef = useRef<HTMLUListElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const sorted = useMemo(() => [...entries].sort((a, b) => b.ts - a.ts), [entries])
+  const [limit, setLimit] = useState(PAGE)
+  const visible = sorted.slice(0, limit)
+  const openerRef = useRef<HTMLElement | null>(
+    typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null,
+  )
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     const items = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])
@@ -59,6 +66,10 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
     const items = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]')
     const target = listRef.current?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]') ?? items?.[0] ?? closeRef.current
     target?.focus()
+    return () => {
+      const o = openerRef.current
+      if (o && o !== document.body && o.isConnected) o.focus()
+    }
   }, [])
 
   return (
@@ -71,7 +82,7 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
         <p>{t('history.empty')}</p>
       ) : (
         <ul role="listbox" aria-label={t('history.list')} ref={listRef}>
-          {sorted.map((en) => {
+          {visible.map((en) => {
             const others = Array.from(
               new Set(
                 en.clientIds
@@ -109,6 +120,11 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
             )
           })}
         </ul>
+      )}
+      {sorted.length > limit && (
+        <button type="button" className="history-more" onClick={() => setLimit((n) => n + PAGE)}>
+          {t('history.more')}
+        </button>
       )}
     </aside>
   )

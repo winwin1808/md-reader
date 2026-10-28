@@ -15,17 +15,37 @@ let cached: Promise<string> | null = null
 
 export function __resetInstallKeyCache(): void { cached = null }
 
-export function getInstallKey(store?: Store): Promise<string> {
-  if (cached) return cached
-  const p = (async () => {
-    const s: Store | undefined = store ?? (typeof chrome !== 'undefined' ? (chrome.storage?.local as unknown as Store | undefined) : undefined)
-    if (!s) return newInstallKey() // no extension storage (tests / non-extension page): ephemeral key
+export class InstallKeyStorageError extends Error {
+  readonly code = 'storage'
+  constructor(cause: unknown) {
+    super('install key storage failed')
+    this.name = 'InstallKeyStorageError'
+    ;(this as { cause?: unknown }).cause = cause
+  }
+}
+
+async function readOrCreate(s: Store): Promise<string> {
+  try {
     const got = await s.get(INSTALL_KEY_STORAGE)
     const v = got[INSTALL_KEY_STORAGE]
     if (typeof v === 'string' && v.length >= 16 && v.length <= 200) return v
     const k = newInstallKey()
     await s.set({ [INSTALL_KEY_STORAGE]: k })
     return k
+  } catch (e) {
+    throw new InstallKeyStorageError(e)
+  }
+}
+
+export function getInstallKey(store?: Store): Promise<string> {
+  if (cached) return cached
+  const p = (async () => {
+    const s: Store | undefined = store ?? (typeof chrome !== 'undefined' ? (chrome.storage?.local as unknown as Store | undefined) : undefined)
+    if (!s) return newInstallKey() // no extension storage (tests / non-extension page): ephemeral key
+    // Serialise across tabs: the lock callback re-reads storage before generating.
+    const locks = typeof navigator !== 'undefined' ? (navigator as { locks?: LockManager }).locks : undefined
+    if (locks?.request) return locks.request('mdr-install-key', () => readOrCreate(s))
+    return readOrCreate(s)
   })()
   cached = p
   p.catch(() => { if (cached === p) cached = null })

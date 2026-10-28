@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider, I18nProvider, resolveLocale } from '@md-reader/ui'
-import 'katex/dist/katex.min.css'
+import { onMathLoaded } from '@md-reader/core/plugins'
 import '@md-reader/ui/fonts.css'
 import './web.css'
 import { SharePage } from './SharePage'
@@ -11,6 +11,8 @@ export function webLocale(search: string = location.search, langs: readonly stri
   const q = new URLSearchParams(search).get('lang')
   return resolveLocale(q === 'vi' || q === 'en' ? q : 'auto', langs)
 }
+
+onMathLoaded(() => { void import('katex/dist/katex.min.css') })
 
 const container = document.getElementById('root')
 if (container) {

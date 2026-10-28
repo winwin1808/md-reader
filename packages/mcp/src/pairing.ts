@@ -1,5 +1,5 @@
 import { randomBytes, type webcrypto } from 'node:crypto';
-import { chmod, link, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, importPrivateJwk } from '@md-reader/core/bridge-auth';
 import { dirname, join } from 'node:path';
@@ -89,6 +89,38 @@ async function createExclusive(path: string, file: PairFileV2): Promise<boolean>
   return true;
 }
 
+async function withLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
+  const lock = `${path}.lock`;
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  const deadline = Date.now() + 2000;
+  let delay = 10;
+  for (;;) {
+    try {
+      const h = await open(lock, 'wx', 0o600);
+      await h.close();
+      break;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      try {
+        if (Date.now() - (await stat(lock)).mtimeMs > 30_000) {
+          await rm(lock, { force: true });
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() > deadline) throw new Error('pairing file locked');
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(delay * 2, 200);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await rm(lock, { force: true });
+  }
+}
+
 async function readState(path: string): Promise<{ file: PairFileV2 | null; privateKey: CryptoKey | null; reason: string }> {
   let raw: string;
   try {
@@ -148,10 +180,12 @@ export async function loadOrCreateIdentity(path: string = defaultPairPath()): Pr
     publicKey: current.publicKey,
     extKey: current.extKey ?? null,
     async pinExtKey(k: string) {
-      const st = await readState(path);
-      if (!st.file) throw new Error('pairing file unreadable');
-      if (st.file.extKey !== undefined && st.file.extKey !== k) throw new Error('PINNED');
-      if (st.file.extKey !== k) await writeAtomic(path, { ...st.file, extKey: k });
+      await withLock(path, async () => {
+        const st = await readState(path);
+        if (!st.file) throw new Error('pairing file unreadable');
+        if (st.file.extKey !== undefined && st.file.extKey !== k) throw new Error('PINNED');
+        if (st.file.extKey !== k) await writeAtomic(path, { ...st.file, extKey: k });
+      });
       identity.extKey = k;
     },
   };

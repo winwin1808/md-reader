@@ -14,7 +14,7 @@ function seeded(text: string) {
 describe('applyTextChangeAsActor', () => {
   it('sets text to next and returns true', () => {
     const d = seeded('hello world foo')
-    expect(applyTextChangeAsActor(d, 'hello there foo', 'AI')).toBe(true)
+    expect(applyTextChangeAsActor(d, 'hello there foo', 'AI')).toEqual(expect.any(Number))
     expect(getSource(d).toString()).toBe('hello there foo')
   })
 
@@ -75,5 +75,43 @@ describe('applyTextChangeAsActor', () => {
     Y.applyUpdate(a, Y.encodeStateAsUpdate(b))
     expect(getSource(a).toString()).toBe(getSource(b).toString())
     expect(getSource(a).toString()).toBe('line ONE\n\nline two\ntail\n')
+  })
+
+  it('reuses clientID only via opts.reuseClientId; actors map does not grow', () => {
+    const d = seeded('a b c')
+    const id = applyTextChangeAsActor(d, 'A b c', 'Claude Code') as number
+    const n = actors(d)!.size
+    expect(applyTextChangeAsActor(d, 'A B c', 'Claude Code', undefined, { reuseClientId: id })).toBe(id)
+    applyTextChangeAsActor(d, 'A B C', 'Claude Code', undefined, { reuseClientId: id })
+    expect(actors(d)!.size).toBe(n)
+    expect(getSource(d).toString()).toBe('A B C')
+    applyTextChangeAsActor(d, 'A B CC', 'Other', undefined, { reuseClientId: id })
+    expect(actors(d)!.size).toBe(n + 1)
+    expect(d.getMap('meta').has('mcpActors')).toBe(false)
+  })
+
+  it('two machines with the same client name get different ids and merge cleanly', () => {
+    const base = seeded('one\n\ntwo\n')
+    const a = new Y.Doc({ gc: false }), b = new Y.Doc({ gc: false }), c = new Y.Doc({ gc: false })
+    Y.applyUpdate(a, Y.encodeStateAsUpdate(base))
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(base))
+    const ia = applyTextChangeAsActor(a, 'ONE\n\ntwo\n', 'Claude') as number
+    const ib = applyTextChangeAsActor(b, 'one\n\nTWO\n', 'Claude') as number
+    expect(ia).not.toBe(ib)
+    Y.applyUpdate(c, Y.encodeStateAsUpdate(base))
+    Y.applyUpdate(c, Y.encodeStateAsUpdate(a))
+    Y.applyUpdate(c, Y.encodeStateAsUpdate(b))
+    expect(getSource(c).toString()).toBe('ONE\n\nTWO\n')
+    expect(c.getMap('meta').has('mcpActors')).toBe(false)
+  })
+
+  it('never reuses a human clientID even if a name matches', () => {
+    const d = seeded('abc')
+    d.getMap('meta').set('actors', new Y.Map<string>())
+    actors(d)!.set(String(d.clientID), 'Human')
+    const id = applyTextChangeAsActor(d, 'abd', 'Human', undefined, { reuseClientId: d.clientID })
+    expect(id).not.toBe(d.clientID)
+    expect(getSource(d).toString()).toBe('abd')
+    expect(actors(d)!.get(String(d.clientID))).toBe('Human')
   })
 })

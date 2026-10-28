@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence, storeState } from 'y-indexeddb'
 import type { RoomBinding } from '@md-reader/core'
 import { createT } from '@md-reader/ui'
-import { ensureDoc, getSource, getMeta, applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core'
+import { compactDoc, ensureDoc, getSource, getMeta, applyTextChange, ORIGIN_LOAD, hashText } from '@md-reader/core'
 
 export type OriginKind = 'url' | 'file' | 'drop'
 export interface DocRecord {
@@ -411,4 +411,30 @@ export async function getDirHandle(docId: string): Promise<FileSystemDirectoryHa
   const db = await openDb()
   const v = await req(db.transaction('handles').objectStore('handles').get('dir:' + docId))
   return (v as FileSystemDirectoryHandle | undefined) ?? null
+}
+
+/**
+ * Replaces the stored Y.Doc of `docId` with a compacted one (current state only).
+ * Callers must reopen their session afterwards; the passed `doc` is left untouched.
+ */
+export async function compactStoredDoc(docId: string, doc: Y.Doc): Promise<void> {
+  const rec = await getRecord(docId)
+  if (!rec) throw new Error('Record not found: ' + docId)
+  const body = async () => {
+    const update = compactDoc(doc)
+    const stale = new IndexeddbPersistence(rec.persistenceName, new Y.Doc({ gc: false }))
+    await stale.whenSynced
+    await stale.clearData()
+    const fresh = new Y.Doc({ gc: false })
+    const p = new IndexeddbPersistence(rec.persistenceName, fresh)
+    try {
+      await p.whenSynced
+      Y.applyUpdate(fresh, update)
+    } finally {
+      try { await storeState(p, true) } finally { await p.destroy() }
+    }
+  }
+  const locks = globalThis.navigator?.locks
+  if (!locks) return body()
+  return locks.request('mdr:import:compact:' + docId, body) as Promise<void>
 }

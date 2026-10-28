@@ -283,3 +283,55 @@ describe('mdastToDocx styles (Lề sách)', () => {
     expect(doc).toContain('w:val="Code"')
   })
 })
+
+describe('mdastToDocx math (OMML)', () => {
+  async function docXml(children: Root['children']): Promise<string> {
+    const blob = await mdastToDocx({ mdast: { type: 'root', children } })
+    const req = createRequire(createRequire(import.meta.url).resolve('docx'))
+    const JSZip = req('jszip')
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
+    return zip.file('word/document.xml').async('string')
+  }
+  const block = (value: string): Root['children'] => [{ type: 'math', value } as never]
+  const inline = (value: string): Root['children'] => [
+    { type: 'paragraph', children: [{ type: 'text', value: 'a ' }, { type: 'inlineMath', value } as never] },
+  ]
+
+  it('fraction -> m:f', async () => {
+    const x = await docXml(block('\\frac{a}{b}'))
+    expect(x).toContain('<m:f>')
+  })
+  it('superscript, subscript, radical', async () => {
+    expect(await docXml(block('x^2'))).toContain('m:sSup')
+    expect(await docXml(block('x_i'))).toContain('m:sSub')
+    expect(await docXml(block('x_i^2'))).toContain('m:sSubSup')
+    expect(await docXml(block('\\sqrt{x}'))).toContain('m:rad')
+    expect(await docXml(block('\\sqrt[3]{x}'))).toContain('m:deg')
+  })
+  it('sum / integral / brackets', async () => {
+    const x = await docXml(block('\\sum_{i=0}^{n} \\int_0^1 \\left( a \\right)'))
+    expect(x).toContain('m:nary')
+    expect(x).toContain('m:d>')
+  })
+  it('greek and symbols', async () => {
+    const x = await docXml(block('\\alpha \\leq \\infty'))
+    expect(x).toContain('α')
+    expect(x).toContain('≤')
+    expect(x).toContain('∞')
+  })
+  it('unknown command falls back to raw TeX', async () => {
+    const x = await docXml(block('\\foo{x}'))
+    expect(x).not.toContain('<m:oMath')
+    expect(x).toContain('\\foo{x}')
+    const y = await docXml(inline('\\foo'))
+    expect(y).not.toContain('<m:oMath')
+    expect(y).toContain('\\foo')
+  })
+  it('inline math stays in the paragraph; block is centered', async () => {
+    const i = await docXml(inline('x^2'))
+    expect(i).toContain('m:sSup')
+    expect(i).not.toContain('w:jc')
+    const b = await docXml(block('x^2'))
+    expect(b).toContain('w:jc w:val="center"')
+  })
+})

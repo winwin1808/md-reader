@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { MemoryModerationStore, D1ModerationStore, adminAuthorized } from './moderation.js'
 
 describe('MemoryModerationStore', () => {
@@ -23,9 +23,13 @@ describe('D1ModerationStore', () => {
       prepare(sql: string) {
         return {
           bind(...args: unknown[]) {
-            return { run: async () => { calls.push({ sql, args }) } }
+            return { run: async () => { calls.push({ sql, args }) }, sql, args }
           },
         }
+      },
+      async batch(stmts: Array<{ sql: string; args: unknown[] }>) {
+        for (const st of stmts) calls.push({ sql: st.sql, args: st.args })
+        return []
       },
     } as unknown as D1Database
     const s = new D1ModerationStore(db, () => 5)
@@ -39,6 +43,21 @@ describe('D1ModerationStore', () => {
       sql: 'INSERT OR IGNORE INTO takedowns (room_id, created_at) VALUES (?, ?)',
       args: ['r', 5],
     })
+  })
+})
+
+describe('D1ModerationStore atomic takedown (15a)', () => {
+  it('addTakedown goes through db.batch, never a bare run()', async () => {
+    const batch = vi.fn(async () => { throw new Error('mid-batch') })
+    const run = vi.fn(async () => {})
+    const db = {
+      prepare: () => ({ bind: () => ({ run }) }),
+      batch,
+    } as unknown as D1Database
+    const s = new D1ModerationStore(db, () => 5)
+    await expect(s.addTakedown('r')).rejects.toThrow('mid-batch')
+    expect(batch).toHaveBeenCalledTimes(1)
+    expect(run).not.toHaveBeenCalled()
   })
 })
 

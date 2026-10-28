@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isMarkdownUrl, isStaleCacheEntry, isGithubBlobMarkdownUrl, makeCacheEntry, readCacheEntry } from './md-url'
+import { readFileSync } from 'node:fs'
+import { isExpiryActive, setExpiry, isMarkdownUrl, isStaleCacheEntry, isGithubBlobMarkdownUrl, makeCacheEntry, readCacheEntry } from './md-url'
 
 describe('isMarkdownUrl', () => {
   it.each([
@@ -55,5 +56,31 @@ describe('cache entries', () => {
     expect(readCacheEntry({ text: 't', ts: 0 }, 5 * 60_000)).toBe('t')
     expect(readCacheEntry('legacy', 11 * 60_000)).toBe('legacy')
     expect(isStaleCacheEntry({ weird: 1 }, 1)).toBe(true)
+  })
+})
+
+describe('mixed-case names', () => {
+  it.each(['https://e.com/Readme.Md', 'https://e.com/NOTES.Markdown', 'https://e.com/a.mDx?x=1'])(
+    'true: %s', (u) => expect(isMarkdownUrl(u)).toBe(true))
+  it('false: a.mdz', () => expect(isMarkdownUrl('https://e.com/a.mdz')).toBe(false))
+})
+
+describe('manifest patterns', () => {
+  const m = JSON.parse(readFileSync('public/manifest.json', 'utf8'))
+  const lists = [m.host_permissions, m.content_scripts[0].matches]
+  it.each(['*://*/*.Md', '*://*/*.MD?*', '*://*/*.mD?*', '*://*/*.Markdown', '*://*/*.Mdx?*', '*://*/*.MARKDOWN?*'])(
+    'has %s', (p) => lists.forEach((l) => expect(l).toContain(p)))
+})
+
+describe('expiry map', () => {
+  it('deletes expired on read, sweeps on set', () => {
+    const map = new Map<string, number>()
+    setExpiry(map, 'a', 100, 0)
+    expect(isExpiryActive(map, 'a', 50)).toBe(true)
+    expect(isExpiryActive(map, 'a', 100)).toBe(false)
+    expect(map.has('a')).toBe(false)
+    setExpiry(map, 'b', 100, 0)
+    setExpiry(map, 'c', 300, 200)
+    expect(map.has('b')).toBe(false)
   })
 })

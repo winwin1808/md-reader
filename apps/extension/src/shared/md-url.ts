@@ -63,3 +63,17 @@ export function isStaleCacheEntry(value: unknown, now: number, maxAgeMs = 600_00
   }
   return true
 }
+
+/** Expiry map helpers (worker revokedUntil): drop expired on read, sweep on set. */
+export function isExpiryActive(map: Map<string, number>, key: string, now = Date.now()): boolean {
+  const t = map.get(key)
+  if (t === undefined) return false
+  if (t > now) return true
+  map.delete(key)
+  return false
+}
+
+export function setExpiry(map: Map<string, number>, key: string, until: number, now = Date.now()): void {
+  for (const [k, t] of map) if (t <= now) map.delete(k)
+  map.set(key, until)
+}

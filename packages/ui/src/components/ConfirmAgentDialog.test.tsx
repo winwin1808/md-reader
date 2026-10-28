@@ -87,4 +87,18 @@ describe('ConfirmAgentDialog', () => {
     fireEvent.keyDown(deny, { key: 'Tab', shiftKey: true })
     expect(allow).toHaveFocus()
   })
+
+  it('Tab bẫy theo cả hộp, không chỉ hàng nút', () => {
+    render(
+      <ConfirmAgentDialog req={{ kind: 'revoke', docTitle: 'C', tokenPrefix: 'x' }} client="K" onAllow={vi.fn()} onDeny={vi.fn()} />,
+    )
+    const dialog = screen.getByRole('dialog')
+    const deny = screen.getByRole('button', { name: 'Từ chối' })
+    const allow = screen.getByRole('button', { name: 'Cho phép' })
+    allow.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(deny).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(allow).toHaveFocus()
+  })
 })

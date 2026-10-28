@@ -14,6 +14,8 @@ import type { RoomConnection } from '../collab/bindRoom'
 import type { RoomBinding } from '@md-reader/core'
 import { peerUser } from '@md-reader/ui'
 
+const CONNECTING_DISPLAY_DELAY_MS = 300
+
 let migrationOnce: Promise<unknown> | null = null
 
 function safeName(url: string): string {
@@ -43,6 +45,7 @@ export interface DocSession {
   syncStatus: SyncStatus
   awareness: RoomConnection['awareness'] | null
   persisted?: () => Promise<void>
+  suspendPersistence(): Promise<void>
 }
 
 export function useDocSession(opts: { docId: string | null; fileUrl: string | null; shortParam?: string | null; room?: RoomBinding | null; displayName?: string }): DocSession {
@@ -63,6 +66,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
   const checkpointsRef = useRef<CheckpointTracker | null>(null)
   const isFileContentSetRef = useRef<boolean>(false)
+  const suspendRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const syncedPromiseRef = useRef<Promise<unknown>>(Promise.resolve())
   const [externalChange, setExternalChange] = useState<{ remoteText: string; remoteHash: string } | null>(null)
 
@@ -127,6 +131,11 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     setNewerFormat(false)
     let cancelled = false
     let persistence: IndexeddbPersistence | null = null
+    suspendRef.current = async () => {
+      const p = persistence
+      persistence = null
+      if (p) await p.destroy()
+    }
     if (persistenceName) {
       try {
         persistence = new IndexeddbPersistence(persistenceName, doc)
@@ -244,8 +253,17 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   }, [doc, persistenceName, record])
 
   const persistedRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const suspendPersistence = useCallback(() => suspendRef.current(), [])
   const persisted = useCallback(() => persistedRef.current(), [])
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('off')
+  // rawStatus is the real state; syncStatus is what the toolbar shows: 'connecting' only
+  // after CONNECTING_DISPLAY_DELAY_MS, every other state immediately.
+  const [rawStatus, setSyncStatus] = useState<SyncStatus>('off')
+  const [syncStatus, setDisplayStatus] = useState<SyncStatus>('off')
+  useEffect(() => {
+    if (rawStatus !== 'connecting') { setDisplayStatus(rawStatus); return }
+    const timer = setTimeout(() => setDisplayStatus('connecting'), CONNECTING_DISPLAY_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [rawStatus])
   const [awareness, setAwareness] = useState<RoomConnection['awareness'] | null>(null)
   const nameRef = useRef(displayName)
   const awarenessRef = useRef<RoomConnection['awareness'] | null>(null)
@@ -258,8 +276,12 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const roomServerUrl = room?.serverUrl
   const roomId = room?.roomId
   const roomToken = room?.ownerToken
+  const boundRoomRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!record || !roomServerUrl || !roomId || !roomToken) return
+    if (!roomServerUrl || !roomId || !roomToken) { boundRoomRef.current = null; setSyncStatus('off'); setAwareness(null); return }
+    // Different room than the last bind: drop the old room's peers now (same room keeps them, no flicker).
+    if (boundRoomRef.current !== roomId) { boundRoomRef.current = null; setAwareness(null) }
+    if (!record) { setSyncStatus('off'); setAwareness(null); return }
     let cancelled = false
     let conn: RoomConnection | null = null
     let unsub: (() => void) | null = null
@@ -269,6 +291,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       if (cancelled) return
       conn = bindRoom(doc, { serverUrl: roomServerUrl, roomId, token: roomToken, name: nameRef.current })
       awarenessRef.current = conn.awareness
+      boundRoomRef.current = roomId
       setAwareness(conn.awareness)
       unsub = conn.status$(setSyncStatus)
       untrack = trackLocalActor(doc, () => nameRef.current)
@@ -279,8 +302,8 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       untrack?.()
       conn?.destroy()
       awarenessRef.current = null
-      setSyncStatus('off')
-      setAwareness(null)
+      // No 'off' here: a rebind overwrites the status via status$, and the
+      // no-room branch above sets 'off' when sharing is really disabled.
     }
   }, [doc, record, roomServerUrl, roomId, roomToken])
 
@@ -468,5 +491,6 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     syncStatus,
     awareness,
     persisted,
+    suspendPersistence,
   }
 }
