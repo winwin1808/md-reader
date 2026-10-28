@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { __resetForTests, createRecord, getRecord } from '../doc-registry'
+import { __resetForTests, createRecord, getRecord, touchRecord } from '../doc-registry'
 import { useShare } from './useShare'
 
 const SERVER = 'https://x.test'
@@ -386,6 +386,38 @@ describe('useShare', () => {
       await act(async () => { await h.result.current.revokeAll() })
       expect(h.result.current.links).toHaveLength(4)
       expect(h.result.current.links.every((l) => l.revokedAt !== null)).toBe(true)
+    })
+
+    it('revokeAll in flight on A, switch to B: B links/tokens untouched, A correct on return', async () => {
+      const B = (await createRecord({ title: 'b', originKind: 'drop', originPath: null })).docId
+      await touchRecord(B, { room: { serverUrl: SERVER, roomId: 'r2', ownerToken: 'own2' } })
+      fetchMock.mockReturnValueOnce(json({ roomId: 'r1', ownerToken: 'own' }))
+      const h = renderHook((p: { id: string }) => useShare({ docId: p.id, serverUrl: SERVER }), { initialProps: { id: docId } })
+      await act(async () => { await h.result.current.enable() })
+      fetchMock.mockReturnValueOnce(json([link('', 'aaaa')]))
+      await act(async () => { await h.result.current.refresh() })
+      let release!: () => void
+      fetchMock.mockReturnValueOnce(new Promise((r) => { release = () => r(new Response(JSON.stringify({ revoked: 1 }), { status: 200 })) }))
+      let pr!: Promise<unknown>
+      act(() => { pr = h.result.current.revokeAll() })
+      h.rerender({ id: B })
+      await waitFor(() => expect(h.result.current.binding?.roomId).toBe('r2'))
+      const bLink = { ...link('', 'bbbb'), roomId: 'r2' }
+      fetchMock.mockReturnValueOnce(json([bLink]))
+      await act(async () => { await h.result.current.refresh() })
+      const callsBefore = fetchMock.mock.calls.length
+      const bState = h.result.current.links
+      await act(async () => { release(); await pr })
+      expect(fetchMock.mock.calls.length).toBe(callsBefore) // no refresh/DELETE after stale
+      expect(h.result.current.links).toBe(bState)
+      expect(h.result.current.links.map((l) => [l.tokenPrefix, l.revokedAt])).toEqual([['bbbb', null]])
+      expect(h.result.current.error).toBeNull()
+      // back to A: server says aaaa is revoked
+      h.rerender({ id: docId })
+      await waitFor(() => expect(h.result.current.binding?.roomId).toBe('r1'))
+      fetchMock.mockReturnValueOnce(json([{ ...link('', 'aaaa'), revokedAt: 7 }]))
+      await act(async () => { await h.result.current.refresh() })
+      expect(h.result.current.links.map((l) => [l.tokenPrefix, l.revokedAt])).toEqual([['aaaa', 7]])
     })
 
     it('rejects when not bound', async () => {
