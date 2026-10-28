@@ -5,7 +5,7 @@ import { createRecord, writeDocText, deleteRecord, listRecent, getRecord, docQue
 import {
   BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
-import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry } from '../shared/md-url'
+import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry, isExpiryActive, setExpiry } from '../shared/md-url'
 
 chrome.action.onClicked.addListener(async (tab) => {
   const tabUrl = tab?.url || ''
@@ -135,7 +135,7 @@ const bridge = createBridge({
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
   requestPairing: ({ port, client, keyHash }) => {
-    if ((revokedUntil.get(keyHash) ?? 0) > Date.now()) return
+    if (isExpiryActive(revokedUntil, keyHash)) return
     void chrome.tabs.create({
       url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client) + '&key=' + keyHash),
     })
@@ -192,7 +192,7 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   for (const a of before) {
     if (!after.has(a.keyHash)) {
       bridge.revoke(a.keyHash)
-      revokedUntil.set(a.keyHash, Date.now() + 60_000)
+      setExpiry(revokedUntil, a.keyHash, Date.now() + 60_000)
     }
   }
   if (parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].oldValue).enabled !== next.enabled) void tick()
