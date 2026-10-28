@@ -2,6 +2,17 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 15 — Trả nợ phía người dùng và máy chủ (2026-10-28)
+
+Plan `docs/superpowers/plans/2026-10-28-phase-15-plan.md` (15a..15o). Đã làm: máy chủ `POST /api/rooms/:id/links/revoke-all` (extension dùng, fallback từng link),
+takedown qua D1 batch, giới hạn 413/awareness theo byte, thu hồi link dọn `owner:*`; useShare không để phòng mồ côi khi đổi tài liệu, khoá bản cài một cho mọi tab
+(Web Lock) và lỗi storage riêng; KaTeX tải lười (app.js gz 511→436 KB, web 393→315 KB); Word xuất công thức OMML; ngăn lịch sử trả focus + phân trang 50;
+ConfirmAgentDialog bẫy Tab đủ; manifest nhận `.Md/.Markdown/...`; `revokedUntil` tự dọn; `initials()` theo grapheme; `registerActor` chờ ≤10 s;
+trạng thái đồng bộ không nháy (connecting trễ 300 ms); MCP ghi tên client, tái dùng clientID lưu cục bộ theo máy (`chrome.storage.local`, KHÔNG trong Y.Doc);
+CLI MCP khoá file khi ghim; "Làm gọn tài liệu" khi phòng đầy (xoá phòng → dừng IDB → `compactStoredDoc` → reload, chặn nhập suốt luồng; mất lịch sử/blame, link cũ hết hiệu lực).
+Test: core 278 · ui 484 · extension 452 · web 64 · api 216 · mcp 46 · e2e 8; typecheck/build 0; content.js gz 13.66 KB.
+**Nợ còn:** test thuần (flake IDB, test yếu, cổng 8787 e2e); làm gọn không tạm dừng autosave đĩa đã xếp hàng (ghi đúng nội dung, vô hại).
+
 ## Phase 14 — Đóng nợ rủi ro trước khi nộp store (2026-10-28)
 
 Plan `docs/superpowers/plans/2026-10-28-phase-14-plan.md`. Đã làm: máy chủ kiểm update của link sửa TRƯỚC khi áp (`peerUpdateViolation` trong
