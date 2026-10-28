@@ -17,6 +17,8 @@ export interface TokenStore {
   revoke(roomId: string, tokenPrefix: string): Promise<boolean>
   resolve(token: string): Promise<ResolvedToken | null>
   deleteRoom(roomId: string): Promise<boolean>
+  touchRoom(roomId: string): Promise<void>
+  idleRooms(before: number, limit: number): Promise<string[]>
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -56,7 +58,7 @@ interface LinkRow {
 
 export class MemoryTokenStore implements TokenStore {
   // rooms: roomId -> ownerTokenHash ; links: tokenHash -> LinkRow
-  readonly rooms = new Map<string, { ownerTokenHash: string; createdAt: number }>()
+  readonly rooms = new Map<string, { ownerTokenHash: string; createdAt: number; lastSeen: number | null }>()
   readonly links = new Map<string, LinkRow>()
   private seq = 0
 
@@ -65,7 +67,7 @@ export class MemoryTokenStore implements TokenStore {
   async createRoom(): Promise<CreateRoomResponse> {
     const roomId = newRoomId()
     const ownerToken = newToken()
-    this.rooms.set(roomId, { ownerTokenHash: await hashToken(ownerToken), createdAt: this.now() })
+    this.rooms.set(roomId, { ownerTokenHash: await hashToken(ownerToken), createdAt: this.now(), lastSeen: this.now() })
     return { roomId, ownerToken }
   }
 
@@ -126,6 +128,21 @@ export class MemoryTokenStore implements TokenStore {
   async deleteRoom(roomId: string): Promise<boolean> {
     for (const [h, r] of this.links) if (r.roomId === roomId) this.links.delete(h)
     return this.rooms.delete(roomId)
+  }
+
+  async touchRoom(roomId: string): Promise<void> {
+    const room = this.rooms.get(roomId)
+    const now = this.now()
+    if (room && (room.lastSeen === null || room.lastSeen < now - 86_400_000)) room.lastSeen = now
+  }
+
+  async idleRooms(before: number, limit: number): Promise<string[]> {
+    return [...this.rooms.entries()]
+      .map(([id, r]) => ({ id, t: r.lastSeen ?? r.createdAt }))
+      .filter((r) => r.t < before)
+      .sort((a, b) => a.t - b.t)
+      .slice(0, limit)
+      .map((r) => r.id)
   }
 
   private toLink(r: LinkRow, token: string): ShareLink {

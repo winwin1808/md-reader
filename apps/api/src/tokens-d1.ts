@@ -42,8 +42,8 @@ export class D1TokenStore implements TokenStore {
     const roomId = newRoomId()
     const ownerToken = newToken()
     await this.db
-      .prepare('INSERT INTO rooms (id, owner_token_hash, title, created_at) VALUES (?, ?, ?, ?)')
-      .bind(roomId, await hashToken(ownerToken), '', this.now())
+      .prepare('INSERT INTO rooms (id, owner_token_hash, title, created_at, last_seen) VALUES (?, ?, ?, ?, ?)')
+      .bind(roomId, await hashToken(ownerToken), '', this.now(), this.now())
       .run()
     return { roomId, ownerToken }
   }
@@ -131,5 +131,23 @@ export class D1TokenStore implements TokenStore {
       this.db.prepare('DELETE FROM rooms WHERE id = ?').bind(roomId),
     ])
     return (res[1]?.meta.changes ?? 0) > 0
+  }
+
+  async touchRoom(roomId: string): Promise<void> {
+    const now = this.now()
+    await this.db
+      .prepare('UPDATE rooms SET last_seen = ? WHERE id = ? AND (last_seen IS NULL OR last_seen < ?)')
+      .bind(now, roomId, now - 86_400_000)
+      .run()
+  }
+
+  async idleRooms(before: number, limit: number): Promise<string[]> {
+    const res = await this.db
+      .prepare(
+        'SELECT id FROM rooms WHERE COALESCE(last_seen, created_at) < ? ORDER BY COALESCE(last_seen, created_at) LIMIT ?',
+      )
+      .bind(before, limit)
+      .all<{ id: string }>()
+    return res.results.map((r) => r.id)
   }
 }
