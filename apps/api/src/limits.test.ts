@@ -239,3 +239,16 @@ describe('12c: global asset byte caps', () => {
     expect(await st.check('asset', { installHash: null, ipHash: 'z' }, { roomId: 'a', bytes: 25 * MB })).toMatchObject({ error: 'RATE_LIMITED' })
   })
 })
+
+describe('pruneUsage', () => {
+  it('removes old days, keeps recent', async () => {
+    let now = 0
+    const st = new MemoryLimitStore(() => now)
+    await st.record('report', S, { roomId: 'r' })
+    now = 5 * 86_400_000
+    await st.record('report', S, { roomId: 'r' })
+    expect(await st.pruneUsage(3)).toBe(1)
+    expect(await st.check('report', S)).toBeNull()
+    expect(await st.pruneUsage(3)).toBe(0)
+  })
+})

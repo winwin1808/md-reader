@@ -26,6 +26,7 @@ export interface LimitStore {
   check(kind: LimitKind, s: LimitSubject, info?: { roomId?: string; bytes?: number }): Promise<LimitVerdict>
   record(kind: LimitKind, s: LimitSubject, info: { roomId: string; bytes?: number }): Promise<void>
   forgetRoom(roomId: string): Promise<void>
+  pruneUsage(beforeDay: number): Promise<number>
 }
 
 const DAY_MS = 86_400_000
@@ -140,6 +141,17 @@ export class MemoryLimitStore implements LimitStore {
     )
   }
 
+  async pruneUsage(beforeDay: number): Promise<number> {
+    let n = 0
+    for (const k of [...this.usage.keys()]) {
+      if (Number(k.split('|')[2]) < beforeDay) {
+        this.usage.delete(k)
+        n++
+      }
+    }
+    return n
+  }
+
   async forgetRoom(roomId: string): Promise<void> {
     this.rooms.delete(roomId)
     this.assetBytesByRoom.delete(roomId)
@@ -208,6 +220,11 @@ export class D1LimitStore implements LimitStore {
       s,
       info,
     )
+  }
+
+  async pruneUsage(beforeDay: number): Promise<number> {
+    const res = await this.db.prepare('DELETE FROM usage_daily WHERE day < ?').bind(beforeDay).run()
+    return res.meta?.changes ?? 0
   }
 
   async forgetRoom(roomId: string): Promise<void> {

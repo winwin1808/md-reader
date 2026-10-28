@@ -1,9 +1,9 @@
 import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
-import { D1LimitStore } from './limits.js'
-import { authorizeWs, handleApi, safeDecode } from './api.js'
+import { D1LimitStore, dayOf, type LimitStore } from './limits.js'
+import { authorizeWs, deleteRoomEverywhere, handleApi, safeDecode } from './api.js'
 import { D1ModerationStore } from './moderation.js'
-import { D1AssetStore } from './assets.js'
+import { D1AssetStore, type AssetStore } from './assets.js'
 import { D1TokenStore } from './tokens-d1.js'
 import type { TokenStore } from './tokens.js'
 
@@ -12,6 +12,21 @@ export { DocRoom } from './room.js'
 interface Deps {
   routeParty: (req: Request, env: Env) => Promise<Response | null>
   store?: TokenStore
+}
+
+function purgeVia(deps: Deps, env: Env) {
+  return (roomId: string): Promise<void> =>
+    deps
+      .routeParty(
+        new Request(`https://do/parties/doc-room/${encodeURIComponent(roomId)}/purge`, {
+          method: 'POST',
+          headers: { 'x-mdr-internal': '1' },
+        }),
+        env,
+      )
+      .then((res) => {
+        if (!res || !res.ok) throw new Error('purge ' + (res ? res.status : 'null'))
+      })
 }
 
 const defaultDeps: Deps = {
@@ -115,4 +130,40 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
   return json({ error: 'not found' }, 404)
 }
 
-export default { fetch: (req: Request, env: Env) => handleRequest(req, env) }
+export const ROOM_TTL_MS = 90 * 86_400_000
+
+export interface CleanupDeps {
+  store: TokenStore
+  assets?: AssetStore
+  limits?: LimitStore
+  purge?: (roomId: string) => Promise<void>
+}
+
+export async function runCleanup(
+  d: CleanupDeps,
+  now: number = Date.now(),
+): Promise<{ rooms: number; failed: number; usage: number }> {
+  let rooms = 0
+  let failed = 0
+  for (const id of await d.store.idleRooms(now - ROOM_TTL_MS, 25)) {
+    const outcome = await deleteRoomEverywhere(id, d)
+    if (outcome === 'purge_failed') failed++
+    else rooms++
+  }
+  const usage = d.limits ? await d.limits.pruneUsage(dayOf(now) - 2) : 0
+  console.log('cleanup', { rooms, failed, usage })
+  return { rooms, failed, usage }
+}
+
+export default {
+  fetch: (req: Request, env: Env) => handleRequest(req, env),
+  scheduled: (_e: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }) =>
+    ctx.waitUntil(
+      runCleanup({
+        store: new D1TokenStore(env.DB),
+        assets: new D1AssetStore(env.DB),
+        limits: new D1LimitStore(env.DB),
+        purge: purgeVia(defaultDeps, env),
+      }),
+    ),
+}

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleRequest } from './index.js'
+import { handleRequest, runCleanup, ROOM_TTL_MS, type CleanupDeps } from './index.js'
+import { MemoryLimitStore, dayOf } from './limits.js'
 import { _resetAuthCache } from './api.js'
 import { MemoryTokenStore } from './tokens.js'
+import type { AssetStore } from "./assets.js"
 import type { Env } from './env.js'
 
 const env = {} as Env
@@ -329,5 +331,43 @@ describe('revokeLive status', () => {
     )
     expect(res.status).toBe(502)
     spy.mockRestore()
+  })
+})
+
+describe('runCleanup', () => {
+  const NOW = 200 * 86_400_000
+  async function setup() {
+    const store = new MemoryTokenStore()
+    const old = await store.createRoom()
+    const fresh = await store.createRoom()
+    Object.assign(store.rooms.get(old.roomId)!, { createdAt: NOW - ROOM_TTL_MS - 1000, lastSeen: NOW - ROOM_TTL_MS - 1000 })
+    Object.assign(store.rooms.get(fresh.roomId)!, { createdAt: NOW - 1000, lastSeen: NOW - 1000 })
+    const assets = { deleteRoom: vi.fn(async () => 0) } as unknown as AssetStore & { deleteRoom: ReturnType<typeof vi.fn> }
+    const limits = new MemoryLimitStore(() => NOW)
+    return { store, old, fresh, assets, limits }
+  }
+  it('deletes idle rooms, keeps fresh ones', async () => {
+    const { store, old, fresh, assets, limits } = await setup()
+    const purge = vi.fn(async () => {})
+    const r = await runCleanup({ store, assets, limits, purge } as CleanupDeps, NOW)
+    expect(r).toEqual({ rooms: 1, failed: 0, usage: 0 })
+    expect(purge).toHaveBeenCalledWith(old.roomId)
+    expect(assets.deleteRoom).toHaveBeenCalledWith(old.roomId)
+    expect(store.rooms.has(old.roomId)).toBe(false)
+    expect(store.rooms.has(fresh.roomId)).toBe(true)
+  })
+  it('purge failure counts as failed and keeps the room', async () => {
+    const { store, old, assets, limits } = await setup()
+    const purge = vi.fn(async () => { throw new Error('x') })
+    const r = await runCleanup({ store, assets, limits, purge } as CleanupDeps, NOW)
+    expect(r.rooms).toBe(0)
+    expect(r.failed).toBe(1)
+    expect(store.rooms.has(old.roomId)).toBe(true)
+  })
+  it('prunes old usage', async () => {
+    const { store, limits } = await setup()
+    const spy = vi.spyOn(limits, 'pruneUsage')
+    await runCleanup({ store, limits } as CleanupDeps, NOW)
+    expect(spy).toHaveBeenCalledWith(dayOf(NOW) - 2)
   })
 })
