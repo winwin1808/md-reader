@@ -95,6 +95,8 @@ const STATUS_KEY = {
   connecting: 'web.statusConnecting',
   online: 'web.statusOnline',
   offline: 'web.statusOffline',
+  revoked: 'web.statusRevoked',
+  full: 'web.statusFull',
 } as const satisfies Record<SyncStatus, string>
 
 export function EditPage(props: EditPageProps): React.JSX.Element {
@@ -244,7 +246,10 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
         presence={<PresenceBar peers={peers} />}
         toggle={{ value: mode, onChange: setMode }}
       />
-      {mode === 'edit' ? (
+      {(status === 'revoked' || status === 'full') && (
+        <p role="alert" className="web-banner">{t(STATUS_KEY[status])}</p>
+      )}
+      {mode === 'edit' && status !== 'revoked' ? (
         <>
           <FormattingToolbar
             onAction={onAction}
