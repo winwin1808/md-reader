@@ -660,6 +660,43 @@ describe('DocRoom pre-apply link filter (14a)', () => {
     expect(spy).toHaveBeenCalledTimes(2)
     spy.mockRestore()
   })
+  it('clientID ownership survives a DO restart (same prefix ok, other prefix 4403)', async () => {
+    const storage = fakeStorage()
+    const mk = () => {
+      const r = makePurgeRoom(storage)
+      ;(r as unknown as { installPeerGuard: () => void }).installPeerGuard()
+      return r
+    }
+    const r1 = mk()
+    await r1.onLoad()
+    const doc1 = r1.document
+    doc1.getMap('meta').set('actors', new Y.Map())
+    doc1.getText('source').insert(0, 'hello')
+    const peer = new Y.Doc()
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc1))
+    let u: Uint8Array = new Uint8Array()
+    peer.on('update', (x: Uint8Array) => (u = x))
+    peer.getText('source').insert(0, 'a')
+    const spy = spyOnSuper(false)
+    const c1 = linkConn()
+    r1.handleMessage(c1 as never, wrap(u))
+    expect(c1.close).not.toHaveBeenCalled()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(storage.m.get('owner:' + peer.clientID)).toBe('p')
+    // restart: new room over the same storage, doc state reloaded from persisted updates
+    const r2 = mk()
+    r2.document.getMap('meta').set('actors', new Y.Map())
+    Y.applyUpdate(r2.document, Y.encodeStateAsUpdate(doc1))
+    await r2.onLoad()
+    peer.getText('source').insert(0, 'b')
+    const c2 = linkConn()
+    r2.handleMessage(c2 as never, wrap(u))
+    expect(c2.close).not.toHaveBeenCalled()
+    const c3 = { ...linkConn(), state: { role: 'edit', prefix: 'other' } }
+    r2.handleMessage(c3 as never, wrap(u))
+    expect(c3.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    spy.mockRestore()
+  })
   it('owner connection (no prefix) is not filtered', () => {
     const { room, doc } = server()
     const spy = spyOnSuper(true)

@@ -77,6 +77,10 @@ export class DocRoom extends YServer<Env> {
       return
     }
     for (const k of (await this.ctx.storage.list({ prefix: 'revoked:' })).keys()) this.revoked.add(k.slice('revoked:'.length))
+    const owners = (this.clientOwners ??= new Map())
+    for (const [k, v] of await this.ctx.storage.list({ prefix: 'owner:' })) {
+      if (typeof v === 'string') owners.set(Number(k.slice('owner:'.length)), v)
+    }
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
@@ -245,7 +249,14 @@ export class DocRoom extends YServer<Env> {
         const claims = (this.connClaims ??= new WeakMap())
         let claimed = claims.get(conn)
         if (!claimed) claims.set(conn, (claimed = new Set()))
+        const before = new Set(claimed)
         bad = peerUpdateViolation(update, this.document, { owners, claimed, prefix: st.prefix })
+        if (bad === null) {
+          for (const id of claimed) {
+            if (before.has(id)) continue
+            void Promise.resolve(this.ctx?.storage?.put('owner:' + id, st.prefix)).catch((e) => console.error('owner persist failed', e))
+          }
+        }
       } catch {
         bad = 'malformed message'
       }
