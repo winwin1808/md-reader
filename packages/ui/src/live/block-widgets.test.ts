@@ -75,3 +75,36 @@ describe('blockWidgets', () => {
     expect(a.eq(b)).toBe(true);
   });
 });
+
+describe('math lazy katex', () => {
+  it('redraws when katex loads, unsubscribes on destroy', () => {
+    let fire: () => void = () => {};
+    const unsub = vi.fn();
+    let ready = false;
+    let html = 'TeX x^2';
+    const r: BlockRenderers = {
+      ...fake(),
+      math: vi.fn(() => `<div>${html}</div>`),
+      mathReady: () => ready,
+      onMathReady: (cb) => { fire = cb; return unsub; },
+    };
+    const doc = '$$\nx^2\n$$\n\nend';
+    const v = setup(doc, doc.length, r);
+    const w = widgets(v)[0]!.w;
+    const el = w.toDOM(v) as HTMLElement;
+    expect(el.textContent).toBe('TeX x^2');
+    ready = true; html = '<span class="katex">k</span>';
+    fire();
+    expect(el.querySelector('.katex')).not.toBeNull();
+    const el2 = w.toDOM(v) as HTMLElement;
+    (w as any).destroy(el2);
+  });
+  it('default renderers draw .katex after the real plugin loads', async () => {
+    const { createDefaultRenderers } = await import('./renderers');
+    const r = createDefaultRenderers();
+    const doc = '$$\nx^2\n$$\n\nend';
+    const v = setup(doc, doc.length, r);
+    const el = widgets(v)[0]!.w.toDOM(v) as HTMLElement;
+    await vi.waitFor(() => expect(el.querySelector('.katex')).not.toBeNull(), { timeout: 5000 });
+  });
+});

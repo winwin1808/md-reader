@@ -9,10 +9,15 @@ import { TableGridWidget, markTableRaw } from './table-grid';
 export interface BlockRenderers {
   table(src: string): string;
   math(tex: string): string;
+  /** Optional lazy-math hooks: true once KaTeX is ready; subscribe returns unsubscribe. */
+  mathReady?(): boolean;
+  onMathReady?(cb: () => void): () => void;
   mermaid(code: string, theme: 'default' | 'dark'): Promise<string>;
 }
 
 type Kind = 'table' | 'math' | 'mermaid';
+
+const unsubs = new WeakMap<HTMLElement, () => void>();
 
 class BlockWidget extends WidgetType {
   constructor(
@@ -30,7 +35,18 @@ class BlockWidget extends WidgetType {
   toDOM(view: EditorView) {
     const el = document.createElement('div');
     el.className = `cm-live-block cm-live-block-${this.kind}`;
-    if (this.kind === 'math') el.innerHTML = this.r.math(this.src);
+    if (this.kind === 'math') {
+      el.innerHTML = this.r.math(this.src);
+      const r = this.r;
+      if (r.onMathReady && !(r.mathReady?.() ?? false)) {
+        const unsub = r.onMathReady(() => {
+          unsub();
+          unsubs.delete(el);
+          el.innerHTML = r.math(this.src);
+        });
+        unsubs.set(el, unsub);
+      }
+    }
     else {
       el.textContent = view.state.facet(translateFacet)('live.diagram.rendering');
       this.r.mermaid(this.src, this.theme).then(
@@ -50,6 +66,10 @@ class BlockWidget extends WidgetType {
       view.focus();
     });
     return el;
+  }
+  destroy(dom: HTMLElement) {
+    unsubs.get(dom)?.();
+    unsubs.delete(dom);
   }
   ignoreEvent() {
     return true;

@@ -268,8 +268,11 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const roomServerUrl = room?.serverUrl
   const roomId = room?.roomId
   const roomToken = room?.ownerToken
+  const boundRoomRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!roomServerUrl || !roomId || !roomToken) { setSyncStatus('off'); setAwareness(null); return }
+    if (!roomServerUrl || !roomId || !roomToken) { boundRoomRef.current = null; setSyncStatus('off'); setAwareness(null); return }
+    // Different room than the last bind: drop the old room's peers now (same room keeps them, no flicker).
+    if (boundRoomRef.current !== roomId) { boundRoomRef.current = null; setAwareness(null) }
     if (!record) return
     let cancelled = false
     let conn: RoomConnection | null = null
@@ -280,6 +283,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
       if (cancelled) return
       conn = bindRoom(doc, { serverUrl: roomServerUrl, roomId, token: roomToken, name: nameRef.current })
       awarenessRef.current = conn.awareness
+      boundRoomRef.current = roomId
       setAwareness(conn.awareness)
       unsub = conn.status$(setSyncStatus)
       untrack = trackLocalActor(doc, () => nameRef.current)

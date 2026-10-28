@@ -469,6 +469,19 @@ describe('useDocSession room binding', () => {
     expect(result.current.awareness).toBeNull()
   })
 
+  it('switching to a different room clears awareness immediately; same room keeps it (15n)', async () => {
+    const { result, rerender } = mount({ room })
+    await flush(); await syncNow(); await flush()
+    await waitFor(() => expect(result.current.awareness).toBe(bind.conns[0].awareness))
+    rerender({ room: { ...room, ownerToken: 'tok2' } })
+    expect(result.current.awareness).toBe(bind.conns[0].awareness)
+    await flush()
+    rerender({ room: { ...room, roomId: 'r2' } })
+    expect(result.current.awareness).toBeNull()
+    await flush()
+    await waitFor(() => expect(result.current.awareness).toBe(bind.conns[bind.conns.length - 1].awareness))
+  })
+
   describe('display status (15i)', () => {
     const seen = (r: { current: { syncStatus: string } }, log: string[]) => {
       if (log[log.length - 1] !== r.current.syncStatus) log.push(r.current.syncStatus)
