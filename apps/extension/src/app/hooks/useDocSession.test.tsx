@@ -560,6 +560,18 @@ describe('useDocSession formatVersion tolerance (11h)', () => {
     await flush(); await syncNow()
     await waitFor(() => expect(h.result.current.checkpoints).not.toBeNull(), LOAD_WAIT)
     expect(h.result.current.error).toBeNull()
+    expect(h.result.current.newerFormat).toBe(true)
+  })
+
+  it('doc with formatVersion 2 -> newerFormat false', async () => {
+    const d = new Y.Doc()
+    d.getText('source').insert(0, 'hello')
+    d.getMap('meta').set('formatVersion', 2)
+    idbUpdate = Y.encodeStateAsUpdate(d)
+    const h = setup('hello')
+    await flush(); await syncNow()
+    await waitFor(() => expect(h.result.current.checkpoints).not.toBeNull(), LOAD_WAIT)
+    expect(h.result.current.newerFormat).toBe(false)
   })
 
   it('other ensureDoc failure sets error and does not hang', async () => {

@@ -3,7 +3,7 @@ import YProvider from 'y-partyserver/provider'
 import { API_PATHS, wsHost } from '@md-reader/core'
 import { peerUser } from '@md-reader/ui'
 
-export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
+export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline' | 'revoked' | 'full'
 
 const TERMINAL_CLOSE = new Set([1009, 4410, 4413])
 
@@ -42,6 +42,7 @@ export function bindRoom(
   const subs = new Set<(s: SyncStatus) => void>()
   const set = (s: SyncStatus) => {
     if (s === status) return
+    if ((status === 'revoked' || status === 'full') && s !== 'off') return
     status = s
     for (const cb of [...subs]) cb(s)
   }
@@ -57,7 +58,7 @@ export function bindRoom(
   const onClose = (event?: { code?: number }) => {
     if (event?.code !== undefined && TERMINAL_CLOSE.has(event.code)) {
       provider.shouldConnect = false
-      set('offline')
+      set(event.code === 4410 ? 'revoked' : 'full')
       return
     }
     onConnFail()

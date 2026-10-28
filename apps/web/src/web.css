@@ -17,6 +17,10 @@ html, body { margin: 0; background: var(--surface); color: var(--ink); font-fami
   border: 1px solid var(--rule); border-radius: 4px; color: var(--ink);
 }
 .web-sheet-edit { padding: 0; min-height: 60vh; background: none; border: 0; }
+.web-banner {
+  box-sizing: border-box; max-width: 820px; margin: 16px auto 0; padding: 10px 16px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--accent); border-left-width: 4px; border-radius: 4px;
+}
 .web-notice { max-width: 480px; margin: 20vh auto 0; padding: 0 16px; text-align: center; color: var(--ink); }
 .web-notice button, .web-card button {
   margin-top: 12px; padding: 6px 16px; border: 1px solid var(--rule); border-radius: 6px;

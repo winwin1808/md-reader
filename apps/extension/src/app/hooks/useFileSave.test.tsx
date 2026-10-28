@@ -47,7 +47,7 @@ function makeSession(doc: Y.Doc, over: Partial<DocSession> = {}): DocSession {
     docId: null, record: null,
     doc, yText, undoManager: new Y.UndoManager(yText),
     content: yText.toString(), title: 'a', hasContent: true,
-    isDirty: false, setDirty: () => {}, aiUnsaved: false, ackAi: (_t: string) => {}, error: null, setError: () => {}, synced: true,
+    isDirty: false, setDirty: () => {}, aiUnsaved: false, ackAi: (_t: string) => {}, error: null, setError: () => {}, synced: true, newerFormat: false,
     externalChange: null, acceptExternal: () => {}, dismissExternal: () => {},
     checkpoints: tracker,
     syncStatus: 'off', awareness: null,

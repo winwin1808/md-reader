@@ -26,7 +26,7 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false, error: 'too-large' })
     } else {
       try {
-        const { html, title } = renderMarkdownForPage(md)
+        const { html, title } = renderMarkdownForPage(md, { alertLang: message.alertLang === 'vi' ? 'vi' : 'en' })
         sendResponse({ ok: true, html, title })
       } catch {
         sendResponse({ ok: false, error: 'render-failed' })

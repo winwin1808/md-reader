@@ -186,6 +186,28 @@ describe('Content script entry point', () => {
       })
     }
 
+    it('sends alertLang vi when localizeAlerts is on in storage (local beats sync)', async () => {
+      mdLocation()
+      answer(true)
+      ;(chrome.storage as any).local = { get: vi.fn().mockResolvedValue({ localizeAlerts: true }) }
+      vi.mocked(chrome.storage.sync.get as any).mockResolvedValueOnce({ localizeAlerts: false })
+      document.body.innerHTML = '<pre>x</pre>'
+      await import('./index')
+      await vi.waitFor(() => expect((chrome.runtime as any).sendMessage).toHaveBeenCalled())
+      expect((chrome.runtime as any).sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'renderMd', alertLang: 'vi' }), expect.any(Function))
+    })
+
+    it('sends alertLang en by default', async () => {
+      mdLocation()
+      answer(true)
+      document.body.innerHTML = '<pre>x</pre>'
+      await import('./index')
+      await vi.waitFor(() => expect((chrome.runtime as any).sendMessage).toHaveBeenCalled())
+      expect((chrome.runtime as any).sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ alertLang: 'en' }), expect.any(Function))
+    })
+
     it('(a) pre is hidden while reading and gets its previous inline style back', async () => {
       mdLocation()
       answer(true)

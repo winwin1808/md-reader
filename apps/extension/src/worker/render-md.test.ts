@@ -12,6 +12,13 @@ describe('renderMarkdownForPage', () => {
     expect(r.html.toLowerCase()).toContain('note')
     expect(MAX_RENDER_CHARS).toBe(2_000_000)
   })
+  it('alert label defaults to English, vi opt-in', () => {
+    const md = '> [!NOTE]\nx'
+    const en = renderMarkdownForPage(md).html
+    expect(en).toContain('Note')
+    expect(en).not.toContain('Ghi chú')
+    expect(renderMarkdownForPage(md, { alertLang: 'vi' }).html).toContain('Ghi chú')
+  })
   it('title is null without H1', () => {
     expect(renderMarkdownForPage('## only h2').title).toBeNull()
   })
