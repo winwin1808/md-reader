@@ -594,6 +594,7 @@ export function App(): React.JSX.Element {
     html,
     title: docTitle,
     parseResult,
+    resolveImage,
   })
 
   const [printHtml, setPrintHtml] = useState<{ id: string; html: string }[] | null>(null)
