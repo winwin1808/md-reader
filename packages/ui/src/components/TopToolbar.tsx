@@ -12,7 +12,7 @@ export type SaveStatus =
   | { kind: 'none' } | { kind: 'dirty'; ai?: boolean } | { kind: 'saving' } | { kind: 'saved'; at: number }
   | { kind: 'error'; message?: string; onRetry(): void } | { kind: 'needs-permission'; onGrant(): void }
 
-export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline'
+export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline' | 'revoked' | 'full'
 
 export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
 
@@ -126,6 +126,8 @@ const SYNC_LABELS: Record<Exclude<SyncStatus, 'off'>, MessageKey> = {
   connecting: 'toolbar.sync.connecting',
   online: 'toolbar.sync.online',
   offline: 'toolbar.sync.offline',
+  revoked: 'toolbar.sync.revoked',
+  full: 'toolbar.sync.full',
 }
 
 const CONNECTING_DELAY_MS = 1500

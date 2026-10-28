@@ -16,7 +16,20 @@ function download(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function useExport(args: { html: string; title: string; parseResult: ParseResult }): {
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  return btoa(bin)
+}
+
+export function useExport(args: {
+  html: string
+  title: string
+  parseResult: ParseResult
+  resolveImage?: (src: string) => string | Promise<string>
+}): {
   exportAs(format: ExportFormat): Promise<void>
   isPrintingSlides: boolean
 } {
@@ -40,7 +53,20 @@ export function useExport(args: { html: string; title: string; parseResult: Pars
         window.addEventListener('afterprint', cleanup)
         setTimeout(cleanup, 1000)
       } else if (format === 'html') {
-        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title })
+        const fetchImage = async (src: string): Promise<{ base64: string; mimeType: string } | null> => {
+          try {
+            const url = args.resolveImage ? await args.resolveImage(src) : src
+            const res = await fetch(url)
+            if (!res.ok) return null
+            const blob = await res.blob()
+            const bytes = new Uint8Array(await blob.arrayBuffer())
+            const mimeType = (res.headers.get('content-type') || blob.type).split(';')[0]!.trim()
+            return { base64: bytesToBase64(bytes), mimeType }
+          } catch {
+            return null
+          }
+        }
+        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title, fetchImage })
         download(new Blob([exportHtml], { type: 'text/html;charset=utf-8' }), `${title}.html`)
       } else if (format === 'docx') {
         const { mdastToDocx } = await import('@md-reader/core/docx')

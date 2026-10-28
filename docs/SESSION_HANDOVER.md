@@ -2,6 +2,16 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 13 — Hoàn thiện trải nghiệm (2026-10-28)
+
+Branch `phase-13` (13a1..13f), spec `docs/superpowers/specs/2026-10-28-phase-13-design.md` (shipped). Đã làm: toolbar extension + web báo rõ
+"link bị thu hồi" (đóng 4410) / "tài liệu quá lớn" (4413, 1009) và không nối lại; banner khi tài liệu có `formatVersion` mới hơn (đóng được);
+ghép cặp MCP bấm Cho phép hai lần không còn hỏng (`Entry.deciding`); nhãn alert khi đọc tại chỗ theo cài đặt ngôn ngữ (mặc định en);
+web không còn `window.alert`; export HTML nhúng ảnh đường dẫn tương đối qua image resolver; flake `ux-reading.flow` (cold start worker) sửa bằng warm-up.
+Test (máy rảnh): core 263 · ui 474 · extension 424 · web 63 · mcp 42; typecheck/build 0; content.js gz 13.66 KB.
+**Nợ:** flake IDB `TransactionInactiveError` không tái hiện được (nghi `persistence.destroy()` không await trong cleanup `useDocSession`);
+link sửa khi phòng đầy vẫn cho gõ (chỉ banner báo); logic trạng thái cuối lặp ở extension `bindRoom` và web `collab`.
+
 ## Phase 11 — Vá bảo mật trước 1.3.0 (2026-10-27)
 
 Branch `phase-11` (11a..11k), MR `phase-11` → `main` mở, **chưa merge**. Spec `docs/superpowers/specs/2026-10-27-phase-11-design.md`;

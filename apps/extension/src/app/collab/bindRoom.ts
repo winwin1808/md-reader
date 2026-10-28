@@ -41,6 +41,7 @@ export function bindRoom(
   const subs = new Set<(s: SyncStatus) => void>()
   const set = (s: SyncStatus) => {
     if (s === status) return
+    if (status === 'revoked' || status === 'full') return
     status = s
     for (const cb of [...subs]) cb(s)
   }
@@ -56,7 +57,7 @@ export function bindRoom(
   const onClose = (event?: { code?: number }) => {
     if (event?.code !== undefined && TERMINAL_CLOSE.has(event.code)) {
       provider.shouldConnect = false
-      set('offline')
+      set(event.code === 4410 ? 'revoked' : 'full')
       return
     }
     onConnFail()

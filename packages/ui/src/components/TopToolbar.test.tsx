@@ -289,6 +289,14 @@ describe('TopToolbar sync status', () => {
 
   afterEach(() => { cleanup(); vi.useRealTimers() })
 
+  it.each([
+    ['revoked', 'Đã ngắt — link bị thu hồi hoặc tài liệu chia sẻ đã bị xoá'],
+    ['full', 'Ngừng đồng bộ — tài liệu vượt giới hạn dung lượng'],
+  ] as const)('shows %s label immediately', (s, label) => {
+    render(mk(s))
+    expect(screen.getByText(label)).toBeTruthy()
+  })
+
   it('renders nothing without syncStatus or when off', () => {
     const { rerender } = render(mk())
     for (const l of labels) expect(screen.queryByText(l)).toBeNull()

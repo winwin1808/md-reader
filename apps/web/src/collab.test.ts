@@ -128,16 +128,18 @@ describe('bindRoom', () => {
     p.emit('synced', [true])
     expect(seen).toEqual(['connecting', 'offline', 'online'])
   })
-  it('terminal close codes stop reconnecting and go offline', () => {
-    for (const code of [1009, 4410, 4413]) {
+  it('terminal close codes stop reconnecting with a specific status', () => {
+    for (const [code, final] of [[4410, 'revoked'], [4413, 'full'], [1009, 'full']] as const) {
       const { conn, p } = mk() as any
       ;(p as any).shouldConnect = true
       const seen: SyncStatus[] = []
       conn.status$((s: SyncStatus) => seen.push(s))
       p.emit('synced', [true])
       p.emit('connection-close', [{ code }])
+      p.emit('status', [{ status: 'disconnected' }])
+      p.emit('synced', [true])
       expect((p as any).shouldConnect).toBe(false)
-      expect(seen).toEqual(['connecting', 'online', 'offline'])
+      expect(seen).toEqual(['connecting', 'online', final])
     }
   })
   it('non-terminal close (1006) keeps reconnecting', () => {

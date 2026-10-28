@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import React from 'react'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
 import { App } from '../app/App'
 import { createRecord, writeDocText } from '../app/doc-registry'
 
@@ -11,6 +11,23 @@ async function openDroppedDoc(title: string, text: string): Promise<void> {
   await writeDocText(rec, text, 'replace')
   window.history.replaceState(null, '', '/?doc=' + rec.docId)
 }
+
+// Cold-start cost (first markdown pipeline run, first IDB open, module init) is paid once per
+// worker and was charged to whichever test ran first, against the 3 s waitFor budget of the
+// interaction under test. Pay it here instead, so the tests measure only their own behaviour.
+beforeAll(async () => {
+  ;(window as any).chrome = {
+    storage: {
+      local: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) },
+      sync: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) },
+    },
+  }
+  await openDroppedDoc('warm.md', '# Warm\n\n```js\nconst a = 1\n```\n')
+  render(<App />)
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Warm' })).toBeDefined(), { timeout: 30000 })
+  cleanup()
+  window.history.replaceState(null, '', '/')
+}, 40000)
 
 describe('E2E integration test for A4 layout, toolbar, search, code copy, ToC, and font family', () => {
   beforeEach(() => {

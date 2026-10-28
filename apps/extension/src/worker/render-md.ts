@@ -7,14 +7,14 @@ export interface PageRender {
   title: string | null
 }
 
-export function renderMarkdownForPage(markdown: string): PageRender {
+export function renderMarkdownForPage(markdown: string, opts?: { alertLang?: 'vi' | 'en' }): PageRender {
   const parsed = parseMarkdown(markdown, { gfm: true, math: true })
   const { html, toc } = renderToHtml(parsed, {
     highlight: false,
     math: false,
     allowRawHtml: false,
     githubAlerts: true,
-    localizeAlerts: 'vi',
+    localizeAlerts: opts?.alertLang === 'vi' ? 'vi' : 'en',
     externalLinks: true,
     typographer: true,
   })

@@ -35,6 +35,7 @@ export interface DocSession {
   error: string | null
   setError(message: string | null): void
   synced: boolean
+  newerFormat: boolean
   checkpoints: CheckpointTracker | null
   externalChange: { remoteText: string; remoteHash: string } | null
   acceptExternal(): void
@@ -57,6 +58,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [aiUnsaved, setAiUnsaved] = useState<boolean>(false)
   const [synced, setSynced] = useState<boolean>(false)
+  const [newerFormat, setNewerFormat] = useState<boolean>(false)
   const [record, setRecord] = useState<DocRecord | null>(null)
   const [checkpoints, setCheckpoints] = useState<CheckpointTracker | null>(null)
   const checkpointsRef = useRef<CheckpointTracker | null>(null)
@@ -122,6 +124,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
 
   useEffect(() => {
     setSynced(false)
+    setNewerFormat(false)
     let cancelled = false
     let persistence: IndexeddbPersistence | null = null
     if (persistenceName) {
@@ -150,7 +153,10 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
         await whenSynced
         if (rec && !cancelled) {
           const res = ensureDoc(doc, { title: rec.title }, { tolerateNewer: true })
-          if (res.newer) console.warn('Doc has a newer formatVersion than this build; opening as-is')
+          if (res.newer) {
+            console.warn('Doc has a newer formatVersion than this build; opening as-is')
+            setNewerFormat(true)
+          }
           registerActor(doc, 'Bạn')
           tracker = createCheckpointTracker(doc, { actor: 'Bạn' })
           checkpointsRef.current = tracker
@@ -454,6 +460,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
     error,
     setError,
     synced,
+    newerFormat,
     checkpoints,
     externalChange,
     acceptExternal,

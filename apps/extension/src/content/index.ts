@@ -27,16 +27,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
 ;(async function () {
   let autoFormatMd = true
   let alwaysOpenApp = false
+  let localizeAlerts = false
   let locale: ContentLocale = resolveContentLocale('auto', navigator.languages)
 
   try {
     let localSettings: any = {}
     let syncSettings: any = {}
     if (typeof chrome.storage?.local?.get === 'function') {
-      localSettings = (await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage'])) || {}
+      localSettings = (await chrome.storage.local.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage', 'localizeAlerts'])) || {}
     }
     if (typeof chrome.storage?.sync?.get === 'function') {
-      syncSettings = (await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage'])) || {}
+      syncSettings = (await chrome.storage.sync.get(['autoFormatMd', 'alwaysOpenApp', 'uiLanguage', 'localizeAlerts'])) || {}
     }
     locale = resolveContentLocale(localSettings.uiLanguage ?? syncSettings.uiLanguage, navigator.languages)
 
@@ -51,6 +52,8 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     } else if (typeof syncSettings.alwaysOpenApp === 'boolean') {
       alwaysOpenApp = syncSettings.alwaysOpenApp
     }
+    if (typeof localSettings.localizeAlerts === 'boolean') localizeAlerts = localSettings.localizeAlerts
+    else if (typeof syncSettings.localizeAlerts === 'boolean') localizeAlerts = syncSettings.localizeAlerts
   } catch (err) {
     console.warn('MD Reader: Failed to read settings:', err)
   }
@@ -127,7 +130,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  const render = await requestPageRender(markdownText)
+  const render = await requestPageRender(markdownText, undefined, localizeAlerts ? 'vi' : 'en')
   // Another run may have mounted while we awaited the worker.
   if (document.getElementById('md-reader-root')) {
     return
