@@ -610,7 +610,8 @@ describe('revoke-all + byte limits (15a)', () => {
   }
 
   it('revoke-all revokes every link, tells DO per link, returns {revoked:3}', async () => {
-    const { store, roomId, ownerToken } = await room()
+    const store = new MemoryTokenStore(Date.now)
+    const { roomId, ownerToken } = (await (await handleApi(req('POST', '/api/rooms'), store))!.json()) as { roomId: string; ownerToken: string }
     const toks: string[] = []
     for (const role of ['view', 'edit', 'view'] as const) {
       const l = await store.createLink(roomId, { role, expiresIn: null })
@@ -624,6 +625,29 @@ describe('revoke-all + byte limits (15a)', () => {
     expect(revokeLive).toHaveBeenCalledTimes(3)
     const again = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive })
     expect(await again!.json()).toEqual({ revoked: 0 })
+  })
+
+  it('revoke-all only tells DO about links revoked in the last 24h; retry re-tells after DO failure', async () => {
+    let clock = Date.now() - 3 * 86_400_000
+    const store = new MemoryTokenStore(() => clock)
+    const r = (await (await handleApi(req('POST', '/api/rooms'), store))!.json()) as { roomId: string; ownerToken: string }
+    const { roomId, ownerToken } = r
+    for (let i = 0; i < 5; i++) await store.createLink(roomId, { role: 'view', expiresIn: null })
+    const first = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive: vi.fn(async () => {}) })
+    expect(await first!.json()).toEqual({ revoked: 5 })
+    clock = Date.now()
+    for (let i = 0; i < 2; i++) await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    let fail = true
+    const revokeLive = vi.fn(async () => { if (fail) throw new Error('boom') })
+    const bad = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive })
+    expect(bad!.status).toBe(502)
+    expect(revokeLive).toHaveBeenCalledTimes(2)
+    fail = false
+    revokeLive.mockClear()
+    const ok = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive })
+    expect(ok!.status).toBe(200)
+    expect(await ok!.json()).toEqual({ revoked: 0 })
+    expect(revokeLive).toHaveBeenCalledTimes(2)
   })
 
   it('revoke-all by non-owner is 401', async () => {
