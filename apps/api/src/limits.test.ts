@@ -208,3 +208,34 @@ describe('11e: IP always counted, IPv6 /64', () => {
     expect(a.ipHash).toBe(b.ipHash)
   })
 })
+
+describe('12c: global asset byte caps', () => {
+  const GB = 1024 * MB
+  it('global per-day exceeded -> rate even if ip/install have quota', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    await st.record('room', S, { roomId: 'r1' })
+    for (let i = 0; i < 5; i++) await st.record('asset', { installHash: null, ipHash: `g${i}` }, { roomId: `x${i}`, bytes: 200 * MB })
+    expect(await st.check('asset', S, { roomId: 'r1', bytes: 24 * MB })).toBeNull()
+    const v = await st.check('asset', S, { roomId: 'r1', bytes: 25 * MB })
+    expect(v).toMatchObject({ error: 'RATE_LIMITED' })
+    expect(v?.retryAfter).toBeGreaterThan(0)
+  })
+  it('total stored exceeded -> QUOTA_EXCEEDED; forgetRoom frees', async () => {
+    let now = 0
+    const st = new MemoryLimitStore(() => now)
+    for (let i = 0; i < 3; i++) {
+      await st.record('asset', { installHash: null, ipHash: `s${i}` }, { roomId: `big${i}`, bytes: 1000 * MB })
+      now += 86_400_000
+    }
+    expect(await st.check('asset', S, { roomId: 'free', bytes: 100 * MB })).toEqual({ error: 'QUOTA_EXCEEDED' })
+    expect(await st.check('asset', S, { roomId: 'free', bytes: 50 * MB })).toBeNull()
+    await st.forgetRoom('big0')
+    expect(await st.check('asset', S, { roomId: 'free', bytes: 100 * MB })).toBeNull()
+    expect(LIMITS.assetBytesGlobalStored).toBe(3 * GB)
+  })
+  it('record adds global asset_bytes', async () => {
+    const st = new MemoryLimitStore(() => 0)
+    await st.record('asset', S, { roomId: 'a', bytes: 1000 * MB })
+    expect(await st.check('asset', { installHash: null, ipHash: 'z' }, { roomId: 'a', bytes: 25 * MB })).toMatchObject({ error: 'RATE_LIMITED' })
+  })
+})
