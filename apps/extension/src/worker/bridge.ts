@@ -40,6 +40,7 @@ interface Entry {
   serverKey: string
   serverNonce: string
   myNonce: string
+  deciding?: boolean
   pingTimer: unknown
 }
 
@@ -185,9 +186,13 @@ export function createBridge(deps: BridgeDeps) {
       const e = entries.get(port)
       if (!e || e.conn.state !== 'pending' || !e.conn.keyHash) return
       if (keyHash !== undefined && keyHash !== e.conn.keyHash) return
+      if (e.deciding) return
+      e.deciding = true
       if (allow) {
-        await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now(), serverKey: e.serverKey })
-        await authenticate(e).catch(() => kill(e))
+        try {
+          await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now(), serverKey: e.serverKey })
+          await authenticate(e)
+        } catch { kill(e) }
       } else {
         send(e.ws, { type: 'reject', code: 'DENIED' })
         try { e.ws.close() } catch { /* ignore */ }

@@ -243,3 +243,19 @@ describe('bridge v2', () => {
     expect(bridge.conns()[0]!.state).toBe('pending')
   })
 })
+
+describe('bridge v2 double decide (13c)', () => {
+  it('allow twice without await -> one auth, one add, valid auth-ok pairs', async () => {
+    const { bridge, sockets } = setup()
+    await bridge.scan([PORT])
+    sockets[0]!.recv(hello)
+    await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
+    const add = vi.fn(async () => {})
+    await Promise.all([bridge.decide(PORT, true, add), bridge.decide(PORT, true, add)])
+    await flush()
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(sockets[0]!.sent.filter((m) => (m as { type: string }).type === 'auth')).toHaveLength(1)
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await vi.waitFor(() => expect(bridge.conns()[0]!.state).toBe('paired'))
+  })
+})
