@@ -47,7 +47,12 @@ function withCors(res: Response): Response {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
 }
 
-export async function handleRequest(req: Request, env: Env, deps: Deps = defaultDeps): Promise<Response> {
+export async function handleRequest(
+  req: Request,
+  env: Env,
+  deps: Deps = defaultDeps,
+  ctx?: { waitUntil(p: Promise<unknown>): void },
+): Promise<Response> {
   const url = new URL(req.url)
   const store = deps.store ?? new D1TokenStore(env.DB)
 
@@ -115,7 +120,8 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
     const auth = await authorizeWs(req, store)
     if (auth instanceof Response) return auth
     if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
-    void store.touchRoom(auth.roomId).catch(() => {})
+    const touch = store.touchRoom(auth.roomId).catch(() => {})
+    if (ctx) ctx.waitUntil(touch)
     const req2 = new Request(req)
     req2.headers.delete('x-mdr-internal')
     req2.headers.delete('x-mdr-prefix')
@@ -131,6 +137,7 @@ export async function handleRequest(req: Request, env: Env, deps: Deps = default
 }
 
 export const ROOM_TTL_MS = 90 * 86_400_000
+export const CLEANUP_MAX_ROOMS = 100
 
 export interface CleanupDeps {
   store: TokenStore
@@ -145,10 +152,17 @@ export async function runCleanup(
 ): Promise<{ rooms: number; failed: number; usage: number }> {
   let rooms = 0
   let failed = 0
-  for (const id of await d.store.idleRooms(now - ROOM_TTL_MS, 25)) {
-    const outcome = await deleteRoomEverywhere(id, d)
-    if (outcome === 'purge_failed') failed++
-    else rooms++
+  const tried = new Set<string>()
+  while (rooms + failed < CLEANUP_MAX_ROOMS) {
+    const batch = (await d.store.idleRooms(now - ROOM_TTL_MS, 25 + tried.size)).filter((id) => !tried.has(id))
+    if (batch.length === 0) break
+    for (const id of batch.slice(0, 25)) {
+      if (rooms + failed >= CLEANUP_MAX_ROOMS) break
+      tried.add(id)
+      const outcome = await deleteRoomEverywhere(id, d)
+      if (outcome === 'purge_failed') failed++
+      else rooms++
+    }
   }
   const usage = d.limits ? await d.limits.pruneUsage(dayOf(now) - 2) : 0
   console.log('cleanup', { rooms, failed, usage })
@@ -156,7 +170,8 @@ export async function runCleanup(
 }
 
 export default {
-  fetch: (req: Request, env: Env) => handleRequest(req, env),
+  fetch: (req: Request, env: Env, ctx?: { waitUntil(p: Promise<unknown>): void }) =>
+    handleRequest(req, env, defaultDeps, ctx),
   scheduled: (_e: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }) =>
     ctx.waitUntil(
       runCleanup({

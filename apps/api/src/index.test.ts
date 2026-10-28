@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleRequest, runCleanup, ROOM_TTL_MS, type CleanupDeps } from './index.js'
+import worker, { handleRequest, runCleanup, ROOM_TTL_MS, type CleanupDeps } from './index.js'
 import { MemoryLimitStore, dayOf } from './limits.js'
 import { _resetAuthCache } from './api.js'
 import { MemoryTokenStore } from './tokens.js'
@@ -331,6 +331,45 @@ describe('revokeLive status', () => {
     )
     expect(res.status).toBe(502)
     spy.mockRestore()
+  })
+})
+
+describe('14b: waitUntil + batched cleanup', () => {
+  it('handleRequest passes touchRoom to ctx.waitUntil', async () => {
+    const { store, a } = await twoRooms()
+    const waitUntil = vi.fn()
+    await handleRequest(new Request(`http://x/parties/doc-room/${a.roomId}?token=${a.ownerToken}`), env, { routeParty: ok, store }, { waitUntil })
+    expect(waitUntil).toHaveBeenCalledTimes(1)
+    expect(typeof worker.fetch).toBe('function')
+  })
+  const NOW = 200 * 86_400_000
+  async function many(n: number) {
+    const store = new MemoryTokenStore()
+    for (let i = 0; i < n; i++) {
+      const r = await store.createRoom()
+      Object.assign(store.rooms.get(r.roomId)!, { createdAt: 1, lastSeen: 1 })
+    }
+    const assets = { deleteRoom: vi.fn(async () => 0) } as unknown as AssetStore
+    return { store, assets }
+  }
+  it('60 idle rooms all deleted in one run', async () => {
+    const { store, assets } = await many(60)
+    const r = await runCleanup({ store, assets, purge: async () => {} } as CleanupDeps, NOW)
+    expect(r.rooms).toBe(60)
+    expect(store.rooms.size).toBe(0)
+  })
+  it('150 idle rooms capped at 100', async () => {
+    const { store, assets } = await many(150)
+    const r = await runCleanup({ store, assets, purge: async () => {} } as CleanupDeps, NOW)
+    expect(r.rooms).toBe(100)
+    expect(store.rooms.size).toBe(50)
+  })
+  it('purge failure tried once per run', async () => {
+    const { store, assets } = await many(3)
+    const purge = vi.fn(async () => { throw new Error('x') })
+    const r = await runCleanup({ store, assets, purge } as CleanupDeps, NOW)
+    expect(r.failed).toBe(3)
+    expect(purge).toHaveBeenCalledTimes(3)
   })
 })
 
