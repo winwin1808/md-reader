@@ -238,18 +238,20 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   }
   if (!wasOnline || !session) return <div className="web-notice"><p role="status">{t('web.loadingDoc')}</p></div>
 
+  const locked = status === 'revoked' || status === 'full'
+
   return (
     <div className="web-page">
       <PageHeader
         title={info.title ?? firstH1(session.yText.toString(), t)}
         status={t(STATUS_KEY[status])}
         presence={<PresenceBar peers={peers} />}
-        toggle={{ value: mode, onChange: setMode }}
+        toggle={locked ? undefined : { value: mode, onChange: setMode }}
       />
-      {(status === 'revoked' || status === 'full') && (
+      {locked && (
         <p role="alert" className="web-banner">{t(STATUS_KEY[status])}</p>
       )}
-      {mode === 'edit' && status !== 'revoked' ? (
+      {mode === 'edit' && !locked ? (
         <>
           <FormattingToolbar
             onAction={onAction}

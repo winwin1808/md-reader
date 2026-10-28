@@ -184,6 +184,9 @@ export class MemoryLimitStore implements LimitStore {
 const UPSERT =
   'INSERT INTO usage_daily (scope,subject,day,kind,n) VALUES (?,?,?,?,?) ON CONFLICT(scope,subject,day,kind) DO UPDATE SET n = n + excluded.n'
 
+export const TOTAL_CACHE_MS = 5 * 60_000
+const totalCache = new WeakMap<object, { value: number; at: number }>()
+
 export class D1LimitStore implements LimitStore {
   constructor(
     private db: D1Database,
@@ -213,7 +216,14 @@ export class D1LimitStore implements LimitStore {
           return r?.h ?? null
         },
         installBytes: (h) => this.num('SELECT SUM(bytes) AS v FROM room_installs WHERE install_hash=?', h),
-        totalAssetBytes: () => this.num('SELECT COALESCE(SUM(size),0) AS v FROM assets'),
+        totalAssetBytes: async () => {
+          const c = totalCache.get(this.db)
+          const t = this.now()
+          if (c && t - c.at >= 0 && t - c.at < TOTAL_CACHE_MS) return c.value
+          const value = await this.num('SELECT COALESCE(SUM(size),0) AS v FROM assets')
+          totalCache.set(this.db, { value, at: t })
+          return value
+        },
       },
       this.now(),
       kind,
@@ -263,5 +273,9 @@ export class D1LimitStore implements LimitStore {
       stmts.push(this.bump('ip', s.ipHash, 'report'))
     }
     if (stmts.length) await this.db.batch(stmts)
+    if (kind === 'asset') {
+      const c = totalCache.get(this.db)
+      if (c) c.value += info.bytes ?? 0
+    }
   }
 }

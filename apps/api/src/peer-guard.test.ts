@@ -60,3 +60,54 @@ describe('peerTxViolation', () => {
     expect(check(doc, () => doc.getMap('other').set('a', 1))).not.toBeNull()
   })
 })
+
+import { peerUpdateViolation } from './peer-guard'
+
+describe('peerUpdateViolation (14a)', () => {
+  const own = () => ({ owners: new Map<number, string>(), claimed: new Set<number>(), prefix: 'p' })
+  function upd(doc: Y.Doc, fn: (p: Y.Doc) => void): Uint8Array {
+    const p = new Y.Doc()
+    Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+    let u: Uint8Array = new Uint8Array()
+    p.on('update', (x: Uint8Array) => (u = x))
+    p.transact(() => fn(p))
+    return u
+  }
+  it('rejects deleting meta entries and writing history', () => {
+    const doc = setup()
+    expect(peerUpdateViolation(upd(doc, (p) => p.getMap('meta').delete('aiUnsaved')), doc, own())).not.toBeNull()
+    expect(peerUpdateViolation(upd(doc, (p) => p.getArray('history').push([1])), doc, own())).not.toBeNull()
+  })
+  it('rejects more than 4 new clientIDs in one update set and a struct with missing parent', () => {
+    const doc = setup()
+    const o = own()
+    for (let i = 0; i < 5; i++) o.claimed.add(1000 + i)
+    expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insert(0, 'x')), doc, o)).toBe('too many clientIDs')
+    const p = new Y.Doc()
+    p.getText('source').insert(0, 'ab')
+    const u1 = Y.encodeStateAsUpdate(p)
+    const sv = Y.encodeStateVector(p)
+    p.getText('source').insert(1, 'c')
+    const gap = Y.encodeStateAsUpdate(p, sv)
+    expect(peerUpdateViolation(gap, doc, own())).not.toBeNull()
+    expect(peerUpdateViolation(u1, doc, own())).toBeNull()
+  })
+  it('accepts a step2 whose delete set re-deletes meta items already deleted by the owner', () => {
+    const doc = setup()
+    doc.getMap('meta').set('remoteHash', 'a')
+    doc.getMap('meta').set('remoteHash', 'b')
+    doc.getMap('meta').set('remoteHash', 'c')
+    const c = new Y.Doc()
+    Y.applyUpdate(c, Y.encodeStateAsUpdate(doc))
+    c.getText('source').insert(0, 'hi')
+    const u = Y.encodeStateAsUpdate(c, Y.encodeStateVector(doc))
+    expect(peerUpdateViolation(u, doc, own())).toBeNull()
+  })
+  it('still rejects deleting a LIVE meta item', () => {
+    const doc = setup()
+    doc.getMap('meta').set('remoteHash', 'a')
+    doc.getMap('meta').set('remoteHash', 'b')
+    const u = upd(doc, (p) => p.getMap('meta').delete('remoteHash'))
+    expect(peerUpdateViolation(u, doc, own())).not.toBeNull()
+  })
+})

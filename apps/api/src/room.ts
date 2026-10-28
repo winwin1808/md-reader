@@ -3,7 +3,8 @@ import type { Connection, ConnectionContext } from 'partyserver'
 import { YServer } from 'y-partyserver'
 import type { Env } from './env.js'
 import { classifyMessage, sanitizeAwarenessMessage } from './protocol'
-import { peerTxViolation } from './peer-guard.js'
+import { peerTxViolation, peerUpdateViolation } from './peer-guard.js'
+import * as decoding from 'lib0/decoding'
 import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike, type LogStats } from './persistence.js'
 
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
@@ -23,6 +24,8 @@ export class DocRoom extends YServer<Env> {
   private awarenessOwner = new Map<number, string>()
   private lastSeen = new Map<string, number>()
   private peerUndo!: Y.UndoManager
+  private clientOwners?: Map<number, string>
+  private connClaims?: WeakMap<object, Set<number>>
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -74,6 +77,10 @@ export class DocRoom extends YServer<Env> {
       return
     }
     for (const k of (await this.ctx.storage.list({ prefix: 'revoked:' })).keys()) this.revoked.add(k.slice('revoked:'.length))
+    const owners = (this.clientOwners ??= new Map())
+    for (const [k, v] of await this.ctx.storage.list({ prefix: 'owner:' })) {
+      if (typeof v === 'string') owners.set(Number(k.slice('owner:'.length)), v)
+    }
     this.stats = await readStats(this.kv)
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
@@ -228,6 +235,36 @@ export class DocRoom extends YServer<Env> {
       this.droppedWrites++
       conn.close(4413, 'room full')
       return
+    }
+    if ((k === 'step2' || k === 'update') && st?.prefix) {
+      // Pre-apply filter: a link-edit update that would touch anything but source / own actors entry is never applied,
+      // broadcast or persisted.
+      let bad: string | null
+      try {
+        const d = decoding.createDecoder(bytes)
+        decoding.readVarUint(d)
+        decoding.readVarUint(d)
+        const update = decoding.readVarUint8Array(d)
+        const owners = (this.clientOwners ??= new Map())
+        const claims = (this.connClaims ??= new WeakMap())
+        let claimed = claims.get(conn)
+        if (!claimed) claims.set(conn, (claimed = new Set()))
+        const before = new Set(claimed)
+        bad = peerUpdateViolation(update, this.document, { owners, claimed, prefix: st.prefix })
+        if (bad === null) {
+          for (const id of claimed) {
+            if (before.has(id)) continue
+            void Promise.resolve(this.ctx?.storage?.put('owner:' + id, st.prefix)).catch((e) => console.error('owner persist failed', e))
+          }
+        }
+      } catch {
+        bad = 'malformed message'
+      }
+      if (bad !== null) {
+        this.droppedWrites++
+        conn.close(4403, 'forbidden write')
+        return
+      }
     }
     if (k === 'awareness') {
       const s = sanitizeAwarenessMessage(bytes, (id, removal) => {

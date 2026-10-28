@@ -2,14 +2,22 @@
 
 Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
 
+## Phase 14 — Đóng nợ rủi ro trước khi nộp store (2026-10-28)
+
+Plan `docs/superpowers/plans/2026-10-28-phase-14-plan.md`. Đã làm: máy chủ kiểm update của link sửa TRƯỚC khi áp (`peerUpdateViolation` trong
+`DocRoom.handleMessage`) — vi phạm không được phát/lưu, đóng 4403; clientID gắn theo link (`owner:<clientID>` trong DO storage, ≤4 clientID mới/kết nối);
+delete set bỏ qua mục đã xoá sẵn (nối lại không bị đá); lớp hoàn tác sau áp vẫn giữ. `touchRoom` qua `ctx.waitUntil`; cron dọn theo lô tới 100 phòng/lượt;
+tổng dung lượng ảnh cache 5 phút. Web: phòng đầy → chỉ đọc. Flake IDB: nghi vấn `destroy()` bị bác bỏ (y-indexeddb không mở transaction khi destroy) — thêm test hồi quy đổi tài liệu nhanh.
+Test: api 209 · web 64 · extension 426; typecheck 0. **Nợ thấp:** tab web mở xuyên qua lần deploy này có thể bị 4403 một lần (phòng cũ chưa có bản ghi `owner:`);
+client B gửi lại struct của link A mà máy chủ mất trước khi lưu → B bị từ chối; bản ghi `owner:` chỉ xoá khi purge phòng.
+
 ## Phase 12 — Gia cố máy chủ (2026-10-28)
 
 Branch `phase-12` (12a..12e), spec `docs/superpowers/specs/2026-10-28-phase-12-design.md` (shipped). Đã làm: link sửa chỉ được ghi `source`
 + `meta.actors[clientID của mình]` — ghi sai chỗ (meta/history/root lạ) bị hoàn tác và đóng 4403 (`apps/api/src/peer-guard.ts`); `rooms.last_seen`
 (migration `0004_last_seen`, cập nhật ≤1 lần/ngày khi nối WS); trần toàn cục ảnh 3 GiB lưu / 1 GiB mỗi ngày; cron `17 3 * * *` xoá phòng
 không ai mở 90 ngày qua `deleteRoomEverywhere` (≤25 phòng/lượt) và dọn `usage_daily` cũ hơn 2 ngày. Privacy cập nhật.
-Test: api 195; typecheck 0. **Nợ:** update vi phạm vẫn được phát/lưu một nhịp trước khi hoàn tác (cuối cùng hội tụ — kiểm trước khi áp sẽ chặt hơn);
-peer có thể giả struct clientID khác để đặt `actors[id]` (thấp); `touchRoom` chưa qua `ctx.waitUntil`; `SUM(size)` assets mỗi lần upload (rẻ ở quy mô hiện tại).
+Test: api 195; typecheck 0. **Nợ:** đã đóng ở phase 14.
 
 ## Phase 13 — Hoàn thiện trải nghiệm (2026-10-28)
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIMITS, MemoryLimitStore, dayOf, ipSubject, secondsToNextDay, subjectFrom } from './limits.js'
+import { LIMITS, D1LimitStore, MemoryLimitStore, dayOf, ipSubject, secondsToNextDay, subjectFrom } from './limits.js'
 
 const S = { installHash: 'i1', ipHash: 'ip1' }
 const MB = 1024 * 1024
@@ -250,5 +250,31 @@ describe('pruneUsage', () => {
     expect(await st.pruneUsage(3)).toBe(1)
     expect(await st.check('report', S)).toBeNull()
     expect(await st.pruneUsage(3)).toBe(0)
+  })
+})
+
+describe('14b: totalAssetBytes cache', () => {
+  it('queries SUM once across uploads and still enforces the cap', async () => {
+    let sums = 0
+    const stored = 3 * 1024 ** 3 - 10
+    const db = {
+      prepare: (sql: string) => ({
+        bind: () => ({
+          first: async () => {
+            if (sql.includes('SUM(size)')) { sums++; return { v: stored } }
+            return { v: 0 }
+          },
+        }),
+      }),
+      batch: async () => [],
+    } as unknown as D1Database
+    const st = new D1LimitStore(db, () => 1000)
+    const S2 = { installHash: null, ipHash: 'h' }
+    expect(await st.check('asset', S2, { bytes: 5 })).toBeNull()
+    expect(await st.check('asset', S2, { bytes: 20 })).toEqual({ error: 'QUOTA_EXCEEDED' })
+    expect(sums).toBe(1)
+    await st.record('asset', S2, { roomId: 'r', bytes: 8 })
+    expect(await st.check('asset', S2, { bytes: 5 })).toEqual({ error: 'QUOTA_EXCEEDED' })
+    expect(sums).toBe(1)
   })
 })
