@@ -259,6 +259,23 @@ describe('EditPage', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Sửa' }))
     await waitFor(() => expect(container.querySelector('.cm-live')).toBeTruthy())
   })
+  it("status 'full' locks to read-only viewer, keeps text and banner; 'revoked' too", async () => {
+    for (const st of ['full', 'revoked'] as const) {
+      localStorage.setItem('mdr.displayName', 'Binh')
+      const m = makeBind()
+      const { container, unmount } = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+      m.emit('online')
+      await waitFor(() => expect(container.querySelector('.cm-live')).toBeTruthy())
+      act(() => { m.calls[0]!.doc.getText('source').insert(0, '# Đã gõ') })
+      m.emit(st)
+      expect(container.querySelector('.cm-editor')).toBeNull()
+      expect(screen.queryByRole('toolbar')).toBeNull()
+      expect(screen.queryByRole('radio', { name: 'Sửa' })).toBeNull()
+      expect(screen.getByRole('alert').textContent).toBeTruthy()
+      await waitFor(() => expect(container.querySelector('h1')?.textContent).toContain('Đã gõ'), { timeout: 1500 })
+      unmount()
+    }
+  })
   it('view link page has no toggle', async () => {
     render(<SharePage token={TOKEN} load={async () => ({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '# Hi' }) as never} />)
     await waitFor(() => expect(screen.getByText('T')).toBeTruthy())
