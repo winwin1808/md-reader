@@ -707,3 +707,45 @@ describe('DocRoom pre-apply link filter (14a)', () => {
     spy.mockRestore()
   })
 })
+
+describe('DocRoom 15b', () => {
+  it('awareness cursor over the byte cap is dropped even when under the char cap', () => {
+    const room = makeRoom()
+    const spy = spyOnSuper(true)
+    const inner = encoding.createEncoder()
+    encoding.writeVarUint(inner, 1)
+    encoding.writeVarUint(inner, 7)
+    encoding.writeVarUint(inner, 1)
+    const cursor = { anchor: 'ệ'.repeat(600) }
+    expect(JSON.stringify(cursor).length).toBeLessThan(1024)
+    encoding.writeVarString(inner, JSON.stringify({ user: { name: 'A', color: 'var(--peer-1)' }, cursor }))
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 1)
+    encoding.writeVarUint8Array(e, encoding.toUint8Array(inner))
+    room.handleMessage(conn({ role: 'edit' }), encoding.toUint8Array(e))
+    const buf = spy.mock.calls[0]![1] as Uint8Array
+    const d = decoding.createDecoder(buf)
+    decoding.readVarUint(d)
+    const u = decoding.createDecoder(decoding.readVarUint8Array(d))
+    decoding.readVarUint(u)
+    decoding.readVarUint(u)
+    decoding.readVarUint(u)
+    expect(JSON.parse(decoding.readVarString(u)).cursor).toBeUndefined()
+    spy.mockRestore()
+  })
+  it('revoking a prefix removes its owner: records only', async () => {
+    const st = fakeStorage({ 'owner:1': 'P', 'owner:2': 'Q', 'owner:3': 'P' })
+    const room = makePurgeRoom(st)
+    ;(room as unknown as { clientOwners: Map<number, string> }).clientOwners = new Map([[1, 'P'], [2, 'Q'], [3, 'P']])
+    const r = await room.onRequest(
+      new Request('http://x/parties/doc-room/r/revoke', {
+        method: 'POST',
+        headers: { 'x-mdr-internal': '1' },
+        body: JSON.stringify({ prefix: 'P' }),
+      }),
+    )
+    expect(r.status).toBe(204)
+    expect([...st.m.keys()].filter((k) => k.startsWith('owner:'))).toEqual(['owner:2'])
+    expect([...(room as unknown as { clientOwners: Map<number, string> }).clientOwners.keys()]).toEqual([2])
+  })
+})

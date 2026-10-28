@@ -22,19 +22,22 @@ export function sanitizeUser(user: unknown): { name: string; color: string; colo
   if (typeof user !== 'object' || user === null || Array.isArray(user)) return null
   const u = user as Record<string, unknown>
   let name = typeof u.name === 'string' ? u.name.trim().slice(0, 40) : ''
+  while (name && byteLen(name) > MAX_NAME_BYTES) name = name.slice(0, -1)
   if (!name) name = 'Ẩn danh'
   const color = typeof u.color === 'string' && PEER_COLOR_RE.test(u.color) ? u.color : 'var(--peer-1)'
   return { name, color, colorLight: `color-mix(in srgb, ${color} 20%, transparent)` }
 }
 
 export const MAX_AWARENESS_BYTES = 16 * 1024
-const MAX_CURSOR_CHARS = 1024
+const MAX_CURSOR_BYTES = 1024
+const MAX_NAME_BYTES = 120
+const byteLen = (s: string): number => new TextEncoder().encode(s).length
 
 function cursorOk(c: unknown): boolean {
   if (c === null) return true
   if (typeof c !== 'object' || Array.isArray(c)) return false
   try {
-    return JSON.stringify(c).length <= MAX_CURSOR_CHARS
+    return byteLen(JSON.stringify(c)) <= MAX_CURSOR_BYTES
   } catch {
     return false
   }
