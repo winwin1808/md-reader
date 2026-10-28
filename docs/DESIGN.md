@@ -484,6 +484,22 @@ Spec: `docs/superpowers/specs/2026-10-27-phase-11-design.md`.
 | 11j | Bridge v2 (extension) | ghim khoá máy chủ, fingerprint trong hộp ghép cặp |
 | 11k | Docs & kiểm lại | MCP.md, privacy, audit lại 8 mục, deploy |
 
+### Phase 12 — Gia cố máy chủ tiếp
+
+Spec: `docs/superpowers/specs/2026-10-28-phase-12-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 12a | Lọc peer | link sửa chỉ ghi `source` + `meta.actors[clientID mình]`; còn lại hoàn tác + đóng 4403 |
+| 12b | last_seen | migration 0004, cập nhật khi nối WS (≤1 lần/ngày) |
+| 12c | Trần ảnh toàn cục | ≤3 GiB lưu trữ, ≤1 GiB/ngày tải lên |
+| 12d | Cron dọn dẹp | xoá phòng bỏ không 90 ngày, dọn `usage_daily` |
+| 12e | Docs + deploy | privacy/listing, migration remote, Worker |
+
+### Phase 13 — Hoàn thiện trải nghiệm trước khi lên store
+
+Spec: `docs/superpowers/specs/2026-10-28-phase-13-design.md`.
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
