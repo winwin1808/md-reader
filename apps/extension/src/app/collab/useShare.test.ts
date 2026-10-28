@@ -415,4 +415,35 @@ describe('useShare', () => {
       expect(store['mdr.links.r1']).toBeTruthy()
     })
   })
+
+  it('enable on A then switch to B before createRoom resolves: room attached to A only, none orphaned', async () => {
+    const B = (await createRecord({ title: 'b', originKind: 'drop', originPath: null })).docId
+    let release!: (r: Response) => void
+    fetchMock.mockReturnValueOnce(new Promise<Response>((res) => { release = res }))
+    const h = renderHook((p: { docId: string }) => useShare({ docId: p.docId, serverUrl: SERVER }), { initialProps: { docId } })
+    let pr!: Promise<unknown>
+    act(() => { pr = h.result.current.enable().catch(() => {}) })
+    h.rerender({ docId: B })
+    release(new Response(JSON.stringify({ roomId: 'r9', ownerToken: 'o9' }), { status: 200 }))
+    await act(async () => { await pr })
+    expect((await getRecord(docId))?.room?.roomId).toBe('r9')
+    expect((await getRecord(B))?.room).toBeUndefined()
+    expect(h.result.current.binding).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1) // no DELETE needed
+  })
+
+  it('operations in the render->effect window do not hit the previous doc room', async () => {
+    const B = (await createRecord({ title: 'b', originKind: 'drop', originPath: null })).docId
+    const h = await bound()
+    const hook = renderHook((p: { docId: string }) => useShare({ docId: p.docId, serverUrl: SERVER }), { initialProps: { docId } })
+    await waitFor(() => expect(hook.result.current.binding?.roomId).toBe('r1'))
+    const api = hook.result.current
+    fetchMock.mockClear()
+    // new render with doc B; call the OLD closure before effects/state settle
+    hook.rerender({ docId: B })
+    expect(api.currentBinding()).toBeNull()
+    await act(async () => { await expect(api.refresh()).rejects.toThrow() })
+    expect(fetchMock).not.toHaveBeenCalled()
+    h.unmount()
+  })
 })

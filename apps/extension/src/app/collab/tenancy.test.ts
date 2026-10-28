@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createT } from '@md-reader/ui'
-import { newInstallKey, getInstallKey, limitMessage, INSTALL_KEY_STORAGE, __resetInstallKeyCache } from './tenancy'
+import { newInstallKey, getInstallKey, InstallKeyStorageError, limitMessage, INSTALL_KEY_STORAGE, __resetInstallKeyCache } from './tenancy'
 
 const t = createT('vi')
 
@@ -43,6 +43,29 @@ describe('tenancy', () => {
     const [a, b] = await Promise.all([getInstallKey(f.store), getInstallKey(f.store)])
     expect(a).toBe(b)
     expect(f.set).toHaveBeenCalledTimes(1)
+  })
+
+  it('storage failure is a storage error, not a network error', async () => {
+    const store = { get: async () => { throw new Error('quota') }, set: async () => {} }
+    await expect(getInstallKey(store)).rejects.toBeInstanceOf(InstallKeyStorageError)
+  })
+
+  it('two contexts racing first run share one key via navigator.locks', async () => {
+    let tail: Promise<unknown> = Promise.resolve()
+    const prev = (navigator as any).locks
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+      request: (_n: string, cb: () => Promise<unknown>) => { const r = tail.then(cb); tail = r.catch(() => {}); return r },
+    } })
+    try {
+      const f = fakeStore()
+      const a = getInstallKey(f.store)
+      __resetInstallKeyCache() // a second tab has its own module cache
+      const b = getInstallKey(f.store)
+      expect(await a).toBe(await b)
+      expect(f.set).toHaveBeenCalledTimes(1)
+    } finally {
+      Object.defineProperty(navigator, 'locks', { configurable: true, value: prev })
+    }
   })
 
   it('limitMessage', () => {

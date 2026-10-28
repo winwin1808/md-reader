@@ -4,7 +4,7 @@ import type { TFunction } from '@md-reader/ui'
 import { API_PATHS, INSTALL_HEADER, SHARE_EXPIRY_PRESETS } from '@md-reader/core'
 import type { CreateLinkRequest, CreateRoomResponse, RoomBinding, ShareLink } from '@md-reader/core'
 import { saveLinkToken, getLinkTokens, forgetLinkToken, forgetRoomTokens } from './link-cache'
-import { getInstallKey, limitMessage } from './tenancy'
+import { getInstallKey, InstallKeyStorageError, limitMessage } from './tenancy'
 import { getRecord, touchRecord } from '../doc-registry'
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -60,12 +60,19 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     setLinks(linksRef.current)
   }
   const enabling = useRef<Promise<RoomBinding> | null>(null)
+  // Doc the current binding belongs to, and the doc of the latest render. Between a
+  // docId change (render) and its effect, bindingRef still holds the OLD doc's room.
+  const boundDoc = useRef<string | null>(null)
+  const docRef = useRef<string | null>(docId)
+  docRef.current = docId
+  const live = () => (boundDoc.current === docRef.current ? bindingRef.current : null)
 
   useEffect(() => {
     let cancelled = false
     gen.current++
     enabling.current = null
     bindingRef.current = null
+    boundDoc.current = docId
     tokens.current.clear()
     session.current.clear()
     setBinding(null)
@@ -74,6 +81,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
       getRecord(docId).then((r) => {
         if (cancelled || !r?.room) return
         bindingRef.current = r.room
+        boundDoc.current = docId
         setBinding(r.room)
       }).catch(() => {})
     }
@@ -98,22 +106,33 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
 
   const auth = (b: RoomBinding) => ({ Authorization: `Bearer ${b.ownerToken}` })
   const need = (): RoomBinding => {
-    const b = bindingRef.current
+    const b = live()
     if (!b) throw new Error(t('ext.share.notEnabled'))
     return b
   }
 
+  const installKey = async (): Promise<string> => {
+    try { return await getInstallKey() } catch (e) {
+      if (e instanceof InstallKeyStorageError) throw new Error(t('ext.share.storageError'))
+      throw e
+    }
+  }
+
   const enable = useCallback(async (): Promise<RoomBinding> => {
-    if (bindingRef.current) return bindingRef.current
+    const have = live()
+    if (have) return have
     if (!docId) throw new Error(t('ext.share.noDoc'))
     if (enabling.current) return enabling.current
     const p: Promise<RoomBinding> = run(async (stale) => {
-      const r = await call<CreateRoomResponse>(t, `${serverUrl}${API_PATHS.rooms}`, { method: 'POST', headers: { [INSTALL_HEADER]: await getInstallKey() } })
+      const r = await call<CreateRoomResponse>(t, `${serverUrl}${API_PATHS.rooms}`, { method: 'POST', headers: { [INSTALL_HEADER]: await installKey() } })
       if (!isObj(r) || typeof r.roomId !== 'string' || typeof r.ownerToken !== 'string') throw new Error(INVALID)
       const b: RoomBinding = { serverUrl, roomId: r.roomId, ownerToken: r.ownerToken }
+      // Always attach to the doc the user clicked Share on (docId captured above), even if
+      // they switched away meanwhile; only the live hook state is skipped when stale.
       await touchRecord(docId, { room: b })
       if (!stale()) {
         bindingRef.current = b
+        boundDoc.current = docId
         setBinding(b)
       }
       return b
@@ -234,5 +253,5 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
 
   return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error,
     currentLinks: (): ShareLink[] => linksRef.current,
-    currentBinding: (): RoomBinding | null => bindingRef.current }
+    currentBinding: (): RoomBinding | null => live() }
 }
