@@ -76,30 +76,37 @@ export function createCheckpointTracker(
   }
 }
 
-const pendingActors = new WeakMap<Y.Doc, { name: string; handler: () => void }>()
+const pendingActors = new WeakMap<Y.Doc, { name: string; handler: () => void; cancel: () => void }>()
 
-export function registerActor(doc: Y.Doc, name: string): void {
+export function registerActor(doc: Y.Doc, name: string, timeoutMs = 10_000): () => void {
   const meta = getMeta(doc)
   if (!(meta.get('actors') instanceof Y.Map) && !meta.has('formatVersion')) {
     // Joiner doc not synced yet: wait for the owner's actors map instead of racing it.
     const pending = pendingActors.get(doc)
     if (pending) {
       pending.name = name
-      return
+      return pending.cancel
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const cancel = () => {
+      if (timer !== undefined) clearTimeout(timer)
+      meta.unobserve(entry.handler)
+      if (pendingActors.get(doc) === entry) pendingActors.delete(doc)
     }
     const entry = {
       name,
+      cancel,
       handler: () => {
         const m = meta.get('actors')
         if (!(m instanceof Y.Map)) return
-        meta.unobserve(entry.handler)
-        pendingActors.delete(doc)
+        cancel()
         m.set(String(doc.clientID), entry.name)
       },
     }
     pendingActors.set(doc, entry)
     meta.observe(entry.handler)
-    return
+    timer = setTimeout(cancel, timeoutMs)
+    return cancel
   }
   doc.transact(() => {
     const raw = meta.get('actors')
@@ -114,6 +121,7 @@ export function registerActor(doc: Y.Doc, name: string): void {
     }
     map.set(String(doc.clientID), name)
   })
+  return () => {}
 }
 
 export function trackLocalActor(doc: Y.Doc, getName: () => string): () => void {

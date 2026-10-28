@@ -54,3 +54,12 @@ describe('PresenceBar', () => {
     expect(container.querySelector('.presence-bar')!.getAttribute('aria-label')).toBe('Đang trong phòng: 2 người')
   })
 })
+
+describe('initials graphemes', () => {
+  it('keeps ZWJ emoji whole', () => {
+    expect(initials('👩‍💻 Dev')).toBe('👩‍💻D')
+  })
+  it('handles NFD names', () => {
+    expect(initials('Đặng Ánh'.normalize('NFD'))).toBe('ĐÁ')
+  })
+})
