@@ -1,5 +1,5 @@
 # Design: Phase 13 — Hoàn thiện trải nghiệm trước khi lên store
-Author: haonq (coordinator: Claude Opus). Status: designed. Phase: 13
+Author: haonq (coordinator: Claude Opus). Status: shipped. Phase: 13
 Intent: docs/superpowers/intent/2026-10-28-phase-13-hoan-thien.md
 
 ## Approach chosen
@@ -12,10 +12,10 @@ Intent: docs/superpowers/intent/2026-10-28-phase-13-hoan-thien.md
 Task song song commit thẳng lên `phase-13` (worktree `../md-reader-13`) bằng pathspec.
 
 ## Sub-phase queue
-- 13a1: planned
-- 13a2: planned
-- 13b: planned
-- 13c: planned
-- 13d: planned
-- 13e: planned
-- 13f: planned
+- 13a1: done
+- 13a2: done
+- 13b: done
+- 13c: done
+- 13d: done
+- 13e: done
+- 13f: done
