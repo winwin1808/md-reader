@@ -543,3 +543,41 @@ describe('DocRoom awareness ownership', () => {
     spy.mockRestore()
   })
 })
+
+describe('DocRoom peer write guard (12a)', () => {
+  function guarded() {
+    const room = makeRoom()
+    const r = room as unknown as { peerUndo: Y.UndoManager; installPeerGuard: () => void }
+    const doc = room.document
+    doc.getMap('meta').set('formatVersion', 2)
+    doc.getMap('meta').set('actors', new Y.Map())
+    doc.getText('source')
+    doc.getArray('history')
+    r.installPeerGuard()
+    return { room, r, doc }
+  }
+  const link = { id: 'l', state: { role: 'edit', prefix: 'p' }, close: vi.fn(), send: () => undefined }
+  it('reverts meta write by link connection and closes 4403', () => {
+    const { r, doc } = guarded()
+    const c = { ...link, close: vi.fn() }
+    r.peerUndo.trackedOrigins.add(c)
+    doc.transact(() => doc.getMap('meta').set('formatVersion', 99), c)
+    expect(doc.getMap('meta').get('formatVersion')).toBe(2)
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+  })
+  it('keeps source edits from link connection', () => {
+    const { r, doc } = guarded()
+    const c = { ...link, close: vi.fn() }
+    r.peerUndo.trackedOrigins.add(c)
+    doc.transact(() => doc.getText('source').insert(0, 'ok'), c)
+    expect(doc.getText('source').toString()).toBe('ok')
+    expect(c.close).not.toHaveBeenCalled()
+  })
+  it('does not filter owner connection', () => {
+    const { doc } = guarded()
+    const c = { id: 'o', state: { role: 'edit', prefix: '' }, close: vi.fn() }
+    doc.transact(() => doc.getMap('meta').set('formatVersion', 3), c)
+    expect(doc.getMap('meta').get('formatVersion')).toBe(3)
+    expect(c.close).not.toHaveBeenCalled()
+  })
+})

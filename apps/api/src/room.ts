@@ -3,6 +3,7 @@ import type { Connection, ConnectionContext } from 'partyserver'
 import { YServer } from 'y-partyserver'
 import type { Env } from './env.js'
 import { classifyMessage, sanitizeAwarenessMessage } from './protocol'
+import { peerTxViolation } from './peer-guard.js'
 import { appendUpdate, compact, loadState, readStats, shouldCompact, type KVLike, type LogStats } from './persistence.js'
 
 export const MAX_MESSAGE_BYTES = 16 * 1024 * 1024
@@ -21,6 +22,7 @@ export class DocRoom extends YServer<Env> {
   private revoked = new Set<string>()
   private awarenessOwner = new Map<number, string>()
   private lastSeen = new Map<string, number>()
+  private peerUndo!: Y.UndoManager
 
   private get kv(): KVLike {
     const s = this.ctx.storage
@@ -76,9 +78,29 @@ export class DocRoom extends YServer<Env> {
     const state = await loadState(this.kv)
     if (state) Y.applyUpdate(this.document, state)
     this.roomBytes = state ? state.length : 0
+    this.installPeerGuard()
     this.document.on('update', (u: Uint8Array) => {
       this.roomBytes += u.length
       void this.persistUpdate(u).catch((e) => console.error('persist failed', e))
+    })
+  }
+
+  private installPeerGuard(): void {
+    const doc = this.document
+    this.peerUndo = new Y.UndoManager([doc.getMap('meta'), doc.getArray('history')], {
+      trackedOrigins: new Set(),
+      captureTimeout: 0,
+      doc,
+    })
+    // Registered after the UndoManager, so its stack item exists when we run.
+    doc.on('afterTransaction', (tr: Y.Transaction) => {
+      if (tr.origin === this.peerUndo || !this.peerUndo.trackedOrigins.has(tr.origin)) return
+      const bad = peerTxViolation(tr, doc)
+      if (bad !== null) {
+        this.peerUndo.undo()
+        ;(tr.origin as Connection).close(4403, 'forbidden write')
+      }
+      this.peerUndo.clear()
     })
   }
 
@@ -100,6 +122,7 @@ export class DocRoom extends YServer<Env> {
   }
 
   async onClose(conn: Connection, code: number, reason: string, wasClean: boolean): Promise<void> {
+    this.peerUndo?.trackedOrigins.delete(conn)
     for (const [id, owner] of [...this.awarenessOwner]) if (owner === conn.id) this.awarenessOwner.delete(id)
     this.lastSeen.delete(conn.id)
     await super.onClose(conn, code, reason, wasClean)
@@ -131,6 +154,7 @@ export class DocRoom extends YServer<Env> {
     }
     conn.setState({ role, prefix, expiresAt })
     if (expiresAt !== undefined) void this.scheduleExpiry(expiresAt).catch((e) => console.error('setAlarm failed', e))
+    if (prefix) this.peerUndo?.trackedOrigins.add(conn)
     super.onConnect(conn, ctx)
   }
 
