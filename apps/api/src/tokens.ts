@@ -15,6 +15,7 @@ export interface TokenStore {
   createLink(roomId: string, req: CreateLinkRequest): Promise<ShareLink>
   listLinks(roomId: string): Promise<ShareLink[]>
   revoke(roomId: string, tokenPrefix: string): Promise<boolean>
+  revokeAll(roomId: string): Promise<number>
   resolve(token: string): Promise<ResolvedToken | null>
   deleteRoom(roomId: string): Promise<boolean>
   touchRoom(roomId: string): Promise<void>
@@ -112,6 +113,18 @@ export class MemoryTokenStore implements TokenStore {
     if (!first) return false
     first.revokedAt = this.now()
     return true
+  }
+
+  async revokeAll(roomId: string): Promise<number> {
+    let n = 0
+    const t = this.now()
+    for (const r of this.links.values()) {
+      if (r.roomId === roomId && r.revokedAt === null) {
+        r.revokedAt = t
+        n++
+      }
+    }
+    return n
   }
 
   async resolve(token: string): Promise<ResolvedToken | null> {

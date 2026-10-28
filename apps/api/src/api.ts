@@ -23,6 +23,7 @@ async function isOwner(req: Request, store: TokenStore, roomId: string): Promise
 }
 
 const MAX_BODY = 4096
+const utf8Len = (s: string): number => new TextEncoder().encode(s).byteLength
 const MAX_EXPIRES = 10 * 365 * 86_400_000
 const MAX_LABEL = 120
 
@@ -95,7 +96,7 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     let body: unknown
     try {
       const text = await req.text()
-      if (text.length > MAX_BODY) return json({ error: 'invalid body' }, 400)
+      if (utf8Len(text) > MAX_BODY) return json({ error: 'invalid body' }, 400)
       body = JSON.parse(text)
     } catch {
       return json({ error: 'invalid body' }, 400)
@@ -167,7 +168,7 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       let body: unknown
       try {
         const text = await req.text()
-        if (text.length > MAX_BODY) return json({ error: 'body too large' }, 413)
+        if (utf8Len(text) > MAX_BODY) return json({ error: 'body too large' }, 413)
         body = JSON.parse(text)
       } catch {
         return json({ error: 'invalid body' }, 400)
@@ -181,6 +182,24 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
         throw e
       }
     }
+  }
+
+  const all = /^\/api\/rooms\/([^/]+)\/links\/revoke-all$/.exec(path)
+  if (all && method === 'POST') {
+    const roomId = safeDecode(all[1]!)
+    if (roomId === null) return badPath()
+    if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
+    const revoked = await store.revokeAll(roomId)
+    forgetRoomAuth(roomId)
+    try {
+      for (const l of await store.listLinks(roomId)) {
+        if (l.revokedAt !== null) await deps.revokeLive?.(roomId, l.tokenPrefix)
+      }
+    } catch (e) {
+      console.error('revokeLive failed', roomId, e)
+      return json({ error: 'REVOKE_LIVE_FAILED' }, 502)
+    }
+    return json({ revoked })
   }
 
   const one = /^\/api\/rooms\/([^/]+)\/links\/([^/]+)$/.exec(path)

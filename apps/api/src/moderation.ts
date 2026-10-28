@@ -26,10 +26,9 @@ export class D1ModerationStore implements ModerationStore {
       .run()
   }
   async addTakedown(roomId: string): Promise<void> {
-    await this.db
-      .prepare('INSERT OR IGNORE INTO takedowns (room_id, created_at) VALUES (?, ?)')
-      .bind(roomId, this.now())
-      .run()
+    await this.db.batch([
+      this.db.prepare('INSERT OR IGNORE INTO takedowns (room_id, created_at) VALUES (?, ?)').bind(roomId, this.now()),
+    ])
   }
 }
 

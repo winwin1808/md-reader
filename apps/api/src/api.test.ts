@@ -601,3 +601,49 @@ describe('revoke live (11c)', () => {
     expect(((await authorizeWs(wsReq(link.token), store, now)) as Response).status).toBe(410)
   })
 })
+
+describe('revoke-all + byte limits (15a)', () => {
+  async function room() {
+    const store = new MemoryTokenStore(now)
+    const r = (await (await handleApi(req('POST', '/api/rooms'), store))!.json()) as { roomId: string; ownerToken: string }
+    return { store, ...r }
+  }
+
+  it('revoke-all revokes every link, tells DO per link, returns {revoked:3}', async () => {
+    const { store, roomId, ownerToken } = await room()
+    const toks: string[] = []
+    for (const role of ['view', 'edit', 'view'] as const) {
+      const l = await store.createLink(roomId, { role, expiresIn: null })
+      toks.push(l.token)
+    }
+    const revokeLive = vi.fn(async () => {})
+    const res = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive })
+    expect(res!.status).toBe(200)
+    expect(await res!.json()).toEqual({ revoked: 3 })
+    for (const tk of toks) expect(await store.resolve(tk)).toBeNull()
+    expect(revokeLive).toHaveBeenCalledTimes(3)
+    const again = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, { bearer: ownerToken }), store, { revokeLive })
+    expect(await again!.json()).toEqual({ revoked: 0 })
+  })
+
+  it('revoke-all by non-owner is 401', async () => {
+    const { store, roomId } = await room()
+    const l = await store.createLink(roomId, { role: 'edit', expiresIn: null })
+    for (const b of [undefined, 'nope', l.token]) {
+      const res = await handleApi(req('POST', `/api/rooms/${roomId}/links/revoke-all`, b === undefined ? {} : { bearer: b }), store)
+      expect(res!.status).toBe(401)
+    }
+    expect(await store.resolve(l.token)).not.toBeNull()
+  })
+
+  it('413 counts UTF-8 bytes, not UTF-16 length', async () => {
+    const { store, roomId, ownerToken } = await room()
+    const pad = 'ệ😀'.repeat(700) // length 2100 < 4096, bytes 700*(3+4)=4900 > 4096
+    expect(pad.length).toBeLessThan(4096)
+    const res = await handleApi(
+      req('POST', `/api/rooms/${roomId}/links`, { bearer: ownerToken, body: { role: 'view', expiresIn: null, pad } }),
+      store,
+    )
+    expect(res!.status).toBe(413)
+  })
+})

@@ -107,6 +107,14 @@ export class D1TokenStore implements TokenStore {
     return (res.meta.changes ?? 0) > 0
   }
 
+  async revokeAll(roomId: string): Promise<number> {
+    const res = await this.db
+      .prepare('UPDATE links SET revoked_at = ? WHERE room_id = ? AND revoked_at IS NULL')
+      .bind(this.now(), roomId)
+      .run()
+    return res.meta.changes ?? 0
+  }
+
   async resolve(token: string): Promise<ResolvedToken | null> {
     const h = await hashToken(token)
     const owner = await this.db
