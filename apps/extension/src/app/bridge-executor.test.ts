@@ -186,7 +186,7 @@ describe('createBridgeExecutor', () => {
       expect(labels()).toHaveLength(0)
       await run(upd('two', await textHash('one')))
       expect(labels()).toHaveLength(1)
-      expect(labels()[0]!.actor).toBe('AI')
+      expect(labels()[0]!.actor).toBe('test')
     })
   })
 
