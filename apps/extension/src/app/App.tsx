@@ -169,6 +169,8 @@ export function App(): React.JSX.Element {
   const [retryNonce, setRetryNonce] = useState(0)
   const displayName = readerSettings.displayName?.trim() || 'Bạn'
   const session = useDocSession({ docId: urlParams.docId, shortParam: urlParams.shortParam, fileUrl: urlParams.fileUrl, room, displayName })
+  const [newerDismissed, setNewerDismissed] = useState<boolean>(false)
+  useEffect(() => { setNewerDismissed(false) }, [session.docId])
   const { doc, yText, undoManager, content, hasContent, isDirty, error, setError } = session
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -853,6 +855,14 @@ export function App(): React.JSX.Element {
               <div className="notice__actions">
                 <button type="button" onClick={session.acceptExternal}>{t('ext.notice.loadNew')}</button>
                 <button type="button" onClick={session.dismissExternal}>{t('ext.notice.keepMine')}</button>
+              </div>
+            </div>
+          )}
+          {session.newerFormat && !newerDismissed && (
+            <div className="error-banner notice" role="status">
+              <span>{t('ext.notice.newerFormat')}</span>
+              <div className="notice__actions">
+                <button type="button" onClick={() => setNewerDismissed(true)}>{t('ext.notice.dismiss')}</button>
               </div>
             </div>
           )}
