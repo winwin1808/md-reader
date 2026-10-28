@@ -22,8 +22,8 @@ afterEach(async () => {
 
 describe('useDocSession IDB ordering (14d)', () => {
   it('switching A -> B -> A quickly with writes keeps A data and raises no unhandled errors', async () => {
-    const a = await createRecord({ title: 'a.md', originKind: 'local', originPath: null })
-    const b = await createRecord({ title: 'b.md', originKind: 'local', originPath: null })
+    const a = await createRecord({ title: 'a.md', originKind: 'drop', originPath: null })
+    const b = await createRecord({ title: 'b.md', originKind: 'drop', originPath: null })
     await writeDocText(a, 'alpha text', 'replace')
     await writeDocText(b, 'beta text', 'replace')
 
@@ -44,7 +44,7 @@ describe('useDocSession IDB ordering (14d)', () => {
   })
 
   it('rapid mount/unmount churn with concurrent writeDocText raises no errors', async () => {
-    const a = await createRecord({ title: 'a.md', originKind: 'local', originPath: null })
+    const a = await createRecord({ title: 'a.md', originKind: 'drop', originPath: null })
     await writeDocText(a, 'seed', 'replace')
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
