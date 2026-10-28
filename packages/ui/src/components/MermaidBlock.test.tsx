@@ -1,6 +1,6 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MermaidBlock, __clearMermaidCache, inlineMermaid } from './MermaidBlock'
 
 vi.mock('mermaid', () => {
@@ -16,6 +16,14 @@ vi.mock('mermaid', () => {
     }
   }
 })
+
+beforeEach(async () => {
+  __clearMermaidCache()
+  const m = (await import('mermaid')).default as any
+  m.render.mockClear()
+  m.initialize.mockClear()
+})
+afterEach(() => cleanup())
 
 describe('MermaidBlock', () => {
   it('renders loading state initially and then svg on success', async () => {

@@ -8,6 +8,7 @@ afterEach(() => {
 })
 import type { Slide } from '@md-reader/core'
 import { Deck, fitScale } from './Deck'
+import * as uiIndex from '../index'
 
 vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
 
@@ -275,8 +276,7 @@ describe('Deck component', () => {
     expect(themeWrapper).not.toBeNull()
   })
 
-  it('is exported from packages/ui/src/index.ts', async () => {
-    const uiIndex = await import('../index')
+  it('is exported from packages/ui/src/index.ts', () => {
     expect(uiIndex.Deck).toBeDefined()
     expect(uiIndex.Deck).toBe(Deck)
   })
