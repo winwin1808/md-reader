@@ -117,6 +117,16 @@ schema Y.Doc sau khi có dữ liệu thật là migration đau.
 
 Có `formatVersion` trong `meta` ngay từ đầu để migration về sau còn có chỗ bám.
 
+**Ràng buộc link sửa (phase 12/14).** Khi chia sẻ, máy chủ gắn mỗi clientID với link sửa đã
+dùng nó (`owner:<clientID>` trong DO storage, ≤ 4 clientID mới mỗi kết nối). Peer qua link sửa
+chỉ được ghi `source` và mục `meta.actors` của chính clientID mình; mọi ghi khác (meta/history/root lạ)
+bị từ chối và đóng kết nối 4403. Máy chủ kiểm update **trước khi áp** (`peerUpdateViolation` trong
+`DocRoom.handleMessage`), nên update vi phạm không được phát hay lưu.
+
+**clientID của MCP (phase 15).** Sửa từ `le-sach-mcp` ghi dưới tên client đã ghép cặp (ví dụ
+"Claude Code"). Ánh xạ client → clientID lưu cục bộ theo máy trong `chrome.storage.local`, KHÔNG
+trong Y.Doc đồng bộ, nên `meta.actors` không thêm mục mới mỗi lần `update_doc`.
+
 ### 2.4 Ranh giới package — ràng buộc cứng
 
 ```
@@ -477,7 +487,7 @@ Spec: `docs/superpowers/specs/2026-10-27-phase-11-design.md`.
 | 11c | Thu hồi tức thì | DO lưu tập thu hồi, đóng socket, kiểm hết hạn mỗi message |
 | 11d | Xoá phòng an toàn | purge trước, kiểm kết quả, 502 thử lại được |
 | 11e | Quota IP | bytes theo IP luôn áp dụng, IPv6 /64 |
-| 11f | Trần Yjs + awareness | 2 MiB/message, 64 MiB/phòng, chặn giả clientID |
+| 11f | Trần Yjs + awareness | 16 MiB/message, 64 MiB/phòng (`MAX_MESSAGE_BYTES`, `MAX_ROOM_BYTES` trong `apps/api/src/room.ts`), chặn giả clientID |
 | 11g | AI không ghi đĩa | update_doc không kích hoạt auto-save |
 | 11h | formatVersion lạ | ensureDoc tolerateNewer, phiên chủ không hỏng |
 | 11i | Bridge v2 (core+mcp) | ECDSA P-256, nonce, không bí mật qua dây |
@@ -486,7 +496,7 @@ Spec: `docs/superpowers/specs/2026-10-27-phase-11-design.md`.
 
 ### Phase 12 — Gia cố máy chủ tiếp
 
-Spec: `docs/superpowers/specs/2026-10-28-phase-12-design.md`.
+Spec: `docs/superpowers/specs/2026-10-28-phase-12-design.md` (shipped).
 
 | # | Phase con | Xong nghĩa là |
 |---|---|---|
@@ -498,7 +508,64 @@ Spec: `docs/superpowers/specs/2026-10-28-phase-12-design.md`.
 
 ### Phase 13 — Hoàn thiện trải nghiệm trước khi lên store
 
-Spec: `docs/superpowers/specs/2026-10-28-phase-13-design.md`.
+Spec: `docs/superpowers/specs/2026-10-28-phase-13-design.md` (shipped).
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 13a1 | Trạng thái `revoked`/`full` (extension) | Đóng 4410 / 4413·1009 báo rõ trên toolbar, không nối lại |
+| 13a2 | Trạng thái `revoked`/`full` (web) | Cùng hai trạng thái ở trang web, có banner |
+| 13b | Banner `newerFormat` | Tài liệu có `formatVersion` mới hơn hiện banner, đóng được |
+| 13c | `decide` hai lần | Bấm Cho phép hai lần ở hộp ghép cặp MCP không còn hỏng (`Entry.deciding`) |
+| 13d | Nhãn alert tại chỗ | Nhãn alert trong content script theo cài đặt ngôn ngữ |
+| 13e | Export ảnh tương đối | Export HTML nhúng ảnh đường dẫn tương đối qua image resolver |
+| 13f | Flake | Sửa `ux-reading.flow` (warm-up cold start worker) và test extension chập chờn |
+
+### Phase 14 — Đóng nợ rủi ro trước khi nộp store
+
+Plan: `docs/superpowers/plans/2026-10-28-phase-14-plan.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 14a | Lọc peer trước khi áp | Update sai chỗ của link sửa không được phát/lưu, đóng 4403; clientID gắn theo link (`owner:<clientID>`) |
+| 14b | Cron + `touchRoom` | `touchRoom` qua `waitUntil`, cron dọn theo lô (≤100 phòng/lượt), cache tổng dung lượng ảnh |
+| 14c | Web phòng đầy | 4413/1009 → ô soạn thảo chỉ đọc kèm banner |
+| 14d | Flake IDB | Test hồi quy đổi tài liệu nhanh; nghi vấn `destroy()` bị bác bỏ |
+
+### Phase 15 — Trả nợ phía người dùng và máy chủ
+
+Plan: `docs/superpowers/plans/2026-10-28-phase-15-plan.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 15a | Revoke-all máy chủ | `POST /api/rooms/:id/links/revoke-all`, takedown atomic, 413 theo byte |
+| 15b | Awareness theo byte | Giới hạn awareness theo byte; thu hồi link xoá bản ghi `owner:` của link đó |
+| 15c | useShare + tenancy | Đổi tài liệu giữa `enable()` không để phòng mồ côi; khoá bản cài một cho mọi tab (Web Lock) |
+| 15d | KaTeX lười | KaTeX tải lười ở app page và web (app.js gz 511→436 KB) |
+| 15e | Word OMML | Công thức xuất thành equation OMML, fallback TeX |
+| 15f | History + dialog | Ngăn lịch sử trả focus + phân trang; ConfirmAgentDialog bẫy Tab đủ |
+| 15g | Tên file hoa-thường | `Readme.Md`/`.MARKDOWN` được nhận; dọn `revokedUntil` hết hạn |
+| 15h | `initials()` + actor | Chữ viết tắt theo grapheme; `registerActor` chờ có giới hạn |
+| 15i | Trạng thái không nháy | Chỉ báo đồng bộ không nháy khi rebind |
+| 15j | MCP ghi tên client | Tác giả theo tên client, clientID lưu cục bộ theo máy, `meta.actors` không phình |
+| 15k | Khoá file CLI | Ghim khoá giữa nhiều tiến trình CLI không đua |
+| 15l | Thu hồi tất cả | Extension dùng endpoint 15a |
+| 15m | Làm gọn tài liệu | Phòng đầy → chủ "Làm gọn tài liệu" (Y.Doc mới, chia sẻ lại, xoá phòng cũ) |
+| 15n | Công thức khi Sửa | Công thức vẽ lại khi KaTeX nạp xong; presence không giữ người tài liệu cũ |
+| 15o | Khoá nhập + lỗi công thức | Làm gọn khoá nhập và dừng IDB trước khi xoá; báo lỗi nạp công thức |
+
+### Phase 16 — Trả nợ test và bổ sung test case
+
+Plan: `docs/superpowers/plans/2026-10-28-phase-16-plan.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 16a | e2e cộng tác | Cổng `MDR_E2E_PORT` hoặc tự chọn; kịch bản presence, link xem/sửa, Thu hồi tất cả; Worker entry không export hằng số |
+| 16b | Test yếu | revokeAll đổi tài liệu, khoá import 8i, vector XSS tại chỗ |
+| 16c | Flake IDB | Không tái hiện sau 18 lượt; `test-setup.ts` in tên test + stack nếu xuất hiện |
+| 16d | Tích hợp App | 7 test cho làm gọn, xuất khi lỗi công thức, banner |
+| 16e | Kiểm đỏ phase 15 | Mọi test phase 15 đỏ trên mã cũ; test `revokedUntil` ở worker |
+| 16f | Độc lập thứ tự (extension) | Dọn timer/stub/state giữa test; `--sequence.shuffle` xanh |
+| 16g | Độc lập thứ tự (ui) | Bỏ chập chờn import barrel và ô nhiễm cache MermaidBlock |
 
 ## 5. Rủi ro
 
@@ -760,3 +827,14 @@ Bắt buộc: ping `{type:'ping'}` mỗi 20 s từ extension khi đã nối; `ch
 dừng (độ trễ nối lại ≤ ~30 s, nên `connectWaitMs` 35 s của MCP đủ). E2E không được giữ handle CDP trên SW.
 Log lỗi cổng đóng chỉ phát sinh khi người dùng đã bật Kết nối AI (mặc định tắt); 10k giảm tiếng ồn bằng cách sau 10 lượt
 quét trắng liên tiếp chỉ quét mỗi 5 phút, và quét ngay khi app page mở hoặc khi bật lại trong Cài đặt.
+
+### 5.8 Nợ đã đóng (cập nhật 2026-10-29)
+
+| Nợ | Trạng thái |
+|---|---|
+| `window.alert` ở trang web | Đã đóng: `Notice` (10g) và phase 13 bỏ hẳn alert |
+| Endpoint xoá dữ liệu phòng | Đã đóng: `DELETE /api/rooms/:id` (phase 10), tự xoá phòng bỏ không 90 ngày (phase 12) |
+| Rate limit | Đã đóng: giới hạn theo ngày theo khoá bản cài + IP (phase 10), trần ảnh toàn cục (phase 12) |
+| Export chưa qua image resolver | Đã đóng ở 13e |
+| Flake IDB `TransactionInactiveError` | Chưa tái hiện được (18 lượt ở phase 16); chỉ còn chẩn đoán: `test-setup.ts` in tên test + stack nếu xuất hiện |
+| Remote MCP + OAuth | Vẫn hoãn |

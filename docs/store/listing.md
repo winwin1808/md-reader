@@ -43,10 +43,10 @@ Trình bày
 Chia sẻ
 • Gửi link xem hoặc link sửa cho người khác (mở lại hộp Chia sẻ vẫn bấm Sao chép được link đã tạo), cùng sửa trực tiếp và thấy tên, con trỏ của nhau.
 • Xem ai đã viết dòng nào.
-• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ đồng bộ do chính bạn dựng (Cloudflare Workers, gói miễn phí); MD Reader không kèm máy chủ nào. Tắt chia sẻ hay thu hồi link chỉ chặn truy cập; muốn xoá hẳn thì dùng nút "Xoá dữ liệu trên máy chủ".
+• Chia sẻ là tuỳ chọn và mặc định tắt; chỉ tài liệu bạn bật chia sẻ mới được gửi đi, tới máy chủ đồng bộ mặc định do tác giả vận hành trên Cloudflare Workers (đổi được sang máy chủ tự dựng ở Cài đặt → Cộng tác). Thu hồi link chặn truy cập ngay; muốn xoá hẳn thì dùng nút "Xoá dữ liệu trên máy chủ" (phòng không ai mở 90 ngày cũng tự bị xoá).
 
 Kết nối AI cục bộ (MCP)
-• Cho Claude, Cursor… tạo và chia sẻ tài liệu qua cầu nối chỉ nghe ở 127.0.0.1, mặc định tắt. Không gửi gì ra internet; chia sẻ chỉ diễn ra sau khi bạn xác nhận.
+• Cho Claude, Cursor… tạo và chia sẻ tài liệu qua cầu nối chỉ nghe ở 127.0.0.1, mặc định tắt. Cầu nối không gửi gì ra internet; chia sẻ chỉ diễn ra sau khi bạn xác nhận.
 
 Xuất
 • HTML một file, PDF (in từ trình duyệt), Word (.docx), PDF slide khổ ngang.
@@ -80,10 +80,10 @@ Present
 Share
 • Send a view link or an edit link, edit together live and see each other's names and cursors.  Reopen the Share dialog and Copy still works for links you created.
 • See who wrote which line.
-• Sharing is optional and off by default; only documents you choose to share are sent, to a sync server you host yourself (Cloudflare Workers, free tier); MD Reader ships with no server. Turning sharing off or revoking a link only stops access; to delete for good use the "Delete data on server" button.
+• Sharing is optional and off by default; only documents you choose to share are sent, to a default sync server operated by the author on Cloudflare Workers (you can switch to your own self-hosted server in Settings → Cộng tác). Revoking a link stops access immediately; to delete for good use the "Delete data from server" button (rooms nobody opens for 90 days are also deleted automatically).
 
 Local AI connection (MCP)
-• Lets Claude, Cursor and similar tools create and share documents through a bridge that listens only on 127.0.0.1, off by default. Nothing goes to the internet; sharing happens only after you confirm.
+• Lets Claude, Cursor and similar tools create and share documents through a bridge that listens only on 127.0.0.1, off by default. The bridge sends nothing to the internet; sharing happens only after you confirm.
 
 Export
 • Single-file HTML, PDF (browser print), Word (.docx), landscape slide PDF.
@@ -111,7 +111,7 @@ EN: Display, edit and present Markdown documents the user opens in the browser.
 
 ## Data usage (tab Privacy practices)
 
-- Thu thập dữ liệu người dùng: extension không kèm máy chủ — mặc định không gửi gì đi. Chỉ khi người dùng tự nhập địa chỉ máy chủ đồng bộ của riêng họ và bật chia sẻ cho một tài liệu, nội dung tài liệu đó + tên hiển thị tự khai mới được gửi tới máy chủ đó. Khai trên dashboard: tick **Website content** (nội dung tài liệu khi chia sẻ); mọi mục còn lại **Không** (Personally identifiable info, Health, Financial, Authentication, Personal communications, Location, Web history, User activity). Khoá bản cài ẩn danh và IP chỉ lưu dạng hash trên máy chủ người dùng tự dựng, chỉ để chống lạm dụng — không phải dữ liệu nhà phát triển thu thập.
+- Thu thập dữ liệu người dùng: mặc định extension không gửi gì đi. Bản trên cửa hàng kèm máy chủ đồng bộ mặc định do tác giả vận hành (Cloudflare Workers); chỉ khi người dùng bật chia sẻ cho một tài liệu, nội dung tài liệu đó (cập nhật Yjs, snapshot, ảnh), tên hiển thị tự khai (kể cả tên client MCP như "Claude Code") và metadata liên kết (vai trò, hạn, nhãn, hash token + tiền tố ngắn) mới được gửi tới máy chủ đó. Người dùng đổi được sang máy chủ tự dựng ở Cài đặt → Cộng tác. Khai trên dashboard: tick **Website content** (nội dung tài liệu khi chia sẻ); mọi mục còn lại **Không** (Personally identifiable info, Health, Financial, Authentication, Personal communications, Location, Web history, User activity). Khoá bản cài ẩn danh và IP (IPv6 tính theo /64) chỉ lưu dạng hash trên máy chủ, chỉ để chống lạm dụng, bộ đếm tự xoá sau khoảng 2 ngày. Lưu giữ: phòng không ai mở 90 ngày tự bị xoá; người dùng xoá ngay được bằng nút "Xoá dữ liệu trên máy chủ".
 - Tick cả ba cam kết: không bán dữ liệu cho bên thứ ba · không dùng/chuyển cho mục đích không liên quan · không dùng để xét tín dụng.
 - Privacy policy URL: https://gist.githubusercontent.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca/raw/privacy-policy.md (trang giới thiệu: https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca; bản sao trên Gist: https://gist.github.com/winwin1808/89e2f4a64e07b59ad6518c7b9d947fca).
 

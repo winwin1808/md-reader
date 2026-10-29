@@ -1,7 +1,7 @@
 # Nền tảng hỗ trợ & phát hành
 
 ## Chrome
-`pnpm --filter extension package` → `docs/store/md-reader-<version>.zip` (MV3). Tải lên Chrome Web Store, hoặc giải nén và nạp ở `chrome://extensions` (Developer mode → Load unpacked).
+`pnpm --filter extension package` → `docs/store/md-reader-<version>.zip` (MV3), hiện là `md-reader-1.3.0.zip`. Tải lên Chrome Web Store, hoặc giải nén và nạp ở `chrome://extensions` (Developer mode → Load unpacked).
 
 ## Edge
 Dùng **nguyên zip Chrome**, không cần build riêng. Tải lên Microsoft Edge Add-ons, hoặc nạp thủ công ở `edge://extensions`.
@@ -10,7 +10,7 @@ Dùng **nguyên zip Chrome**, không cần build riêng. Tải lên Microsoft Ed
 Cùng nhân Chromium: dùng zip Chrome (nạp unpacked hoặc cài từ Chrome Web Store).
 
 ## Firefox (MV3, >= 128)
-`pnpm --filter extension package:firefox` → `apps/extension/dist-firefox` + `docs/store/md-reader-<version>-firefox.zip`.
+`pnpm --filter extension package:firefox` → `apps/extension/dist-firefox` + `docs/store/md-reader-<version>-firefox.zip` (hiện là `md-reader-1.3.0-firefox.zip`).
 Script đổi manifest: `background.service_worker` → `background.scripts` (event page), thêm `browser_specific_settings.gecko` (id `md-reader@winwin1808`, min 128.0, khai `data_collection_permissions`). Kiểm: `pnpm dlx web-ext lint -s apps/extension/dist-firefox` (0 lỗi; còn cảnh báo `innerHTML`/`eval` từ thư viện đóng gói và cảnh báo key `data_collection_permissions` với Firefox < 140 — vô hại).
 Thử: `about:debugging` → This Firefox → Load Temporary Add-on → chọn `manifest.json`.
 

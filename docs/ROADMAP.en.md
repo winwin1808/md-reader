@@ -4,7 +4,7 @@
 
 This is a plan, not a delivery-date commitment. Order and scope may change with feedback. Legend: `[x]` done, `[ ]` not started.
 
-## Done (phases 1 to 9, version 1.2.0)
+## Done (phases 1 to 16, version 1.3.x)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -15,6 +15,13 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 - [x] **P7 Margin Book look:** three palettes, bundled fonts, logo, content script widget.
 - [x] **P8 Sharing and collaboration:** self-hosted Cloudflare Worker, view/edit links, presence, blame, history.
 - [x] **P9 Edit on the page:** live preview, grid tables, images (paste/drag/relative paths), new share dialog.
+- [x] **P10 Local MCP:** `le-sach-mcp` (7 tools), `127.0.0.1` bridge, anonymous install key, daily limits, room deletion, content reports.
+- [x] **P11 Security fixes:** attack paths from the 2026-10-27 audit, immediate link revocation, MCP bridge v2 with mutual authentication.
+- [x] **P12 Server hardening:** edit links can only write their own part, `last_seen`, global image caps, cron deleting rooms unopened for 90 days.
+- [x] **P13 UX polish:** clear messages for revoked links / documents too large, newer-format banner, HTML export embeds relative images, no more `window.alert` on web.
+- [x] **P14 Risk closure:** edit-link updates checked before applying, clientID bound per link, batched cleanup cron, full room → read-only on web.
+- [x] **P15 User and server debt:** one-call "Revoke all", lazy KaTeX, Word equations as OMML, paginated history, `.Md` files recognised, MCP edits named after the client, CLI file lock, "Compact document".
+- [x] **P16 Test debt:** configurable-port collaboration e2e, tightened weak tests, order-independent suites.
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
@@ -48,24 +55,24 @@ Export:
 - [ ] EPUB
 - [ ] XLSX for tables
 - [ ] Export individual figures (SVG / PNG)
-- [ ] Editable formulas in Word (OMML)
+- [x] Editable formulas in Word (OMML)
 
 Look and performance:
 
 - [ ] More document themes: business, academic, technical
 - [ ] Large documents: caching and incremental rendering
 - [ ] More interface languages beyond Vietnamese / English
-- [ ] Export through the image resolver (export currently doesn't use the relative-image resolver)
+- [x] Export through the image resolver (HTML export embeds relative images)
 
 ## v1.5 Finished collaboration and wide release
 
 Collaboration:
 
 - [ ] Comments and suggested edits
-- [x] Room-data deletion endpoint ("Delete data on server" button)
-- [x] Daily limits for the Worker (anonymous install key)
+- [x] Room-data deletion endpoint ("Delete data from server" button) and automatic deletion of rooms unopened for 90 days
+- [x] Daily limits for the Worker (anonymous install key, IP, global image caps)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
-- [ ] Replace `window.alert` on the web page with in-UI notifications
+- [x] Replace `window.alert` on the web page with in-UI notifications
 
 Release:
 

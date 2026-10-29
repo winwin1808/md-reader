@@ -68,8 +68,8 @@ document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
   <article class="diff flip">
     <div>
       <span class="num">02</span>
-      <h3><span lang="vi">Chia sẻ và cùng sửa, tự chủ hạ tầng</span><span lang="en">Share and co-edit, on your own infrastructure</span></h3>
-      <p><span lang="vi">Tạo link xem hoặc link sửa. Nhiều người sửa cùng lúc, thấy ai đang ở đâu, ai viết dòng nào, và khôi phục được từ lịch sử. Máy chủ là Cloudflare Worker của bạn — gói miễn phí là đủ.</span><span lang="en">Create a view or an edit link. Several people edit at once, see who is where, who wrote which line, and restore from history. The server is your own Cloudflare Worker — the free tier is enough.</span></p>
+      <h3><span lang="vi">Chia sẻ và cùng sửa, tự chủ hạ tầng nếu muốn</span><span lang="en">Share and co-edit, on your own infrastructure if you want</span></h3>
+      <p><span lang="vi">Tạo link xem hoặc link sửa. Nhiều người sửa cùng lúc, thấy ai đang ở đâu, ai viết dòng nào, và khôi phục được từ lịch sử. Dùng máy chủ mặc định do tác giả vận hành, hoặc tự dựng Cloudflare Worker của bạn — gói miễn phí là đủ.</span><span lang="en">Create a view or an edit link. Several people edit at once, see who is where, who wrote which line, and restore from history. Use the default server run by the author, or deploy your own Cloudflare Worker — the free tier is enough.</span></p>
     </div>
     <figure class="shot"><img loading="lazy" src="img/04-share.webp" width="1280" height="800" alt="Hộp thoại chia sẻ / Share dialog"></figure>
   </article>
@@ -93,6 +93,7 @@ document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
     <li><span lang="vi"><b>Lưu về đĩa:</b> ghi lại file gốc, phát hiện lệch file và hiện diff 3 chiều.</span><span lang="en"><b>Save to disk:</b> writes the original file back, detects drift and shows a 3-way diff.</span></li>
     <li><span lang="vi"><b>Chia sẻ:</b> link xem / link sửa, hết hạn, thu hồi, sửa cùng lúc.</span><span lang="en"><b>Share:</b> view / edit links, expiry, revoke, simultaneous editing.</span></li>
     <li><span lang="vi"><b>Ai viết gì:</b> blame theo dòng, lịch sử và khôi phục.</span><span lang="en"><b>Who wrote what:</b> per-line blame, history and restore.</span></li>
+    <li><span lang="vi"><b>Kết nối AI (MCP):</b> Claude, Cursor… tạo và chia sẻ tài liệu qua cầu nối cục bộ, chia sẻ phải được bạn duyệt.</span><span lang="en"><b>AI connection (MCP):</b> Claude, Cursor… create and share documents through a local bridge; sharing needs your approval.</span></li>
     <li><span lang="vi"><b>Trình chiếu:</b> slide cắt từ heading, speaker view có ghi chú và đồng hồ.</span><span lang="en"><b>Slides:</b> cut from headings, speaker view with notes and timer.</span></li>
     <li><span lang="vi"><b>Sơ đồ tư duy</b> từ cấu trúc heading, xuất SVG / PNG.</span><span lang="en"><b>Mind map</b> from your headings, export to SVG / PNG.</span></li>
     <li><span lang="vi"><b>Xuất:</b> HTML độc lập, PDF qua in, Word (.docx).</span><span lang="en"><b>Export:</b> standalone HTML, PDF via print, Word (.docx).</span></li>
@@ -110,10 +111,10 @@ document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
     <div>
       <p class="eyebrow"><span lang="vi">Quyền riêng tư</span><span lang="en">Privacy</span></p>
       <h2><span lang="vi">Dữ liệu ở lại máy bạn.</span><span lang="en">Your data stays on your machine.</span></h2>
-      <p><span lang="vi">Mặc định mọi thứ lưu trong trình duyệt của bạn. Chỉ khi bạn bật chia sẻ cho một tài liệu, nội dung mới đến máy chủ đồng bộ — mà máy chủ đó do chính bạn dựng. Không tài khoản, không phân tích, không theo dõi, không quảng cáo.</span><span lang="en">By default everything lives in your browser. Only when you turn on sharing for a document does its content reach a sync server — one you run yourself. No account, no analytics, no tracking, no ads.</span></p>
+      <p><span lang="vi">Mặc định mọi thứ lưu trong trình duyệt của bạn. Chỉ khi bạn bật chia sẻ cho một tài liệu, nội dung mới đến máy chủ đồng bộ — mặc định do tác giả vận hành trên Cloudflare Workers, hoặc máy chủ bạn tự dựng ở Cài đặt → Cộng tác. Không tài khoản, không phân tích, không theo dõi, không quảng cáo.</span><span lang="en">By default everything lives in your browser. Only when you turn on sharing for a document does its content reach a sync server — by default one the author runs on Cloudflare Workers, or your own set in Settings → Cộng tác. No account, no analytics, no tracking, no ads.</span></p>
       <p><a href="privacy.html"><span lang="vi">Đọc chính sách đầy đủ</span><span lang="en">Read the full policy</span></a></p>
     </div>
-    <aside class="note"><strong><span lang="vi">Ghi chú lề</span><span lang="en">Margin note</span></strong><span lang="vi">Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, chưa xoá dữ liệu trên máy chủ. Với máy chủ riêng, bạn tự xoá.</span><span lang="en">Turning sharing off or revoking a link blocks access but does not delete data on the server. On your own server, you delete it yourself.</span></aside>
+    <aside class="note"><strong><span lang="vi">Ghi chú lề</span><span lang="en">Margin note</span></strong><span lang="vi">Thu hồi link chặn truy cập ngay. Nút "Xoá dữ liệu trên máy chủ" xoá hẳn phòng, link và ảnh; phòng không ai mở 90 ngày cũng tự bị xoá.</span><span lang="en">Revoking a link blocks access immediately. The "Delete data from server" button removes the room, links and images for good; rooms nobody opens for 90 days are also deleted automatically.</span></aside>
   </div>
 </section>
 
@@ -139,8 +140,8 @@ document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
   <div class="margin">
     <div>
       <p class="eyebrow"><span lang="vi">Lộ trình</span><span lang="en">Roadmap</span></p>
-      <h2><span lang="vi">Tiếp theo: máy chủ MCP cho AI agent</span><span lang="en">Next: an MCP server for AI agents</span></h2>
-      <p><span lang="vi">Để agent AI xuất bản một file Markdown và nhận lại link chia sẻ ngay, không cần copy-paste.</span><span lang="en">So an AI agent can publish a Markdown file and get a share link back, with no copy-paste.</span></p>
+      <h2><span lang="vi">Tiếp theo: thêm sơ đồ, xuất bản và bình luận</span><span lang="en">Next: more diagrams, export formats and comments</span></h2>
+      <p><span lang="vi">MCP cục bộ (<code>le-sach-mcp</code>) đã ra mắt. Kế tiếp: PlantUML, Graphviz, Vega, xuất EPUB / XLSX, bình luận.</span><span lang="en">The local MCP (<code>le-sach-mcp</code>) has shipped. Next: PlantUML, Graphviz, Vega, EPUB / XLSX export, comments.</span></p>
       <p><a href="https://github.com/winwin1808/md-reader/blob/main/docs/ROADMAP.md"><span lang="vi">Xem lộ trình</span><span lang="en">See the roadmap</span></a></p>
     </div>
     <aside class="note"><strong><span lang="vi">Tự dựng máy chủ chia sẻ</span><span lang="en">Self-host the share server</span></strong><span lang="vi">Một Cloudflare Worker, gói miễn phí. </span><span lang="en">One Cloudflare Worker, free tier. </span><a href="https://github.com/winwin1808/md-reader/blob/main/docs/SELF_HOST.md"><span lang="vi">Hướng dẫn SELF_HOST</span><span lang="en">SELF_HOST guide</span></a></aside>

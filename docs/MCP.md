@@ -12,10 +12,10 @@ Cầu nối **tắt mặc định**. Bạn phải bật trong Cài đặt thì e
 
 ## 2. Cài đặt
 
-Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bằng:
+Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bản `le-sach-mcp@1.3.1` bằng:
 
 ```
-npx -y le-sach-mcp
+npx -y le-sach-mcp@1.3.1
 ```
 
 ## 3. Cấu hình client
@@ -27,7 +27,7 @@ npx -y le-sach-mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp"]
+      "args": ["-y", "le-sach-mcp@1.3.1"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp
+claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp"]
+      "args": ["-y", "le-sach-mcp@1.3.1"]
     }
   }
 }
@@ -64,6 +64,7 @@ Biến môi trường tuỳ chọn:
 3. Cách xác thực (giao thức v2): `le-sach-mcp` và extension mỗi bên giữ một cặp khoá ECDSA P-256 riêng. Mỗi lần nối, hai bên ký lên số ngẫu nhiên của bên kia kèm số cổng; không có bí mật nào đi qua kết nối. Extension chỉ chạy lệnh của máy chủ có khoá bạn đã duyệt; `le-sach-mcp` chỉ nhận extension đã ghép cặp đầu tiên (ghim lần đầu, chỉ trong 10 phút đầu).
    Khoá của máy chủ nằm trong `~/.config/md-reader/mcp.json` (quyền 600). Đừng chia sẻ file này. Muốn ghép cặp lại từ đầu: xoá file này, khởi động lại client AI, rồi duyệt lại trong extension. File hỏng hoặc từ phiên bản cũ sẽ được đổi tên thành `mcp.json.bak-…` và tạo khoá mới (log ghi rõ).
    Giới hạn còn lại: một chương trình khác trên cùng máy, chạy với cùng tài khoản và nối vào `le-sach-mcp` trước extension trong 10 phút đầu, có thể chiếm chỗ ghép cặp phía máy chủ. Khi đó extension thật sẽ bị từ chối (bạn sẽ thấy ghép cặp không thành) — xoá file ghép cặp và khởi động lại.
+   Việc ghim khoá dùng khoá file (file lock), nên nhiều tiến trình `le-sach-mcp` khởi động cùng lúc (ví dụ nhiều cửa sổ client) vẫn an toàn. Bấm Cho phép hai lần liên tiếp trong hộp ghép cặp cũng không làm hỏng ghép cặp.
 4. Thu hồi: vào Cài đặt → Kết nối AI để thu hồi client. Client bị thu hồi mà nối lại trong vòng 60 giây sẽ **không được hỏi lại**; muốn ghép lại, tắt rồi bật Kết nối AI sau 60 giây.
 
 ## 5. Bảy tool
@@ -73,7 +74,7 @@ Biến môi trường tuỳ chọn:
 | `publish_doc` | Tạo tài liệu mới trong MD Reader trên máy này và mở tab (`open` tuỳ chọn). Trả `docId`. | Không |
 | `list_docs` | Liệt kê tài liệu (id, tiêu đề, lần mở cuối, đã chia sẻ hay chưa). | Không |
 | `get_doc` | Đọc Markdown hiện tại, gồm cả sửa của người cộng tác. Trả `markdown` và `hash`. | Không |
-| `update_doc` | Thay Markdown của tài liệu; chỉ phần thay đổi được ghi. Cần `baseHash` lấy từ `get_doc`; tài liệu đã đổi từ đó thì lỗi `CONFLICT`, gọi lại `get_doc` rồi thử lại. Lịch sử ghi là "AI: cập nhật". Thay đổi chỉ nằm trong MD Reader: **không tự ghi ra file trên đĩa** — thanh trạng thái hiện "AI đã sửa — chưa lưu" tới khi bạn bấm Lưu (⌘S) hoặc tự sửa tiếp. | Không |
+| `update_doc` | Thay Markdown của tài liệu; chỉ phần thay đổi được ghi. Cần `baseHash` lấy từ `get_doc`; tài liệu đã đổi từ đó thì lỗi `CONFLICT`, gọi lại `get_doc` rồi thử lại. Lịch sử và blame ghi tác giả là tên client AI đã ghép cặp (ví dụ "Claude Code"), không phải "AI" chung chung; mọi lần sửa của cùng một client trên cùng máy dùng chung một tác giả. Thay đổi chỉ nằm trong MD Reader: **không tự ghi ra file trên đĩa** — thanh trạng thái hiện "AI đã sửa — chưa lưu" tới khi bạn bấm Lưu (⌘S) hoặc tự sửa tiếp. | Không |
 | `share_doc` | Xin tạo link chia sẻ (`role`: `view` hoặc `edit`, mặc định `view`; `expiresInDays`: 7, 30 hoặc `null`, mặc định 7). Trả URL. | **Luôn hỏi** |
 | `list_links` | Liệt kê link chia sẻ của tài liệu (tiền tố, vai trò, hạn, đã thu hồi). | Không |
 | `revoke_link` | Xin thu hồi link theo `tokenPrefix` (6 ký tự). | **Luôn hỏi** |
@@ -89,7 +90,7 @@ Biến môi trường tuỳ chọn:
 
 ## 7. Giới hạn và xử lý sự cố
 
-Giới hạn: Markdown tối đa 2.000.000 ký tự; tiêu đề 1–200 ký tự; tối đa 4 kết nối đồng thời; cầu nối dùng cổng `127.0.0.1` trong dải 47821–47830 (lấy cổng trống đầu tiên). Thời gian chờ mỗi lệnh: 30 giây, riêng `share_doc` và `revoke_link` 120 giây; chờ extension kết nối tối đa 35 giây.
+Giới hạn: Markdown tối đa 2.000.000 ký tự; khi tài liệu đã chia sẻ, mỗi message đồng bộ tối đa 16 MiB và mỗi phòng tối đa 64 MiB; tiêu đề 1–200 ký tự; tối đa 4 kết nối đồng thời; cầu nối dùng cổng `127.0.0.1` trong dải 47821–47830 (lấy cổng trống đầu tiên). Thời gian chờ mỗi lệnh: 30 giây, riêng `share_doc` và `revoke_link` 120 giây; chờ extension kết nối tối đa 35 giây.
 
 | Lỗi | Nguyên nhân / cách xử lý |
 |---|---|

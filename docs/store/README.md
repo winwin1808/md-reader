@@ -3,7 +3,7 @@
 | File | Dùng ở đâu |
 |---|---|
 | `listing.md` | Tên, mô tả ngắn/dài (VI + EN), danh mục, single purpose, giải trình quyền, data usage |
-| `privacy-policy.md` | Privacy policy URL — trỏ link GitHub tới file này (điền email liên hệ trước) |
+| `privacy-policy.md` | Privacy policy URL — trỏ link GitHub tới file này (liên hệ đã điền sẵn) |
 | `screenshots/01..05-*.png` | 5 ảnh 1280×800 |
 | `promo-small-440x280.png` | Small promo tile |
 | `../../apps/extension/public/icons/icon-128.png` | Store icon 128×128 |
@@ -11,12 +11,12 @@
 
 ## Các bước
 
-1. Merge MR #1 (phase 6) rồi MR #2 (phase 7) vào `main`; checkout `main`.
-2. `pnpm install && pnpm --filter extension package` → `docs/store/md-reader-1.0.0.zip`.
-3. Điền dòng `Contact:` trong `privacy-policy.md`, push; lấy link GitHub của file.
+1. Checkout `main` (mọi phase đã merge).
+2. `pnpm install && pnpm --filter extension package` → `docs/store/md-reader-1.3.0.zip` (bản store gắn sẵn máy chủ mặc định qua `VITE_MDR_SERVER_URL`).
+3. Lấy link GitHub của `privacy-policy.md` (dòng liên hệ đã điền sẵn).
 4. https://chrome.google.com/webstore/devconsole → đăng ký (5 USD, bật 2FA) → **New item** → upload zip.
 5. Tab **Store listing**: dán từ `listing.md`, upload icon, 5 screenshot, promo tile.
-6. Tab **Privacy practices**: single purpose, giải trình từng quyền, data usage = không thu thập, privacy policy URL.
+6. Tab **Privacy practices**: single purpose, giải trình từng quyền, data usage khai **Website content** (nội dung tài liệu khi chia sẻ tới máy chủ mặc định do tác giả vận hành), đúng như `listing.md`, privacy policy URL.
 7. Tab **Distribution**: Public (hoặc Unlisted để thử trước), chọn quốc gia.
 8. **Submit for review** — thường vài ngày.
 

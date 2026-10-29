@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
-  <img alt="Version 1.2.0" src="https://img.shields.io/badge/version-1.2.0-blue">
+  <img alt="Version 1.3.0" src="https://img.shields.io/badge/version-1.3.0-blue">
   <img alt="Chrome MV3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white">
   <img alt="Edge, Brave, Firefox" src="https://img.shields.io/badge/Edge%20%7C%20Brave%20%7C%20Firefox-xem%20b%E1%BA%A3ng%20n%E1%BB%81n%20t%E1%BA%A3ng-lightgrey">
 </p>
@@ -35,7 +35,7 @@
 Có nhiều trình xem Markdown. MD Reader cố làm tốt ba việc mà một trang đọc thường không làm:
 
 1. **Sửa thẳng trên trang đọc.** Không có cửa sổ soạn riêng. Trang trông như lúc đọc; dấu Markdown chỉ hiện ở chỗ con trỏ. Bảng là lưới gõ được, ảnh dán vào là xong, lưu thẳng về file và cảnh báo khi file bị sửa ở nơi khác.
-2. **Cùng sửa qua link.** Tạo link xem hoặc link sửa, nhiều người sửa cùng lúc, thấy ai đang mở, xem dòng nào do ai viết, khôi phục phiên bản cũ. Máy chủ là Cloudflare Worker của chính bạn (gói miễn phí), nên dữ liệu không đi qua bên thứ ba.
+2. **Cùng sửa qua link.** Tạo link xem hoặc link sửa, nhiều người sửa cùng lúc, thấy ai đang mở, xem dòng nào do ai viết, khôi phục phiên bản cũ. Máy chủ đồng bộ là một Cloudflare Worker: bản mặc định do tác giả vận hành, hoặc của chính bạn (gói miễn phí) nếu muốn tự chủ hoàn toàn. Chỉ tài liệu bạn chọn chia sẻ mới tới đó.
 3. **Trình chiếu có speaker view.** Một file Markdown thành bộ slide: đồng hồ, slide kế tiếp và ghi chú diễn giả ở cửa sổ riêng, đồng bộ với màn chiếu. Xuất được PDF slide khổ ngang.
 
 Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵn, mã nguồn mở MIT.
@@ -64,7 +64,7 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/04-share.png" alt="Chia sẻ">
       <h4>Chia sẻ và cùng sửa</h4>
-      Link xem hoặc link sửa, cộng tác thời gian thực, presence, blame theo dòng, lịch sử và khôi phục. Thu hồi link là chặn truy cập ngay. Cần máy chủ tự host (xem bên dưới).
+      Link xem hoặc link sửa, cộng tác thời gian thực, presence, blame theo dòng, lịch sử và khôi phục. Thu hồi link là chặn truy cập ngay. Dùng máy chủ mặc định do tác giả vận hành, hoặc máy chủ của bạn (xem bên dưới).
     </td>
   </tr>
   <tr>
@@ -89,7 +89,7 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
       <h4>Xuất bản</h4>
       HTML một file, PDF (in từ trình duyệt với CSS in riêng), Word <code>.docx</code>, PDF slide. Tất cả theo giao diện Lề sách.
       <h4>Riêng tư</h4>
-      Không tài khoản, không theo dõi, không máy chủ mặc định. Chỉ khi bạn bật chia sẻ trên máy chủ của chính bạn thì tài liệu đó mới rời máy. Xem <a href="docs/store/privacy-policy.md">chính sách riêng tư</a>.
+      Không tài khoản, không theo dõi. Chỉ khi bạn bật chia sẻ cho một tài liệu thì nó mới rời máy, tới máy chủ đồng bộ mặc định do tác giả vận hành hoặc máy chủ của chính bạn. Xem <a href="docs/store/privacy-policy.md">chính sách riêng tư</a>.
     </td>
   </tr>
 </table>
@@ -109,20 +109,19 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
 
 ## Lộ trình tóm tắt
 
-Phase 1 đến 9 đã xong (đọc, xuất, trình chiếu, mindmap, sửa và lưu đĩa an toàn, gia cố, giao diện Lề sách, chia sẻ và cộng tác, sửa thẳng trên trang). Kế tiếp:
+Phase 1 đến 16 đã xong (đọc, xuất, trình chiếu, mindmap, sửa và lưu đĩa an toàn, gia cố, giao diện Lề sách, chia sẻ và cộng tác, sửa thẳng trên trang, MCP cục bộ, gia cố bảo mật và máy chủ, hoàn thiện trải nghiệm, trả nợ kỹ thuật và test). MCP cục bộ (`le-sach-mcp`, v1.3) đã ra mắt: xem [`docs/MCP.md`](docs/MCP.md). Kế tiếp:
 
-- **v1.3, Chia sẻ cho AI (MCP):** máy chủ MCP để Claude, ChatGPT, Cursor... đăng một tài liệu Markdown và nhận về link xem/sửa.
 - **v1.4:** thêm loại sơ đồ (PlantUML, Graphviz, Vega, ECharts, draw.io), OpenAPI, xuất EPUB / XLSX, thêm giao diện tài liệu.
-- **v1.5:** bình luận, endpoint xoá dữ liệu phòng, rate limit, deploy một chạm lên Cloudflare, lên các cửa hàng.
+- **v1.5:** bình luận, deploy một chạm lên Cloudflare, thêm các cửa hàng.
 - **v2.0:** VS Code, Obsidian, web app không cần cài, CLI.
 
 Đây là kế hoạch, không phải cam kết ngày giao. Toàn bộ ở [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## Chia sẻ & cộng tác (tuỳ chọn, tự host)
+## Chia sẻ & cộng tác (tuỳ chọn)
 
-- **MD Reader không kèm máy chủ nào.** Chia sẻ cần một máy chủ đồng bộ của riêng bạn: một Cloudflare Worker chạy trong gói miễn phí (Durable Objects + D1). Lần đầu bấm Chia sẻ mà chưa có máy chủ, hộp thoại hiện các bước dựng và ô dán địa chỉ.
-- Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login`, tạo D1, `wrangler d1 migrations apply … --remote`, `pnpm deploy:api`, rồi dán địa chỉ Worker của bạn vào MD Reader.
-- Tắt chia sẻ hoặc thu hồi link chỉ chặn truy cập, chưa xoá dữ liệu đã lưu trên máy chủ của bạn (endpoint xoá nằm trong lộ trình).
+- **Bản trên cửa hàng kèm sẵn một máy chủ đồng bộ mặc định** do tác giả extension vận hành trên Cloudflare Workers. Chia sẻ mặc định tắt; không có gì rời máy bạn nếu bạn không bật chia sẻ cho một tài liệu. Bạn đổi được sang máy chủ của riêng mình ở Cài đặt → Cộng tác: một Cloudflare Worker chạy trong gói miễn phí (Durable Objects + D1). Khi build từ mã nguồn, đặt `VITE_MDR_SERVER_URL` để chọn máy chủ mặc định.
+- Hướng dẫn từng bước: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). Tóm tắt: `wrangler login`, tạo D1, `wrangler d1 migrations apply … --remote` (migration 0001 đến 0004), `pnpm deploy:api` (cron dọn phòng cũ hằng ngày được deploy kèm), rồi dán địa chỉ Worker của bạn vào MD Reader.
+- Thu hồi link chặn truy cập ngay. Muốn xoá dữ liệu, dùng nút "Xoá dữ liệu trên máy chủ" trong hộp Chia sẻ; phòng không ai mở 90 ngày tự bị xoá, "Thu hồi tất cả" dừng mọi link cùng lúc, "Làm gọn tài liệu" giải phóng phòng đã đầy.
 
 ## Cài đặt
 
@@ -172,7 +171,7 @@ Monorepo pnpm workspaces:
 | `packages/core` | TypeScript thuần: parser `unified`/`remark`, mô hình tài liệu Yjs, slide, mindmap, export. Không dùng React hay `chrome.*`. |
 | `packages/ui` | Thành phần React (Viewer, Editor, Deck, Mindmap, ...). Không dùng `chrome.*`. |
 | `apps/extension` | Vỏ extension MV3 (app page, content script, build). Lớp duy nhất được dùng `chrome.*`. |
-| `apps/api` | Máy chủ đồng bộ tự host: Cloudflare Worker, Durable Object (Yjs qua WebSocket) + D1 (link, ảnh). |
+| `apps/api` | Máy chủ đồng bộ (mặc định hoặc tự host): Cloudflare Worker, Durable Object (Yjs qua WebSocket) + D1 (link, ảnh). |
 | `apps/web` | Trang `/s/<token>` cho người được chia sẻ: xem hoặc sửa thẳng trên trang. |
 
 Nguyên tắc chính:
@@ -194,6 +193,9 @@ pnpm --filter extension build      # build vào apps/extension/dist
 pnpm --filter extension e2e        # Playwright (build rồi chạy)
 pnpm --filter extension package    # đóng gói zip cho Chrome Web Store
 pnpm --filter api test             # máy chủ đồng bộ
+pnpm --filter web test             # trang xem qua link (apps/web)
+pnpm --filter le-sach-mcp test     # máy chủ MCP cục bộ (packages/mcp)
+pnpm --filter extension e2e:collab # e2e cộng tác với wrangler cục bộ (cổng MDR_E2E_PORT, hoặc tự chọn cổng trống)
 pnpm deploy:site                   # deploy website (Cloudflare Pages)
 pnpm deploy:api                    # deploy máy chủ của bạn (xem docs/SELF_HOST.md)
 ```
