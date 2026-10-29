@@ -4,7 +4,7 @@
 
 Đây là kế hoạch, không phải cam kết ngày giao. Thứ tự và phạm vi có thể đổi theo phản hồi. Ký hiệu: `[x]` xong, `[ ]` chưa làm.
 
-## Đã xong (phase 1 đến 9, phiên bản 1.2.0)
+## Đã xong (phase 1 đến 16, phiên bản 1.3.x)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -15,6 +15,14 @@
 - [x] **P7 Giao diện Lề sách:** ba bảng màu, font đóng gói, logo, widget content script.
 - [x] **P8 Chia sẻ và cộng tác:** Cloudflare Worker tự host, link xem/sửa, presence, blame, lịch sử.
 - [x] **P9 Sửa thẳng trên trang:** live preview, bảng dạng lưới, ảnh (dán/kéo/đường dẫn tương đối), hộp thoại chia sẻ mới.
+- [x] **P9 Sửa thẳng trên trang:** live preview, bảng dạng lưới, ảnh (dán/kéo/đường dẫn tương đối), hộp Chia sẻ mới.
+- [x] **P10 MCP cục bộ:** `le-sach-mcp` (7 tool), cầu nối `127.0.0.1`, khoá bản cài ẩn danh, giới hạn theo ngày, xoá phòng, báo cáo nội dung.
+- [x] **P11 Vá bảo mật:** các hướng tấn công từ audit 2026-10-27, thu hồi link tức thì, cầu nối MCP v2 xác thực hai chiều.
+- [x] **P12 Gia cố máy chủ:** link sửa chỉ ghi phần của mình, `last_seen`, trần ảnh toàn cục, cron xoá phòng bỏ không 90 ngày.
+- [x] **P13 Hoàn thiện trải nghiệm:** báo rõ link bị thu hồi / tài liệu quá lớn, banner phiên bản định dạng mới, export HTML nhúng ảnh tương đối, web bỏ `window.alert`.
+- [x] **P14 Đóng nợ rủi ro:** kiểm update của link sửa trước khi áp, clientID gắn theo link, cron dọn theo lô, web phòng đầy → chỉ đọc.
+- [x] **P15 Trả nợ người dùng và máy chủ:** "Thu hồi tất cả" một lời gọi, KaTeX nạp lười, Word xuất công thức OMML, lịch sử phân trang, nhận file `.Md`, MCP ghi tên client, khoá file CLI, "Làm gọn tài liệu".
+- [x] **P16 Trả nợ test:** e2e cộng tác cổng cấu hình được, làm chặt test yếu, test độc lập thứ tự.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)
@@ -48,24 +56,24 @@ Xuất bản:
 - [ ] EPUB
 - [ ] XLSX cho bảng
 - [ ] Xuất riêng từng hình (SVG / PNG)
-- [ ] Công thức sửa được trong Word (OMML)
+- [x] Công thức sửa được trong Word (OMML)
 
 Giao diện và hiệu năng:
 
 - [ ] Thêm giao diện tài liệu: business, academic, technical
 - [ ] Tài liệu lớn: cache và render tăng dần
 - [ ] Thêm ngôn ngữ giao diện ngoài Việt / Anh
-- [ ] Xuất qua bộ phân giải ảnh (hiện export chưa dùng resolver ảnh tương đối)
+- [x] Xuất qua bộ phân giải ảnh (export HTML nhúng ảnh đường dẫn tương đối)
 
 ## v1.5 Cộng tác hoàn thiện và phát hành rộng
 
 Cộng tác:
 
 - [ ] Bình luận và đề xuất chỉnh sửa (suggestions)
-- [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ")
-- [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh)
+- [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ") và tự xoá phòng bỏ không 90 ngày
+- [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh, IP, trần ảnh toàn cục)
 - [ ] Deploy một chạm lên Cloudflare (nút "Deploy to Cloudflare")
-- [ ] Thay `window.alert` ở trang web bằng thông báo trong giao diện
+- [x] Thay `window.alert` ở trang web bằng thông báo trong giao diện
 
 Phát hành:
 

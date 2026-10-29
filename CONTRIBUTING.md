@@ -40,12 +40,13 @@ PRs that break these will be asked to change.
 ```bash
 pnpm typecheck                     # all packages
 pnpm test                          # all packages
-pnpm --filter core test            # or ui / extension / api / web
+pnpm --filter core test            # or ui / extension / api / web / le-sach-mcp
 pnpm --filter extension build
 pnpm --filter extension e2e        # Playwright
+pnpm --filter extension e2e:collab # collaboration e2e against a local wrangler dev
 ```
 
-CI runs typecheck, tests, the extension build and the e2e suite on every PR.
+`e2e:collab` starts `wrangler dev` on the port in `MDR_E2E_PORT` (or a free port if unset). CI runs typecheck, tests, the extension build and `pnpm --filter @md-reader/extension e2e` on every PR; it does **not** run `e2e:collab`, so run that one locally when you touch sharing, the API or the web page.
 
 ## Branches and commits
 

@@ -115,8 +115,8 @@ Mỗi phase là một vòng pipeline riêng và phải ship được thứ dùng
 không được chứa task vượt ra ngoài phase hiện tại — thứ lỡ ra ngoài ghi xuống
 mục "Deferred to phase N". Nội dung chi tiết từng phase ở `docs/DESIGN.md` §4.
 
-Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 phase
-(phase 1 được chia lại thành 18 sau khi design kiểm điều kiện sizing).
+Bảng phase con đầy đủ của từng phase (1 đến 16) ở `docs/DESIGN.md` §4;
+bảng dưới đây chỉ tóm tắt mỗi phase ship được gì.
 
 | # | Phase | Ship được gì |
 |---|---|---|
@@ -128,6 +128,14 @@ Bảng phase con đầy đủ ở `docs/DESIGN.md` §4 — 47 phase con trên 6 
 | 6 | Gia cố | Không mất/nhân đôi chữ, lưu thẳng về đĩa sau reload, quyền tối thiểu, Playwright thật |
 | 7 | Giao diện Lề sách | Giao diện phương án A cho mọi bề mặt + logo app |
 | 8 | Chia sẻ & cộng tác | Link xem → cùng sửa → trace ai sửa chỗ nào (3 lần ship nhỏ) |
+| 9 | Sửa thẳng trên trang đọc | Hai chế độ Đọc/Sửa với live preview, bảng dạng lưới, dán/kéo ảnh, hộp Chia sẻ mới |
+| 10 | MCP cục bộ + multi-tenant | AI (Claude/Cursor) đưa tài liệu vào MD Reader qua `le-sach-mcp`; máy chủ có giới hạn theo ngày, xoá phòng, báo cáo/gỡ nội dung |
+| 11 | Vá bảo mật | Các hướng tấn công từ audit 2026-10-27 được vá + cầu nối MCP v2 xác thực hai chiều |
+| 12 | Gia cố máy chủ | Link sửa chỉ ghi phần của mình, `last_seen`, trần ảnh toàn cục, cron xoá phòng bỏ không 90 ngày |
+| 13 | Hoàn thiện trải nghiệm | Báo rõ link bị thu hồi / tài liệu quá lớn, banner phiên bản mới, export HTML nhúng ảnh tương đối |
+| 14 | Đóng nợ rủi ro | Update link sửa kiểm trước khi áp, cron dọn theo lô, web phòng đầy → chỉ đọc |
+| 15 | Trả nợ người dùng + máy chủ | Thu hồi tất cả một lời gọi, KaTeX lười, Word OMML, "Làm gọn tài liệu", MCP ghi tên client |
+| 16 | Trả nợ test | e2e cộng tác cổng cấu hình được, test chặt hơn, suite độc lập thứ tự |
 
 ## Status
 

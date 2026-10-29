@@ -12,10 +12,10 @@ The bridge is **off by default**. The extension accepts connections only after y
 
 ## 2. Install
 
-Requires Node >= 20. Nothing to install beforehand; your client runs:
+Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.1` with:
 
 ```
-npx -y le-sach-mcp
+npx -y le-sach-mcp@1.3.1
 ```
 
 ## 3. Client configuration
@@ -27,7 +27,7 @@ npx -y le-sach-mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp"]
+      "args": ["-y", "le-sach-mcp@1.3.1"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp
+claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp"]
+      "args": ["-y", "le-sach-mcp@1.3.1"]
     }
   }
 }
@@ -64,6 +64,7 @@ Optional environment variables:
 3. How it authenticates (protocol v2): `le-sach-mcp` and the extension each hold their own ECDSA P-256 key pair. On every connection each side signs the other's random nonce together with the port; no secret ever crosses the connection. The extension only runs commands from a server whose key you approved; `le-sach-mcp` only accepts the first extension that paired (pinned on first use, only within the first 10 minutes).
    The server key lives in `~/.config/md-reader/mcp.json` (mode 600). Do not share this file. To pair from scratch: delete it, restart the AI client, and approve again in the extension. A corrupt or old-version file is renamed to `mcp.json.bak-…` and a new key is created (the log says so).
    Remaining limit: another program on the same machine, running as the same user, that connects to `le-sach-mcp` before the extension within those 10 minutes can take the server-side pairing slot. The real extension is then refused (you will see pairing fail) — delete the pairing file and restart.
+   Key pinning uses a file lock, so several `le-sach-mcp` processes starting at the same time (for example several client windows) are safe. Clicking Allow twice in a row in the pairing dialog does not break pairing either.
 4. Revoke: revoke a client in Settings → AI connection. A revoked client that reconnects within 60 seconds is **not asked again**; to pair again, turn AI connection off and on after 60 seconds.
 
 ## 5. The seven tools
@@ -73,7 +74,7 @@ Optional environment variables:
 | `publish_doc` | Create a new document in MD Reader on this computer and open a tab (`open` optional). Returns `docId`. | No |
 | `list_docs` | List documents (id, title, last opened, whether shared). | No |
 | `get_doc` | Read the current Markdown, including collaborators' edits. Returns `markdown` and `hash`. | No |
-| `update_doc` | Replace the document's Markdown; only changed parts are written. Needs `baseHash` from `get_doc`; if the document changed since, it fails with `CONFLICT` — call `get_doc` again and retry. History shows "AI: cập nhật". The change stays inside MD Reader: it is **not written to the file on disk automatically** — the status bar shows "AI edited — unsaved" until you press Save (⌘S) or keep editing yourself. | No |
+| `update_doc` | Replace the document's Markdown; only changed parts are written. Needs `baseHash` from `get_doc`; if the document changed since, it fails with `CONFLICT` — call `get_doc` again and retry. History and blame attribute the change to the paired AI client's name (for example "Claude Code"), not a generic "AI"; all edits from the same client on the same machine share one author. The change stays inside MD Reader: it is **not written to the file on disk automatically** — the status bar shows "AI edited — unsaved" until you press Save (⌘S) or keep editing yourself. | No |
 | `share_doc` | Ask to create a share link (`role`: `view` or `edit`, default `view`; `expiresInDays`: 7, 30 or `null`, default 7). Returns the URL. | **Always asks** |
 | `list_links` | List a document's share links (prefix, role, expiry, revoked). | No |
 | `revoke_link` | Ask to revoke a link by `tokenPrefix` (6 characters). | **Always asks** |
@@ -89,7 +90,7 @@ Optional environment variables:
 
 ## 7. Limits and troubleshooting
 
-Limits: Markdown up to 2,000,000 characters; title 1-200 characters; at most 4 concurrent connections; the bridge uses a `127.0.0.1` port in the range 47821-47830 (first free one). Per-call timeout is 30 seconds, 120 seconds for `share_doc` and `revoke_link`; waiting for the extension to connect takes up to 35 seconds.
+Limits: Markdown up to 2,000,000 characters; for a shared document, each sync message is at most 16 MiB and each room at most 64 MiB; title 1-200 characters; at most 4 concurrent connections; the bridge uses a `127.0.0.1` port in the range 47821-47830 (first free one). Per-call timeout is 30 seconds, 120 seconds for `share_doc` and `revoke_link`; waiting for the extension to connect takes up to 35 seconds.
 
 | Error | Cause / fix |
 |---|---|

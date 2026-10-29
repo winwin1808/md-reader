@@ -1,6 +1,14 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-26. Branch: `main` — **phase 10 đã merge** (PR https://github.com/winwin1808/md-reader/pull/7, commit `28c06c5`).
+Cập nhật: 2026-10-29. Branch: `main` — **mọi phase đến 16 đã merge** (phase 16: PR #16, commit `a72f44f`).
+
+## Trước khi nộp store (cập nhật 2026-10-29)
+
+1. Zip 1.3.0 build **kèm máy chủ mặc định** (đặt `VITE_MDR_SERVER_URL=<địa chỉ Worker>` khi build): `node apps/extension/scripts/package.mjs` → `docs/store/md-reader-1.3.0.zip` (+ `-firefox.zip`); đã bỏ `key`.
+2. Publish `le-sach-mcp@1.3.1` (khoá file khi ghim khoá): `cd packages/mcp && pnpm publish --access public --no-git-checks --otp=<mã>` (build trước).
+3. Sau khi có ID extension trên store → thêm vào `KNOWN_EXTENSION_IDS` (`packages/core/src/bridge/protocol.ts`) và phát hành bản vá `le-sach-mcp`.
+4. Máy chủ: xác nhận đã chạy `wrangler d1 migrations apply … --remote` (tới `0004_last_seen`), đã đặt `ADMIN_SECRET`, Worker đã deploy (cron `17 3 * * *` đi kèm).
+5. Form Data usage + privacy policy khớp `docs/store/listing.md` / `privacy-policy.md` (máy chủ mặc định do tác giả vận hành).
 
 ## Phase 16 — Trả nợ test, bổ sung test case (2026-10-28)
 
@@ -156,7 +164,7 @@ service worker — 7o xong) · khoá Web Lock khi import cùng URL · e2e cộng
 
 ## Trước khi nộp Chrome Web Store
 
-- `docs/store/privacy-policy.md` còn dòng liên hệ placeholder — điền email hỗ trợ công khai.
+- ~~`privacy-policy.md` còn dòng liên hệ placeholder~~ — đã điền.
 - Form "Data usage" trên dashboard phải khớp `docs/store/listing.md` (nội dung + tên hiển thị
   gửi lên máy chủ khi bật chia sẻ).
 - Máy chủ mặc định là Worker của tác giả → tác giả là bên vận hành dữ liệu người dùng store.

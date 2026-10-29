@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/winwin1808/md-reader/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
-  <img alt="Version 1.2.0" src="https://img.shields.io/badge/version-1.2.0-blue">
+  <img alt="Version 1.3.0" src="https://img.shields.io/badge/version-1.3.0-blue">
   <img alt="Chrome MV3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white">
   <img alt="Edge, Brave, Firefox" src="https://img.shields.io/badge/Edge%20%7C%20Brave%20%7C%20Firefox-see%20platform%20table-lightgrey">
 </p>
@@ -35,7 +35,7 @@
 There are plenty of Markdown viewers. MD Reader tries to do three things a reading page usually doesn't:
 
 1. **Edit right on the reading page.** No separate editor window. The page looks like it does when reading; Markdown marks only appear where the cursor is. Tables are typeable grids, pasting an image just works, saving writes straight back to the file, and you get a warning if the file was changed elsewhere.
-2. **Co-edit via a link.** Create a view link or an edit link, let several people edit at once, see who has it open, see which line was written by whom, and restore older versions. The server is your own Cloudflare Worker (free tier), so your data never passes through a third party.
+2. **Co-edit via a link.** Create a view link or an edit link, let several people edit at once, see who has it open, see which line was written by whom, and restore older versions. The sync server is a Cloudflare Worker: the default one run by the author, or your own (free tier) if you want full control. Only documents you choose to share ever reach it.
 3. **Presentations with a speaker view.** One Markdown file becomes a slide deck: clock, next slide and speaker notes in a separate window, synced with the projector screen. Landscape slide PDF export included.
 
 Common ground: no account, no tracking, bundled fonts, MIT open source.
@@ -64,7 +64,7 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/en/04-share.png" alt="Sharing">
       <h4>Share and co-edit</h4>
-      View or edit links, realtime collaboration, presence, per-line blame, history and restore. Revoking a link blocks access immediately. Requires a self-hosted server (see below).
+      View or edit links, realtime collaboration, presence, per-line blame, history and restore. Revoking a link blocks access immediately. Uses the default server run by the author, or your own (see below).
     </td>
   </tr>
   <tr>
@@ -89,7 +89,7 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
       <h4>Export</h4>
       Single-file HTML, PDF (printed from the browser with dedicated print CSS), Word <code>.docx</code>, slide PDF. All in the Margin Book look.
       <h4>Privacy</h4>
-      No account, no tracking, no default server. Only if you turn on sharing on your own server does that document leave your machine. See the <a href="docs/store/privacy-policy.md">privacy policy</a>.
+      No account, no tracking. Only if you turn on sharing for a document does it leave your machine, to the default sync server run by the author or to your own. See the <a href="docs/store/privacy-policy.md">privacy policy</a>.
     </td>
   </tr>
 </table>
@@ -109,20 +109,19 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
 
 ## Roadmap summary
 
-Phases 1 to 9 are done (reading, export, presenting, mind map, safe editing and saving to disk, hardening, Margin Book look, sharing and collaboration, editing on the page). Next:
+Phases 1 to 16 are done (reading, export, presenting, mind map, safe editing and saving to disk, hardening, Margin Book look, sharing and collaboration, editing on the page, local MCP, security and server hardening, UX polish, debt and test cleanup). The local MCP (`le-sach-mcp`, v1.3) has shipped: see [`docs/MCP.en.md`](docs/MCP.en.md). Next:
 
-- **v1.3, Share with AI (MCP):** an MCP server so Claude, ChatGPT, Cursor... can publish a Markdown document and get back a view/edit link.
 - **v1.4:** more diagram types (PlantUML, Graphviz, Vega, ECharts, draw.io), OpenAPI, EPUB / XLSX export, more document themes.
-- **v1.5:** comments, a room-data deletion endpoint, rate limiting, one-click deploy to Cloudflare, store releases.
+- **v1.5:** comments, one-click deploy to Cloudflare, more store releases.
 - **v2.0:** VS Code, Obsidian, a no-install web app, CLI.
 
 This is a plan, not a delivery-date commitment. Full version in [`docs/ROADMAP.en.md`](docs/ROADMAP.en.md).
 
-## Sharing & collaboration (optional, self-hosted)
+## Sharing & collaboration (optional)
 
-- **MD Reader ships with no server.** Sharing needs a sync server of your own: a Cloudflare Worker running on the free tier (Durable Objects + D1). The first time you click Share without a server, the dialog shows the setup steps and a box to paste the address.
-- Step-by-step guide: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). In short: `wrangler login`, create D1, `wrangler d1 migrations apply … --remote`, `pnpm deploy:api`, then paste your Worker's address into MD Reader.
-- Turning sharing off or revoking a link only blocks access; it does not yet delete data stored on your server (a deletion endpoint is on the roadmap).
+- **The store build ships with a default sync server** operated by the extension author on Cloudflare Workers. Sharing is off by default; nothing leaves your device unless you turn on sharing for a document. You can switch to your own server in Settings → Cộng tác: a Cloudflare Worker on the free tier (Durable Objects + D1). When building from source, set `VITE_MDR_SERVER_URL` to choose the default.
+- Step-by-step guide: [`docs/SELF_HOST.md`](docs/SELF_HOST.md). In short: `wrangler login`, create D1, `wrangler d1 migrations apply … --remote` (migrations 0001 to 0004), `pnpm deploy:api` (the daily cron that cleans up old rooms deploys with it), then paste your Worker's address into MD Reader.
+- Revoking a link blocks access immediately. To delete data, use the "Delete data from server" button in the Share dialog; rooms nobody opens for 90 days are deleted automatically, "Revoke all" stops every link at once, and "Compact document" frees a full room.
 
 ## Installation
 
@@ -172,7 +171,7 @@ pnpm workspaces monorepo:
 | `packages/core` | Pure TypeScript: `unified`/`remark` parser, Yjs document model, slides, mind map, export. No React or `chrome.*`. |
 | `packages/ui` | React components (Viewer, Editor, Deck, Mindmap, ...). No `chrome.*`. |
 | `apps/extension` | The MV3 extension shell (app page, content script, build). The only layer allowed to use `chrome.*`. |
-| `apps/api` | Self-hosted sync server: Cloudflare Worker, Durable Object (Yjs over WebSocket) + D1 (links, images). |
+| `apps/api` | Sync server (default or self-hosted): Cloudflare Worker, Durable Object (Yjs over WebSocket) + D1 (links, images). |
 | `apps/web` | The `/s/<token>` page for people you share with: view or edit right on the page. |
 
 Key principles:
@@ -194,6 +193,9 @@ pnpm --filter extension build      # build into apps/extension/dist
 pnpm --filter extension e2e        # Playwright (builds, then runs)
 pnpm --filter extension package    # zip for the Chrome Web Store
 pnpm --filter api test             # sync server
+pnpm --filter web test             # share page (apps/web)
+pnpm --filter le-sach-mcp test     # local MCP server (packages/mcp)
+pnpm --filter extension e2e:collab # collaboration e2e against a local wrangler (port MDR_E2E_PORT, or a free port)
 pnpm deploy:site                   # deploy the website (Cloudflare Pages)
 pnpm deploy:api                    # deploy your server (see docs/SELF_HOST.md)
 ```
