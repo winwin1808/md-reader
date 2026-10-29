@@ -69,7 +69,7 @@ Look and performance:
 Collaboration:
 
 - [ ] Comments and suggested edits
-- [x] Room-data deletion endpoint ("Delete data on server" button) and automatic deletion of rooms unopened for 90 days
+- [x] Room-data deletion endpoint ("Delete data from server" button) and automatic deletion of rooms unopened for 90 days
 - [x] Daily limits for the Worker (anonymous install key, IP, global image caps)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
 - [x] Replace `window.alert` on the web page with in-UI notifications

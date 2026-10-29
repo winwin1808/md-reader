@@ -7,7 +7,7 @@ Cập nhật: 2026-10-29. Branch: `main` — **mọi phase đến 16 đã merge*
 1. Zip 1.3.0 build **kèm máy chủ mặc định** (đặt `VITE_MDR_SERVER_URL=<địa chỉ Worker>` khi build): `node apps/extension/scripts/package.mjs` → `docs/store/md-reader-1.3.0.zip` (+ `-firefox.zip`); đã bỏ `key`.
 2. Publish `le-sach-mcp@1.3.1` (khoá file khi ghim khoá): `cd packages/mcp && pnpm publish --access public --no-git-checks --otp=<mã>` (build trước).
 3. Sau khi có ID extension trên store → thêm vào `KNOWN_EXTENSION_IDS` (`packages/core/src/bridge/protocol.ts`) và phát hành bản vá `le-sach-mcp`.
-4. Máy chủ: xác nhận đã chạy `wrangler d1 migrations apply … --remote` (tới `0004_last_seen`), đã đặt `ADMIN_SECRET`, Worker đã deploy (cron `17 3 * * *` đi kèm).
+4. Máy chủ: ĐÃ XONG — migration remote tới `0004_last_seen` (2026-10-28), `ADMIN_SECRET` đã đặt, Worker deploy bản `2411d8e4` (cron `17 3 * * *`).
 5. Form Data usage + privacy policy khớp `docs/store/listing.md` / `privacy-policy.md` (máy chủ mặc định do tác giả vận hành).
 
 ## Phase 16 — Trả nợ test, bổ sung test case (2026-10-28)

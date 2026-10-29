@@ -80,7 +80,7 @@ Present
 Share
 • Send a view link or an edit link, edit together live and see each other's names and cursors.  Reopen the Share dialog and Copy still works for links you created.
 • See who wrote which line.
-• Sharing is optional and off by default; only documents you choose to share are sent, to a default sync server operated by the author on Cloudflare Workers (you can switch to your own self-hosted server in Settings → Cộng tác). Revoking a link stops access immediately; to delete for good use the "Delete data on server" button (rooms nobody opens for 90 days are also deleted automatically).
+• Sharing is optional and off by default; only documents you choose to share are sent, to a default sync server operated by the author on Cloudflare Workers (you can switch to your own self-hosted server in Settings → Cộng tác). Revoking a link stops access immediately; to delete for good use the "Delete data from server" button (rooms nobody opens for 90 days are also deleted automatically).
 
 Local AI connection (MCP)
 • Lets Claude, Cursor and similar tools create and share documents through a bridge that listens only on 127.0.0.1, off by default. The bridge sends nothing to the internet; sharing happens only after you confirm.
