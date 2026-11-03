@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { main, VERSION, isDirectRun } from './cli'
+import { MCP_PACKAGE_SPEC } from '@md-reader/core/bridge'
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -18,6 +19,14 @@ function freePort(): Promise<number> {
     })
   })
 }
+
+describe('version', () => {
+  it('VERSION matches package.json and MCP_PACKAGE_SPEC', () => {
+    const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')) as { version: string }
+    expect(VERSION).toBe(pkg.version)
+    expect(MCP_PACKAGE_SPEC).toBe(`le-sach-mcp@${VERSION}`)
+  })
+})
 
 describe('cli main', () => {
   it('logs listening line without private key, keeps stdout silent, frees the port', async () => {

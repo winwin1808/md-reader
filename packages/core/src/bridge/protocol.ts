@@ -6,7 +6,10 @@ export const BRIDGE_MAX_TITLE = 200
 export const BRIDGE_MAX_CLIENT = 40
 export const BRIDGE_MAX_PAYLOAD = 16 * 1024 * 1024
 export const BRIDGE_MAX_CONNECTIONS = 4
-export const KNOWN_EXTENSION_IDS: readonly string[] = ['ojcemoafaibjfghljkbagnkbgljakbji'] // ID store thêm ở 10o
+export const STORE_EXTENSION_ID = 'eolclccibhickmpbpbdodbhopnddcdog'
+export const DEV_EXTENSION_ID = 'ojcemoafaibjfghljkbagnkbgljakbji'
+export const KNOWN_EXTENSION_IDS: readonly string[] = [STORE_EXTENSION_ID, DEV_EXTENSION_ID]
+export const MCP_PACKAGE_SPEC = 'le-sach-mcp@1.3.2'
 
 export function isAllowedExtensionOrigin(origin: string, ids: readonly string[] = KNOWN_EXTENSION_IDS): boolean {
   return ids.some((id) => origin === `chrome-extension://${id}`)

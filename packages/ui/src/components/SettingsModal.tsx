@@ -5,6 +5,7 @@ import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
 import { Icon } from './Icon';
+import { AiSetupGuide } from './AiSetupGuide';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
@@ -888,6 +889,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     checked={props.aiBridge.enabled}
                     onChange={props.aiBridge.onToggle}
                   />
+                  {props.aiBridge.enabled && <AiSetupGuide hasClients={props.aiBridge.clients.length > 0} />}
                   {props.aiBridge.clients.length === 0 ? (
                     <div className="settings-row-desc">{t('settings.ai.none')}</div>
                   ) : (

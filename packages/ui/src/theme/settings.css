@@ -311,3 +311,11 @@
   color: var(--ink);
   padding: 0;
 }
+
+.ai-guide { margin-top: 12px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); padding: 8px 12px; }
+.ai-guide summary { cursor: pointer; font-weight: 600; }
+.ai-guide ol { padding-left: 20px; margin: 8px 0 0; }
+.ai-guide-tabs { display: flex; gap: 6px; margin: 8px 0; }
+.ai-guide-tab { border: 1px solid var(--rule); background: var(--surface); color: var(--pencil); padding: 4px 10px; cursor: pointer; font: inherit; }
+.ai-guide-tab[aria-selected="true"] { color: var(--ink); border-color: var(--accent); }
+.ai-guide-code { white-space: pre; overflow-x: auto; user-select: all; font: 12px ui-monospace, monospace; border: 1px solid var(--rule); padding: 8px; margin: 6px 0; }

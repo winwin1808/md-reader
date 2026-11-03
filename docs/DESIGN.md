@@ -567,6 +567,19 @@ Plan: `docs/superpowers/plans/2026-10-28-phase-16-plan.md`.
 | 16f | Độc lập thứ tự (extension) | Dọn timer/stub/state giữa test; `--sequence.shuffle` xanh |
 | 16g | Độc lập thứ tự (ui) | Bỏ chập chờn import barrel và ô nhiễm cache MermaidBlock |
 
+### Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store
+
+Ship: *người cài từ store bật Kết nối AI, làm theo hướng dẫn trong Cài đặt, ghép cặp được với Claude Code / Claude Desktop / Cursor.*
+Spec: `docs/superpowers/specs/2026-11-03-phase-17-design.md`. ID store `eolclccibhickmpbpbdodbhopnddcdog`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 17a | ID store + phiên bản MCP | `KNOWN_EXTENSION_IDS` = store + dev; `MCP_PACKAGE_SPEC`; `le-sach-mcp` 1.3.2, `VERSION` khớp `package.json` có test |
+| 17b | Hướng dẫn trong app | `AiSetupGuide` 3 bước, tab 3 client có Sao chép, câu lệnh mẫu; mở khi chưa có client; vi + en |
+| 17c1 | README + site | Link store thật, bỏ "Sắp có" |
+| 17c2 | Docs MCP + privacy | `1.3.2`, cài từ store, `MDR_EXTENSION_ID` mặc định; email liên hệ `qhao.work@gmail.com` |
+| 17d | Tên extension | `extName` vi + en = "LeSach – Markdown Reader & AI Editor"; chữ "MD Reader" trong UI/docs giữ nguyên |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
