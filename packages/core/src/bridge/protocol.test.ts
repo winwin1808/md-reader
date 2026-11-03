@@ -100,6 +100,15 @@ describe('isAllowedExtensionOrigin', () => {
     expect(isAllowedExtensionOrigin(`chrome-extension://${id}/`)).toBe(false)
     expect(isAllowedExtensionOrigin('chrome-extension://zzz', ['zzz'])).toBe(true)
   })
+  it('accepts store and dev ids', () => {
+    const store = 'eolclccibhickmpbpbdodbhopnddcdog'
+    const dev = 'ojcemoafaibjfghljkbagnkbgljakbji'
+    expect(isAllowedExtensionOrigin(`chrome-extension://${store}`)).toBe(true)
+    expect(isAllowedExtensionOrigin(`chrome-extension://${dev}`)).toBe(true)
+    expect(isAllowedExtensionOrigin(`moz-extension://${store}`)).toBe(false)
+    expect(isAllowedExtensionOrigin(`chrome-extension://${store}/`)).toBe(false)
+    expect(isAllowedExtensionOrigin(`chrome-extension://${store.toUpperCase()}`)).toBe(false)
+  })
   it('limits', () => {
     expect(BRIDGE_MAX_PAYLOAD).toBe(16 * 1024 * 1024)
     expect(BRIDGE_MAX_CONNECTIONS).toBe(4)
