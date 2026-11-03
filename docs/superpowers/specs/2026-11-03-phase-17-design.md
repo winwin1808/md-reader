@@ -8,10 +8,10 @@ Claude Code / Claude Desktop / Cursor mà không phải điền ID hay token.*
 
 ## Sub-phase queue
 
-- 17a — ID store + phiên bản MCP — pending
-- 17b — Hướng dẫn trong mục Kết nối AI — pending
-- 17c1 — README + site trỏ store — pending
-- 17c2 — Docs MCP + email liên hệ privacy — pending
+- 17a — ID store + phiên bản MCP — planned
+- 17b — Hướng dẫn trong mục Kết nối AI — planned
+- 17c1 — README + site trỏ store — planned
+- 17c2 — Docs MCP + email liên hệ privacy — planned
 
 ## Approach chosen
 
