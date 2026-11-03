@@ -12,10 +12,10 @@ Cầu nối **tắt mặc định**. Bạn phải bật trong Cài đặt thì e
 
 ## 2. Cài đặt
 
-Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bản `le-sach-mcp@1.3.1` bằng:
+Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bản `le-sach-mcp@1.3.2` bằng:
 
 ```
-npx -y le-sach-mcp@1.3.1
+npx -y le-sach-mcp@1.3.2
 ```
 
 ## 3. Cấu hình client
@@ -27,7 +27,7 @@ npx -y le-sach-mcp@1.3.1
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.1"]
+      "args": ["-y", "le-sach-mcp@1.3.2"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp@1.3.1
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
+claude mcp add md-reader -- npx -y le-sach-mcp@1.3.2
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.1"]
+      "args": ["-y", "le-sach-mcp@1.3.2"]
     }
   }
 }
@@ -55,11 +55,11 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
 Biến môi trường tuỳ chọn:
 
 - `MDR_PAIR_FILE`: đường dẫn file ghép cặp (mặc định `~/.config/md-reader/mcp.json`; Windows dùng `%APPDATA%\md-reader\mcp.json`; nếu có `XDG_CONFIG_HOME` thì dùng thư mục đó).
-- `MDR_EXTENSION_ID`: ID extension được phép kết nối (nhiều ID thì cách nhau bằng dấu phẩy). Mặc định là ID bản phát hành.
+- `MDR_EXTENSION_ID`: ID extension được phép kết nối (nhiều ID thì cách nhau bằng dấu phẩy). Mặc định gồm ID bản Chrome Web Store (`eolclccibhickmpbpbdodbhopnddcdog`) và ID bản cài từ mã nguồn (`ojcemoafaibjfghljkbagnkbgljakbji`).
 
 ## 4. Bật và ghép cặp
 
-1. Mở Chrome có MD Reader, vào **Cài đặt → Kết nối AI** và bật.
+1. Mở Chrome có MD Reader, (cài MD Reader từ [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog)), vào **Cài đặt → Kết nối AI** và bật. Ngay dưới công tắc có sẵn lệnh/JSON cho Claude Code, Claude Desktop, Cursor để chép.
 2. Khởi động (hoặc khởi động lại) client AI. Trong **10 phút** đầu sau khi `le-sach-mcp` chạy, extension hiện **hộp ghép cặp** gồm tên client (tối đa 40 ký tự) và **mã nhận dạng** dạng `ABCD-1234`. Mã này phải khớp với dòng `le-sach-mcp: đã ghép cặp với MD Reader …` trong log của client AI (dòng đó in ra sau khi bạn bấm Cho phép). Chọn Cho phép.
 3. Cách xác thực (giao thức v2): `le-sach-mcp` và extension mỗi bên giữ một cặp khoá ECDSA P-256 riêng. Mỗi lần nối, hai bên ký lên số ngẫu nhiên của bên kia kèm số cổng; không có bí mật nào đi qua kết nối. Extension chỉ chạy lệnh của máy chủ có khoá bạn đã duyệt; `le-sach-mcp` chỉ nhận extension đã ghép cặp đầu tiên (ghim lần đầu, chỉ trong 10 phút đầu).
    Khoá của máy chủ nằm trong `~/.config/md-reader/mcp.json` (quyền 600). Đừng chia sẻ file này. Muốn ghép cặp lại từ đầu: xoá file này, khởi động lại client AI, rồi duyệt lại trong extension. File hỏng hoặc từ phiên bản cũ sẽ được đổi tên thành `mcp.json.bak-…` và tạo khoá mới (log ghi rõ).

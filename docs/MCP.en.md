@@ -12,10 +12,10 @@ The bridge is **off by default**. The extension accepts connections only after y
 
 ## 2. Install
 
-Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.1` with:
+Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.2` with:
 
 ```
-npx -y le-sach-mcp@1.3.1
+npx -y le-sach-mcp@1.3.2
 ```
 
 ## 3. Client configuration
@@ -27,7 +27,7 @@ npx -y le-sach-mcp@1.3.1
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.1"]
+      "args": ["-y", "le-sach-mcp@1.3.2"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp@1.3.1
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
+claude mcp add md-reader -- npx -y le-sach-mcp@1.3.2
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.1"]
+      "args": ["-y", "le-sach-mcp@1.3.2"]
     }
   }
 }
@@ -55,11 +55,11 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.1
 Optional environment variables:
 
 - `MDR_PAIR_FILE`: path of the pairing file (default `~/.config/md-reader/mcp.json`; on Windows `%APPDATA%\md-reader\mcp.json`; `XDG_CONFIG_HOME` is honored if set).
-- `MDR_EXTENSION_ID`: extension ID allowed to connect (comma-separated for several). Defaults to the released extension ID.
+- `MDR_EXTENSION_ID`: extension ID allowed to connect (comma-separated for several). Defaults to both the Chrome Web Store extension ID (`eolclccibhickmpbpbdodbhopnddcdog`) and the build-from-source ID (`ojcemoafaibjfghljkbagnkbgljakbji`).
 
 ## 4. Enable and pair
 
-1. Open Chrome with MD Reader, go to **Settings → AI connection** (Kết nối AI) and turn it on.
+1. Open Chrome with MD Reader (install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog)), go to **Settings → AI connection** (Kết nối AI) and turn it on. Right below the switch you will find ready-made commands/JSON for Claude Code, Claude Desktop and Cursor to copy.
 2. Start (or restart) the AI client. Within **10 minutes** of `le-sach-mcp` starting, the extension shows a **pairing dialog** with the client name (up to 40 characters) and an **identifier** like `ABCD-1234`. It must match the `le-sach-mcp: đã ghép cặp với MD Reader …` line in the AI client's log (printed after you click Allow). Choose Allow.
 3. How it authenticates (protocol v2): `le-sach-mcp` and the extension each hold their own ECDSA P-256 key pair. On every connection each side signs the other's random nonce together with the port; no secret ever crosses the connection. The extension only runs commands from a server whose key you approved; `le-sach-mcp` only accepts the first extension that paired (pinned on first use, only within the first 10 minutes).
    The server key lives in `~/.config/md-reader/mcp.json` (mode 600). Do not share this file. To pair from scratch: delete it, restart the AI client, and approve again in the extension. A corrupt or old-version file is renamed to `mcp.json.bak-…` and a new key is created (the log says so).

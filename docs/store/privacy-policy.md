@@ -38,4 +38,4 @@ MD Reader is a Chrome extension for reading, editing and presenting Markdown fil
 - **Access.** The extension reads Markdown (.md) pages only to display them, and writes to a file on disk only when you press Save. Permissions: `storage`, `activeTab`, `alarms` (wakes the local AI bridge) and access to Markdown URLs.
 - **Deleting data.** Uninstalling the extension removes all data it stored in your browser. Data you shared and that sits on the collaboration server follows the Retention and deleting server data item above.
 
-Liên hệ / Contact: nguyenquanghao1808@gmail.com
+Liên hệ / Contact: qhao.work@gmail.com
