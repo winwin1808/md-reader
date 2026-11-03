@@ -8,10 +8,11 @@ Claude Code / Claude Desktop / Cursor mà không phải điền ID hay token.*
 
 ## Sub-phase queue
 
-- 17a — ID store + phiên bản MCP — planned
-- 17b — Hướng dẫn trong mục Kết nối AI — planned
-- 17c1 — README + site trỏ store — planned
-- 17c2 — Docs MCP + email liên hệ privacy — planned
+- 17a — ID store + phiên bản MCP — done
+- 17b — Hướng dẫn trong mục Kết nối AI — done
+- 17c1 — README + site trỏ store — done
+- 17c2 — Docs MCP + email liên hệ privacy — done
+- 17d — Tên extension "LeSach – Markdown Reader & AI Editor" (chỉ `extName`, thêm theo yêu cầu người dùng) — done
 
 ## Approach chosen
 

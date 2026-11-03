@@ -578,6 +578,7 @@ Spec: `docs/superpowers/specs/2026-11-03-phase-17-design.md`. ID store `eolclcci
 | 17b | Hướng dẫn trong app | `AiSetupGuide` 3 bước, tab 3 client có Sao chép, câu lệnh mẫu; mở khi chưa có client; vi + en |
 | 17c1 | README + site | Link store thật, bỏ "Sắp có" |
 | 17c2 | Docs MCP + privacy | `1.3.2`, cài từ store, `MDR_EXTENSION_ID` mặc định; email liên hệ `qhao.work@gmail.com` |
+| 17d | Tên extension | `extName` vi + en = "LeSach – Markdown Reader & AI Editor"; chữ "MD Reader" trong UI/docs giữ nguyên |
 
 ## 5. Rủi ro
 
