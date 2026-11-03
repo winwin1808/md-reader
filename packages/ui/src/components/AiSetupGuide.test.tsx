@@ -4,6 +4,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { MCP_PACKAGE_SPEC } from '@md-reader/core'
 import { AiSetupGuide, mcpSetupSnippet } from './AiSetupGuide'
+import { SettingsModal } from './SettingsModal'
 
 afterEach(() => {
   cleanup()
@@ -55,5 +56,31 @@ describe('AiSetupGuide', () => {
     render(<AiSetupGuide hasClients={false} />)
     fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Không chép được'))
+  })
+})
+
+describe('SettingsModal + AiSetupGuide', () => {
+  const mk = (enabled: boolean, n: number) => (
+    <SettingsModal
+      open
+      aiBridge={{
+        enabled,
+        clients: Array.from({ length: n }, (_, i) => ({ keyHash: 'abcd1234e' + i, client: 'C' + i, at: 1700000000000 })),
+        onToggle: vi.fn(),
+        onRevoke: vi.fn(),
+      }}
+    />
+  )
+  it('hides the guide when disabled', () => {
+    render(mk(false, 0))
+    expect(screen.queryByText('Cách dùng với AI')).toBeNull()
+  })
+  it('shows it open when enabled with no clients', () => {
+    render(mk(true, 0))
+    expect(screen.getByText('Cách dùng với AI').closest('details')).toHaveAttribute('open')
+  })
+  it('shows it closed when clients exist', () => {
+    render(mk(true, 1))
+    expect(screen.getByText('Cách dùng với AI').closest('details')).not.toHaveAttribute('open')
   })
 })
