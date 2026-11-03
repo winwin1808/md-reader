@@ -31,9 +31,15 @@ export function AiSetupGuide({ hasClients }: AiSetupGuideProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const copySeq = useRef(0)
+
+  useEffect(() => () => {
+    copySeq.current++
+    if (timer.current) clearTimeout(timer.current)
+  }, [])
 
   const select = (k: AiClientKind) => {
+    copySeq.current++
     if (timer.current) clearTimeout(timer.current)
     setCopyState('idle')
     setKind(k)
@@ -49,13 +55,20 @@ export function AiSetupGuide({ hasClients }: AiSetupGuideProps) {
 
   const copy = () => {
     const snippet = mcpSetupSnippet(kind)
-    const fail = () => setCopyState('failed')
-    if (!navigator.clipboard?.writeText) return fail()
-    navigator.clipboard.writeText(snippet).then(() => {
+    const seq = ++copySeq.current
+    const fail = () => { if (seq === copySeq.current) setCopyState('failed') }
+    const ok = () => {
+      if (seq !== copySeq.current) return
       setCopyState('copied')
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => setCopyState('idle'), 2000)
-    }, fail)
+    }
+    try {
+      if (!navigator.clipboard?.writeText) return fail()
+      navigator.clipboard.writeText(snippet).then(ok, fail)
+    } catch {
+      fail()
+    }
   }
 
   return (

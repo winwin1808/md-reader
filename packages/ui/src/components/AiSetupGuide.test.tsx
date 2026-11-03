@@ -1,7 +1,7 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
 import { MCP_PACKAGE_SPEC } from '@md-reader/core'
 import { AiSetupGuide, mcpSetupSnippet } from './AiSetupGuide'
 import { SettingsModal } from './SettingsModal'
@@ -56,6 +56,25 @@ describe('AiSetupGuide', () => {
     render(<AiSetupGuide hasClients={false} />)
     fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Không chép được'))
+  })
+
+  it('ignores a stale copy result after switching tabs', async () => {
+    let resolve!: () => void
+    const writeText = vi.fn().mockReturnValue(new Promise<void>((r) => { resolve = r }))
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    render(<AiSetupGuide hasClients={false} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Cursor' }))
+    await act(async () => { resolve(); await Promise.resolve() })
+    expect(screen.queryByRole('button', { name: 'Đã chép' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sao chép' })).toBeInTheDocument()
+  })
+
+  it('shows the failure text when writeText throws synchronously', () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(() => { throw new Error('sync') }) } })
+    render(<AiSetupGuide hasClients={false} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Không chép được')
   })
 })
 
