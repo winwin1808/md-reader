@@ -1,6 +1,6 @@
 # Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store
 
-Author: haonq. Status: designed. Phase: 17
+Author: haonq. Status: shipped. Phase: 17
 Intent: docs/superpowers/intent/2026-11-03-phase-17-huong-dan-ai.md
 
 Ship: *người cài MD Reader từ Chrome Web Store bật Kết nối AI, làm theo hướng dẫn ngay trong mục cài đặt, và ghép cặp được với

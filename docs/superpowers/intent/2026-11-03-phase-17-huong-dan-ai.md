@@ -1,5 +1,5 @@
 # Intent: Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store
-Author: haonq. Status: designed. Phase: 17
+Author: haonq. Status: shipped. Phase: 17
 Design: docs/superpowers/specs/2026-11-03-phase-17-design.md
 
 ## Problem

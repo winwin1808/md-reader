@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 - Community files: CONTRIBUTING, Code of Conduct, Security policy, issue and PR templates.
+- Settings → AI connection shows a 3-step setup guide when turned on: copyable command/JSON for Claude Code, Claude Desktop and Cursor, how to approve pairing, and example requests. Open by default until an AI app is approved.
+
+### Changed
+- Extension name is now "LeSach – Markdown Reader & AI Editor".
+- `le-sach-mcp` 1.3.2 accepts the Chrome Web Store build (`eolclccibhickmpbpbdodbhopnddcdog`) as well as the source build; its reported version now matches `package.json`.
+- README, site and docs link to the Chrome Web Store listing; privacy contact is qhao.work@gmail.com.
 
 ## [1.3.0] - 2026-10-29
 

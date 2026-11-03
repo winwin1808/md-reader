@@ -1,6 +1,26 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-10-29. Branch: `main` — **mọi phase đến 16 đã merge** (phase 16: PR #16, commit `a72f44f`).
+Cập nhật: 2026-11-03. Branch: `phase-17` — MR `phase-17` → `main` **đã mở, chưa merge** (MR_LINK). Mọi phase đến 16 đã merge.
+
+## Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store (2026-11-03)
+
+Extension đã lên store: ID `eolclccibhickmpbpbdodbhopnddcdog` (https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog).
+Plan `docs/superpowers/plans/2026-11-03-phase-17-plan.md`. Bây giờ đúng: `KNOWN_EXTENSION_IDS` = store + dev (hằng `STORE_EXTENSION_ID`/`DEV_EXTENSION_ID`),
+`MCP_PACKAGE_SPEC = 'le-sach-mcp@1.3.2'` ở `@md-reader/core`, `VERSION` mcp khớp `package.json` (có test); `AiSetupGuide` trong Cài đặt → Kết nối AI
+(tab Claude Code / Claude Desktop / Cursor, Sao chép, câu lệnh mẫu, mở khi chưa có client); README/site/docs trỏ store; email liên hệ privacy `qhao.work@gmail.com`;
+tên extension `extName` = "LeSach – Markdown Reader & AI Editor" (chữ "MD Reader" trong UI/docs giữ nguyên). Git email repo-local đã đổi `qhao.work@gmail.com`.
+Test: core 279 · ui 494 · extension 464 · mcp 47; typecheck/build 0; content.js gz 13.66 KB.
+
+**Việc người làm sau merge — đúng thứ tự:**
+1. `cd packages/mcp && pnpm build && pnpm publish --access public --no-git-checks --otp=<mã>` → `le-sach-mcp@1.3.2` (bản 1.3.1 trên npm chưa nhận ID store).
+2. Sau bước 1 mới build zip extension (`node apps/extension/scripts/package.mjs`, nhớ `VITE_MDR_SERVER_URL`) và nộp bản cập nhật lên store — snippet trong app trỏ `@1.3.2`. Tăng `version` manifest trước khi nộp.
+3. Cập nhật tên + email liên hệ trong Developer Dashboard nếu cần; thêm + xác minh `qhao.work@gmail.com` trên GitHub.
+
+**Nợ phase 17:** copyFailed không tự tắt; số phiên bản trong docs/MCP*.md chưa có test; `.btn.soon` thừa ở `site/style.css`; tabpanel chưa tabIndex, tab chưa Home/End;
+suite core/ui có thể đỏ khi chạy song song với build (flake dưới tải, chạy lại xanh); Firefox origin `moz-extension://<uuid>` chưa được cầu nối nhận; ID Edge chưa có.
+
+### Stale (đã xong ở phase 17)
+Mục "Trước khi nộp store" bên dưới: bước 2 (publish 1.3.1) thay bằng 1.3.2 ở trên; bước 3 (thêm ID store) đã làm.
 
 ## Trước khi nộp store (cập nhật 2026-10-29)
 
