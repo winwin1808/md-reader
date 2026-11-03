@@ -98,11 +98,12 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
 
 | Nền tảng | Trạng thái | Ghi chú |
 |---|---|---|
-| Chrome | **Có** | Cài từ mã nguồn hoặc zip phát hành; Chrome Web Store đang chuẩn bị. |
+| Chrome | **Có** | Cài từ [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) hoặc từ mã nguồn / zip phát hành. |
 | Edge | **Có** | Dùng nguyên zip Chrome. Trang Edge Add-ons: dự kiến. |
 | Brave / Opera / Arc / Vivaldi | **Có** | Cùng nhân Chromium, dùng zip Chrome. |
 | Firefox (MV3, từ 128) | **Có giới hạn** | Có bản build. Không có File System Access API nên không Mở file / Lưu thẳng về đĩa / ảnh vào `assets/`; một số quyền phải cấp thủ công. Chi tiết: [`docs/PLATFORMS.md`](docs/PLATFORMS.md). |
-| Chrome Web Store / Edge Add-ons / Firefox AMO | **Đang làm** | Hồ sơ listing và ảnh đã có; chờ publish. |
+| Chrome Web Store | **Có** | [MD Reader](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) |
+| Edge Add-ons / Firefox AMO | **Đang làm** | Hồ sơ listing đã có; chờ publish. |
 | VS Code, Obsidian | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
 | Web app (kéo file, không cài) | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
 | Di động | **Dự kiến** | Sau cùng. |
@@ -127,7 +128,9 @@ Phase 1 đến 16 đã xong (đọc, xuất, trình chiếu, mindmap, sửa và 
 
 ### Từ Chrome Web Store
 
-Sắp có.
+[Cài MD Reader](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog).
+
+Để dùng với Claude hoặc Cursor, bật Cài đặt → Kết nối AI; các bước hiện ngay tại đó (chi tiết: [docs/MCP.md](docs/MCP.md)).
 
 ### Từ mã nguồn
 
