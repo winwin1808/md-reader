@@ -1,6 +1,6 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-03. Branch: `phase-17` — MR `phase-17` → `main` **đã mở, chưa merge** (MR_LINK). Mọi phase đến 16 đã merge.
+Cập nhật: 2026-11-03. Branch: `phase-17` — MR `phase-17` → `main` **đã mở, chưa merge** (https://github.com/winwin1808/md-reader/pull/18). Mọi phase đến 16 đã merge.
 
 ## Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store (2026-11-03)
 
