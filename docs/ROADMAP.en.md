@@ -4,7 +4,10 @@
 
 This is a plan, not a delivery-date commitment. Order and scope may change with feedback. Legend: `[x]` done, `[ ]` not started.
 
-## Done (phases 1 to 16, version 1.3.x)
+**Order from here:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Beyond the browser.
+Requests from real users run **in parallel** with this order (see [User requests](#user-requests-in-parallel)).
+
+## Done (phases 1 to 17, version 1.4.0)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -22,6 +25,7 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 - [x] **P14 Risk closure:** edit-link updates checked before applying, clientID bound per link, batched cleanup cron, full room → read-only on web.
 - [x] **P15 User and server debt:** one-call "Revoke all", lazy KaTeX, Word equations as OMML, paginated history, `.Md` files recognised, MCP edits named after the client, CLI file lock, "Compact document".
 - [x] **P16 Test debt:** configurable-port collaboration e2e, tightened weak tests, order-independent suites.
+- [x] **P17 On the Chrome Web Store:** AI connection setup guide right in Settings, `le-sach-mcp` 1.3.2 accepts the store build, new name "LeSach – Markdown Reader & AI Editor".
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
@@ -76,9 +80,20 @@ Collaboration:
 
 Release:
 
-- [ ] Chrome Web Store
+- [x] Chrome Web Store
 - [ ] Microsoft Edge Add-ons
 - [ ] Firefox AMO (with a replacement for File System Access on Firefox)
+
+## Lề sách Cloud (paid)
+
+A paid, closed-source cloud service. The extension, core and self-hosted server stay MIT and free. Only once there are a few hundred real users.
+
+- [ ] Permanent storage and unlimited shared documents (the free tier deletes rooms unopened for 90 days)
+- [ ] `.md` projects following a local folder tree, two-way sync
+- [ ] View, edit, annotate and review documents on a phone
+- [ ] Remote MCP + OAuth for AI agents running in the cloud
+- [ ] Password-protected links, cloud history
+- [ ] Team: workspaces, SSO
 
 ## v2.0 Beyond the browser
 
@@ -87,6 +102,12 @@ Release:
 - [ ] **Obsidian plugin**
 - [ ] **Headless CLI:** `md → HTML / PDF` for CI and scripts
 - [ ] **Mobile** (last, scope undecided)
+
+## User requests (in parallel)
+
+Requests from store users and GitHub Issues, worked in alongside the main roadmap as needed.
+
+_Nothing yet._
 
 ## How to give input
 
