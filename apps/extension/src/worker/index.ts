@@ -6,6 +6,7 @@ import {
   BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
 import { LIFECYCLE_KEY, parseLifecycleState, decideLifecycle, uninstallUrl } from './lifecycle'
+import type { LifecycleEvent } from './lifecycle'
 import { RELEASE_NOTES } from '../shared/release-notes'
 import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry, isExpiryActive, setExpiry } from '../shared/md-url'
 
@@ -181,16 +182,12 @@ function enqueue(fn: () => Promise<void>): Promise<void> {
   return next
 }
 
-type LifecycleEvent =
-  | { type: 'installed'; reason?: string; previousVersion?: string }
-  | { type: 'startup' }
-
 async function runLifecycle(ev: LifecycleEvent): Promise<void> {
   try {
     const version = chrome.runtime.getManifest().version
     const raw = await chrome.storage.local.get(LIFECYCLE_KEY)
     const s = parseLifecycleState(raw?.[LIFECYCLE_KEY])
-    const { next } = decideLifecycle(ev as never, s, RELEASE_NOTES, version, Date.now())
+    const { next } = decideLifecycle(ev, s, RELEASE_NOTES, version, Date.now())
     await chrome.storage.local.set({ [LIFECYCLE_KEY]: next })
     try {
       chrome.runtime.setUninstallURL?.(uninstallUrl(version, chrome.i18n?.getUILanguage?.() ?? 'en'))
@@ -208,8 +205,7 @@ async function afterLifecycle(): Promise<void> {
 }
 
 async function onInstalled(details?: { reason?: string; previousVersion?: string }): Promise<void> {
-  const { reason, previousVersion } = details ?? {}
-  await runLifecycle({ type: 'installed', reason, previousVersion })
+  await runLifecycle({ type: 'installed', reason: details?.reason ?? '', previousVersion: details?.previousVersion })
   await afterLifecycle()
 }
 

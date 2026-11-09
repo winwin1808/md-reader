@@ -338,6 +338,13 @@ describe('Service Worker lifecycle (18a.2)', () => {
     warn.mockRestore()
   })
 
+  it('onInstalled without reason leaves stored state unchanged and does not throw', async () => {
+    await installed!({ reason: 'install' })
+    const before = JSON.stringify(store)
+    await expect(installed!({})).resolves.toBeUndefined()
+    expect(JSON.stringify(store)).toBe(before)
+  })
+
   it('back-to-back installed then startup run sequentially', async () => {
     const p1 = installed!({ reason: 'install' })
     const p2 = startup!()
