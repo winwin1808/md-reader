@@ -5,6 +5,7 @@ import { BRIDGE_PORTS } from '@md-reader/core/bridge'
 import { App } from './App'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { WelcomeRoute } from './WelcomeRoute'
+import { WhatsNewRoute, maybeRedirectToWhatsNew } from './WhatsNewRoute'
 import { LocaleRoot } from './LocaleRoot'
 import { PAIR_DECISION_MSG } from '../worker/bridge-storage'
 import { onMathLoaded } from '@md-reader/core/plugins'
@@ -41,11 +42,15 @@ if (container) {
   const root = createRoot(container)
   const pair = pairParams()
   const welcome = new URLSearchParams(window.location.search).get('welcome') === '1'
+  const whatsnew = new URLSearchParams(window.location.search).get('whatsnew') === '1'
+  if (!welcome && !whatsnew && !pair) void maybeRedirectToWhatsNew()
   root.render(
     <React.StrictMode>
       <LocaleRoot>
         {welcome ? (
           <WelcomeRoute />
+        ) : whatsnew ? (
+          <WhatsNewRoute />
         ) : pair === 'invalid' ? (
           <PairInvalid />
         ) : pair ? (
