@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { splitIntoSlides } from './index.js'
+import { splitIntoSlides, SLIDE_BREAK_MARKER } from './index.js'
+import { renderToHtml } from '../render/index.js'
+import { parseMarkdown } from '../parse/index.js'
 import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
 beforeAll(() => loadMathPlugin())
 
@@ -174,4 +176,68 @@ describe('splitIntoSlides render options', () => {
     const [s] = splitIntoSlides('> [!NOTE]\n> x', { render: { githubAlerts: true } })
     expect(s!.html).toContain('markdown-alert')
   })
+})
+
+describe('slide-break marker', () => {
+  const M = '<!-- slide-break -->'
+  it('breaks within hr strategy', () => {
+    const s = splitIntoSlides(`# A\n\none\n${M}\ntwo\n\n---\n\n# B`)
+    expect(s).toHaveLength(3)
+    expect(s[1]!.rawMarkdown).toBe('two')
+  })
+  it('breaks within heading strategy and keeps heading strategy', () => {
+    const s = splitIntoSlides(`# A\n\none\n${M}\ntwo\n\n## B\n\nthree`)
+    expect(s).toHaveLength(3)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['# A\n\none', 'two', '## B\n\nthree'])
+  })
+  it('breaks in fallback', () => {
+    const s = splitIntoSlides(`para one\n${M}\npara two`)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['para one', 'para two'])
+  })
+  it('ignores marker in code fence', () => {
+    const s = splitIntoSlides('```\n' + M + '\n```\n\ntext')
+    expect(s).toHaveLength(1)
+    const t = splitIntoSlides('~~~\n' + M + '\n~~~')
+    expect(t).toHaveLength(1)
+  })
+  it('accepts case and spacing variants', () => {
+    const s = splitIntoSlides('a\n  <!--SLIDE-BREAK-->  \nb\n<!--   slide-break   -->\nc')
+    expect(s).toHaveLength(3)
+  })
+  it('indent 0-3 spaces breaks; 4 spaces or tab does not', () => {
+    for (const ind of ['', ' ', '  ', '   ']) {
+      expect(splitIntoSlides(`a\n${ind}${M}\nb`)).toHaveLength(2)
+    }
+    expect(splitIntoSlides(`a\n    ${M}\nb`)).toHaveLength(1)
+    expect(splitIntoSlides(`a\n\t${M}\nb`)).toHaveLength(1)
+  })
+  it('no empty slides for leading/trailing markers', () => {
+    const s = splitIntoSlides(`${M}\na\n${M}\nb\n${M}`)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['a', 'b'])
+  })
+  it('marker-only doc returns at least one slide', () => {
+    const s = splitIntoSlides(M)
+    expect(s[0]!.html).toBe('')
+    expect(s.length).toBeGreaterThanOrEqual(1)
+  })
+  it('html never contains slide-break', () => {
+    const s = splitIntoSlides(`# A\n${M}\nb\n---\nc`)
+    expect(s).toHaveLength(3)
+    for (const x of s) expect(x.html).not.toContain('slide-break')
+  })
+  it('notes follow their part', () => {
+    const s = splitIntoSlides(`a <!-- note: n1 -->\n${M}\nb <!-- note: n2 -->`)
+    expect(s[0]!.notes).toEqual(['n1'])
+    expect(s[1]!.notes).toEqual(['n2'])
+  })
+})
+
+describe('slide-break marker is not visible when reading', () => {
+  const md = `# A\n\n${SLIDE_BREAK_MARKER}\n\n# B`
+  for (const allowRawHtml of [false, true]) {
+    it(`renderToHtml omits marker (allowRawHtml=${allowRawHtml})`, () => {
+      const { html } = renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), allowRawHtml })
+      expect(html).not.toContain('slide-break')
+    })
+  }
 })
