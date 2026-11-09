@@ -27,7 +27,7 @@ main.welcome button:focus-visible { outline: 2px solid var(--accent); outline-of
 .welcome-note::before { content: ''; position: absolute; left: -1.9rem; top: .65em; width: 1.6rem; border-top: 1px dashed var(--pencil); }
 @keyframes welcome-note-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .welcome-note { animation: none; } }
-@media (max-width: 899px) { .welcome-figure { padding-right: 0; } .welcome-notes { position: static; width: auto; margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; } .welcome-note::before { display: none; } }
+@media (max-width: 899px) { .welcome-figure { padding-right: 0; overflow-x: clip; } .welcome-notes { position: static; width: auto; margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; } .welcome-note::before { display: none; } }
 .welcome-setup { margin-top: clamp(3rem, 7vw, 5rem); padding-top: 1.5rem; border-top: 1px solid var(--rule); }
 .welcome-setup-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1rem; }
 .welcome-setup h2 { font-family: var(--font-body); font-size: 1.35rem; margin: 0; }

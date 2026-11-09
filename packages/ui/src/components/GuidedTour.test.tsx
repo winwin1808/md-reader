@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, fireEvent, screen, waitFor } from '@testing-library/react'
+import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { GuidedTour, type TourStep } from './GuidedTour'
 import { I18nProvider } from '../i18n'
 
@@ -35,7 +35,10 @@ const setup = (s = steps, onClose = vi.fn()) => {
   fireEvent(window, new Event('resize'))
   return { r, onClose }
 }
-afterEach(() => document.body.innerHTML = '')
+afterEach(() => {
+  cleanup()
+  document.body.innerHTML = ''
+})
 
 describe('GuidedTour', () => {
   it('navigates with buttons and shows progress', () => {
@@ -63,6 +66,18 @@ describe('GuidedTour', () => {
     expect(onClose).toHaveBeenCalledWith('skipped')
     fireEvent.click(document.querySelector('.tour-skip')!)
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+  it('Esc does not reach a window listener while open, but does when closed', () => {
+    const seen = vi.fn()
+    window.addEventListener('keydown', seen)
+    const { r, onClose } = setup()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledWith('skipped')
+    expect(seen).not.toHaveBeenCalled()
+    r.unmount()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(seen).toHaveBeenCalledTimes(1)
+    window.removeEventListener('keydown', seen)
   })
   it('arrow keys change step', () => {
     setup()

@@ -5,11 +5,11 @@ Intent: yêu cầu trực tiếp 2026-11-09 — "UI trang chào hơi đơn đi�
 
 ## Sub-phase queue
 
-- 20a — `GuidedTour` (component, packages/ui) — planned
-- 20b — Mốc `data-tour` trên thanh công cụ + CSS tour — planned
-- 20c — Nút "Xem hướng dẫn từng bước" trong Cài đặt → Trợ giúp — planned
-- 20d — Nối tour vào extension (bước, tự chạy, xem lại) — pending
-- 20e — Trang chào mới — planned
+- 20a — `GuidedTour` (component, packages/ui) — done
+- 20b — Mốc `data-tour` trên thanh công cụ + CSS tour — done
+- 20c — Nút "Xem hướng dẫn từng bước" trong Cài đặt → Trợ giúp — done
+- 20d — Nối tour vào extension (bước, tự chạy, xem lại) — planned
+- 20e — Trang chào mới — done
 - 20f — E2E tour + ghi chú phát hành — pending
 
 ## Approach chosen

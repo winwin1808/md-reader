@@ -15,6 +15,7 @@
 @import './theme/editor.css';
 @import './theme/formatting-toolbar.css';
 @import './theme/split-view.css';
+@import './theme/tour.css';
 .md-viewer {
   background-color: var(--paper);
   color: var(--ink);
@@ -82,4 +83,3 @@
 .md-viewer .hljs-builtin-name {
   color: var(--code-attr);
 }
-@import './theme/tour.css';
