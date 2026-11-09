@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SettingsModal } from './SettingsModal';
@@ -76,9 +76,31 @@ describe('SettingsModal', () => {
     it('reports included and failed', async () => {
       draw(bk())
       fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
-      const st = await screen.findByRole('status')
-      expect(st.textContent).toContain('3')
-      expect(st.textContent).toContain('1')
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('3'))
+      expect(st.textContent).toContain('không đọc được')
+    })
+    it('status region is mounted and empty before clicking', () => {
+      draw(bk())
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      expect(st.textContent).toBe('')
+    })
+    it('failed 0 shows count without the failed text', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockResolvedValue({ included: 2, failed: 0 }) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('2'))
+      expect(st.textContent).not.toContain('không đọc được')
+    })
+    it('button re-enables after reject and a second click calls again', async () => {
+      const onBackupAll = vi.fn().mockRejectedValue(new Error('x'))
+      draw(bk({ onBackupAll }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      await screen.findByRole('alert')
+      const btn = screen.getByText('Sao lưu tất cả (.zip)').closest('button')!
+      expect(btn.disabled).toBe(false)
+      fireEvent.click(btn)
+      await waitFor(() => expect(onBackupAll).toHaveBeenCalledTimes(2))
     })
     it('shows an alert on reject', async () => {
       draw(bk({ onBackupAll: vi.fn().mockRejectedValue(new Error('x')) }))

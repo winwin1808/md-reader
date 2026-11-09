@@ -463,12 +463,14 @@ function BackupSection({ backup }: { backup: SettingsBackupProps }): React.JSX.E
           {busy ? t('settings.backup.busy') : t('settings.backup.button')}
         </button>
       </div>
-      {result && (
-        <p role="status" className="settings-row-desc">
-          {t('settings.backup.done', { included: result.included })}
-          {result.failed > 0 && ' ' + t('settings.backup.failed', { failed: result.failed })}
-        </p>
-      )}
+      <p role="status" aria-live="polite" className="settings-row-desc">
+        {result && (
+          <>
+            {t('settings.backup.done', { included: result.included })}
+            {result.failed > 0 && ' ' + t('settings.backup.failed', { failed: result.failed })}
+          </>
+        )}
+      </p>
       {error && <p role="alert" className="settings-row-desc">{t('settings.backup.error')}</p>}
       {backup.sharedDocs.length > 0 && (
         <>

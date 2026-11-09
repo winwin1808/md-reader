@@ -7,7 +7,7 @@ vi.mock('../backup', () => ({ buildBackup: vi.fn() }))
 
 import { listRecent, docQuery } from '../doc-registry'
 import { buildBackup } from '../backup'
-import { backupFileName, useBackupSettings } from './useBackupSettings'
+import { backupFileName, downloadBlob, useBackupSettings } from './useBackupSettings'
 
 const recs = [
   { docId: 'a', title: 'A', room: { roomId: 'r' } },
@@ -17,6 +17,28 @@ const recs = [
 describe('backupFileName', () => {
   it('formats local date', () => {
     expect(backupFileName(new Date(2026, 10, 9))).toBe('md-reader-backup-2026-11-09.zip')
+  })
+})
+
+describe('downloadBlob', () => {
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+  it('clicks a removed anchor with download/href and revokes after 60s', () => {
+    vi.useFakeTimers()
+    const create = vi.fn(() => 'blob:abc')
+    const revoke = vi.fn()
+    ;(URL as any).createObjectURL = create
+    ;(URL as any).revokeObjectURL = revoke
+    let clicked: HTMLAnchorElement | null = null
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { clicked = this })
+    downloadBlob(new Blob(['x']), 'x.zip')
+    expect(clicked).not.toBeNull()
+    expect(clicked!.download).toBe('x.zip')
+    expect(clicked!.href).toBe('blob:abc')
+    expect(document.body.contains(clicked)).toBe(false)
+    vi.advanceTimersByTime(59_999)
+    expect(revoke).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(revoke).toHaveBeenCalledWith('blob:abc')
   })
 })
 
