@@ -339,3 +339,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .reading-mode .history-drawer .history-panel {
   top: 0;
 }
+
+@media print {
+  .review-prompt { display: none !important; }
+}

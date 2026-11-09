@@ -5,7 +5,6 @@ export function ReviewPrompt(props: { onRate(): void; onDismiss(): void }): Reac
   return (
     <aside
       className="review-prompt"
-      role="complementary"
       aria-label={t('review.label')}
       style={{
         background: 'var(--surface)',
@@ -15,6 +14,11 @@ export function ReviewPrompt(props: { onRate(): void; onDismiss(): void }): Reac
         display: 'flex',
         alignItems: 'center',
         gap: 12,
+        position: 'fixed',
+        insetInlineEnd: 16,
+        bottom: 16,
+        maxWidth: 360,
+        zIndex: 500,
       }}
     >
       <span>{t('review.text')}</span>

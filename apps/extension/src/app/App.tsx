@@ -194,7 +194,7 @@ export function App(): React.JSX.Element {
       if (sessionStorage.getItem(key)) { sessionStorage.removeItem(key); setCompactedNotice(true) }
     } catch { /* storage unavailable */ }
   }, [session.docId])
-  const review = useReviewPrompt(session.docId)
+  const review = useReviewPrompt(new URLSearchParams(window.location.search).get('speaker') === 'true' ? null : session.docId)
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
