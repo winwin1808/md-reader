@@ -60,6 +60,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { useLifecycleSettings } from './hooks/useLifecycleSettings'
 import { useReviewPrompt } from './hooks/useReviewPrompt'
+import { useBackupSettings } from './hooks/useBackupSettings'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
 import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
 import { createBridgeExecutor, type ExecSession } from './bridge-executor'
@@ -415,6 +416,7 @@ export function App(): React.JSX.Element {
     if (shareOpen && shareRoomId) void shareRefresh().catch(() => {})
   }, [shareOpen, shareRoomId, shareRefresh])
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
+  const backup = useBackupSettings(settingsOpen)
 
 
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -935,7 +937,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} help={help} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
+          <SettingsModal backup={backup} lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} help={help} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
         </>
         {isReadingMode && (
           <button
