@@ -208,10 +208,12 @@ describe('slide-break marker', () => {
   })
   it('marker-only doc returns at least one slide', () => {
     const s = splitIntoSlides(M)
+    expect(s[0]!.html).toBe('')
     expect(s.length).toBeGreaterThanOrEqual(1)
   })
   it('html never contains slide-break', () => {
     const s = splitIntoSlides(`# A\n${M}\nb\n---\nc`)
+    expect(s).toHaveLength(3)
     for (const x of s) expect(x.html).not.toContain('slide-break')
   })
   it('notes follow their part', () => {
