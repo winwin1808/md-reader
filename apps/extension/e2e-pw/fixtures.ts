@@ -1,4 +1,4 @@
-import { test as base, chromium, type BrowserContext } from '@playwright/test'
+import { test as base, chromium, type BrowserContext, type Page } from '@playwright/test'
 import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -52,13 +52,17 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
     })
     try {
       const isWelcome = (u: string) => u.includes('app.html?welcome=1')
-      let welcome = context.pages().find((pg) => isWelcome(pg.url()))
-      if (!welcome) {
-        welcome = await context
-          .waitForEvent('page', { predicate: (pg) => isWelcome(pg.url()) || pg.url() === '' || pg.url() === 'about:blank', timeout: 5000 })
-          .catch(() => undefined)
-        if (welcome && !isWelcome(welcome.url())) {
-          await welcome.waitForURL(/app\.html\?welcome=1/, { timeout: 5000 }).catch(() => { welcome = undefined })
+      const deadline = Date.now() + 5000
+      let welcome: Page | undefined
+      while (!welcome && Date.now() < deadline) {
+        welcome = context.pages().find((pg) => isWelcome(pg.url()))
+        if (welcome) break
+        const blank = context.pages().find((pg) => pg.url() === '' || pg.url() === 'about:blank')
+        if (blank) {
+          const ok = await blank.waitForURL(/welcome=1/, { timeout: 300 }).then(() => true, () => false)
+          if (ok) { welcome = blank; break }
+        } else {
+          await new Promise((r) => setTimeout(r, 100))
         }
       }
       await welcome?.close().catch(() => {})

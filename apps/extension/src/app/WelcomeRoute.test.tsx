@@ -24,6 +24,18 @@ const origLocation = window.location
 
 function setChrome(c: unknown): void { g.chrome = c }
 
+const PIN_STEP = /Pin MD Reader|Ghim MD Reader lên thanh công cụ/
+const FILE_STEP = /Allow access to local files|Cho phép truy cập file cục bộ/
+const OPEN_STEP = /Open a \.md file|Mở một file \.md/
+
+function fileAccess(ok: boolean): unknown {
+  return { isAllowedFileSchemeAccess: (cb: (v: boolean) => void) => cb(ok) }
+}
+
+function stepLi(label: RegExp): HTMLElement {
+  return screen.getByText(label).closest('li') as HTMLElement
+}
+
 function renderRoute(): ReturnType<typeof render> {
   return render(<LocaleRoot><WelcomeRoute /></LocaleRoot>)
 }
@@ -58,38 +70,63 @@ describe('WelcomeRoute', () => {
     expect(assign).toHaveBeenCalledWith('app.html?d=abc')
   })
 
-  it('hides the pin step when getUserSettings is missing, shows done when on toolbar', async () => {
+  it('hides the pin step when getUserSettings is missing', async () => {
+    setChrome({ runtime: { id: 'xyz' }, extension: fileAccess(true) })
     renderRoute()
-    await waitFor(() => expect(reg.listRecent).toHaveBeenCalled())
-    expect(document.querySelectorAll('[data-done="true"]').length).toBe(0)
-    cleanup()
+    await waitFor(() => expect(stepLi(FILE_STEP).getAttribute('data-done')).toBe('true'))
+    expect(screen.queryByText(PIN_STEP)).toBeNull()
+  })
+
+  it('shows the pin step done when on toolbar', async () => {
+    setChrome({ runtime: { id: 'xyz' }, action: { getUserSettings: () => Promise.resolve({ isOnToolbar: true }) } })
+    renderRoute()
+    await waitFor(() => expect(stepLi(PIN_STEP).getAttribute('data-done')).toBe('true'))
+  })
+
+  it('shows the pin step not done when off toolbar', async () => {
+    setChrome({
+      runtime: { id: 'xyz' },
+      extension: fileAccess(true),
+      action: { getUserSettings: () => Promise.resolve({ isOnToolbar: false }) },
+    })
+    renderRoute()
+    await waitFor(() => expect(stepLi(FILE_STEP).getAttribute('data-done')).toBe('true'))
+    expect(stepLi(PIN_STEP).getAttribute('data-done')).toBe('false')
+  })
+
+  it('opened-file step is not done when only the sample exists', async () => {
+    reg.listRecent.mockResolvedValue([{ docId: 'a', originPath: 'mdr://welcome/en' }])
     setChrome({
       runtime: { id: 'xyz' },
       action: { getUserSettings: () => Promise.resolve({ isOnToolbar: true }) },
     })
     renderRoute()
-    await waitFor(() => expect(document.querySelector('[data-done="true"]')).toBeTruthy())
-  })
-
-  it('opened-file step is not done when only the sample exists', async () => {
-    reg.listRecent.mockResolvedValue([{ docId: 'a', originPath: 'mdr://welcome/en' }])
-    renderRoute()
-    await waitFor(() => expect(reg.listRecent).toHaveBeenCalled())
-    await Promise.resolve()
-    expect(document.querySelectorAll('[data-done="true"]').length).toBe(0)
+    await waitFor(() => expect(stepLi(PIN_STEP).getAttribute('data-done')).toBe('true'))
+    expect(stepLi(OPEN_STEP).getAttribute('data-done')).toBe('false')
   })
 
   it('opened-file step is done with a real file', async () => {
-    reg.listRecent.mockResolvedValue([{ docId: 'a', originPath: '/x/readme.md' }])
+    reg.listRecent.mockResolvedValue([{ docId: 'a', originPath: 'https://x/a.md' }])
     renderRoute()
-    await waitFor(() => expect(document.querySelector('[data-done="true"]')).toBeTruthy())
+    await waitFor(() => expect(stepLi(OPEN_STEP).getAttribute('data-done')).toBe('true'))
   })
 
-  it('still renders when listRecent throws', async () => {
+  it('still renders and opened-file step stays not done when listRecent throws', async () => {
     reg.listRecent.mockRejectedValue(new Error('idb'))
+    const onUnhandled = vi.fn()
+    process.on('unhandledRejection', onUnhandled)
+    setChrome({
+      runtime: { id: 'xyz' },
+      extension: fileAccess(true),
+      action: { getUserSettings: () => Promise.resolve({ isOnToolbar: true }) },
+    })
     renderRoute()
-    await waitFor(() => expect(reg.listRecent).toHaveBeenCalled())
+    await waitFor(() => expect(stepLi(FILE_STEP).getAttribute('data-done')).toBe('true'))
+    expect(stepLi(OPEN_STEP).getAttribute('data-done')).toBe('false')
     expect(document.querySelector('main.welcome')).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 0))
+    process.off('unhandledRejection', onUnhandled)
+    expect(onUnhandled).not.toHaveBeenCalled()
   })
 
   it('AI client marks the AI step done', async () => {
@@ -98,5 +135,3 @@ describe('WelcomeRoute', () => {
     await waitFor(() => expect(document.querySelector('[data-done="true"]')).toBeTruthy())
   })
 })
-
-void screen
