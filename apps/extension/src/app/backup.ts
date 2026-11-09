@@ -1,5 +1,4 @@
 import * as Y from 'yjs'
-import { IndexeddbPersistence } from 'y-indexeddb'
 import { getSource } from '@md-reader/core'
 import type { DocRecord } from './doc-registry'
 
@@ -25,7 +24,7 @@ export function backupFileNames(titles: string[]): string[] {
     const base = cleanTitle(t)
     let name = `${base}.md`
     let n = 1
-    while (used.has(name.toLowerCase()) || name === ERRORS_FILE) {
+    while (used.has(name.toLowerCase())) {
       n++
       name = `${base} (${n}).md`
     }
@@ -34,14 +33,42 @@ export function backupFileNames(titles: string[]): string[] {
   })
 }
 
+function readUpdates(name: string): Promise<Uint8Array[]> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name)
+    req.onupgradeneeded = () => {
+      // DB did not exist: do not leave an empty one behind
+      // (reject only once the aborted open settles, via onerror)
+      try { req.transaction?.abort() } catch { /* ignore */ }
+    }
+    req.onerror = (e) => { e.preventDefault(); reject(new Error('missing document storage')) }
+    req.onblocked = () => reject(new Error('missing document storage'))
+    req.onsuccess = () => {
+      const db = req.result
+      if (!db.objectStoreNames.contains('updates')) {
+        db.close()
+        reject(new Error('missing document storage'))
+        return
+      }
+      try {
+        const all = db.transaction('updates', 'readonly').objectStore('updates').getAll()
+        all.onsuccess = () => { db.close(); resolve(all.result as Uint8Array[]) }
+        all.onerror = () => { db.close(); reject(all.error) }
+      } catch (e) {
+        db.close()
+        reject(e)
+      }
+    }
+  })
+}
+
 export async function readDocSource(rec: DocRecord): Promise<string> {
+  const updates = await readUpdates(rec.persistenceName)
   const doc = new Y.Doc({ gc: false })
-  const p = new IndexeddbPersistence(rec.persistenceName, doc)
   try {
-    await p.whenSynced
+    for (const u of updates) Y.applyUpdate(doc, u)
     return getSource(doc).toString()
   } finally {
-    await p.destroy()
     doc.destroy()
   }
 }

@@ -32,6 +32,12 @@ describe('backupFileNames', () => {
     expect(out).toContain('note.md')
     expect(out).not.toContain('note.md.md')
   })
+  it('keeps names distinct when a title already looks like a suffix', () => {
+    for (const input of [['A (2)', 'A', 'A'], ['A', 'A', 'A (2)']]) {
+      const out = backupFileNames(input)
+      expect(new Set(out.map((n) => n.toLowerCase())).size).toBe(out.length)
+    }
+  })
 })
 
 describe('buildBackup', () => {
@@ -49,6 +55,44 @@ describe('buildBackup', () => {
   it('no errors file when all ok', async () => {
     const res = await buildBackup([rec('a', 'One')], async () => 'z')
     expect(Object.keys(await unzip(res.blob))).toEqual(['One.md'])
+  })
+})
+
+const rawCount = (name: string) => new Promise<number>((resolve, reject) => {
+  const req = indexedDB.open(name)
+  req.onerror = () => reject(req.error)
+  req.onsuccess = () => {
+    const db = req.result
+    const c = db.transaction('updates', 'readonly').objectStore('updates').count()
+    c.onsuccess = () => { db.close(); resolve(c.result) }
+    c.onerror = () => { db.close(); reject(c.error) }
+  }
+})
+
+describe('readDocSource raw read-only', () => {
+  it('does not add rows to updates', async () => {
+    const r = rec('rc', 'RC', 'persist-rc')
+    const w = new Y.Doc({ gc: false })
+    const wp = new IndexeddbPersistence(r.persistenceName, w)
+    await wp.whenSynced
+    getSource(w).insert(0, '# Rows')
+    await new Promise((res) => setTimeout(res, 50))
+    await wp.destroy(); w.destroy()
+    const before = await rawCount(r.persistenceName)
+    expect(await readDocSource(r)).toBe('# Rows')
+    expect(await rawCount(r.persistenceName)).toBe(before)
+  })
+  it('rejects for a missing DB and creates none', async () => {
+    await expect(readDocSource(rec('m', 'M', 'persist-missing'))).rejects.toThrow('missing document storage')
+    // an aborted first open leaves only a version-0 stub in fake-indexeddb; a created DB has version >= 1
+    const dbs = await indexedDB.databases()
+    expect(dbs.some((d) => d.name === 'persist-missing' && (d.version ?? 0) > 0)).toBe(false)
+  })
+  it('buildBackup puts a missing DB in failed with no .md', async () => {
+    const res = await buildBackup([rec('m2', 'Ghost', 'persist-ghost')])
+    expect(res.failed).toEqual(['Ghost'])
+    expect(res.included).toBe(0)
+    expect(Object.keys(await unzip(res.blob))).not.toContain('Ghost.md')
   })
 })
 
