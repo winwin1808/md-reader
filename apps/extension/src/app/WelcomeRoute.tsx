@@ -52,7 +52,7 @@ export function WelcomeRoute(): React.JSX.Element {
         originPath: WELCOME_ORIGIN[locale],
       })
       await writeDocText(rec, welcomeMarkdown(locale), 'if-clean')
-      window.location.assign('app.html' + (await docQuery(rec.docId)))
+      window.location.assign('app.html' + (await docQuery(rec.docId)) + '&tour=1')
     } catch (e) {
       console.warn('welcome: open sample failed', e)
     }
