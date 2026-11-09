@@ -34,6 +34,19 @@ describe('lifecycle', () => {
     expect(next).toMatchObject({ startedAt: 100, lastSeenVersion: '1.5.0', pendingWelcome: true });
   });
 
+  it('repeated install with existing state opens nothing and keeps state', () => {
+    const s: LifecycleState = {
+      ...def,
+      startedAt: 1000,
+      docOpens: 7,
+      review: 'dismissed',
+      pendingWelcome: false,
+    };
+    const { next, open } = decideLifecycle({ type: 'installed', reason: 'install' }, s, [], '1.5.0', 5000);
+    expect(open).toEqual([]);
+    expect(next).toEqual(s);
+  });
+
   it('update 1.4.0 -> 1.5.0 sets pending without opening', () => {
     const { next, open } = decideLifecycle(
       { type: 'installed', reason: 'update', previousVersion: '1.4.0' },
