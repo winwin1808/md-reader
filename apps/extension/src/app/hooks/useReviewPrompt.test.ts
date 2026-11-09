@@ -146,6 +146,29 @@ describe('useReviewPrompt', () => {
     warn.mockRestore()
   })
 
+  it('decision from onChanged keeps prompt hidden even after lifecycle idle', async () => {
+    const c = install(ready())
+    const { result } = renderHook(() => useReviewPrompt(null))
+    await waitFor(() => expect(result.current.show).toBe(true))
+    act(() => { c.fire({ [REVIEW_DECISION_KEY]: { newValue: 'dismissed' } }) })
+    expect(result.current.show).toBe(false)
+    act(() => { c.fire({ [LIFECYCLE_KEY]: { newValue: ready({ review: 'idle' }) } }) })
+    expect(result.current.show).toBe(false)
+  })
+
+  it('mount read resolving after onChanged does not override it', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const c = install(ready())
+    const orig = c.get.getMockImplementation()!
+    c.get.mockImplementationOnce(async (k: any) => { const v = await orig(k); await gate; return v })
+    const { result } = renderHook(() => useReviewPrompt(null))
+    await act(async () => {})
+    act(() => { c.fire({ [REVIEW_DECISION_KEY]: { newValue: 'dismissed' } }) })
+    await act(async () => { release(); await gate })
+    expect(result.current.show).toBe(false)
+  })
+
   it('newer onChanged during bump wins over bump result', async () => {
     const c = install(ready({ docOpens: 0, startedAt: Date.now() }))
     const { result, rerender } = renderHook(({ id }: { id: string | null }) => useReviewPrompt(id), { initialProps: { id: null as string | null } })

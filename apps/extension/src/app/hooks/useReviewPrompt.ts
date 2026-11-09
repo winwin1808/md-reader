@@ -37,8 +37,9 @@ export function useReviewPrompt(docId: string | null): { show: boolean; onRate()
 
   useEffect(() => {
     let alive = true
+    const mountGen = gen.current
     readAll().then(
-      (r) => { if (alive) { setState(r.state); setDecision(r.decision) } },
+      (r) => { if (alive && gen.current === mountGen) { setState(r.state); setDecision(r.decision) } },
       (e) => { console.warn('review prompt read failed', e) },
     )
     const onChanged = (changes: Record<string, { newValue?: unknown }>, area: string) => {
