@@ -6,6 +6,7 @@ import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
 import { Icon } from './Icon';
 import { AiSetupGuide } from './AiSetupGuide';
+import { FeedbackForm, type FeedbackFormProps } from './FeedbackForm';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
@@ -63,7 +64,14 @@ export interface SettingsLifecycleProps {
   hasUnseenNotes: boolean;
 }
 
+export interface SettingsHelpProps {
+  feedback: FeedbackFormProps;
+  helpUrl: string;
+  privacyUrl: string;
+}
+
 export interface SettingsModalProps {
+  help?: SettingsHelpProps;
   lifecycle?: SettingsLifecycleProps;
   settings?: ReaderSettings;
   onSettingChange?: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
@@ -98,6 +106,7 @@ const SECTIONS = [
   { id: 'collab', label: 'settings.section.collab' as const },
   { id: 'ai', label: 'settings.section.ai' as const },
   { id: 'updates', label: 'settings.section.updates' as const },
+  { id: 'help', label: 'settings.section.help' as const },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -457,7 +466,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
-  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle));
+  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle) && (s.id !== 'help' || props.help));
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -959,6 +968,17 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       )}
                     </button>
                   </div>
+</section>
+)}
+{props.help && (
+<section aria-labelledby="settings-h-help" id="settings-sec-help" data-section={"help"} className="settings-group" ref={(el) => { sectionRefs.current['help'] = el }}>
+<h3 id="settings-h-help" className="settings-group-title">{t('settings.section.help')}</h3>
+                  <div className="settings-field">
+                    <a href={props.help.helpUrl} target="_blank" rel="noopener noreferrer">{t('settings.help.guide')}</a>
+                    {' · '}
+                    <a href={props.help.privacyUrl} target="_blank" rel="noopener noreferrer">{t('settings.help.privacy')}</a>
+                  </div>
+                  <FeedbackForm {...props.help.feedback} />
 </section>
 )}
           </div>
