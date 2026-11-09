@@ -50,6 +50,36 @@ test('cài mới mở chào một lần, mở mẫu, khởi động lại không
     expect(doc, 'trang tài liệu mẫu phải có d=').toBeTruthy()
     await expect(doc!.locator('h1').first()).toBeVisible({ timeout: 10_000 })
 
+    await doc!.setViewportSize({ width: 1280, height: 800 })
+    const tour = doc!.getByRole('dialog')
+    await expect(tour).toContainText('1/9')
+    await expect(tour).toContainText('Đây là tài liệu mẫu')
+    expect(doc!.url()).toContain('tour=1')
+    await tour.getByRole('button', { name: 'Tiếp' }).click()
+    await expect(tour).toContainText('2/9')
+    await expect(tour).toContainText('Đọc và Sửa')
+    await expect.poll(async () => (await doc!.locator('.tour-spotlight').boundingBox())?.width ?? 0).toBeGreaterThan(40)
+    const spot = await doc!.locator('.tour-spotlight').boundingBox()
+    const target = await doc!.locator('[data-tour="view-mode"]').boundingBox()
+    expect(spot, 'spotlight có hộp').toBeTruthy()
+    expect(target, 'view-mode có hộp').toBeTruthy()
+    const overlap =
+      spot!.x < target!.x + target!.width &&
+      target!.x < spot!.x + spot!.width &&
+      spot!.y < target!.y + target!.height &&
+      target!.y < spot!.y + spot!.height
+    expect(overlap, 'spotlight giao với view-mode').toBe(true)
+    expect(await doc!.locator('.tour-pop').evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
+    const shot = test.info().outputPath('tour-step2.png')
+    await doc!.screenshot({ path: shot })
+    console.log('tour-step2 screenshot:', shot)
+    await tour.getByRole('button', { name: 'Trước' }).click()
+    await expect(tour).toContainText('1/9')
+    await tour.getByRole('button', { name: 'Bỏ qua' }).click()
+    await expect(doc!.getByRole('dialog')).toHaveCount(0)
+    expect(doc!.url()).not.toContain('tour=1')
+    const docUrl = doc!.url()
+
     const sw = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'))
     const manifest = JSON.parse(fs.readFileSync(path.join(dist, 'manifest.json'), 'utf8')) as { version: string }
     const state = (await sw.evaluate(() => chrome.storage.local.get('mdr:lifecycle'))) as {
@@ -59,6 +89,8 @@ test('cài mới mở chào một lần, mở mẫu, khởi động lại không
     expect(typeof lc.startedAt).toBe('number')
     expect(lc.pendingWelcome).toBe(false)
     expect(lc.lastSeenVersion).toBe(manifest.version)
+    const done = await sw.evaluate(() => chrome.storage.local.get('mdr:tour-done'))
+    expect(done['mdr:tour-done']).toBe(true)
 
     await context.close()
     context = await launch(userDir)
@@ -73,6 +105,12 @@ test('cài mới mở chào một lần, mở mẫu, khởi động lại không
     await sleep(2000)
     expect(countUrls(context, 'welcome=1')).toBe(0)
     expect(countUrls(context, 'whatsnew=1')).toBe(0)
+
+    const again = await context.newPage()
+    await again.goto(docUrl + (docUrl.includes('?') ? '&' : '?') + 'tour=1')
+    await expect(again.locator('h1').first()).toBeVisible({ timeout: 10_000 })
+    await sleep(1500)
+    await expect(again.getByRole('dialog')).toHaveCount(0)
   } finally {
     await context?.close().catch(() => {})
     fs.rmSync(userDir, { recursive: true, force: true })
