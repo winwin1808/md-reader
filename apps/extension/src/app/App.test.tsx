@@ -1072,8 +1072,16 @@ describe('App', () => {
     const speakerSpy = vi.spyOn(ui, 'SpeakerView').mockImplementation((props: any) => (
       <div data-testid="mock-speaker-view" data-idx={props.currentSlideIndex}>S</div>
     ))
-    await act(async () => { render(<App />) })
+    const control = { ready: false }
+    vi.spyOn(ui, 'useSlidePagination').mockImplementation(((base: unknown[]) => ({
+      slides: base.length ? [{ id: 's1', html: '<p>one</p>' }] : [], ready: control.ready, warnings: [], stage: null,
+    })) as any)
+    let r: any
+    await act(async () => { r = render(<App />) })
+    await act(async () => { await new Promise((res) => setTimeout(res, 50)) })
     expect(speakerSpy).not.toHaveBeenCalled()
+    control.ready = true
+    await act(async () => { r.rerender(<App />) })
     const el = await screen.findByTestId('mock-speaker-view', {}, { timeout: 4000 })
     expect(el.getAttribute('data-idx')).toBe('0')
     const ch = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync') as any
