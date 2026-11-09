@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { splitIntoSlides } from './index.js'
+import { splitIntoSlides, SLIDE_BREAK_MARKER } from './index.js'
+import { renderToHtml } from '../render/index.js'
+import { parseMarkdown } from '../parse/index.js'
 import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
 beforeAll(() => loadMathPlugin())
 
@@ -221,4 +223,14 @@ describe('slide-break marker', () => {
     expect(s[0]!.notes).toEqual(['n1'])
     expect(s[1]!.notes).toEqual(['n2'])
   })
+})
+
+describe('slide-break marker is not visible when reading', () => {
+  const md = `# A\n\n${SLIDE_BREAK_MARKER}\n\n# B`
+  for (const allowRawHtml of [false, true]) {
+    it(`renderToHtml omits marker (allowRawHtml=${allowRawHtml})`, () => {
+      const { html } = renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), allowRawHtml })
+      expect(html).not.toContain('slide-break')
+    })
+  }
 })
