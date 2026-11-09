@@ -96,6 +96,23 @@ export function decideLifecycle(
   return { next, open: [] };
 }
 
+export function markWhatsNewSeen(s: LifecycleState, version: string): LifecycleState {
+  const lastSeenVersion =
+    s.lastSeenVersion !== null && compareVersions(s.lastSeenVersion, version) > 0 ? s.lastSeenVersion : version;
+  const pendingWhatsNew =
+    s.pendingWhatsNew === null || compareVersions(s.pendingWhatsNew, version) <= 0 ? null : s.pendingWhatsNew;
+  return { ...s, lastSeenVersion, pendingWhatsNew };
+}
+
+const NO_REDIRECT_PARAMS = ['doc', 'd', 'file', 'speaker', 'welcome', 'whatsnew', 'pair'];
+
+export function shouldRedirectToWhatsNew(search: string, s: LifecycleState): string | null {
+  if (s.pendingWhatsNew === null || s.autoOpenWhatsNew !== true) return null;
+  const params = new URLSearchParams(search);
+  if (NO_REDIRECT_PARAMS.some((k) => params.has(k))) return null;
+  return 'app.html?whatsnew=1&v=' + encodeURIComponent(s.pendingWhatsNew);
+}
+
 export function uninstallUrl(version: string, uiLang: string): string {
   const lang = uiLang.startsWith('vi') ? 'vi' : 'en';
   return `https://winwin1808.github.io/md-reader/uninstall.html?v=${encodeURIComponent(version)}&lang=${lang}`;

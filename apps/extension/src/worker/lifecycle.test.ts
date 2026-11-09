@@ -4,6 +4,8 @@ import {
   LIFECYCLE_KEY,
   compareVersions,
   decideLifecycle,
+  markWhatsNewSeen,
+  shouldRedirectToWhatsNew,
   parseLifecycleState,
   pendingNote,
   uninstallUrl,
@@ -122,6 +124,32 @@ describe('lifecycle', () => {
     expect(u.searchParams.get('v')).toBe('1.5.0');
     expect(u.origin + u.pathname).toBe('https://winwin1808.github.io/md-reader/uninstall.html');
     expect(new URL(uninstallUrl('1.5.0', 'fr')).searchParams.get('lang')).toBe('en');
+  });
+
+  it('markWhatsNewSeen clears pending and advances lastSeen', () => {
+    const s: LifecycleState = { ...def, pendingWhatsNew: '1.5.0' };
+    const r = markWhatsNewSeen(s, '1.5.0');
+    expect(r.lastSeenVersion).toBe('1.5.0');
+    expect(r.pendingWhatsNew).toBeNull();
+    expect(s.pendingWhatsNew).toBe('1.5.0');
+    expect(s.lastSeenVersion).toBeNull();
+    expect(r).not.toBe(s);
+  });
+
+  it('markWhatsNewSeen never goes backwards', () => {
+    const a = markWhatsNewSeen({ ...def, lastSeenVersion: '1.6.0' }, '1.5.0');
+    expect(a.lastSeenVersion).toBe('1.6.0');
+    const b = markWhatsNewSeen({ ...def, pendingWhatsNew: '1.6.0' }, '1.5.0');
+    expect(b.pendingWhatsNew).toBe('1.6.0');
+  });
+
+  it('shouldRedirectToWhatsNew', () => {
+    const s: LifecycleState = { ...def, pendingWhatsNew: '1.5.0', autoOpenWhatsNew: true };
+    expect(shouldRedirectToWhatsNew('', s)).toBe('app.html?whatsnew=1&v=1.5.0');
+    for (const q of ['?d=abc', '?file=x', '?speaker=true', '?whatsnew=1', '?doc=1', '?welcome=1', '?pair=1'])
+      expect(shouldRedirectToWhatsNew(q, s)).toBeNull();
+    expect(shouldRedirectToWhatsNew('', { ...s, autoOpenWhatsNew: false })).toBeNull();
+    expect(shouldRedirectToWhatsNew('', { ...s, pendingWhatsNew: null })).toBeNull();
   });
 
   it('RELEASE_NOTES vi/en same length', () => {
