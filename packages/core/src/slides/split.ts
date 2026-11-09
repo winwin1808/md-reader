@@ -15,7 +15,7 @@ function parseCodeFence(line: string): { isFence: boolean; char?: string; length
 export const SLIDE_BREAK_MARKER = '<!-- slide-break -->'
 
 export function isSlideBreakLine(line: string): boolean {
-  return /^\s*<!--\s*slide-break\s*-->\s*$/i.test(line)
+  return /^ {0,3}<!--\s*slide-break\s*-->\s*$/i.test(line)
 }
 
 function splitAtBreakMarkers(section: string): string[] {

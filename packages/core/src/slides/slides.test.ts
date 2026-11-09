@@ -204,6 +204,13 @@ describe('slide-break marker', () => {
     const s = splitIntoSlides('a\n  <!--SLIDE-BREAK-->  \nb\n<!--   slide-break   -->\nc')
     expect(s).toHaveLength(3)
   })
+  it('indent 0-3 spaces breaks; 4 spaces or tab does not', () => {
+    for (const ind of ['', ' ', '  ', '   ']) {
+      expect(splitIntoSlides(`a\n${ind}${M}\nb`)).toHaveLength(2)
+    }
+    expect(splitIntoSlides(`a\n    ${M}\nb`)).toHaveLength(1)
+    expect(splitIntoSlides(`a\n\t${M}\nb`)).toHaveLength(1)
+  })
   it('no empty slides for leading/trailing markers', () => {
     const s = splitIntoSlides(`${M}\na\n${M}\nb\n${M}`)
     expect(s.map((x) => x.rawMarkdown)).toEqual(['a', 'b'])

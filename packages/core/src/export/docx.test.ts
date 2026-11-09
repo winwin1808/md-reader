@@ -353,4 +353,21 @@ describe('mdastToDocx slide-break marker', () => {
     const doc: string = await zip.file('word/document.xml').async('string')
     expect(doc).not.toContain('slide-break')
   })
+
+  it.each(['<!--SLIDE-BREAK-->', '<!--   slide-break   -->'])('drops variant %s', async (v) => {
+    const mdast: Root = {
+      type: 'root',
+      children: [
+        { type: 'paragraph', children: [{ type: 'text', value: 'A' }] },
+        { type: 'html', value: v },
+        { type: 'paragraph', children: [{ type: 'text', value: 'B' }] },
+      ],
+    }
+    const blob = await mdastToDocx({ mdast })
+    const req = createRequire(createRequire(import.meta.url).resolve('docx'))
+    const JSZip = req('jszip')
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer())
+    const doc: string = await zip.file('word/document.xml').async('string')
+    expect(doc.toLowerCase()).not.toContain('slide-break')
+  })
 })
