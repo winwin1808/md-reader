@@ -130,12 +130,15 @@ export function GuidedTour({ steps, open, onClose }: GuidedTourProps): React.JSX
       if (e.key === 'Escape') {
         e.preventDefault()
         onCloseRef.current('skipped')
+        e.stopImmediatePropagation()
       } else if (e.key === 'ArrowRight') {
         e.preventDefault()
         goNext()
+        e.stopImmediatePropagation()
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
         goPrev()
+        e.stopImmediatePropagation()
       } else if (e.key === 'Tab') {
         const pop = popRef.current
         if (!pop) return
@@ -156,8 +159,8 @@ export function GuidedTour({ steps, open, onClose }: GuidedTourProps): React.JSX
         }
       }
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
   }, [active, goNext, goPrev])
 
   useEffect(() => {
