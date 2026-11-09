@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 
 export interface FeedbackDraft {
@@ -22,6 +22,13 @@ export function FeedbackForm({ diagnostics, onSubmit, fallbackMailto }: Feedback
   const [result, setResult] = useState<'sent' | 'failed' | null>(null)
   const [failedDraft, setFailedDraft] = useState<FeedbackDraft | null>(null)
   const busy = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   const emailTrim = email.trim()
   const invalid = message.trim() === '' || (emailTrim !== '' && !emailTrim.includes('@'))
@@ -40,6 +47,7 @@ export function FeedbackForm({ diagnostics, onSubmit, fallbackMailto }: Feedback
       r = 'failed'
     }
     busy.current = false
+    if (!mounted.current) return
     setSending(false)
     setResult(r)
     if (r === 'sent') {
@@ -52,7 +60,7 @@ export function FeedbackForm({ diagnostics, onSubmit, fallbackMailto }: Feedback
   }
 
   return (
-    <form className="feedback-form" onSubmit={submit}>
+    <form className="feedback-form" noValidate onSubmit={submit}>
       <fieldset>
         <legend>{t('feedback.kind.legend')}</legend>
         <label>
@@ -79,7 +87,9 @@ export function FeedbackForm({ diagnostics, onSubmit, fallbackMailto }: Feedback
       <button type="submit" disabled={invalid || sending}>
         {t('feedback.submit')}
       </button>
-      {result === 'sent' && <p role="status">{t('feedback.sent')}</p>}
+      <p role="status" aria-live="polite">
+        {result === 'sent' ? t('feedback.sent') : ''}
+      </p>
       {result === 'failed' && failedDraft && (
         <p role="alert">
           {t('feedback.failed')} <a href={fallbackMailto(failedDraft)}>{t('feedback.mailto')}</a>

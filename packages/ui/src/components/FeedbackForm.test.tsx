@@ -86,4 +86,66 @@ describe('FeedbackForm', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(box().value).toBe('lỗi')
   })
+
+  const form = () => box().closest('form') as HTMLFormElement
+
+  it('submit hai lần liền chỉ gọi onSubmit một lần', async () => {
+    const onSubmit = vi.fn(() => new Promise<'sent'>(() => {}))
+    setup(onSubmit)
+    type('lỗi')
+    fireEvent.submit(form())
+    fireEvent.submit(form())
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('gửi lại được sau failed', async () => {
+    const onSubmit = setup(vi.fn(async () => 'failed'))
+    type('lỗi')
+    fireEvent.click(btn())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    await waitFor(() => expect(btn()).not.toBeDisabled())
+    fireEvent.click(btn())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+  })
+
+  it('reject -> alert có mailto đúng rồi gửi lại được', async () => {
+    const onSubmit = setup(vi.fn(async () => { throw new Error('x') }))
+    type('lỗi')
+    fireEvent.click(btn())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'Gửi qua email' })).toHaveAttribute('href', 'mailto:x@y.z?body=lỗi')
+    await waitFor(() => expect(btn()).not.toBeDisabled())
+    fireEvent.click(btn())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+  })
+
+  it('unmount khi đang chờ rồi resolve không ném lỗi', async () => {
+    let resolve!: (v: 'sent') => void
+    const onSubmit = vi.fn(() => new Promise<'sent'>((r) => { resolve = r }))
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setup(onSubmit)
+    type('lỗi')
+    fireEvent.click(btn())
+    cleanup()
+    resolve('sent')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(errSpy).not.toHaveBeenCalled()
+    errSpy.mockRestore()
+  })
+
+  it('email "a@" vẫn gửi được', async () => {
+    const onSubmit = setup()
+    type('lỗi')
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'a@' } })
+    fireEvent.click(btn())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ kind: 'bug', message: 'lỗi', email: 'a@' }))
+  })
+
+  it('vùng status luôn có, rỗng khi chưa gửi', async () => {
+    setup()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    type('lỗi')
+    fireEvent.click(btn())
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Cảm ơn bạn'))
+  })
 })
