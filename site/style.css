@@ -91,3 +91,11 @@ footer a{color:var(--muted)}
 .doc h1{font:600 2rem/1.2 var(--serif)}
 .doc h2{font-size:1.4rem;margin-top:2.5rem}
 .doc li{margin:.6rem 0}
+.fb-note{border-left:4px solid var(--green);background:var(--hi);color:#1B2422;padding:.8rem 1rem;border-radius:4px}
+.fb fieldset{border:0;padding:0;margin:1rem 0}
+.fb legend{font-weight:600;margin-bottom:.4rem}
+.fb-opt{display:block;margin:.35rem 0;cursor:pointer}
+.fb textarea,.fb input[type=email]{width:100%;box-sizing:border-box;font:inherit;padding:.5rem;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink)}
+.fb button.btn{font-family:inherit;cursor:pointer;background:var(--ink);color:var(--paper)}
+.fb button.btn:disabled{opacity:.5;cursor:default}
+.fb-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
