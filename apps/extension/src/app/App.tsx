@@ -27,7 +27,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -59,6 +59,7 @@ import { diagnostics, sendFeedback, toFeedbackInput, feedbackMailto, HELP_URL, P
 import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { useLifecycleSettings } from './hooks/useLifecycleSettings'
+import { useReviewPrompt } from './hooks/useReviewPrompt'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
 import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
 import { createBridgeExecutor, type ExecSession } from './bridge-executor'
@@ -193,6 +194,7 @@ export function App(): React.JSX.Element {
       if (sessionStorage.getItem(key)) { sessionStorage.removeItem(key); setCompactedNotice(true) }
     } catch { /* storage unavailable */ }
   }, [session.docId])
+  const review = useReviewPrompt(session.docId)
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
@@ -1102,6 +1104,7 @@ export function App(): React.JSX.Element {
             </div>
           )}
         </FileDrop>
+        {review.show && <ReviewPrompt onRate={review.onRate} onDismiss={review.onDismiss} />}
       </div>
     </ThemeProvider>
   )
