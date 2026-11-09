@@ -39,9 +39,12 @@
     return 'mailto:' + MAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   }
 
-  function fail(reason, message, btn) {
+  function fail(reason, message, btn, limited) {
     status.textContent = '';
-    status.appendChild(document.createTextNode(isVi() ? 'Không gửi được. ' : 'Could not send. '));
+    var msg = limited
+      ? (isVi() ? 'Đã gửi quá nhiều góp ý hôm nay, thử lại sau. ' : 'Too many submissions today, please try again later. ')
+      : (isVi() ? 'Không gửi được. ' : 'Could not send. ');
+    status.appendChild(document.createTextNode(msg));
     var a = document.createElement('a');
     a.href = mailtoLink(reason, message);
     a.textContent = isVi() ? 'Gửi qua email' : 'Send by email';
@@ -60,7 +63,7 @@
     var reason = chosen.value;
     var message = form.elements['message'].value;
     var email = form.elements['email'].value;
-    var website = form.elements['website'].value;
+    var website = form.elements['mdr_hp'].value;
     btn.disabled = true;
     status.textContent = isVi() ? 'Đang gửi…' : 'Sending…';
     fetch(API, {
@@ -79,7 +82,7 @@
         status.textContent = isVi() ? 'Cảm ơn bạn đã góp ý!' : 'Thank you for your feedback!';
         form.parentNode.insertBefore(status, form);
       } else {
-        fail(reason, message, btn);
+        fail(reason, message, btn, res.status === 429);
       }
     }, function () { fail(reason, message, btn); });
   });
