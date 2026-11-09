@@ -63,6 +63,9 @@ importers:
       '@md-reader/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       katex:
         specifier: 0.16.22
         version: 0.16.22
@@ -1793,6 +1796,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   finalhandler@2.1.1:
     resolution: {integrity: sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==}
@@ -4315,6 +4321,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.2: {}
 
   finalhandler@2.1.1:
     dependencies:
