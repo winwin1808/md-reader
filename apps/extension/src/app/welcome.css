@@ -1,21 +1,47 @@
-main.welcome {
-  max-width: var(--measure);
-  margin: 0 auto;
-  padding: 3rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-ui);
-}
-main.welcome ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-main.welcome button { font: inherit; cursor: pointer; padding: 0.5rem 1rem; border-radius: 4px; }
-.welcome-primary { background: var(--accent); color: var(--paper); border: 1px solid var(--accent); align-self: flex-start; }
-.welcome-secondary { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
-main.welcome li > span:last-of-type { color: var(--pencil); }
-main.welcome li[data-done="true"] > span:last-of-type { color: var(--accent); }
-main.welcome button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main.welcome { min-height: 100vh; box-sizing: border-box; max-width: 1120px; margin: 0 auto; padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 3rem) 4rem; background: var(--surface); color: var(--ink); font-family: var(--font-ui); }
+html:has(main.welcome), body:has(main.welcome) { background: var(--surface); }
+.welcome-brand { display: flex; align-items: center; gap: .6rem; font-weight: 600; margin-bottom: clamp(2rem, 6vw, 4rem); }
+.welcome-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+@media (max-width: 899px) { .welcome-hero { grid-template-columns: 1fr; } }
+.welcome h1 { font-family: var(--font-body); font-size: clamp(2.4rem, 5vw, 3.6rem); line-height: 1.08; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 1.25rem; max-width: 14ch; }
+.welcome-lead { font-size: 1.1rem; line-height: 1.55; margin: 0 0 1.75rem; max-width: 46ch; }
+.welcome-hint { margin: .9rem 0 0; font-size: .875rem; color: var(--pencil); }
+.welcome-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; }
+main.welcome button { font: inherit; cursor: pointer; }
+.welcome-primary { background: var(--accent); color: var(--paper); border: 1px solid var(--accent); border-radius: 6px; padding: .75rem 1.35rem; font-weight: 600; }
+.welcome-secondary { background: none; border: none; padding: .25rem 0; color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 4px; }
+.welcome-secondary:hover { text-decoration-color: currentColor; }
+main.welcome button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.welcome-figure { position: relative; margin: 0; padding-right: 13rem; }
+.welcome-sheets { position: relative; }
+.welcome-sheet-under { position: absolute; inset: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; }
+.welcome-sheet-under:nth-child(1) { transform: translate(16px, 14px) rotate(2deg); opacity: .6; }
+.welcome-sheet-under:nth-child(2) { transform: translate(8px, 7px) rotate(1deg); opacity: .85; }
+.welcome-sheet { position: relative; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 2rem 2.25rem; font-family: var(--font-body); box-shadow: 0 18px 40px color-mix(in srgb, var(--ink) 10%, transparent); }
+.welcome-sheet h3 { font-size: 1.45rem; font-weight: 600; margin: 0 0 .5rem; }
+.welcome-sheet p { margin: 0 0 1rem; line-height: 1.6; }
+.welcome-sheet ol { margin: 0 0 1rem; padding-left: 1.25rem; line-height: 1.7; }
+.welcome-sheet pre { margin: 0; padding: .55rem .8rem; background: var(--surface); border-radius: 4px; font-family: var(--font-code); font-size: .85rem; }
+.welcome-notes { position: absolute; top: 1.75rem; right: 0; width: 11.25rem; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1.75rem; font-size: .85rem; line-height: 1.4; color: var(--pencil); }
+.welcome-note { position: relative; padding-left: .85rem; border-left: 3px solid var(--hl); animation: welcome-note-in 420ms ease-out both; animation-delay: calc(300ms + var(--i) * 120ms); }
+.welcome-note::before { content: ''; position: absolute; left: -1.9rem; top: .65em; width: 1.6rem; border-top: 1px dashed var(--pencil); }
+@keyframes welcome-note-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .welcome-note { animation: none; } }
+@media (max-width: 899px) { .welcome-figure { padding-right: 0; } .welcome-notes { position: static; width: auto; margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; } .welcome-note::before { display: none; } }
+.welcome-setup { margin-top: clamp(3rem, 7vw, 5rem); padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+.welcome-setup-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1rem; }
+.welcome-setup h2 { font-family: var(--font-body); font-size: 1.35rem; margin: 0; }
+.welcome-progress { margin: 0; color: var(--pencil); font-variant-numeric: tabular-nums; }
+.welcome-meter { height: 4px; margin: .75rem 0 1.25rem; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.welcome-meter > span { display: block; height: 100%; background: var(--accent); transition: width 300ms ease; }
+@media (prefers-reduced-motion: reduce) { .welcome-meter > span { transition: none; } }
+.welcome-setup ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .75rem; }
+.welcome-setup li { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: .2rem .75rem; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: .9rem 1rem; }
+.welcome-step-mark { grid-row: span 3; width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 1px solid var(--rule); display: grid; place-items: center; font-size: .8rem; font-variant-numeric: tabular-nums; color: var(--pencil); }
+.welcome-setup li[data-done="true"] .welcome-step-mark { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.welcome-step-state { font-size: .85rem; color: var(--pencil); }
+.welcome-setup li[data-done="true"] .welcome-step-state { color: var(--accent); }
+.welcome-setup li button { justify-self: start; margin-top: .35rem; background: transparent; color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: .35rem .75rem; font-size: .85rem; }
 main.whatsnew section { padding-left: 1rem; border-left: 3px solid transparent; }
 main.whatsnew section[data-highlight="true"] { border-left-color: var(--accent); }
 main.whatsnew .whatsnew-version { color: var(--pencil); margin: 0; }
