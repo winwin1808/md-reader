@@ -363,3 +363,52 @@ describe('slideBreakInsertion', () => {
     expectOneMore(text, out)
   })
 })
+
+describe('slideBreakInsertion verified by the splitter', () => {
+  it('returns empty when the splitter would not add a slide', () => {
+    const a = '## A\n\npara\n\n## B\n\ntext\n'
+    expect(slideBreakInsertion(a, 11).insert).toBe('')
+    const b = 'one\n\n---\ntwo\n\nthree\n'
+    expect(slideBreakInsertion(b, 4).insert).toBe('')
+    const c = '---\ntitle: x\n---\ntext\n\nmore\n'
+    expect(slideBreakInsertion(c, 4).insert).toBe('')
+    const d = 'a\n\nTitle\n---\nbody\n'
+    expect(slideBreakInsertion(d, 13).insert).toBe('')
+  })
+
+  const docs: Record<string, string> = {
+    atx: '# T\n\nintro\n\npara one\n\n## B\n\ntext\n\nmore text\n',
+    setext: 'Title\n=====\n\nintro\n\nSub\n---\nbody\n\nlast para\n',
+    hr: 'one\n\npara two\n\n---\nthree\n\nfour\n',
+    frontmatter: '---\ntitle: x\n---\nfirst\n\nsecond\n\nthird\n',
+    backtick: 'a\n\n```js\ncode\n\nmore\n```\n\nafter\n\nend\n',
+    tilde: 'a\n\n~~~\ncode\n\n---\n~~~\n\nafter\n\nend\n',
+    list: 'intro\n\n- a\n- b\n\n- c\n\npara\n\nlast\n',
+    table: 'intro\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nafter table\n\nend\n',
+    quote: 'intro\n\n> quote\n> more\n\nafter\n\nend\n',
+    existing: 'one\n\n<!-- slide-break -->\n\ntwo\n\nthree\n\nfour\n',
+  }
+
+  for (const [name, text] of Object.entries(docs)) {
+    it(`sweep ${name}`, () => {
+      let nonEmpty = 0
+      const base = splitIntoSlides(text).length
+      for (let cur = 0; cur <= text.length; cur++) {
+        const r = slideBreakInsertion(text, cur)
+        if (r.insert === '') continue
+        nonEmpty++
+        const out = text.slice(0, r.at) + r.insert + text.slice(r.at)
+        expect(splitIntoSlides(out).length, `${name}@${cur}`).toBe(base + 1)
+        expect(out.slice(0, r.at) + out.slice(r.at + r.insert.length)).toBe(text)
+        const upto = text.slice(0, r.at).split('\n').slice(0, -1)
+        let open = ''
+        for (const l of upto) {
+          const m = l.match(/^ {0,3}(`{3,}|~{3,})/)
+          if (m) open = open ? (m[1]![0] === open ? '' : open) : m[1]![0]!
+        }
+        expect(open, `${name}@${cur} in fence`).toBe('')
+      }
+      expect(nonEmpty).toBeGreaterThan(0)
+    })
+  }
+})

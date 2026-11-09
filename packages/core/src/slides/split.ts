@@ -23,7 +23,7 @@ export function isSlideBreakLine(line: string): boolean {
   return /^ {0,3}<!--\s*slide-break\s*-->\s*$/i.test(line)
 }
 
-export function slideBreakInsertion(text: string, cursor: number): { at: number; insert: string } {
+function slideBreakCandidate(text: string, cursor: number): { at: number; insert: string } {
   const pos = Math.min(Math.max(cursor, 0), text.length)
   const lines = text.split('\n')
   const starts: number[] = []
@@ -109,6 +109,33 @@ export function slideBreakInsertion(text: string, cursor: number): { at: number;
     }
   }
   return { at, insert: prefix + SLIDE_BREAK_MARKER + '\n\n' }
+}
+
+function frontmatterEnd(text: string): number {
+  const lines = text.split('\n')
+  if (lines.length < 2 || !/^\s*---\s*$/.test(lines[0]!)) return -1
+  for (let i = 1; i < lines.length; i++) {
+    if (/^\s*---\s*$/.test(lines[i]!)) {
+      const inner = lines.slice(1, i)
+      if (inner.some((l) => /^ {0,3}#{1,6}\s/.test(l))) return -1
+      let end = 0
+      for (let k = 0; k <= i; k++) end += lines[k]!.length + 1
+      return end - 1
+    }
+  }
+  return -1
+}
+
+export function slideBreakInsertion(text: string, cursor: number): { at: number; insert: string } {
+  const r = slideBreakCandidate(text, cursor)
+  if (r.insert === '') return r
+  const pos = Math.min(Math.max(cursor, 0), text.length)
+  const fmEnd = frontmatterEnd(text)
+  if (fmEnd >= 0 && pos <= fmEnd) return { at: r.at, insert: '' }
+  const before = splitSections(text).length
+  const after = splitSections(text.slice(0, r.at) + r.insert + text.slice(r.at)).length
+  if (after !== before + 1) return { at: r.at, insert: '' }
+  return r
 }
 
 function splitAtBreakMarkers(section: string): string[] {
@@ -315,31 +342,11 @@ function extractTitle(markdown: string): string | undefined {
   return undefined
 }
 
-export function splitIntoSlides(source: string, options?: SlideSplitOptions): Slide[] {
-  if (!source || source.trim() === '') {
-    return [
-      {
-        id: 'slide-0',
-        index: 0,
-        rawMarkdown: '',
-        html: '',
-        notes: [],
-      },
-    ]
-  }
+function splitSections(source: string, options?: SlideSplitOptions): string[] {
+  if (!source || source.trim() === '') return ['']
 
   const content = stripFrontmatter(source)
-  if (!content || content.trim() === '') {
-    return [
-      {
-        id: 'slide-0',
-        index: 0,
-        rawMarkdown: '',
-        html: '',
-        notes: [],
-      },
-    ]
-  }
+  if (!content || content.trim() === '') return ['']
 
   const strategy = options?.strategy ?? 'auto'
   const headingDepth = options?.headingDepth ?? 2
@@ -448,7 +455,11 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
 
   sections = sections.flatMap(splitAtBreakMarkers)
   if (sections.length === 0) sections = ['']
+  return sections
+}
 
+export function splitIntoSlides(source: string, options?: SlideSplitOptions): Slide[] {
+  const sections = splitSections(source, options)
   return sections.map((rawSection, index) => {
     const rawMarkdown = rawSection.trim()
     const { notes, cleanMarkdown } = extractNotes(rawMarkdown)
