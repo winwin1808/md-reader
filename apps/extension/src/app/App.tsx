@@ -55,6 +55,7 @@ import { useExport } from './hooks/useExport'
 import { useAgentConfirm } from './hooks/useAgentConfirm'
 import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
+import { diagnostics, sendFeedback, toFeedbackInput, feedbackMailto, HELP_URL, PRIVACY_URL } from './feedback-client'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { useLifecycleSettings } from './hooks/useLifecycleSettings'
@@ -168,6 +169,16 @@ export function App(): React.JSX.Element {
   const [keptNoticeOpen, setKeptNoticeOpen] = useState<boolean>(urlParams.kept)
   const [compactedNotice, setCompactedNotice] = useState<boolean>(false)
   const [room, setRoom] = useState<RoomBinding | null>(null)
+  const diag = useMemo(() => diagnostics(), [])
+  const help = useMemo(() => ({
+    feedback: {
+      diagnostics: diag,
+      onSubmit: (d: Parameters<typeof toFeedbackInput>[0]) => sendFeedback(toFeedbackInput(d, diag)),
+      fallbackMailto: (d: Parameters<typeof feedbackMailto>[0]) => feedbackMailto(d, diag),
+    },
+    helpUrl: HELP_URL,
+    privacyUrl: PRIVACY_URL,
+  }), [diag])
   const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? (DEFAULT_SERVER_URL || null)
   const [retryNonce, setRetryNonce] = useState(0)
   const displayName = readerSettings.displayName?.trim() || 'Bạn'
@@ -922,7 +933,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
+          <SettingsModal lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} help={help} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
         </>
         {isReadingMode && (
           <button
