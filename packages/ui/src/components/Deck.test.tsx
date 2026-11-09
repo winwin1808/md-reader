@@ -475,3 +475,47 @@ describe('Deck mermaid theme', () => {
     expect(container.querySelector('[data-testid="mb"]')?.getAttribute('data-theme')).toBe('dark')
   })
 })
+
+describe('SlideContent zoom', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+  it('applies zoom < 1 via CSSOM to .deck-slide-content', () => {
+    const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+    const { container } = render(<SlideContent mermaid={false} html="<p>x</p>" zoom={0.7} />)
+    expect(set).toHaveBeenCalledWith('zoom', '0.7')
+    expect(container.querySelector('.deck-slide-content')!.innerHTML).not.toContain('style')
+  })
+  it('sets nothing without zoom', () => {
+    const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+    render(<SlideContent mermaid={false} html="<p>x</p>" />)
+    expect(set).not.toHaveBeenCalledWith('zoom', expect.anything())
+  })
+  it('removes zoom when moving from a zoomed slide to an unzoomed one', () => {
+    const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+    const rem = vi.spyOn(CSSStyleDeclaration.prototype, 'removeProperty')
+    const slides: Slide[] = [
+      { id: 'a', index: 0, html: '<p>a</p>', rawMarkdown: '', notes: [], zoom: 0.7 },
+      { id: 'b', index: 1, html: '<p>b</p>', rawMarkdown: '', notes: [] },
+    ]
+    render(<Deck slides={slides} mermaid={false} />)
+    expect(set).toHaveBeenCalledWith('zoom', '0.7')
+    expect(rem).not.toHaveBeenCalledWith('zoom')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(rem).toHaveBeenCalledWith('zoom')
+  })
+})
+
+describe('Deck fitWarnings', () => {
+  it('shows small-text warning only on listed slide and hides after navigating', () => {
+    const { container } = render(<Deck slides={mockSlides} fitWarnings={[{ slideId: 'slide-0', zoom: 0.5 }]} />)
+    const warn = () => container.querySelector('.deck-controls [role="status"]')
+    expect(warn()?.textContent).toBe('Chữ trên slide này nhỏ. Thêm dấu ngắt để dễ đọc hơn.')
+    expect(warn()?.className).toContain('deck-counter')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(warn()).toBeNull()
+  })
+
+  it('shows nothing without fitWarnings', () => {
+    const { container } = render(<Deck slides={mockSlides} />)
+    expect(container.querySelector('.deck-controls [role="status"]')).toBeNull()
+  })
+})

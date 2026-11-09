@@ -81,3 +81,23 @@ describe('ExportModal', () => {
     expect(card.style.background).toContain('var(--paper)')
   })
 })
+
+describe('ExportModal smallSlides', () => {
+  it('lists small slides and keeps export clickable', () => {
+    const onExport = vi.fn().mockResolvedValue(undefined)
+    render(<ExportModal open onExport={onExport} hasSlides smallSlides={[2, 5]} />)
+    expect(screen.getByText('Slide 2, 5 có chữ nhỏ. Thêm dấu ngắt để dễ đọc hơn.')).toBeDefined()
+    const btn = screen.getByText('PDF trình chiếu').closest('button') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    fireEvent.click(btn)
+    expect(onExport).toHaveBeenCalledWith('slides-pdf')
+  })
+
+  it('shows nothing when empty or missing', () => {
+    render(<ExportModal open onExport={vi.fn()} hasSlides smallSlides={[]} />)
+    expect(screen.queryByText(/có chữ nhỏ/)).toBeNull()
+    cleanup()
+    render(<ExportModal open onExport={vi.fn()} hasSlides />)
+    expect(screen.queryByText(/có chữ nhỏ/)).toBeNull()
+  })
+})
