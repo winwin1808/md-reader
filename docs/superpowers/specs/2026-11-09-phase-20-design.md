@@ -1,6 +1,6 @@
 # Design: Phase 20 — Trang chào mới + hướng dẫn từng bước trong app
 
-Author: haonq. Status: in-progress. Phase: 20
+Author: haonq. Status: shipped. Phase: 20
 Intent: yêu cầu trực tiếp 2026-11-09 — "UI trang chào hơi đơn điệu, làm hoành tráng hơn, thêm guide in-app chỉ từng nút làm gì, có next/previous". Người dùng chọn: guide chạy trên **app page thật**, tô sáng **nút thật**; **tự chạy một lần** khi mở tài liệu mẫu từ trang chào, xem lại được trong Cài đặt → Trợ giúp.
 
 ## Sub-phase queue
@@ -10,7 +10,7 @@ Intent: yêu cầu trực tiếp 2026-11-09 — "UI trang chào hơi đơn đi�
 - 20c — Nút "Xem hướng dẫn từng bước" trong Cài đặt → Trợ giúp — done
 - 20d — Nối tour vào extension (bước, tự chạy, xem lại) — done
 - 20e — Trang chào mới — done
-- 20f — E2E tour + ghi chú phát hành — planned
+- 20f — E2E tour + ghi chú phát hành — done
 
 ## Approach chosen
 

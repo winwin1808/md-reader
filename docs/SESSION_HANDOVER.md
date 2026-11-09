@@ -1,6 +1,17 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-09. **Phase 18 HOÀN TẤT**, MR #20 `phase-18` → `main` đã mở (https://github.com/winwin1808/md-reader/pull/20), **chưa merge**. MR #19 (phase 19) đã merge vào `main`.
+Cập nhật: 2026-11-09. **Phase 20 HOÀN TẤT**, MR phase 20 đã mở, chưa merge. Phase 18 đã merge (MR #20). MR #19 (phase 19) đã merge vào `main`.
+
+## Phase 20 — Trang chào mới + hướng dẫn từng bước (2026-11-09)
+
+Spec `docs/superpowers/specs/2026-11-09-phase-20-design.md` (shipped) · plan `docs/superpowers/plans/2026-11-09-phase-20-<sub>-plan.md`. Branch `phase-20`, MR → `main` đã mở, **chưa merge**. Phase 18 đã merge (MR #20).
+- `GuidedTour` (`packages/ui/src/components/GuidedTour.tsx`, CSS `theme/tour.css` import ở đầu `viewer.css` — `@import` phải đứng trước mọi luật, có test kiểm).
+- Mốc `data-tour` trên TopToolbar; bước tour ở `apps/extension/src/app/tour.ts`; tự chạy một lần khi trang chào mở mẫu (`&tour=1`, khoá `mdr:tour-done`); Cài đặt → Trợ giúp → "Xem hướng dẫn từng bước".
+- Trang chào mới (`WelcomePage.tsx`, `welcome.css`): tờ giấy có ghi chú lề + checklist có thanh tiến độ.
+- CI: `compact.flow.test.tsx` dùng `vi.stubEnv` → không còn cần `apps/extension/.env.local`.
+- Test: core 334 · ui 614 · extension 645 · api 244 · web 64 · mcp 47 · e2e 12.
+- Nợ: memo `help` trong App không có tác dụng (vô hại); thiếu test App cho tự mở tour/ẩn ReviewPrompt/speaker; index bước khi `steps` đổi độ dài lúc đang mở; menu hẹp không có mốc riêng.
+- Người làm: merge MR phase 20 → `pnpm --filter extension package` lại → nộp 1.5.0 theo thứ tự phát hành ở mục Phase 18.
 
 ## Phase 18 — Vòng đời người dùng, v1.5.0 (2026-11-09)
 
