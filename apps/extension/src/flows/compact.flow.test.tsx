@@ -12,6 +12,8 @@ const h = vi.hoisted(() => ({
   loadMath: vi.fn(),
 }))
 
+vi.hoisted(() => { vi.stubEnv('VITE_MDR_SERVER_URL', 'https://x.test') })
+
 vi.mock('../app/hooks/useDocSession', async (orig) => {
   const actual: any = await orig()
   return { ...actual, useDocSession: (...a: any[]) => {
