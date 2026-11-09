@@ -1,6 +1,6 @@
 # Phase 18 — Các luồng vòng đời người dùng
 
-Author: haonq. Status: designed. Phase: 18
+Author: haonq. Status: shipped. Phase: 18
 Intent: docs/superpowers/intent/2026-11-09-phase-18-vong-doi-nguoi-dung.md
 
 Ship: *cài xong có hướng dẫn; bản lớn báo "Có gì mới" đúng một lần; góp ý được ngay trong Cài đặt; trước khi gỡ lấy được tài liệu ra;
@@ -22,7 +22,7 @@ gỡ xong được hỏi lý do và biết dữ liệu của mình đi đâu. Kh
 - 18g1 — Sao lưu `.zip` — done
 - 18g2 — Mục "Trước khi gỡ" — done
 - 18h1 — E2E vòng đời — done
-- 18h2 — Quyền riêng tư, tài liệu, phiên bản 1.5.0 — planned
+- 18h2 — Quyền riêng tư, tài liệu, phiên bản 1.5.0 — done
 
 ## Approach chosen
 
