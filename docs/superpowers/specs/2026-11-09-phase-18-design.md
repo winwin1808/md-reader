@@ -19,8 +19,8 @@ gỡ xong được hỏi lý do và biết dữ liệu của mình đi đâu. Kh
 - 18f1 — `FeedbackForm` trong Cài đặt — done
 - 18f2 — Nối góp ý vào extension — done
 - 18f3 — Lời mời đánh giá — done
-- 18g1 — Sao lưu `.zip` — planned
-- 18g2 — Mục "Trước khi gỡ" — pending
+- 18g1 — Sao lưu `.zip` — done
+- 18g2 — Mục "Trước khi gỡ" — planned
 - 18h1 — E2E vòng đời — pending
 - 18h2 — Quyền riêng tư, tài liệu, phiên bản 1.5.0 — pending
 

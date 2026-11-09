@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SettingsModal } from './SettingsModal';
@@ -45,6 +45,78 @@ describe('SettingsModal', () => {
       fireEvent.click(document.getElementById('settings-slideAutoSplit') as HTMLInputElement)
       expect(on2).toHaveBeenCalledWith('slideAutoSplit', false)
       expect(on).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('backup section', () => {
+    const bk = (o: any = {}) => ({
+      onBackupAll: vi.fn().mockResolvedValue({ included: 3, failed: 1 }),
+      sharedDocs: [] as Array<{ docId: string; title: string }>,
+      onOpenSharedDoc: vi.fn(),
+      ...o,
+    })
+    const draw = (backup?: any) => render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} backup={backup} />)
+    it('is absent without backup', () => {
+      draw()
+      expect(document.getElementById('settings-sec-backup')).toBeNull()
+    })
+    it('shows the warning', () => {
+      draw(bk())
+      expect(screen.getByText(/Gỡ MD Reader sẽ xoá mọi tài liệu/)).toBeTruthy()
+    })
+    it('ignores a second quick click', async () => {
+      const onBackupAll = vi.fn(() => new Promise<any>(() => {}))
+      draw(bk({ onBackupAll }))
+      const btn = screen.getByText('Sao lưu tất cả (.zip)')
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+      expect(onBackupAll).toHaveBeenCalledTimes(1)
+      expect((await screen.findByText('Đang sao lưu…')).closest('button')!.disabled).toBe(true)
+    })
+    it('reports included and failed', async () => {
+      draw(bk())
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('3'))
+      expect(st.textContent).toContain('không đọc được')
+    })
+    it('status region is mounted and empty before clicking', () => {
+      draw(bk())
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      expect(st.textContent).toBe('')
+    })
+    it('failed 0 shows count without the failed text', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockResolvedValue({ included: 2, failed: 0 }) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('2'))
+      expect(st.textContent).not.toContain('không đọc được')
+    })
+    it('button re-enables after reject and a second click calls again', async () => {
+      const onBackupAll = vi.fn().mockRejectedValue(new Error('x'))
+      draw(bk({ onBackupAll }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      await screen.findByRole('alert')
+      const btn = screen.getByText('Sao lưu tất cả (.zip)').closest('button')!
+      expect(btn.disabled).toBe(false)
+      fireEvent.click(btn)
+      await waitFor(() => expect(onBackupAll).toHaveBeenCalledTimes(2))
+    })
+    it('shows an alert on reject', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockRejectedValue(new Error('x')) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      expect(await screen.findByRole('alert')).toBeTruthy()
+    })
+    it('lists shared docs and opens the clicked one', () => {
+      const b = bk({ sharedDocs: [{ docId: 'a', title: 'A' }, { docId: 'b', title: '' }] })
+      draw(b)
+      expect(screen.getByText('Tài liệu đã chia sẻ')).toBeTruthy()
+      fireEvent.click(screen.getByText('Không tiêu đề'))
+      expect(b.onOpenSharedDoc).toHaveBeenCalledWith('b')
+    })
+    it('hides the shared title when none', () => {
+      draw(bk())
+      expect(screen.queryByText('Tài liệu đã chia sẻ')).toBeNull()
     })
   })
 

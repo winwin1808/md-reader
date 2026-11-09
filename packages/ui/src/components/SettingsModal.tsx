@@ -70,7 +70,14 @@ export interface SettingsHelpProps {
   privacyUrl: string;
 }
 
+export interface SettingsBackupProps {
+  onBackupAll(): Promise<{ included: number; failed: number }>
+  sharedDocs: Array<{ docId: string; title: string }>
+  onOpenSharedDoc(docId: string): void
+}
+
 export interface SettingsModalProps {
+  backup?: SettingsBackupProps;
   help?: SettingsHelpProps;
   lifecycle?: SettingsLifecycleProps;
   settings?: ReaderSettings;
@@ -106,6 +113,7 @@ const SECTIONS = [
   { id: 'collab', label: 'settings.section.collab' as const },
   { id: 'ai', label: 'settings.section.ai' as const },
   { id: 'updates', label: 'settings.section.updates' as const },
+  { id: 'backup', label: 'settings.section.backup' as const },
   { id: 'help', label: 'settings.section.help' as const },
 ] as const;
 
@@ -426,6 +434,63 @@ function ImageInputRow({
   );
 }
 
+function BackupSection({ backup }: { backup: SettingsBackupProps }): React.JSX.Element {
+  const t = useT();
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ included: number; failed: number } | null>(null);
+  const [error, setError] = useState(false);
+  const run = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setResult(null);
+    setError(false);
+    try {
+      setResult(await backup.onBackupAll());
+    } catch {
+      setError(true);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <p className="settings-row-desc">{t('settings.backup.warning')}</p>
+      <div className="settings-row">
+        <button type="button" className="settings-btn" disabled={busy} onClick={run}>
+          {busy ? t('settings.backup.busy') : t('settings.backup.button')}
+        </button>
+      </div>
+      <p role="status" aria-live="polite" className="settings-row-desc">
+        {result && (
+          <>
+            {t('settings.backup.done', { included: result.included })}
+            {result.failed > 0 && ' ' + t('settings.backup.failed', { failed: result.failed })}
+          </>
+        )}
+      </p>
+      {error && <p role="alert" className="settings-row-desc">{t('settings.backup.error')}</p>}
+      {backup.sharedDocs.length > 0 && (
+        <>
+          <h4 className="settings-backup-shared-title">{t('settings.backup.shared.title')}</h4>
+          <p className="settings-row-desc">{t('settings.backup.shared.desc')}</p>
+          <ul className="settings-backup-list">
+            {backup.sharedDocs.map((d) => (
+              <li key={d.docId}>
+                <button type="button" className="settings-backup-link" onClick={() => backup.onOpenSharedDoc(d.docId)}>
+                  {d.title || t('settings.backup.untitled')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+}
+
 function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
   const [inner, setInner] = useState(false)
   const controlled = open !== undefined
@@ -466,7 +531,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
-  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle) && (s.id !== 'help' || props.help));
+  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle) && (s.id !== 'backup' || props.backup) && (s.id !== 'help' || props.help));
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -968,6 +1033,12 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       )}
                     </button>
                   </div>
+</section>
+)}
+{props.backup && (
+<section aria-labelledby="settings-h-backup" id="settings-sec-backup" data-section={"backup"} className="settings-group" ref={(el) => { sectionRefs.current['backup'] = el }}>
+<h3 id="settings-h-backup" className="settings-group-title">{t('settings.section.backup')}</h3>
+                  <BackupSection backup={props.backup} />
 </section>
 )}
 {props.help && (
