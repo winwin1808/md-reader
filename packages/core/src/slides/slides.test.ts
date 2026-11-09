@@ -250,9 +250,9 @@ describe('slideBreakInsertion', () => {
     return { r, out }
   }
   function expectOneMore(text: string, out: string) {
-    expect(splitIntoSlides(out, { strategy: 'fallback' as never }).length).toBe(
-      splitIntoSlides(text, { strategy: 'fallback' as never }).length + 1,
-    )
+    for (const o of [undefined, { strategy: 'fallback' as never }]) {
+      expect(splitIntoSlides(out, o).length).toBe(splitIntoSlides(text, o).length + 1)
+    }
     const words = (t: string) => t.replace(M, '').split(/\s+/).filter(Boolean)
     expect(words(out)).toEqual(words(text))
   }
@@ -306,12 +306,53 @@ describe('slideBreakInsertion', () => {
     expect(slideBreakInsertion(t2, t2.indexOf('two')).insert).toBe('')
   })
 
-  it('cursor on trailing blank line inserts at end', () => {
+  it('cursor on trailing blank line inserts nothing', () => {
     const text = 'one\n\ntwo\n\n'
-    const { r, out } = run(text, text.length)
-    expect(r.at).toBe(text.length)
-    expect(out).toBe(`one\n\ntwo\n\n${M}\n`)
-    expect(r.insert).not.toBe('')
+    expect(slideBreakInsertion(text, text.length).insert).toBe('')
+  })
+
+  it('cursor in block right after a break returns empty insert', () => {
+    const text = `one\n\n${M}\ntwo\n`
+    expect(slideBreakInsertion(text, text.indexOf('two')).insert).toBe('')
+  })
+
+  it('cursor on the break line returns empty insert', () => {
+    const text = `one\n\n${M}\n\ntwo\n`
+    expect(slideBreakInsertion(text, text.indexOf(M) + 3).insert).toBe('')
+  })
+
+  it('inserts between a heading and its list; default strategy gives 3 slides', () => {
+    const text = '## A\n\npara\n\n## B\n- x\n- y\n'
+    const { r, out } = run(text, text.indexOf('- y'))
+    expect(r.at).toBe(text.indexOf('- x'))
+    expect(splitIntoSlides(text).length).toBe(2)
+    expect(splitIntoSlides(out).length).toBe(3)
+    expectOneMore(text, out)
+  })
+
+  it('inserts after a heading directly followed by text', () => {
+    const text = '# T\ntext'
+    const { r, out } = run(text, text.indexOf('text'))
+    expect(r.at).toBe(text.indexOf('text'))
+    expectOneMore(text, out)
+  })
+
+  it('stops at a horizontal rule above', () => {
+    const text = 'a\n\n***\nb\nc\n'
+    const { r, out } = run(text, text.indexOf('c'))
+    expect(r.at).toBe(text.indexOf('b'))
+    expectOneMore(text, out)
+  })
+
+  it('inner ```js line closes the fence exactly like the splitter', () => {
+    const text = 'intro\n\n```\nfoo\n```js\nbar\n\nend'
+    const { r, out } = run(text, text.indexOf('bar'))
+    expect(r.at).toBe(text.indexOf('bar'))
+    expectOneMore(text, out)
+    const t2 = 'intro\n\n```\nfoo\n```js\nbar'
+    const r2 = run(t2, t2.indexOf('foo'))
+    expect(r2.r.at).toBe(t2.indexOf('```\nfoo'))
+    expectOneMore(t2, r2.out)
   })
 
   it('block after a closing fence still gets a blank line before the marker', () => {

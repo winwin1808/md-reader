@@ -12,6 +12,11 @@ function parseCodeFence(line: string): { isFence: boolean; char?: string; length
   }
 }
 
+function closesFence(line: string, char: string, length: number): boolean {
+  const f = parseCodeFence(line)
+  return f.isFence && f.char === char && f.length! >= length
+}
+
 export const SLIDE_BREAK_MARKER = '<!-- slide-break -->'
 
 export function isSlideBreakLine(line: string): boolean {
@@ -33,14 +38,13 @@ export function slideBreakInsertion(text: string, cursor: number): { at: number;
   const regions: Array<{ open: number; end: number; closed: boolean }> = []
   const closing = new Set<number>()
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i]!.match(/^ {0,3}(`{3,}|~{3,})/)
-    if (!m || !m[1]) continue
-    const ch = m[1][0]!
-    const len = m[1].length
+    const open = parseCodeFence(lines[i]!)
+    if (!open.isFence) continue
+    const ch = open.char!
+    const len = open.length!
     let end = -1
     for (let j = i + 1; j < lines.length; j++) {
-      const c = lines[j]!.match(/^ {0,3}(`{3,}|~{3,})\s*$/)
-      if (c && c[1] && c[1][0] === ch && c[1].length >= len) {
+      if (closesFence(lines[j]!, ch, len)) {
         end = j
         break
       }
@@ -64,24 +68,25 @@ export function slideBreakInsertion(text: string, cursor: number): { at: number;
   } else if (blank(anchor)) {
     let n = anchor + 1
     while (n < lines.length && blank(n)) n++
-    if (n >= lines.length) {
-      at = text.length
-    } else {
-      anchor = n
-      at = -1
-    }
+    if (n >= lines.length) return { at: text.length, insert: '' }
+    anchor = n
+    at = -1
   } else {
     at = -1
   }
 
-  if (at === -1) {
-    let i = anchor
-    while (i > 0 && !blank(i - 1) && !closing.has(i - 1)) i--
-    at = starts[i]!
-    if (at === 0) return { at: 0, insert: '' }
-  } else if (at === 0) {
-    return { at: 0, insert: '' }
+  if (!region && isSlideBreakLine(lines[anchor]!)) return { at: starts[anchor]!, insert: '' }
+
+  const HR = /^ {0,3}([-*_])( *\1){2,} *$/
+  const ATX = /^ {0,3}#{1,6}(\s|$)/
+  let i = anchor
+  while (i > 0) {
+    const above = lines[i - 1]!
+    if (blank(i - 1) || closing.has(i - 1) || isSlideBreakLine(above) || HR.test(above) || ATX.test(above)) break
+    i--
   }
+  at = starts[i]!
+  if (at === 0) return { at: 0, insert: '' }
 
   // nearest non-blank line above `at`
   let prev = -1
@@ -91,7 +96,8 @@ export function slideBreakInsertion(text: string, cursor: number): { at: number;
       break
     }
   }
-  if (prev !== -1 && isSlideBreakLine(lines[prev]!)) return { at, insert: '' }
+  if (prev === -1) return { at, insert: '' }
+  if (isSlideBreakLine(lines[prev]!)) return { at, insert: '' }
 
   let prefix = ''
   if (at > 0) {
@@ -102,8 +108,7 @@ export function slideBreakInsertion(text: string, cursor: number): { at: number;
       prefix = last.trim() === '' ? '' : '\n'
     }
   }
-  const suffix = at < text.length ? '\n\n' : '\n'
-  return { at, insert: prefix + SLIDE_BREAK_MARKER + suffix }
+  return { at, insert: prefix + SLIDE_BREAK_MARKER + '\n\n' }
 }
 
 function splitAtBreakMarkers(section: string): string[] {
