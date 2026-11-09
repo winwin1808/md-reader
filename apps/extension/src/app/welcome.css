@@ -16,3 +16,7 @@ main.welcome button { font: inherit; cursor: pointer; padding: 0.5rem 1rem; bord
 main.welcome li > span:last-of-type { color: var(--pencil); }
 main.welcome li[data-done="true"] > span:last-of-type { color: var(--accent); }
 main.welcome button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main.whatsnew section { padding-left: 1rem; border-left: 3px solid transparent; }
+main.whatsnew section[data-highlight="true"] { border-left-color: var(--accent); }
+main.whatsnew .whatsnew-version { color: var(--pencil); margin: 0; }
+main.whatsnew .whatsnew-badge { color: var(--accent); font-weight: 600; border: 1px solid var(--accent); border-radius: 4px; padding: 0 0.4rem; }

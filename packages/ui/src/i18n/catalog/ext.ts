@@ -78,6 +78,10 @@ export const vi = {
   'ext.welcome.stepDone': 'Đã xong',
   'ext.welcome.stepTodo': 'Chưa xong',
   'ext.welcome.enter': 'Vào MD Reader',
+  'ext.whatsnew.title': 'Có gì mới',
+  'ext.whatsnew.new': 'Mới',
+  'ext.whatsnew.version': 'Phiên bản {version}',
+  'ext.whatsnew.empty': 'Chưa có ghi chú phát hành.',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -160,4 +164,8 @@ export const en: Record<keyof typeof vi, string> = {
   'ext.welcome.stepDone': 'Done',
   'ext.welcome.stepTodo': 'Not yet',
   'ext.welcome.enter': 'Go to MD Reader',
+  'ext.whatsnew.title': "What's new",
+  'ext.whatsnew.new': 'New',
+  'ext.whatsnew.version': 'Version {version}',
+  'ext.whatsnew.empty': 'No release notes yet.',
 }
