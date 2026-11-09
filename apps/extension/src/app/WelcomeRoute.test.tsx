@@ -26,7 +26,7 @@ function setChrome(c: unknown): void { g.chrome = c }
 
 const PIN_STEP = /Pin MD Reader|Ghim MD Reader lên thanh công cụ/
 const FILE_STEP = /Allow access to local files|Cho phép đọc file trên máy/
-const OPEN_STEP = /Open a \.md file|Mở một file \.md/
+const OPEN_STEP = /^(Open a \.md file|Mở một file \.md)$/
 
 function fileAccess(ok: boolean): unknown {
   return { isAllowedFileSchemeAccess: (cb: (v: boolean) => void) => cb(ok) }
