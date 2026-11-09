@@ -21,6 +21,7 @@ export interface SlidePagination {
 }
 export type BlockMeasure = (el: HTMLElement, next: HTMLElement | null) => BlockBox
 
+export const FIT_SAFETY_PX = 2
 const FALLBACK_W = 1120
 const FALLBACK_H = 592
 const SETTLE_MAX = 5000
@@ -33,11 +34,15 @@ function resolveMeasured(el: HTMLElement | null): HTMLElement | null {
   return el
 }
 
+function marginBottomOf(el: HTMLElement): number {
+  return parseFloat(getComputedStyle(el).marginBottom) || 0
+}
+
 export function defaultBlockMeasure(el: HTMLElement, next: HTMLElement | null): BlockBox {
   const m = resolveMeasured(el) as HTMLElement
   const n = resolveMeasured(next)
   const rect = m.getBoundingClientRect()
-  const height = n ? n.getBoundingClientRect().top - rect.top : rect.height
+  const height = n ? n.getBoundingClientRect().top - rect.top : rect.height + marginBottomOf(m)
   return {
     height,
     width: Math.max(m.scrollWidth || 0, rect.width),
@@ -103,7 +108,9 @@ export async function defaultSettle(root: HTMLElement, timeoutMs: number = SETTL
 }
 
 export function defaultMeasureChild(c: HTMLElement, next: HTMLElement | null): number {
-  return next ? next.getBoundingClientRect().top - c.getBoundingClientRect().top : c.getBoundingClientRect().height
+  return next
+    ? next.getBoundingClientRect().top - c.getBoundingClientRect().top
+    : c.getBoundingClientRect().height + marginBottomOf(c)
 }
 
 export function expandBoxes(
@@ -215,7 +222,8 @@ export function useSlidePagination(
             console.warn(`[slides] block count mismatch for ${source.id}; keeping slide as is`)
           } else {
             const boxes = visible.map((el, k) => measure(el, visible[k + 1] ?? null))
-            const { w, h } = contentArea(frame)
+            const { w, h: fullH } = contentArea(frame)
+            const h = Math.max(1, fullH - FIT_SAFETY_PX)
             const measureChild = optsRef.current.measureChild ?? defaultMeasureChild
             const expanded = expandBoxes(visible, pristine, boxes, h, measureChild)
             const pages = paginateBlocks(expanded.boxes, h, w)
