@@ -556,4 +556,31 @@ describe('SettingsModal', () => {
       expect(screen.getByLabelText('Máy chủ đồng bộ')).not.toHaveAttribute('aria-invalid', 'true');
     });
   });
+  describe('help section', () => {
+    const help = {
+      feedback: {
+        diagnostics: { version: '1.0', browser: 'Chrome', locale: 'vi' },
+        onSubmit: vi.fn(async () => 'sent' as const),
+        fallbackMailto: () => 'mailto:a@b.c',
+      },
+      helpUrl: 'https://example.com/help',
+      privacyUrl: 'https://example.com/privacy',
+    };
+    it('is absent without help', () => {
+      render(<SettingsModal {...defaultProps} open />);
+      expect(document.getElementById('settings-sec-help')).toBeNull();
+    });
+    it('shows links and feedback form with help', () => {
+      render(<SettingsModal {...defaultProps} open help={help} />);
+      const sec = document.getElementById('settings-sec-help')!;
+      expect(sec).toBeTruthy();
+      const guide = within(sec).getByText('Hướng dẫn sử dụng').closest('a')!;
+      const priv = within(sec).getByText('Quyền riêng tư').closest('a')!;
+      expect(guide).toHaveAttribute('href', 'https://example.com/help');
+      expect(priv).toHaveAttribute('href', 'https://example.com/privacy');
+      expect(guide).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(priv).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(within(sec).getByRole('button', { name: 'Gửi góp ý' })).toBeTruthy();
+    });
+  });
 });
