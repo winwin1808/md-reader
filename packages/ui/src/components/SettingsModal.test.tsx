@@ -48,6 +48,56 @@ describe('SettingsModal', () => {
     })
   })
 
+  describe('backup section', () => {
+    const bk = (o: any = {}) => ({
+      onBackupAll: vi.fn().mockResolvedValue({ included: 3, failed: 1 }),
+      sharedDocs: [] as Array<{ docId: string; title: string }>,
+      onOpenSharedDoc: vi.fn(),
+      ...o,
+    })
+    const draw = (backup?: any) => render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} backup={backup} />)
+    it('is absent without backup', () => {
+      draw()
+      expect(document.getElementById('settings-sec-backup')).toBeNull()
+    })
+    it('shows the warning', () => {
+      draw(bk())
+      expect(screen.getByText(/Gỡ MD Reader sẽ xoá mọi tài liệu/)).toBeTruthy()
+    })
+    it('ignores a second quick click', async () => {
+      const onBackupAll = vi.fn(() => new Promise<any>(() => {}))
+      draw(bk({ onBackupAll }))
+      const btn = screen.getByText('Sao lưu tất cả (.zip)')
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+      expect(onBackupAll).toHaveBeenCalledTimes(1)
+      expect((await screen.findByText('Đang sao lưu…')).closest('button')!.disabled).toBe(true)
+    })
+    it('reports included and failed', async () => {
+      draw(bk())
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = await screen.findByRole('status')
+      expect(st.textContent).toContain('3')
+      expect(st.textContent).toContain('1')
+    })
+    it('shows an alert on reject', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockRejectedValue(new Error('x')) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      expect(await screen.findByRole('alert')).toBeTruthy()
+    })
+    it('lists shared docs and opens the clicked one', () => {
+      const b = bk({ sharedDocs: [{ docId: 'a', title: 'A' }, { docId: 'b', title: '' }] })
+      draw(b)
+      expect(screen.getByText('Tài liệu đã chia sẻ')).toBeTruthy()
+      fireEvent.click(screen.getByText('Không tiêu đề'))
+      expect(b.onOpenSharedDoc).toHaveBeenCalledWith('b')
+    })
+    it('hides the shared title when none', () => {
+      draw(bk())
+      expect(screen.queryByText('Tài liệu đã chia sẻ')).toBeNull()
+    })
+  })
+
   describe('updates section (lifecycle)', () => {
     const lc = (o: any = {}) => ({
       autoOpenWhatsNew: true,
