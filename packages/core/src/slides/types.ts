@@ -6,6 +6,8 @@ export interface Slide {
   html: string
   notes: string[]
   title?: string
+  part?: { index: number; total: number }
+  zoom?: number
 }
 
 export interface SlideSplitOptions {
