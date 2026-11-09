@@ -67,6 +67,17 @@ export const vi = {
   'ext.limit.rate': 'Đã đạt giới hạn hôm nay, thử lại sau khoảng {hours} giờ',
   'ext.limit.rateSoon': 'Đã đạt giới hạn, thử lại sau',
   'ext.limit.quota': 'Đã hết dung lượng chia sẻ của máy này. Xoá bớt tài liệu đã chia sẻ để giải phóng.',
+  'ext.welcome.title': 'Chào mừng đến MD Reader',
+  'ext.welcome.lead': 'Mở tài liệu mẫu để thử đọc, sửa, trình chiếu và xem sơ đồ trong một phút.',
+  'ext.welcome.openSample': 'Mở tài liệu mẫu',
+  'ext.welcome.checklist': 'Bắt đầu',
+  'ext.welcome.step.pin': 'Ghim MD Reader lên thanh công cụ',
+  'ext.welcome.step.fileAccess': 'Cho phép đọc file trên máy',
+  'ext.welcome.step.openFile': 'Mở một file .md',
+  'ext.welcome.step.ai': 'Kết nối AI (tuỳ chọn)',
+  'ext.welcome.stepDone': 'Đã xong',
+  'ext.welcome.stepTodo': 'Chưa xong',
+  'ext.welcome.enter': 'Vào MD Reader',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -138,4 +149,15 @@ export const en: Record<keyof typeof vi, string> = {
   'ext.limit.rate': 'Daily limit reached, try again in about {hours} h',
   'ext.limit.rateSoon': 'Limit reached, try again later',
   'ext.limit.quota': 'This device has used its sharing quota. Delete some shared documents to free space.',
+  'ext.welcome.title': 'Welcome to MD Reader',
+  'ext.welcome.lead': 'Open the sample document to try reading, editing, presenting and the mind map in a minute.',
+  'ext.welcome.openSample': 'Open the sample document',
+  'ext.welcome.checklist': 'Get started',
+  'ext.welcome.step.pin': 'Pin MD Reader to the toolbar',
+  'ext.welcome.step.fileAccess': 'Allow access to local files',
+  'ext.welcome.step.openFile': 'Open a .md file',
+  'ext.welcome.step.ai': 'Connect an AI assistant (optional)',
+  'ext.welcome.stepDone': 'Done',
+  'ext.welcome.stepTodo': 'Not yet',
+  'ext.welcome.enter': 'Go to MD Reader',
 }

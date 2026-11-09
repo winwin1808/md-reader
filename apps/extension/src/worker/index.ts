@@ -187,8 +187,17 @@ async function runLifecycle(ev: LifecycleEvent): Promise<void> {
     const version = chrome.runtime.getManifest().version
     const raw = await chrome.storage.local.get(LIFECYCLE_KEY)
     const s = parseLifecycleState(raw?.[LIFECYCLE_KEY])
-    const { next } = decideLifecycle(ev, s, RELEASE_NOTES, version, Date.now())
+    const { next, open } = decideLifecycle(ev, s, RELEASE_NOTES, version, Date.now())
+    const openWelcome = open.includes('welcome')
+    if (openWelcome) next.pendingWelcome = false
     await chrome.storage.local.set({ [LIFECYCLE_KEY]: next })
+    if (openWelcome) {
+      try {
+        await chrome.tabs?.create?.({ url: chrome.runtime.getURL('app.html?welcome=1') })
+      } catch (err) {
+        console.warn('Opening welcome page failed:', err)
+      }
+    }
     try {
       chrome.runtime.setUninstallURL?.(uninstallUrl(version, chrome.i18n?.getUILanguage?.() ?? 'en'))
     } catch (err) {

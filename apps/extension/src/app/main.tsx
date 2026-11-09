@@ -4,6 +4,7 @@ import { PairDialog, useT } from '@md-reader/ui'
 import { BRIDGE_PORTS } from '@md-reader/core/bridge'
 import { App } from './App'
 import { AppErrorBoundary } from './AppErrorBoundary'
+import { WelcomeRoute } from './WelcomeRoute'
 import { LocaleRoot } from './LocaleRoot'
 import { PAIR_DECISION_MSG } from '../worker/bridge-storage'
 import { onMathLoaded } from '@md-reader/core/plugins'
@@ -39,10 +40,13 @@ const container = document.getElementById('root')
 if (container) {
   const root = createRoot(container)
   const pair = pairParams()
+  const welcome = new URLSearchParams(window.location.search).get('welcome') === '1'
   root.render(
     <React.StrictMode>
       <LocaleRoot>
-        {pair === 'invalid' ? (
+        {welcome ? (
+          <WelcomeRoute />
+        ) : pair === 'invalid' ? (
           <PairInvalid />
         ) : pair ? (
           <PairPage port={pair.port} client={pair.client} keyHash={pair.keyHash} />
