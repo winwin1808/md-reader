@@ -68,6 +68,7 @@ export interface SettingsHelpProps {
   feedback: FeedbackFormProps;
   helpUrl: string;
   privacyUrl: string;
+  onStartTour?: () => void;
 }
 
 export interface SettingsBackupProps {
@@ -1049,6 +1050,11 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     {' · '}
                     <a href={props.help.privacyUrl} target="_blank" rel="noopener noreferrer">{t('settings.help.privacy')}</a>
                   </div>
+                  {props.help.onStartTour && (
+                    <div className="settings-field">
+                      <button type="button" className="settings-btn" onClick={props.help.onStartTour}>{t('settings.help.tour')}</button>
+                    </div>
+                  )}
                   <FeedbackForm {...props.help.feedback} />
 </section>
 )}
