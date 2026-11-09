@@ -6,6 +6,8 @@ import {
   useSlidePagination,
   type SlidePagination,
   defaultBlockMeasure,
+  defaultMeasureChild,
+  FIT_SAFETY_PX,
   defaultSettle,
   mermaidSettled,
   type BlockMeasure,
@@ -144,6 +146,35 @@ describe('defaultBlockMeasure', () => {
     expect(pBox.height).toBe(200)
     expect(pBox.width).toBeGreaterThanOrEqual(400)
     expect(pBox.keepWithNext).toBe(false)
+  })
+})
+
+describe('last-block margin and fit safety', () => {
+  const rect = (top: number, height: number) =>
+    ({ top, height, width: 100, bottom: top + height, left: 0, right: 100, x: 0, y: top }) as DOMRect
+  const lastWithMargin = () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<pre style="margin-bottom: 16px">x</pre>'
+    document.body.appendChild(root)
+    const el = root.firstElementChild as HTMLElement
+    el.getBoundingClientRect = () => rect(0, 973)
+    return el
+  }
+  it('defaultBlockMeasure includes margin-bottom of the last block', () => {
+    expect(defaultBlockMeasure(lastWithMargin(), null).height).toBe(989)
+  })
+  it('defaultMeasureChild includes margin-bottom of the last child', () => {
+    expect(defaultMeasureChild(lastWithMargin(), null)).toBe(989)
+  })
+  it('passes maxH minus FIT_SAFETY_PX to pagination', async () => {
+    expect(FIT_SAFETY_PX).toBe(2)
+    const slides = [mk('a', 1)]
+    const measure: BlockMeasure = () => ({ height: 1000, width: 100, keepWithNext: false })
+    const { result } = renderHook(() =>
+      useSlidePagination(slides, { enabled: true, mermaid: false, measure, settle })
+    , { initialProps: { s: slides } })
+    await waitFor(() => expect(result.current.ready).toBe(true))
+    expect(result.current.slides[0]!.zoom).toBeCloseTo((592 - FIT_SAFETY_PX) / 1000, 3)
   })
 })
 
