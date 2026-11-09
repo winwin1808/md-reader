@@ -8,7 +8,7 @@ export type FormatAction =
   | 'h1' | 'h2' | 'h3'
   | 'bullet' | 'number' | 'task'
   | 'quote' | 'code' | 'codeblock'
-  | 'math' | 'link' | 'table'
+  | 'math' | 'link' | 'table' | 'slideBreak'
 
 export interface FormattingToolbarProps {
   onAction: (action: FormatAction) => void
@@ -48,6 +48,7 @@ const ACTION_GROUPS: ActionButtonDef[][] = [
     { action: 'link', title: 'format.link', label: <span>[ ]</span> },
     { action: 'codeblock', title: 'format.codeblock', label: <span>```</span> },
     { action: 'table', title: 'format.table', label: <span>|||</span> },
+    { action: 'slideBreak', title: 'format.slideBreak', label: <Icon name="slide-break" size={16} /> },
   ],
 ]
 
