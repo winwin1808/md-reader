@@ -19,6 +19,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const countUrls = (ctx: BrowserContext, needle: string) => ctx.pages().filter((pg) => pg.url().includes(needle)).length
 
 test('cài mới mở chào một lần, mở mẫu, khởi động lại không mở thêm tab', async () => {
+  test.setTimeout(90_000)
   const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdr-life-'))
   let context: BrowserContext | undefined
   try {
@@ -34,10 +35,11 @@ test('cài mới mở chào một lần, mở mẫu, khởi động lại không
     await sleep(1500)
     expect(countUrls(context, 'welcome=1')).toBe(1)
 
-    const sampleBtn = welcome!.getByRole('button', { name: 'Mở tài liệu mẫu' })
-    const sampleLink = welcome!.getByRole('link', { name: 'Mở tài liệu mẫu' })
-    const target = (await sampleBtn.count()) > 0 ? sampleBtn : sampleLink
-    await target.first().click()
+    const sample = welcome!
+      .getByRole('button', { name: 'Mở tài liệu mẫu' })
+      .or(welcome!.getByRole('link', { name: 'Mở tài liệu mẫu' }))
+    await expect(sample).toBeVisible()
+    await sample.click()
 
     const found = Date.now() + 10_000
     let doc: Page | undefined
@@ -60,7 +62,14 @@ test('cài mới mở chào một lần, mở mẫu, khởi động lại không
 
     await context.close()
     context = await launch(userDir)
-    context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'))
+    const sw2 = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker', { timeout: 15_000 }))
+    await expect
+      .poll(() =>
+        sw2.evaluate(() =>
+          chrome.storage.local.get('mdr:lifecycle').then((r) => (r['mdr:lifecycle'] as { startedAt?: unknown } | undefined)?.startedAt),
+        ),
+      )
+      .toBe(lc.startedAt)
     await sleep(2000)
     expect(countUrls(context, 'welcome=1')).toBe(0)
     expect(countUrls(context, 'whatsnew=1')).toBe(0)
