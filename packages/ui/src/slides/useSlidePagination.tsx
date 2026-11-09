@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { paginateBlocks, SMALL_ZOOM, type BlockBox, type Slide } from '@md-reader/core'
-import { splitBlockElements, pristineBlocks, buildPagedSlides } from './slide-blocks'
+import {
+  splitBlockElements,
+  pristineBlocks,
+  buildPagedSlides,
+  splittableChildren,
+  groupOversizedChildren,
+  cloneWithChildren,
+} from './slide-blocks'
 import { SlideContent, SLIDE_W, SLIDE_H, slideCssVars, type PresentationSettings } from '../components/Deck'
 
 export interface SlideFitWarning {
@@ -95,6 +102,38 @@ export async function defaultSettle(root: HTMLElement, timeoutMs: number = SETTL
   }
 }
 
+export function expandBoxes(
+  live: HTMLElement[],
+  clean: HTMLElement[],
+  boxes: BlockBox[],
+  maxH: number,
+  measureChild: (c: HTMLElement) => number
+): { boxes: BlockBox[]; elements: HTMLElement[] } {
+  const outBoxes: BlockBox[] = []
+  const elements: HTMLElement[] = []
+  boxes.forEach((box, i) => {
+    const el = live[i] as HTMLElement
+    const groups = box.height > maxH ? groupOversizedChildren(el, maxH, measureChild) : null
+    if (!groups) {
+      outBoxes.push(box)
+      elements.push(clean[i] as HTMLElement)
+      return
+    }
+    const kids = splittableChildren(el)
+    const thead = el.tagName === 'TABLE' ? (el.querySelector('thead') as HTMLElement | null) : null
+    const headH = thead ? measureChild(thead) : 0
+    for (const group of groups) {
+      outBoxes.push({
+        height: headH + group.reduce((n, k) => n + measureChild(kids[k] as HTMLElement), 0),
+        width: box.width,
+        keepWithNext: false,
+      })
+      elements.push(cloneWithChildren(clean[i] as HTMLElement, group))
+    }
+  })
+  return { boxes: outBoxes, elements }
+}
+
 function contentArea(frame: HTMLElement): { w: number; h: number } {
   const cs = getComputedStyle(frame)
   const num = (v: string) => parseFloat(v) || 0
@@ -118,6 +157,7 @@ export function useSlidePagination(
     mermaid: boolean
     presentationSettings?: PresentationSettings
     measure?: BlockMeasure
+    measureChild?: (c: HTMLElement) => number
     settle?: (root: HTMLElement) => Promise<void>
   }
 ): SlidePagination & { stage: React.ReactNode } {
@@ -168,8 +208,11 @@ export function useSlidePagination(
           } else {
             const boxes = visible.map((el, k) => measure(el, visible[k + 1] ?? null))
             const { w, h } = contentArea(frame)
-            const pages = paginateBlocks(boxes, h, w)
-            result = buildPagedSlides(source, pristine, pages)
+            const measureChild =
+              optsRef.current.measureChild ?? ((c: HTMLElement) => c.getBoundingClientRect().height)
+            const expanded = expandBoxes(visible, pristine, boxes, h, measureChild)
+            const pages = paginateBlocks(expanded.boxes, h, w)
+            result = buildPagedSlides(source, expanded.elements, pages)
           }
         } catch (err) {
           console.warn(`[slides] measure failed for ${source.id}`, err)

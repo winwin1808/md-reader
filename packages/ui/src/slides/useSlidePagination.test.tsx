@@ -9,6 +9,7 @@ import {
   defaultSettle,
   mermaidSettled,
   type BlockMeasure,
+  expandBoxes,
 } from './useSlidePagination'
 
 function mk(id: string, n: number): Slide {
@@ -272,5 +273,90 @@ describe('useSlidePagination without stage', () => {
       warn.mockRestore()
       vi.useRealTimers()
     }
+  })
+})
+
+describe('splitting oversized lists and tables', () => {
+  const html = (h: string): Slide => ({ id: 's', index: 0, title: 's', html: h, notes: [], rawMarkdown: '' }) as unknown as Slide
+  const lis = (n: number) => Array.from({ length: n }, (_, i) => `<li>item ${i}</li>`).join('')
+  const measure: BlockMeasure = (el) => ({
+    height: el.tagName === 'UL' || el.tagName === 'OL' || el.tagName === 'TABLE' || el.tagName === 'PRE' ? 2000 : 100,
+    width: 100,
+    keepWithNext: false,
+  })
+  const measureChild = (c: HTMLElement) => (c.tagName === 'THEAD' ? 50 : 200)
+  async function run(slide: Slide, m: BlockMeasure = measure) {
+    const arr = [slide]
+    const { result } = renderHook(
+      () => useSlidePagination(arr, { enabled: true, mermaid: false, measure: m, measureChild, settle }),
+      { initialProps: { s: arr } }
+    )
+    await waitFor(() => expect(result.current.ready).toBe(true))
+    return result.current.slides
+  }
+  const count = (h: string, re: RegExp) => (h.match(re) ?? []).length
+
+  it('splits a ul taller than maxH across slides keeping every item', async () => {
+    const out = await run(html(`<ul>${lis(6)}</ul>`))
+    expect(out.length).toBeGreaterThan(1)
+    expect(out.reduce((n, s) => n + count(s.html, /<li>/g), 0)).toBe(6)
+    for (let i = 0; i < 6; i++) expect(out.map((s) => s.html).join('')).toContain(`item ${i}<`)
+  })
+
+  it('repeats thead on every slide of a long table', async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => `<tr><td>r${i}</td></tr>`).join('')
+    const out = await run(html(`<table><thead><tr><th>H</th></tr></thead><tbody>${rows}</tbody></table>`))
+    expect(out.length).toBeGreaterThan(1)
+    for (const s of out) expect(s.html).toContain('<thead>')
+    expect(out.reduce((n, s) => n + count(s.html, /<td>/g), 0)).toBe(6)
+  })
+
+  it('continues ol numbering with start', async () => {
+    const out = await run(html(`<ol>${lis(6)}</ol>`))
+    expect(out.length).toBeGreaterThan(1)
+    expect(out[0]!.html).not.toContain('start=')
+    expect(out[1]!.html).toContain('start="3"')
+  })
+
+  it('does not split a block that fits', async () => {
+    const fit: BlockMeasure = () => ({ height: 100, width: 100, keepWithNext: false })
+    const out = await run(html(`<ul>${lis(6)}</ul>`), fit)
+    expect(out.length).toBe(1)
+    expect(count(out[0]!.html, /<li>/g)).toBe(6)
+  })
+
+  it('keeps an unsplittable pre as one element', async () => {
+    const out = await run(html('<pre><code>x</code></pre>'))
+    expect(out.length).toBe(1)
+    expect(count(out[0]!.html, /<pre>/g)).toBe(1)
+  })
+
+  describe('expandBoxes', () => {
+    const mkEl = (h: string) => {
+      const d = document.createElement('div')
+      d.innerHTML = h
+      return d.firstElementChild as HTMLElement
+    }
+    it('replaces only the oversized box and keeps other indexes', () => {
+      const p = mkEl('<p>a</p>')
+      const ul = mkEl(`<ul>${lis(4)}</ul>`)
+      const q = mkEl('<p>b</p>')
+      const live = [p, ul, q]
+      const clean = [mkEl('<p>a</p>'), mkEl(`<ul>${lis(4)}</ul>`), mkEl('<p>b</p>')]
+      const boxes = [
+        { height: 10, width: 5, keepWithNext: false },
+        { height: 800, width: 7, keepWithNext: true },
+        { height: 10, width: 6, keepWithNext: false },
+      ]
+      const r = expandBoxes(live, clean, boxes, 500, measureChild)
+      expect(r.boxes.length).toBe(r.elements.length)
+      expect(r.boxes.length).toBe(4)
+      expect(r.boxes[0]).toBe(boxes[0])
+      expect(r.boxes[3]).toBe(boxes[2])
+      expect(r.elements[0]).toBe(clean[0])
+      expect(r.elements[3]).toBe(clean[2])
+      expect(r.boxes[1]).toEqual({ height: 400, width: 7, keepWithNext: false })
+      expect(r.elements[1]!.tagName).toBe('UL')
+    })
   })
 })
