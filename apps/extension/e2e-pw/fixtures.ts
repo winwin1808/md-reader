@@ -51,6 +51,17 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
       args: ['--headless=new', '--lang=vi', `--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
     })
     try {
+      const isWelcome = (u: string) => u.includes('app.html?welcome=1')
+      let welcome = context.pages().find((pg) => isWelcome(pg.url()))
+      if (!welcome) {
+        welcome = await context
+          .waitForEvent('page', { predicate: (pg) => isWelcome(pg.url()) || pg.url() === '' || pg.url() === 'about:blank', timeout: 5000 })
+          .catch(() => undefined)
+        if (welcome && !isWelcome(welcome.url())) {
+          await welcome.waitForURL(/app\.html\?welcome=1/, { timeout: 5000 }).catch(() => { welcome = undefined })
+        }
+      }
+      await welcome?.close().catch(() => {})
       await use(context)
     } finally {
       await context.close()

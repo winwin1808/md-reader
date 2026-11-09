@@ -314,12 +314,34 @@ describe('Service Worker lifecycle (18a.2)', () => {
     delete (globalThis as any).chrome
   })
 
-  it('install records pendingWelcome and opens no tab', async () => {
+  it('install opens welcome tab once, storing pendingWelcome false before tabs.create', async () => {
+    const order: string[] = []
+    ;(chrome.storage.local.set as any).mockImplementation(async (o: any) => {
+      order.push('set:' + String((Object.values(o)[0] as any)?.pendingWelcome))
+      Object.assign(store, o)
+    })
+    tabsCreate.mockImplementation(async () => { order.push('create') })
     await installed!({ reason: 'install' })
-    const key = Object.keys(store).find((k) => k !== undefined)
-    expect(key).toBeDefined()
-    expect(store[key!].pendingWelcome).toBe(true)
+    expect(tabsCreate).toHaveBeenCalledTimes(1)
+    expect(tabsCreate.mock.calls[0]![0].url.endsWith('app.html?welcome=1')).toBe(true)
+    const key = Object.keys(store).find((k) => store[k]?.pendingWelcome !== undefined)!
+    expect(store[key].pendingWelcome).toBe(false)
+    expect(order.indexOf('set:false')).toBeGreaterThanOrEqual(0)
+    expect(order.indexOf('set:false')).toBeLessThan(order.indexOf('create'))
+  })
+
+  it('update and startup do not open a tab', async () => {
+    await installed!({ reason: 'update', previousVersion: '1.0.0' })
+    await startup!()
     expect(tabsCreate).not.toHaveBeenCalled()
+  })
+
+  it('tabs.create throwing does not block tick', async () => {
+    tabsCreate.mockRejectedValue(new Error('boom'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(installed!({ reason: 'install' })).resolves.toBeUndefined()
+    expect(removeMock).toHaveBeenCalledWith(['file_content_old'])
+    warn.mockRestore()
   })
 
   it('sets uninstall URL with manifest version on install and startup', async () => {
@@ -352,7 +374,7 @@ describe('Service Worker lifecycle (18a.2)', () => {
     const sets = (chrome.storage.local.set as any).mock.calls.map((c: any[]) => c[0])
     expect(sets.length).toBe(2)
     const key = Object.keys(sets[0])[0]!
-    // second write was computed from the first's state: pendingWelcome survives startup
-    expect(sets[1][key].pendingWelcome).toBe(true)
+    // second write was computed from the first's state: pendingWelcome stays consumed after startup
+    expect(sets[1][key].pendingWelcome).toBe(false)
   })
 })
