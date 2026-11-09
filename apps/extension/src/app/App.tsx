@@ -617,8 +617,10 @@ export function App(): React.JSX.Element {
   const [preparingSlides, setPreparingSlides] = useState(false)
 
   const waitSlidesReady = useCallback(async (signal: AbortSignal): Promise<void> => {
+    const clearBusy = () => flushSync(() => setPreparingSlides(false))
+    if (signal.aborted) { clearBusy(); return }
+    signal.addEventListener('abort', clearBusy, { once: true })
     try {
-      if (signal.aborted) return
       if (!slidesReadyRef.current) {
         await new Promise<void>((resolve) => {
           const waiter = () => { signal.removeEventListener('abort', onAbort); resolve() }
@@ -643,7 +645,8 @@ export function App(): React.JSX.Element {
         }
       }
     } finally {
-      flushSync(() => setPreparingSlides(false))
+      signal.removeEventListener('abort', clearBusy)
+      clearBusy()
     }
   }, [readerSettings.enableMermaid])
 

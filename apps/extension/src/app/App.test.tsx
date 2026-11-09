@@ -419,8 +419,10 @@ describe('App', () => {
       mockPagination()
       const mermaidSpy = vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h + '<!--m-->')
       let htmlAtPrint = ''
+      let busyAtPrint: Element | null | undefined = undefined
       const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
         htmlAtPrint = document.querySelector('.deck-print-container')?.innerHTML ?? ''
+        busyAtPrint = document.querySelector('.deck-print-busy')
       })
       let r: any
       await act(async () => { r = render(<App />) })
@@ -430,6 +432,7 @@ describe('App', () => {
       await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
       await act(async () => { await vi.advanceTimersByTimeAsync(7100) })
       expect(printSpy).toHaveBeenCalledTimes(1)
+      expect(busyAtPrint).toBeNull()
       expect(htmlAtPrint).not.toContain('<!--m-->')
       control.ready = true
       await act(async () => { r.rerender(<App />) })
@@ -464,8 +467,10 @@ describe('App', () => {
       const pending = new Promise<string>((res) => { release = res })
       vi.spyOn(ui, 'inlineMermaid').mockImplementation(() => pending.then((x) => x))
       let htmlAtPrint = ''
+      let busyAtPrint: Element | null | undefined = undefined
       const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
         htmlAtPrint = document.querySelector('.deck-print-container')?.innerHTML ?? ''
+        busyAtPrint = document.querySelector('.deck-print-busy')
       })
       await act(async () => { render(<App />) })
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
@@ -474,6 +479,7 @@ describe('App', () => {
       await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
       await act(async () => { await vi.advanceTimersByTimeAsync(7100) })
       expect(printSpy).toHaveBeenCalledTimes(1)
+      expect(busyAtPrint).toBeNull()
       await act(async () => { release('<p>LATE-MERMAID</p>'); await vi.advanceTimersByTimeAsync(10) })
       expect(htmlAtPrint).not.toContain('LATE-MERMAID')
       expect(document.querySelector('.deck-print-container')?.innerHTML ?? '').not.toContain('LATE-MERMAID')
