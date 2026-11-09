@@ -2,7 +2,7 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, waitFor, cleanup } from '@testing-library/react'
-import { WhatsNewRoute, maybeRedirectToWhatsNew } from './WhatsNewRoute'
+import { WhatsNewRoute, maybeRedirectToWhatsNew, resolveSeenVersion, WHATSNEW_SHOWN_KEY } from './WhatsNewRoute'
 import { LocaleRoot } from './LocaleRoot'
 import { LIFECYCLE_KEY } from '../worker/lifecycle'
 
@@ -20,13 +20,14 @@ function state(over: Record<string, unknown> = {}): Record<string, unknown> {
 }
 
 function setChrome(get: () => Promise<unknown>, set = vi.fn().mockResolvedValue(undefined)): ReturnType<typeof vi.fn> {
-  g.chrome = { storage: { local: { get, set } } }
+  g.chrome = { storage: { local: { get, set } }, runtime: { getManifest: () => ({ version: '1.5.0' }) } }
   return set
 }
 
-beforeEach(() => { vi.clearAllMocks() })
+beforeEach(() => { vi.clearAllMocks(); sessionStorage.clear() })
 afterEach(() => {
   cleanup()
+  sessionStorage.clear()
   Object.defineProperty(window, 'location', { configurable: true, value: origLocation })
 })
 
@@ -66,5 +67,65 @@ describe('maybeRedirectToWhatsNew', () => {
     setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state() }))
     await expect(maybeRedirectToWhatsNew()).resolves.toBe(false)
     expect(replace).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveSeenVersion', () => {
+  const mk = (version: string, showOnUpdate = true) => ({ version, showOnUpdate, title: { vi: '', en: '' }, items: { vi: [], en: [] } })
+  const notes = [mk('1.6.0'), mk('1.5.0'), mk('1.4.0'), mk('1.3.0', false)]
+  it('rejects a future/unknown v and falls back to the newest valid note', () => {
+    expect(resolveSeenVersion('99.0.0', notes, '1.5.0')).toBe('1.5.0')
+    expect(resolveSeenVersion(null, notes, '1.5.0')).toBe('1.5.0')
+    expect(resolveSeenVersion('1.2.0', notes, '1.5.0')).toBe('1.5.0')
+  })
+  it('keeps a valid v', () => {
+    expect(resolveSeenVersion('1.5.0', notes, '1.5.0')).toBe('1.5.0')
+    expect(resolveSeenVersion('1.4.0', notes, '1.5.0')).toBe('1.4.0')
+  })
+  it('returns null when nothing qualifies', () => {
+    expect(resolveSeenVersion(null, [mk('2.0.0')], '1.5.0')).toBeNull()
+  })
+})
+
+describe('redirect guards', () => {
+  it('does not redirect again after the page was shown, even if storage.set rejects', async () => {
+    setSearch('?whatsnew=1&v=1.5.0')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const set = setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state() }), vi.fn().mockRejectedValue(new Error('x')))
+    render(<LocaleRoot><WhatsNewRoute /></LocaleRoot>)
+    await waitFor(() => expect(set).toHaveBeenCalled())
+    expect(sessionStorage.getItem(WHATSNEW_SHOWN_KEY)).toBe('1')
+    setSearch('')
+    await expect(maybeRedirectToWhatsNew()).resolves.toBe(false)
+    expect(replace).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it.each(['?doc=x', '?file=y', '?speaker=true'])('never redirects for %s', async (q) => {
+    setSearch(q)
+    setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state() }))
+    await expect(maybeRedirectToWhatsNew()).resolves.toBe(false)
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('does not redirect when autoOpenWhatsNew is false', async () => {
+    setSearch('')
+    setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state({ autoOpenWhatsNew: false }) }))
+    await expect(maybeRedirectToWhatsNew()).resolves.toBe(false)
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('onDone assigns app.html only after storage.set was called', async () => {
+    setSearch('?whatsnew=1&v=1.5.0')
+    const order: string[] = []
+    const set = vi.fn().mockImplementation(async () => { order.push('set') })
+    setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state() }), set)
+    assign.mockImplementation(() => { order.push('assign') })
+    const { container } = render(<LocaleRoot><WhatsNewRoute /></LocaleRoot>)
+    await waitFor(() => expect(set).toHaveBeenCalled())
+    const btn = container.querySelector('button')!
+    btn.click()
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('app.html'))
+    expect(order).toEqual(['set', 'assign'])
   })
 })

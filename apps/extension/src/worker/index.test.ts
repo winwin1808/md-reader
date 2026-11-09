@@ -334,7 +334,9 @@ describe('Service Worker lifecycle (18a.2)', () => {
     await installed!({ reason: 'update', previousVersion: '1.0.0' })
     expect(tabsCreate).not.toHaveBeenCalled()
     await startup!()
-    for (const c of tabsCreate.mock.calls) expect(c[0].url).not.toContain('welcome=1')
+    expect(tabsCreate).toHaveBeenCalledTimes(1)
+    expect(tabsCreate.mock.calls[0]![0].url).toContain('whatsnew=1')
+    expect(tabsCreate.mock.calls[0]![0].url).not.toContain('welcome=1')
   })
 
   it('tabs.create throwing does not block tick', async () => {
@@ -380,9 +382,6 @@ describe('Service Worker lifecycle (18a.2)', () => {
   })
 
   describe('whatsnew on startup (18c1.4)', () => {
-    const seed = (over: Record<string, unknown> = {}) => {
-      store['lifecycle'] = undefined
-    }
     const keyOf = async () => {
       const mod = await import('./lifecycle')
       return mod.LIFECYCLE_KEY
@@ -392,7 +391,6 @@ describe('Service Worker lifecycle (18a.2)', () => {
       store[key] = { lastSeenVersion: '1.4.0', pendingWhatsNew: '1.5.0', pendingWelcome: false, autoOpenWhatsNew: true, ...over }
       return key
     }
-    void seed
 
     it('opens once with pending cleared before tabs.create', async () => {
       const key = await seedState({})

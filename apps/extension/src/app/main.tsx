@@ -43,8 +43,7 @@ if (container) {
   const pair = pairParams()
   const welcome = new URLSearchParams(window.location.search).get('welcome') === '1'
   const whatsnew = new URLSearchParams(window.location.search).get('whatsnew') === '1'
-  if (!welcome && !whatsnew && !pair) void maybeRedirectToWhatsNew()
-  root.render(
+  const tree = (
     <React.StrictMode>
       <LocaleRoot>
         {welcome ? (
@@ -63,4 +62,15 @@ if (container) {
       </LocaleRoot>
     </React.StrictMode>
   )
+  if (welcome || whatsnew || pair) {
+    root.render(tree)
+  } else {
+    void (async () => {
+      const redirected = await Promise.race([
+        maybeRedirectToWhatsNew(),
+        new Promise<boolean>((r) => setTimeout(() => r(false), 300)),
+      ])
+      if (!redirected) root.render(tree)
+    })()
+  }
 }
