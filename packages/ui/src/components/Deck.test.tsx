@@ -503,3 +503,19 @@ describe('SlideContent zoom', () => {
     expect(rem).toHaveBeenCalledWith('zoom')
   })
 })
+
+describe('Deck fitWarnings', () => {
+  it('shows small-text warning only on listed slide and hides after navigating', () => {
+    const { container } = render(<Deck slides={mockSlides} fitWarnings={[{ slideId: 'slide-0', zoom: 0.5 }]} />)
+    const warn = () => container.querySelector('.deck-controls [role="status"]')
+    expect(warn()?.textContent).toBe('Chữ trên slide này nhỏ. Thêm dấu ngắt để dễ đọc hơn.')
+    expect(warn()?.className).toContain('deck-counter')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(warn()).toBeNull()
+  })
+
+  it('shows nothing without fitWarnings', () => {
+    const { container } = render(<Deck slides={mockSlides} />)
+    expect(container.querySelector('.deck-controls [role="status"]')).toBeNull()
+  })
+})

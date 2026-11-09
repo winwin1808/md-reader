@@ -28,6 +28,7 @@ export interface DeckProps {
   mode?: 'light' | 'dark' | 'system'
   presentationSettings?: PresentationSettings
   mermaid?: boolean
+  fitWarnings?: Array<{ slideId: string; zoom: number }>
 }
 
 export const SLIDE_W = 1280
@@ -292,6 +293,9 @@ export function Deck(props: DeckProps): React.JSX.Element {
 
         <div className={`deck-controls${controlsVisible ? '' : ' deck-controls-hidden'}`}>
           <span className="deck-counter">{counterText}</span>
+          {currentSlide && props.fitWarnings?.some((w) => w.slideId === currentSlide.id) && (
+            <span className="deck-counter" role="status">{t('present.smallText')}</span>
+          )}
           <button
             type="button"
             aria-label={t('present.prevSlide')} title={t('present.prevSlide')}

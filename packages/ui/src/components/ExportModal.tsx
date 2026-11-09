@@ -10,6 +10,7 @@ export type ExportFormat = 'html' | 'pdf' | 'docx' | 'slides-pdf'
 export interface ExportModalProps {
   onExport: (format: ExportFormat) => Promise<void>
   hasSlides: boolean
+  smallSlides?: number[]
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -216,6 +217,12 @@ export function ExportModal(props: ExportModalProps): React.JSX.Element {
                 )
               })}
             </div>
+
+            {hasSlides && props.smallSlides && props.smallSlides.length > 0 && (
+              <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--pencil)', lineHeight: 1.4 }}>
+                {t('present.smallTextExport', { list: props.smallSlides.join(', ') })}
+              </p>
+            )}
 
             {error && (
               <div role="alert" style={{ marginTop: '16px', fontSize: '13px', color: 'var(--ink)' }}>
