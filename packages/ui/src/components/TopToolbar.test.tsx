@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { TopToolbar, type FontScale } from './TopToolbar'
 
 function openMenu() {
-  fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Thêm/ }))
 }
 
 describe('TopToolbar', () => {
@@ -233,13 +233,49 @@ describe('TopToolbar', () => {
     })
   })
 
+  describe('badge', () => {
+    afterEach(() => {
+      delete (window as any).matchMedia
+    })
+    it('marks the more button and the menu item when an action has badge', () => {
+      ;(window as any).matchMedia = (q: string) => ({
+        matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      })
+      const { container } = render(
+        <TopToolbar {...defaultProps} actions={[{ id: 'settings', label: 'Cài đặt', icon: 'open-file', onSelect: vi.fn(), badge: true }]} />
+      )
+      expect(screen.getByRole('button', { name: /Có ghi chú phát hành chưa xem/ }).getAttribute('data-badge')).toBe('true')
+      expect(screen.queryByRole('button', { name: 'Thêm' })).toBeNull()
+      openMenu()
+      const item = screen.getByRole('menuitem', { name: /Có ghi chú phát hành chưa xem/ })
+      expect(item.getAttribute('data-badge')).toBe('true')
+      expect(container.querySelector('.tb-dot')).toBeTruthy()
+    })
+    it('shows the badge on the bar button when wide', () => {
+      render(<TopToolbar {...defaultProps} actions={[{ id: 'settings', label: 'Cài đặt', icon: 'open-file', onSelect: vi.fn(), badge: true }]} />)
+      expect(screen.getByRole('button', { name: /Cài đặt.*Có ghi chú phát hành chưa xem/ }).getAttribute('data-badge')).toBe('true')
+    })
+    it('keeps the plain name Thêm on the more button when no badge', () => {
+      ;(window as any).matchMedia = (q: string) => ({
+        matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      })
+      render(<TopToolbar {...defaultProps} actions={[{ id: 'o', label: 'Mở file…', icon: 'open-file', onSelect: vi.fn() }]} />)
+      expect(screen.getByRole('button', { name: 'Thêm' })).toBeTruthy()
+    })
+    it('has no data-badge when no action has badge', () => {
+      const { container } = render(<TopToolbar {...defaultProps} actions={[{ id: 'o', label: 'Mở file…', icon: 'open-file', onSelect: vi.fn() }]} />)
+      openMenu()
+      expect(container.querySelector('[data-badge]')).toBeNull()
+    })
+  })
+
   it('Esc closes the menu and returns focus to Thêm', () => {
     render(<TopToolbar {...defaultProps} />)
     openMenu()
     const menu = screen.getByRole('menu')
     fireEvent.keyDown(menu, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Thêm' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Thêm/ }))
   })
 
   it('menu arrow keys move focus', () => {

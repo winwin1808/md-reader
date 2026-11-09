@@ -56,7 +56,15 @@ export interface ReaderSettings {
   displayName?: string;
 }
 
+export interface SettingsLifecycleProps {
+  autoOpenWhatsNew: boolean;
+  onAutoOpenWhatsNewChange(v: boolean): void;
+  onOpenWhatsNew(): void;
+  hasUnseenNotes: boolean;
+}
+
 export interface SettingsModalProps {
+  lifecycle?: SettingsLifecycleProps;
   settings?: ReaderSettings;
   onSettingChange?: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
   // Legacy / convenience props:
@@ -89,6 +97,7 @@ const SECTIONS = [
   { id: 'slides', label: 'settings.section.slides' as const },
   { id: 'collab', label: 'settings.section.collab' as const },
   { id: 'ai', label: 'settings.section.ai' as const },
+  { id: 'updates', label: 'settings.section.updates' as const },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -448,7 +457,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
-  const sections = SECTIONS.filter((s) => s.id !== 'ai' || props.aiBridge);
+  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle));
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -913,6 +922,43 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       </div>
                     ))
                   )}
+</section>
+)}
+{props.lifecycle && (
+<section aria-labelledby="settings-h-updates" id="settings-sec-updates" data-section={"updates"} className="settings-group" ref={(el) => { sectionRefs.current['updates'] = el }}>
+<h3 id="settings-h-updates" className="settings-group-title">{t('settings.section.updates')}</h3>
+                  <ToggleRow
+                    id="settings-updates-autoOpen"
+                    title={t('settings.updates.autoOpen.title')}
+                    description={t('settings.updates.autoOpen.desc')}
+                    checked={props.lifecycle.autoOpenWhatsNew}
+                    onChange={props.lifecycle.onAutoOpenWhatsNewChange}
+                  />
+                  <div className="settings-row">
+                    <button
+                      type="button"
+                      className="settings-btn"
+                      data-unseen={props.lifecycle.hasUnseenNotes ? 'true' : undefined}
+                      onClick={props.lifecycle.onOpenWhatsNew}
+                    >
+                      {t('settings.updates.open')}
+                      {props.lifecycle.hasUnseenNotes && (
+                        <>
+                          <span
+                            className="settings-dot"
+                            aria-hidden="true"
+                            style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginLeft: 6, background: 'var(--accent)' }}
+                          />
+                          <span
+                            className="sr-only"
+                            style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+                          >
+                            {t('settings.updates.unseen')}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
 </section>
 )}
           </div>

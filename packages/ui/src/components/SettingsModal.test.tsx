@@ -48,6 +48,46 @@ describe('SettingsModal', () => {
     })
   })
 
+  describe('updates section (lifecycle)', () => {
+    const lc = (o: any = {}) => ({
+      autoOpenWhatsNew: true,
+      onAutoOpenWhatsNewChange: vi.fn(),
+      onOpenWhatsNew: vi.fn(),
+      hasUnseenNotes: false,
+      ...o,
+    })
+    it('is absent without lifecycle', () => {
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} />)
+      expect(document.getElementById('settings-sec-updates')).toBeNull()
+    })
+    it('renders the toggle and fires change', () => {
+      const l = lc()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={l} />)
+      expect(document.getElementById('settings-sec-updates')).not.toBeNull()
+      const box = within(section('Cập nhật')).getByLabelText('Tự mở trang Có gì mới sau khi cập nhật') as HTMLInputElement
+      expect(box.checked).toBe(true)
+      fireEvent.click(box)
+      expect(l.onAutoOpenWhatsNewChange).toHaveBeenCalledWith(false)
+    })
+    it('open button fires onOpenWhatsNew', () => {
+      const l = lc()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={l} />)
+      fireEvent.click(within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ }))
+      expect(l.onOpenWhatsNew).toHaveBeenCalled()
+    })
+    it('unseen marks the button with text, else not', () => {
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={lc({ hasUnseenNotes: true })} />)
+      const btn = within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ })
+      expect(btn.getAttribute('data-unseen')).toBe('true')
+      expect(within(btn).getByText('Có ghi chú phát hành chưa xem')).toBeTruthy()
+      cleanup()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={lc()} />)
+      const b2 = within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ })
+      expect(b2.getAttribute('data-unseen')).toBeNull()
+      expect(screen.queryByText('Có ghi chú phát hành chưa xem')).toBeNull()
+    })
+  })
+
   it('opens modal, renders elements, and interacts', () => {
     const onAutoFormatChange = vi.fn();
     render(
