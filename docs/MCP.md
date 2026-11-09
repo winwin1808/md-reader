@@ -87,6 +87,9 @@ Biến môi trường tuỳ chọn:
 - "Đọc tài liệu 'Kế hoạch Q4' trong MD Reader, sửa lại phần rủi ro cho rõ hơn."
 - "Liệt kê các tài liệu tôi đã mở gần đây."
 - "Tạo link chỉ xem, hết hạn sau 7 ngày cho tài liệu này."
+- "Biến tài liệu này thành bộ slide trình chiếu, mỗi ý chính một slide."
+
+**Viết Markdown cho trình chiếu.** MD Reader tách slide theo dòng `---` (nếu tài liệu có) hoặc theo đề mục. Muốn ngắt slide ở một chỗ cụ thể mà không thêm đường kẻ hay đề mục, AI đặt một dòng riêng `<!-- slide-break -->`, có dòng trống trước và sau; dòng này không hiện khi đọc và bị bỏ khi xuất Word. Ghi chú diễn giả viết bằng `<!-- note: ... -->`. Slide quá dài vẫn được tự chia khi trình chiếu và xuất PDF, nên không cần ngắt thủ công chỉ để tránh tràn.
 
 ## 7. Giới hạn và xử lý sự cố
 
