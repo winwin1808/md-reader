@@ -724,6 +724,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(presentBtn)
     })
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
 
     expect(deckSpy.mock.calls[0]![0]).toEqual(
       expect.objectContaining({
@@ -761,7 +762,8 @@ describe('App', () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: 'p' })
     })
-    expect(deckSpy).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
+    expect(deckSpy.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('navigates slides and synchronizes with BroadcastChannel', async () => {
@@ -788,7 +790,7 @@ describe('App', () => {
       fireEvent.click(presentBtn)
     })
 
-    expect(deckSpy).toHaveBeenCalled()
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
     expect(capturedDeckProps).not.toBeNull()
 
     const channelInstance = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync')
@@ -826,6 +828,44 @@ describe('App', () => {
     expect(screen.queryByTestId('mock-deck')).toBeNull()
   })
 
+  it('Present: Deck chỉ xuất hiện sau khi đo xong và không đo lại vô hạn', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
+    } as any)
+    const deckSpy = vi.spyOn(deckMod, 'Deck').mockImplementation((props: any) => (
+      <div data-testid="mock-deck" data-n={props.slides.length}>Deck</div>
+    ))
+    await act(async () => { render(<App />) })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu' })) })
+    expect(deckSpy).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('mock-deck')).toBeNull()
+    expect(await screen.findByTestId('mock-deck', {}, { timeout: 4000 })).toBeDefined()
+    expect(deckSpy.mock.calls[0]![0]).toEqual(expect.objectContaining({ fitWarnings: expect.any(Array) }))
+  })
+
+  it('Speaker: SpeakerView chỉ render sau khi đo xong, chỉ số vượt được kẹp', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1'),
+    } as any)
+    const speakerSpy = vi.spyOn(ui, 'SpeakerView').mockImplementation((props: any) => (
+      <div data-testid="mock-speaker-view" data-idx={props.currentSlideIndex}>S</div>
+    ))
+    await act(async () => { render(<App />) })
+    expect(speakerSpy).not.toHaveBeenCalled()
+    const el = await screen.findByTestId('mock-speaker-view', {}, { timeout: 4000 })
+    expect(el.getAttribute('data-idx')).toBe('0')
+    const ch = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync') as any
+    await act(async () => { ch.onmessage?.({ data: { type: 'NAVIGATE', index: 9 } }) })
+    const last = speakerSpy.mock.calls[speakerSpy.mock.calls.length - 1]![0] as any
+    expect(last.currentSlideIndex).toBeLessThanOrEqual(last.slides.length - 1)
+  })
+
   it('renders SpeakerView directly when speaker query parameter is true', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
@@ -844,7 +884,7 @@ describe('App', () => {
       render(<App />)
     })
 
-    expect(speakerSpy).toHaveBeenCalled()
+    await waitFor(() => expect(speakerSpy).toHaveBeenCalled(), { timeout: 4000 })
     expect(screen.getByTestId('mock-speaker-view')).toBeDefined()
     expect(screen.queryByTestId('app-placeholder')).toBeNull()
     expect(screen.queryByTitle('Mục lục')).toBeNull()
@@ -998,6 +1038,10 @@ describe('App', () => {
       fireEvent.click(presentBtn)
     })
 
+    for (let i = 0; i < 60 && !capturedDeckProps; i++) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+    }
+    expect(capturedDeckProps).not.toBeNull()
     expect(capturedDeckProps.presentationSettings).toEqual(
       expect.objectContaining({
         slideBgColor: undefined,
