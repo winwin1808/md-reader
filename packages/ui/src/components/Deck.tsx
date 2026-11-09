@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
 import { useT } from '../i18n'
 import type { Slide } from '@md-reader/core'
@@ -49,8 +49,14 @@ export function slideCssVars(s?: PresentationSettings): React.CSSProperties {
   return vars as React.CSSProperties
 }
 
-export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
+export function SlideContent({ html, mermaid, zoom }: { html: string; mermaid: boolean; zoom?: number }): React.JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof zoom === 'number' && zoom < 1) el.style.setProperty('zoom', String(zoom))
+    else el.style.removeProperty('zoom')
+  }, [zoom, html])
   const theme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
   useEffect(() => {
     if (!mermaid) return
@@ -280,7 +286,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
                 aria-hidden="true"
               />
             )}
-            <SlideContent html={currentSlide?.html ?? ''} mermaid={props.mermaid !== false} />
+            <SlideContent html={currentSlide?.html ?? ''} mermaid={props.mermaid !== false} zoom={currentSlide?.zoom} />
           </div>
         </div>
 
