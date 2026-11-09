@@ -190,6 +190,15 @@ describe('deck-print.css', () => {
     expect(block).toMatch(/line-height:\s*1\.45/)
     expect(content).not.toContain('100vh')
   })
+
+  it('hides the app frame but not the deck container when printing slides', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    const media = content.slice(content.indexOf('@media print'))
+    const rule = media.match(/([^{}]*body\.print-slides \.app-container[^{}]*)\{([^}]*)\}/)
+    expect(rule).not.toBeNull()
+    expect(rule![2]).toMatch(/display:\s*none\s*!important/)
+    expect(rule![1]).not.toContain('.deck-print-container')
+  })
 })
 
 describe('getDefaultExportCss math rules', () => {

@@ -21,6 +21,11 @@
     display: none !important;
   }
 
+  body.print-slides .app-container,
+  body.print-slides .deck-print-busy {
+    display: none !important;
+  }
+
   body.print-slides .deck-print-container {
     display: block !important;
     width: 1280px;
