@@ -11,6 +11,8 @@ export const LIMITS = {
   assetsPerIpPerDay: 100,
   assetBytesPerIpPerDay: 200 * 1024 * 1024,
   reportsPerIpPerDay: 10,
+  feedbackPerIpPerDay: 5,
+  feedbackGlobalPerDay: 500,
   assetBytesGlobalStored: 3 * 1024 ** 3,
   assetBytesGlobalPerDay: 1024 ** 3,
 } as const
@@ -19,7 +21,7 @@ export const LIMITS = {
 export const ROOM_TTL_MS = 90 * 86_400_000
 export const CLEANUP_MAX_ROOMS = 100
 
-export type LimitKind = 'room' | 'asset' | 'report'
+export type LimitKind = 'room' | 'asset' | 'report' | 'feedback'
 export interface LimitSubject {
   installHash: string | null
   ipHash: string
@@ -110,6 +112,11 @@ async function decide(
     if ((await c.installBytes(owner)) + (info.bytes ?? 0) > LIMITS.assetBytesPerInstall) return { error: 'QUOTA_EXCEEDED' }
     return null
   }
+  if (kind === 'feedback') {
+    if ((await c.count('global', '*', 'feedback')) >= LIMITS.feedbackGlobalPerDay) return rate()
+    if ((await c.count('ip', s.ipHash, 'feedback')) >= LIMITS.feedbackPerIpPerDay) return rate()
+    return null
+  }
   if ((await c.count('ip', s.ipHash, 'report')) >= LIMITS.reportsPerIpPerDay) return rate()
   return null
 }
@@ -179,7 +186,10 @@ export class MemoryLimitStore implements LimitStore {
         this.bump('install', r.install, 'asset')
         r.bytes += info.bytes ?? 0
       }
-    } else {
+    } else if (kind === 'feedback') {
+      this.bump('global', '*', 'feedback')
+      this.bump('ip', s.ipHash, 'feedback')
+    } else if (kind === 'report') {
       this.bump('ip', s.ipHash, 'report')
     }
   }
@@ -273,7 +283,9 @@ export class D1LimitStore implements LimitStore {
           this.db.prepare('UPDATE room_installs SET bytes = bytes + ? WHERE room_id=?').bind(info.bytes ?? 0, info.roomId),
         )
       }
-    } else {
+    } else if (kind === 'feedback') {
+      stmts.push(this.bump('global', '*', 'feedback'), this.bump('ip', s.ipHash, 'feedback'))
+    } else if (kind === 'report') {
       stmts.push(this.bump('ip', s.ipHash, 'report'))
     }
     if (stmts.length) await this.db.batch(stmts)

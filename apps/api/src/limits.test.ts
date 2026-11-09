@@ -278,3 +278,39 @@ describe('14b: totalAssetBytes cache', () => {
     expect(sums).toBe(1)
   })
 })
+
+describe('18d1.2: feedback limits', () => {
+  it('5 per ip per day, ignores installHash, other ip free', async () => {
+    const st = new MemoryLimitStore(() => 1000)
+    for (let i = 0; i < LIMITS.feedbackPerIpPerDay; i++) await st.record('feedback', S, { roomId: '-' })
+    expect((await st.check('feedback', S))?.error).toBe('RATE_LIMITED')
+    expect((await st.check('feedback', { installHash: 'other-install', ipHash: 'ip1' }))?.error).toBe('RATE_LIMITED')
+    expect((await st.check('feedback', { installHash: null, ipHash: 'ip1' }))?.error).toBe('RATE_LIMITED')
+    expect(await st.check('feedback', { installHash: 'i1', ipHash: 'ip2' })).toBeNull()
+  })
+  it('500 global per day', async () => {
+    const st = new MemoryLimitStore(() => 1000)
+    for (let i = 0; i < LIMITS.feedbackGlobalPerDay; i++) await st.record('feedback', { installHash: null, ipHash: `ip${i}` }, { roomId: '-' })
+    expect((await st.check('feedback', { installHash: null, ipHash: 'fresh' }))?.error).toBe('RATE_LIMITED')
+  })
+  it('independent from report counts', async () => {
+    const st = new MemoryLimitStore(() => 1000)
+    for (let i = 0; i < LIMITS.feedbackPerIpPerDay; i++) await st.record('feedback', S, { roomId: '-' })
+    expect(await st.check('report', S)).toBeNull()
+    const st2 = new MemoryLimitStore(() => 1000)
+    for (let i = 0; i < LIMITS.reportsPerIpPerDay; i++) await st2.record('report', S, { roomId: 'r' })
+    expect(await st2.check('feedback', S)).toBeNull()
+  })
+  it('D1 record emits global + ip upserts with kind feedback', async () => {
+    const calls: unknown[][] = []
+    const db = {
+      prepare: () => ({ bind: (...a: unknown[]) => { calls.push(a); return { a } } }),
+      batch: async () => [],
+    } as unknown as D1Database
+    await new D1LimitStore(db, () => 1000).record('feedback', S, { roomId: '-' })
+    expect(calls).toEqual([
+      ['global', '*', 0, 'feedback', 1],
+      ['ip', 'ip1', 0, 'feedback', 1],
+    ])
+  })
+})
