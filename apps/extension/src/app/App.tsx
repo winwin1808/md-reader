@@ -616,18 +616,29 @@ export function App(): React.JSX.Element {
   const [printHtml, setPrintHtml] = useState<{ id: string; html: string; zoom?: number }[] | null>(null)
   const [preparingSlides, setPreparingSlides] = useState(false)
 
-  const waitSlidesReady = useCallback(async (): Promise<void> => {
+  const waitSlidesReady = useCallback(async (signal: AbortSignal): Promise<void> => {
+    if (signal.aborted) return
     if (!slidesReadyRef.current) {
-      await new Promise<void>((resolve) => { slideWaitersRef.current.push(resolve) })
+      await new Promise<void>((resolve) => {
+        const waiter = () => { signal.removeEventListener('abort', onAbort); resolve() }
+        const onAbort = () => {
+          slideWaitersRef.current = slideWaitersRef.current.filter((w) => w !== waiter)
+          resolve()
+        }
+        slideWaitersRef.current.push(waiter)
+        signal.addEventListener('abort', onAbort, { once: true })
+      })
     }
+    if (signal.aborted) return
     if (readerSettings.enableMermaid !== false) {
       try {
         const out = await Promise.all(
           slidesRef.current.map(async (sl) => ({ id: sl.id, zoom: sl.zoom, html: await inlineMermaid(sl.html, 'default') })),
         )
+        if (signal.aborted) return
         flushSync(() => setPrintHtml(out))
       } catch {
-        setPrintHtml(null)
+        if (!signal.aborted) setPrintHtml(null)
       }
     }
   }, [readerSettings.enableMermaid])
@@ -647,7 +658,7 @@ export function App(): React.JSX.Element {
     }
     if (format === 'slides-pdf') {
       setPrintHtml(null)
-      setPreparingSlides(true)
+      if (readerSettings.enableMermaid !== false) setPreparingSlides(true)
       try {
         await baseExportAs(format)
       } finally {

@@ -45,7 +45,7 @@ describe('useExport html', () => {
 describe('useExport slides-pdf waits for slides', () => {
   afterEach(() => { vi.useRealTimers(); printSlidesMock.mockClear() })
 
-  function setupSlides(waitSlidesReady?: () => Promise<void>) {
+  function setupSlides(waitSlidesReady?: (signal: AbortSignal) => Promise<void>) {
     return renderHook(() =>
       useExport({ html: '', title: 't', parseResult: {} as never, waitSlidesReady }),
     )
@@ -79,6 +79,31 @@ describe('useExport slides-pdf waits for slides', () => {
     expect(printSlidesMock).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
     await p
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits 7000ms (not 5000ms), aborts the signal and warns on timeout', async () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let sig!: AbortSignal
+    const { result } = setupSlides((s) => { sig = s; return new Promise<void>(() => {}) })
+    const p = result.current.exportAs('slides-pdf')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(printSlidesMock).not.toHaveBeenCalled()
+    expect(sig.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(2000)
+    await p
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
+    expect(sig.aborted).toBe(true)
+    expect(warn).toHaveBeenCalledWith('[md-reader] slides not ready, printing as-is')
+    warn.mockRestore()
+  })
+
+  it('does not abort the signal when waitSlidesReady resolves in time', async () => {
+    let sig!: AbortSignal
+    const { result } = setupSlides(async (s) => { sig = s })
+    await result.current.exportAs('slides-pdf')
+    expect(sig.aborted).toBe(false)
     expect(printSlidesMock).toHaveBeenCalledTimes(1)
   })
 
