@@ -87,6 +87,9 @@ Optional environment variables:
 - "Read the 'Q4 plan' document in MD Reader and rewrite the risks section more clearly."
 - "List the documents I opened recently."
 - "Create a view-only link that expires in 7 days for this document."
+- "Turn this document into a slide deck with one main point per slide."
+
+**Writing Markdown for presenting.** MD Reader splits slides on `---` lines (when the document has them) or on headings. To break a slide at a specific place without adding a rule or a heading, the AI puts `<!-- slide-break -->` on its own line, with a blank line before and after; the line is invisible when reading and dropped from Word export. Speaker notes are written as `<!-- note: ... -->`. Slides that are too long are still split automatically when presenting and exporting to PDF, so manual breaks are not needed just to avoid overflow.
 
 ## 7. Limits and troubleshooting
 
