@@ -5,6 +5,8 @@ import type { ExportFormat } from '@md-reader/ui'
 import { exportToHtml } from '@md-reader/core'
 import type { ParseResult } from '@md-reader/core'
 
+export const SLIDES_READY_TIMEOUT_MS = 5000
+
 function download(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -29,6 +31,7 @@ export function useExport(args: {
   title: string
   parseResult: ParseResult
   resolveImage?: (src: string) => string | Promise<string>
+  waitSlidesReady?: () => Promise<void>
 }): {
   exportAs(format: ExportFormat): Promise<void>
   isPrintingSlides: boolean
@@ -45,6 +48,19 @@ export function useExport(args: {
         flushSync(() => {
           setIsPrintingSlides(true)
         })
+        if (args.waitSlidesReady) {
+          let timer: ReturnType<typeof setTimeout> | undefined
+          const timeout = new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, SLIDES_READY_TIMEOUT_MS)
+          })
+          try {
+            await Promise.race([args.waitSlidesReady().catch(() => {}), timeout])
+          } catch {
+            // coi như xong
+          } finally {
+            clearTimeout(timer)
+          }
+        }
         printSlides()
         const cleanup = () => {
           setIsPrintingSlides(false)

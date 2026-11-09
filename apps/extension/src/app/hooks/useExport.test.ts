@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useExport } from './useExport'
+import { useExport, SLIDES_READY_TIMEOUT_MS } from './useExport'
+
+const printSlidesMock = vi.hoisted(() => vi.fn())
+vi.mock('@md-reader/ui', async (orig) => ({
+  ...(await orig<typeof import('@md-reader/ui')>()),
+  printSlides: printSlidesMock,
+}))
 
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
@@ -33,5 +39,58 @@ describe('useExport html', () => {
     const { result, fetchMock } = setup()
     await result.current.exportAs('html')
     expect(fetchMock).toHaveBeenCalledWith('img/a.png')
+  })
+})
+
+describe('useExport slides-pdf waits for slides', () => {
+  afterEach(() => { vi.useRealTimers(); printSlidesMock.mockClear() })
+
+  function setupSlides(waitSlidesReady?: () => Promise<void>) {
+    return renderHook(() =>
+      useExport({ html: '', title: 't', parseResult: {} as never, waitSlidesReady }),
+    )
+  }
+
+  it('prints only after waitSlidesReady resolves, with isPrintingSlides true before', async () => {
+    let resolve!: () => void
+    let printingAtCall: boolean | null = null
+    let hookRef: { current: { isPrintingSlides: boolean } } | null = null
+    const wait = vi.fn(() => {
+      printingAtCall = hookRef!.current.isPrintingSlides
+      return new Promise<void>((r) => { resolve = r })
+    })
+    const { result } = setupSlides(wait)
+    hookRef = result
+    let p!: Promise<void>
+    const { act } = await import('@testing-library/react')
+    await act(async () => { p = result.current.exportAs('slides-pdf') })
+    expect(wait).toHaveBeenCalled()
+    expect(printingAtCall).toBe(true)
+    expect(printSlidesMock).not.toHaveBeenCalled()
+    await act(async () => { resolve(); await p })
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('prints after 5000ms when waitSlidesReady never resolves', async () => {
+    vi.useFakeTimers()
+    const { result } = setupSlides(() => new Promise<void>(() => {}))
+    const p = result.current.exportAs('slides-pdf')
+    await vi.advanceTimersByTimeAsync(SLIDES_READY_TIMEOUT_MS - 1)
+    expect(printSlidesMock).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    await p
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('still prints when waitSlidesReady rejects', async () => {
+    const { result } = setupSlides(() => Promise.reject(new Error('x')))
+    await result.current.exportAs('slides-pdf')
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('still prints without waitSlidesReady', async () => {
+    const { result } = setupSlides()
+    await result.current.exportAs('slides-pdf')
+    expect(printSlidesMock).toHaveBeenCalledTimes(1)
   })
 })
