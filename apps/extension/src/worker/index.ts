@@ -5,6 +5,8 @@ import { createRecord, writeDocText, deleteRecord, listRecent, getRecord, docQue
 import {
   BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
 } from './bridge-storage'
+import { LIFECYCLE_KEY, parseLifecycleState, decideLifecycle, uninstallUrl } from './lifecycle'
+import { RELEASE_NOTES } from '../shared/release-notes'
 import { isMarkdownUrl, isGithubBlobMarkdownUrl, isStaleCacheEntry, makeCacheEntry, isExpiryActive, setExpiry } from '../shared/md-url'
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -172,13 +174,52 @@ async function tick(): Promise<void> {
   }
 }
 
-async function onBoot(): Promise<void> {
+let chain: Promise<unknown> = Promise.resolve()
+function enqueue(fn: () => Promise<void>): Promise<void> {
+  const next = chain.then(fn, fn)
+  chain = next.catch(() => undefined)
+  return next
+}
+
+type LifecycleEvent =
+  | { type: 'installed'; reason?: string; previousVersion?: string }
+  | { type: 'startup' }
+
+async function runLifecycle(ev: LifecycleEvent): Promise<void> {
+  try {
+    const version = chrome.runtime.getManifest().version
+    const raw = await chrome.storage.local.get(LIFECYCLE_KEY)
+    const s = parseLifecycleState(raw?.[LIFECYCLE_KEY])
+    const { next } = decideLifecycle(ev as never, s, RELEASE_NOTES, version, Date.now())
+    await chrome.storage.local.set({ [LIFECYCLE_KEY]: next })
+    try {
+      chrome.runtime.setUninstallURL?.(uninstallUrl(version, chrome.i18n?.getUILanguage?.() ?? 'en'))
+    } catch (err) {
+      console.warn('setUninstallURL failed:', err)
+    }
+  } catch (err) {
+    console.warn('Lifecycle failed:', err)
+  }
+}
+
+async function afterLifecycle(): Promise<void> {
   await purgeStaleCache()
   await tick()
 }
 
-chrome.runtime?.onStartup?.addListener(onBoot)
-chrome.runtime?.onInstalled?.addListener(onBoot)
+async function onInstalled(details?: { reason?: string; previousVersion?: string }): Promise<void> {
+  const { reason, previousVersion } = details ?? {}
+  await runLifecycle({ type: 'installed', reason, previousVersion })
+  await afterLifecycle()
+}
+
+async function onStartup(): Promise<void> {
+  await runLifecycle({ type: 'startup' })
+  await afterLifecycle()
+}
+
+chrome.runtime?.onStartup?.addListener(() => enqueue(() => onStartup()))
+chrome.runtime?.onInstalled?.addListener((details) => enqueue(() => onInstalled(details)))
 
 chrome.alarms?.onAlarm?.addListener((a) => {
   if (a.name === ALARM) void tick()

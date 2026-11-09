@@ -261,3 +261,91 @@ describe('Service Worker revokedUntil expiry (15g)', () => {
     expect([...expiryMap!.keys()]).toEqual(['k2'])
   })
 })
+
+describe('Service Worker lifecycle (18a.2)', () => {
+  let installed: ((d?: any) => Promise<void>) | null = null
+  let startup: (() => Promise<void>) | null = null
+  let store: Record<string, any>
+  let tabsCreate: ReturnType<typeof vi.fn>
+  let setUninstallURL: ReturnType<typeof vi.fn>
+  let removeMock: ReturnType<typeof vi.fn>
+  let getCalls: number
+
+  beforeEach(async () => {
+    vi.resetModules()
+    installed = null
+    startup = null
+    store = {}
+    getCalls = 0
+    tabsCreate = vi.fn().mockResolvedValue(undefined)
+    setUninstallURL = vi.fn()
+    removeMock = vi.fn().mockResolvedValue(undefined)
+    globalThis.chrome = {
+      runtime: {
+        id: 'x',
+        getURL: (p: string) => `chrome-extension://x/${p}`,
+        getManifest: () => ({ version: '9.8.7' }),
+        setUninstallURL,
+        onStartup: { addListener: vi.fn((cb) => { startup = cb }) },
+        onInstalled: { addListener: vi.fn((cb) => { installed = cb }) },
+        onMessage: { addListener: vi.fn() },
+      },
+      i18n: { getUILanguage: () => 'vi' },
+      action: { onClicked: { addListener: vi.fn() } },
+      tabs: { create: tabsCreate, update: vi.fn() },
+      storage: {
+        sync: { get: vi.fn().mockResolvedValue({}) },
+        local: {
+          get: vi.fn(async (k: any) => {
+            getCalls++
+            await Promise.resolve()
+            if (k === null) return { file_content_old: { text: 'x', ts: 0 } }
+            return typeof k === 'string' ? (k in store ? { [k]: store[k] } : {}) : { ...store }
+          }),
+          set: vi.fn(async (o: any) => { await Promise.resolve(); Object.assign(store, o) }),
+          remove: removeMock,
+        },
+      },
+    } as any
+    await import('./index')
+  })
+
+  afterEach(() => {
+    delete (globalThis as any).chrome
+  })
+
+  it('install records pendingWelcome and opens no tab', async () => {
+    await installed!({ reason: 'install' })
+    const key = Object.keys(store).find((k) => k !== undefined)
+    expect(key).toBeDefined()
+    expect(store[key!].pendingWelcome).toBe(true)
+    expect(tabsCreate).not.toHaveBeenCalled()
+  })
+
+  it('sets uninstall URL with manifest version on install and startup', async () => {
+    await installed!({ reason: 'install' })
+    expect(setUninstallURL).toHaveBeenLastCalledWith(expect.stringContaining('v=9.8.7'))
+    setUninstallURL.mockClear()
+    await startup!()
+    expect(setUninstallURL).toHaveBeenLastCalledWith(expect.stringContaining('v=9.8.7'))
+  })
+
+  it('setUninstallURL throwing does not block cache purge', async () => {
+    setUninstallURL.mockImplementation(() => { throw new Error('boom') })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await installed!({ reason: 'install' })
+    expect(removeMock).toHaveBeenCalledWith(['file_content_old'])
+    warn.mockRestore()
+  })
+
+  it('back-to-back installed then startup run sequentially', async () => {
+    const p1 = installed!({ reason: 'install' })
+    const p2 = startup!()
+    await Promise.all([p1, p2])
+    const sets = (chrome.storage.local.set as any).mock.calls.map((c: any[]) => c[0])
+    expect(sets.length).toBe(2)
+    const key = Object.keys(sets[0])[0]!
+    // second write was computed from the first's state: pendingWelcome survives startup
+    expect(sets[1][key].pendingWelcome).toBe(true)
+  })
+})
