@@ -307,8 +307,24 @@ describe('slideBreak action', () => {
     const cursor = code.indexOf('line2')
     const r = applyFormat(code, cursor, cursor, 'slideBreak')
     const fenceStart = code.indexOf('```')
-    const fenceEnd = code.lastIndexOf('```') + 3
-    const idx = r.newText.indexOf('<!-- slide-break -->')
-    if (idx !== -1) expect(idx <= fenceStart || idx >= fenceEnd).toBe(true)
+    const marker = '<!-- slide-break -->'
+    const idx = r.newText.indexOf(marker)
+    expect(idx).toBe(fenceStart)
+    expect(r.newText.indexOf(marker, idx + 1)).toBe(-1)
+    const inserted = r.newText.length - code.length
+    expect(r.newText.slice(0, idx) + r.newText.slice(idx + inserted)).toBe(code)
+    expect(r.newText.slice(idx + inserted)).toMatch(/^```/)
+  })
+
+  it('selection straddling the insertion point shifts only the part after it', () => {
+    // at is derived from selectionStart, so the straddle is a backward selection:
+    // start (the anchor used for `at`) after it, end before it.
+    const start = doc.indexOf('hai')
+    const end = 2
+    const r = applyFormat(doc, start, end, 'slideBreak')
+    const n = r.newText.length - doc.length
+    expect(n).toBeGreaterThan(0)
+    expect(r.newSelectionStart).toBe(start + n)
+    expect(r.newSelectionEnd).toBe(end)
   })
 })
