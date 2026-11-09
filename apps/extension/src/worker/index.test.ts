@@ -330,10 +330,11 @@ describe('Service Worker lifecycle (18a.2)', () => {
     expect(order.indexOf('set:false')).toBeLessThan(order.indexOf('create'))
   })
 
-  it('update and startup do not open a tab', async () => {
+  it('update does not open a tab; startup afterwards opens only whatsnew, never welcome', async () => {
     await installed!({ reason: 'update', previousVersion: '1.0.0' })
-    await startup!()
     expect(tabsCreate).not.toHaveBeenCalled()
+    await startup!()
+    for (const c of tabsCreate.mock.calls) expect(c[0].url).not.toContain('welcome=1')
   })
 
   it('tabs.create throwing does not block tick', async () => {
@@ -376,5 +377,53 @@ describe('Service Worker lifecycle (18a.2)', () => {
     const key = Object.keys(sets[0])[0]!
     // second write was computed from the first's state: pendingWelcome stays consumed after startup
     expect(sets[1][key].pendingWelcome).toBe(false)
+  })
+
+  describe('whatsnew on startup (18c1.4)', () => {
+    const seed = (over: Record<string, unknown> = {}) => {
+      store['lifecycle'] = undefined
+    }
+    const keyOf = async () => {
+      const mod = await import('./lifecycle')
+      return mod.LIFECYCLE_KEY
+    }
+    const seedState = async (over: Record<string, unknown>) => {
+      const key = await keyOf()
+      store[key] = { lastSeenVersion: '1.4.0', pendingWhatsNew: '1.5.0', pendingWelcome: false, autoOpenWhatsNew: true, ...over }
+      return key
+    }
+    void seed
+
+    it('opens once with pending cleared before tabs.create', async () => {
+      const key = await seedState({})
+      const order: string[] = []
+      ;(chrome.storage.local.set as any).mockImplementation(async (o: any) => {
+        order.push('set:' + String(o[key]?.pendingWhatsNew))
+        Object.assign(store, o)
+      })
+      tabsCreate.mockImplementation(async () => { order.push('create') })
+      await startup!()
+      expect(tabsCreate).toHaveBeenCalledTimes(1)
+      expect(tabsCreate.mock.calls[0]![0].url.endsWith('app.html?whatsnew=1&v=1.5.0')).toBe(true)
+      expect(order.indexOf('set:null')).toBeGreaterThanOrEqual(0)
+      expect(order.indexOf('set:null')).toBeLessThan(order.indexOf('create'))
+      await startup!()
+      expect(tabsCreate).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not open when autoOpenWhatsNew is false', async () => {
+      await seedState({ autoOpenWhatsNew: false })
+      await startup!()
+      expect(tabsCreate).not.toHaveBeenCalled()
+    })
+
+    it('tabs.create throwing does not block tick/cache purge', async () => {
+      await seedState({})
+      tabsCreate.mockRejectedValue(new Error('boom'))
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await expect(startup!()).resolves.toBeUndefined()
+      expect(removeMock).toHaveBeenCalledWith(['file_content_old'])
+      warn.mockRestore()
+    })
   })
 })

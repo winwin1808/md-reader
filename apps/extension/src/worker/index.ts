@@ -198,6 +198,16 @@ async function runLifecycle(ev: LifecycleEvent): Promise<void> {
         console.warn('Opening welcome page failed:', err)
       }
     }
+    if (open.includes('whatsnew') && s.pendingWhatsNew !== null) {
+      // v = pendingWhatsNew of the pre-decide state (decideLifecycle already moved it on)
+      try {
+        await chrome.tabs?.create?.({
+          url: chrome.runtime.getURL('app.html?whatsnew=1&v=' + encodeURIComponent(s.pendingWhatsNew)),
+        })
+      } catch (err) {
+        console.warn('Opening whatsnew page failed:', err)
+      }
+    }
     try {
       chrome.runtime.setUninstallURL?.(uninstallUrl(version, chrome.i18n?.getUILanguage?.() ?? 'en'))
     } catch (err) {
