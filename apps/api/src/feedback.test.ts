@@ -9,6 +9,28 @@ const fb = (o: Partial<FeedbackInput> = {}): FeedbackInput => ({
   kind: 'bug', reason: null, message: 'm', email: null, version: null, browser: null, locale: null, ...o,
 })
 
+describe('18d2.1 hardening', () => {
+  it('rejects whitespace/control chars in email', () => {
+    expect(parseFeedback(ok({ email: 'a@b.c\nBcc: x' }))).toBeNull()
+    expect(parseFeedback(ok({ email: 'a @b.c' }))).toBeNull()
+    expect(parseFeedback(ok({ email: 'a@b.c\u0007' }))).toBeNull()
+  })
+  it('browser: no split surrogate, <= 64 code points, control chars dropped', () => {
+    const b = 'a'.repeat(63) + '😀' + 'zzz'
+    const r = parseFeedback(ok({ browser: b }))!
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(r.browser!)).toBe(false)
+    expect(Array.from(r.browser!).length).toBeLessThanOrEqual(64)
+    expect(parseFeedback(ok({ browser: 'Chr\nome' }))!.browser).toBe('Chrome')
+    expect(parseFeedback(ok({ version: '1.\n2' }))!.version).toBe('1.2')
+  })
+  it('boundary sizes valid', () => {
+    expect(parseFeedback(ok({ message: 'x'.repeat(2000) }))).not.toBeNull()
+    const email = 'a'.repeat(252) + '@b'
+    expect(email.length).toBe(254)
+    expect(parseFeedback(ok({ email }))?.email).toBe(email)
+  })
+})
+
 describe('parseFeedback', () => {
   it('accepts each kind', () => {
     expect(parseFeedback({ kind: 'uninstall', reason: 'bugs' })).toEqual(fb({ kind: 'uninstall', reason: 'bugs', message: '' }))

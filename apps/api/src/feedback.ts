@@ -21,7 +21,7 @@ const has = <T extends readonly string[]>(list: T, v: unknown): v is T[number] =
 
 function short(v: unknown): string | null {
   if (typeof v !== 'string') return null
-  const s = v.slice(0, 64)
+  const s = Array.from(v.replace(/[\u0000-\u001f\u007f]/g, '')).slice(0, 64).join('')
   return s === '' ? null : s
 }
 
@@ -53,7 +53,7 @@ export function parseFeedback(body: unknown): FeedbackInput | null {
     if (typeof b.email !== 'string') return null
     const e = b.email.trim()
     if (e !== '') {
-      if (!e.includes('@') || e.length > 254) return null
+      if (!e.includes('@') || e.length > 254 || /[\s\u0000-\u001f\u007f]/.test(e)) return null
       email = e
     }
   }

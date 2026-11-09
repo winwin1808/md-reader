@@ -165,7 +165,14 @@ export async function runCleanup(
     }
   }
   const usage = d.limits ? await d.limits.pruneUsage(dayOf(now) - 2) : 0
-  const feedback = d.feedback ? await d.feedback.prune(now - FEEDBACK_TTL_MS) : 0
+  let feedback = 0
+  if (d.feedback) {
+    try {
+      feedback = await d.feedback.prune(now - FEEDBACK_TTL_MS)
+    } catch (e) {
+      console.warn('cleanup feedback', e)
+    }
+  }
   console.log('cleanup', { rooms, failed, usage, feedback })
   return { rooms, failed, usage, feedback }
 }
