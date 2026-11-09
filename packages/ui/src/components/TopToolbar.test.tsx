@@ -244,7 +244,8 @@ describe('TopToolbar', () => {
       const { container } = render(
         <TopToolbar {...defaultProps} actions={[{ id: 'settings', label: 'Cài đặt', icon: 'open-file', onSelect: vi.fn(), badge: true }]} />
       )
-      expect(screen.getByRole('button', { name: 'Thêm' }).getAttribute('data-badge')).toBe('true')
+      expect(screen.getByRole('button', { name: /Có ghi chú phát hành chưa xem/ }).getAttribute('data-badge')).toBe('true')
+      expect(screen.queryByRole('button', { name: 'Thêm' })).toBeNull()
       openMenu()
       const item = screen.getByRole('menuitem', { name: /Có ghi chú phát hành chưa xem/ })
       expect(item.getAttribute('data-badge')).toBe('true')
@@ -253,6 +254,13 @@ describe('TopToolbar', () => {
     it('shows the badge on the bar button when wide', () => {
       render(<TopToolbar {...defaultProps} actions={[{ id: 'settings', label: 'Cài đặt', icon: 'open-file', onSelect: vi.fn(), badge: true }]} />)
       expect(screen.getByRole('button', { name: /Cài đặt.*Có ghi chú phát hành chưa xem/ }).getAttribute('data-badge')).toBe('true')
+    })
+    it('keeps the plain name Thêm on the more button when no badge', () => {
+      ;(window as any).matchMedia = (q: string) => ({
+        matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      })
+      render(<TopToolbar {...defaultProps} actions={[{ id: 'o', label: 'Mở file…', icon: 'open-file', onSelect: vi.fn() }]} />)
+      expect(screen.getByRole('button', { name: 'Thêm' })).toBeTruthy()
     })
     it('has no data-badge when no action has badge', () => {
       const { container } = render(<TopToolbar {...defaultProps} actions={[{ id: 'o', label: 'Mở file…', icon: 'open-file', onSelect: vi.fn() }]} />)
