@@ -27,7 +27,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid, usePeers, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -617,7 +617,7 @@ export function App(): React.JSX.Element {
     resolveImage,
   })
 
-  const [printHtml, setPrintHtml] = useState<{ id: string; html: string }[] | null>(null)
+  const [printHtml, setPrintHtml] = useState<{ id: string; html: string; zoom?: number }[] | null>(null)
   const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
     if (preparingSlides) return
@@ -669,7 +669,7 @@ export function App(): React.JSX.Element {
     [exportOpen, content, readerSettings.enableMath],
   )
 
-  const slides = useMemo(
+  const baseSlides = useMemo(
     () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, {
             math: readerSettings.enableMath !== false,
             render: {
@@ -683,6 +683,33 @@ export function App(): React.JSX.Element {
     [content, mathRev, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
 
+  const presentationSettings = useMemo(
+    () => ({
+      slideBgColor: readerSettings.slideBgColor,
+      slideTextColor: readerSettings.slideTextColor,
+      slideHeadingColor: readerSettings.slideHeadingColor,
+      slideAccentColor: readerSettings.slideAccentColor,
+      slideFont: readerSettings.slideFont,
+      slideBgImage: readerSettings.slideBgImage,
+      slideImageOpacity: readerSettings.slideImageOpacity,
+    }),
+    [
+      readerSettings.slideBgColor,
+      readerSettings.slideTextColor,
+      readerSettings.slideHeadingColor,
+      readerSettings.slideAccentColor,
+      readerSettings.slideFont,
+      readerSettings.slideBgImage,
+      readerSettings.slideImageOpacity,
+    ],
+  )
+  const { slides, ready: slidesReady, warnings: slideWarnings, stage: slideStage } = useSlidePagination(baseSlides, {
+    enabled: baseSlides.length > 0,
+    mermaid: readerSettings.enableMermaid !== false,
+    presentationSettings,
+  })
+  const clampedSlideIndex = Math.max(0, Math.min(slides.length - 1, currentSlideIndex))
+
   useShortcuts({
     onSearch: () => setIsSearchOpen(true),
     onCloseSearch: () => setIsSearchOpen(false),
@@ -695,15 +722,18 @@ export function App(): React.JSX.Element {
   if (isSpeakerMode) {
     return (
       <ThemeProvider mode={readerSettings.mode || 'system'} contrast={readerSettings.contrast}>
+      {slideStage}
+      {slidesReady ? (
       <SpeakerView
         slides={slides}
-        currentSlideIndex={currentSlideIndex}
+        currentSlideIndex={clampedSlideIndex}
         onSlideChange={(idx) => {
           setCurrentSlideIndex(idx)
           channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
         }}
         mermaid={readerSettings.enableMermaid !== false}
       />
+      ) : <LazyFallback />}
       </ThemeProvider>
     )
   }
@@ -734,22 +764,25 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
+      {slideStage}
       {preparingSlides && <div role="status" className="deck-print-busy">{t('ext.app.preparingDiagrams')}</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
-          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html }))).map((slide, idx) => (
-            <div key={slide.id || idx} className="deck-print-slide md-viewer">
-              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
+          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html, zoom: sl.zoom }))).map((slide, idx) => (
+            <div key={slide.id || idx} className="deck-print-slide deck-slide">
+              <SlideContent html={slide.html} mermaid={false} zoom={slide.zoom} />
             </div>
           ))}
         </div>
       )}
-      {isPresenting && (
+      {isPresenting && !slidesReady && <LazyFallback />}
+      {isPresenting && slidesReady && (
         <Suspense fallback={<LazyFallback />}>
         <Deck
           slides={slides}
           mermaid={readerSettings.enableMermaid !== false}
-          initialSlide={currentSlideIndex}
+          initialSlide={clampedSlideIndex}
+          fitWarnings={slideWarnings}
           onClose={() => setIsPresenting(false)}
           onSlideChange={(idx) => {
             setCurrentSlideIndex(idx)
@@ -763,15 +796,7 @@ export function App(): React.JSX.Element {
           }
           }
           mode={themeMode}
-          presentationSettings={{
-            slideBgColor: readerSettings.slideBgColor,
-            slideTextColor: readerSettings.slideTextColor,
-            slideHeadingColor: readerSettings.slideHeadingColor,
-            slideAccentColor: readerSettings.slideAccentColor,
-            slideFont: readerSettings.slideFont,
-            slideBgImage: readerSettings.slideBgImage,
-            slideImageOpacity: readerSettings.slideImageOpacity,
-          }}
+          presentationSettings={presentationSettings}
         />
         </Suspense>
       )}
