@@ -71,7 +71,7 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/05-present.png" alt="Trình chiếu">
       <h4>Trình chiếu</h4>
-      Tách slide theo <code>---</code> hoặc đề mục, tự co giãn theo màn hình. Speaker view có đồng hồ, slide kế tiếp, ghi chú; xuất PDF slide khổ ngang.
+      Tách slide theo <code>---</code> hoặc đề mục, tự co giãn theo màn hình. Slide quá dài được tự chia sang slide kế tiếp thay vì bị cắt chữ; muốn tự chọn chỗ ngắt, đặt dòng <code>&lt;!-- slide-break --&gt;</code> (hoặc bấm "Ngắt slide tại đây" khi Sửa). Speaker view có đồng hồ, slide kế tiếp, ghi chú; xuất PDF slide khổ ngang.
     </td>
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/06-dark.png" alt="Than chì">

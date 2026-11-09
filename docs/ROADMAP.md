@@ -4,7 +4,10 @@
 
 Đây là kế hoạch, không phải cam kết ngày giao. Thứ tự và phạm vi có thể đổi theo phản hồi. Ký hiệu: `[x]` xong, `[ ]` chưa làm.
 
-## Đã xong (phase 1 đến 16, phiên bản 1.3.x)
+**Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
+Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
+
+## Đã xong (phase 1 đến 17 và 19, phiên bản 1.4.0)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -15,7 +18,6 @@
 - [x] **P7 Giao diện Lề sách:** ba bảng màu, font đóng gói, logo, widget content script.
 - [x] **P8 Chia sẻ và cộng tác:** Cloudflare Worker tự host, link xem/sửa, presence, blame, lịch sử.
 - [x] **P9 Sửa thẳng trên trang:** live preview, bảng dạng lưới, ảnh (dán/kéo/đường dẫn tương đối), hộp thoại chia sẻ mới.
-- [x] **P9 Sửa thẳng trên trang:** live preview, bảng dạng lưới, ảnh (dán/kéo/đường dẫn tương đối), hộp Chia sẻ mới.
 - [x] **P10 MCP cục bộ:** `le-sach-mcp` (7 tool), cầu nối `127.0.0.1`, khoá bản cài ẩn danh, giới hạn theo ngày, xoá phòng, báo cáo nội dung.
 - [x] **P11 Vá bảo mật:** các hướng tấn công từ audit 2026-10-27, thu hồi link tức thì, cầu nối MCP v2 xác thực hai chiều.
 - [x] **P12 Gia cố máy chủ:** link sửa chỉ ghi phần của mình, `last_seen`, trần ảnh toàn cục, cron xoá phòng bỏ không 90 ngày.
@@ -23,6 +25,8 @@
 - [x] **P14 Đóng nợ rủi ro:** kiểm update của link sửa trước khi áp, clientID gắn theo link, cron dọn theo lô, web phòng đầy → chỉ đọc.
 - [x] **P15 Trả nợ người dùng và máy chủ:** "Thu hồi tất cả" một lời gọi, KaTeX nạp lười, Word xuất công thức OMML, lịch sử phân trang, nhận file `.Md`, MCP ghi tên client, khoá file CLI, "Làm gọn tài liệu".
 - [x] **P16 Trả nợ test:** e2e cộng tác cổng cấu hình được, làm chặt test yếu, test độc lập thứ tự.
+- [x] **P17 Lên Chrome Web Store:** hướng dẫn kết nối AI ngay trong Cài đặt, `le-sach-mcp` 1.3.2 nhận bản store, tên mới "LeSach – Markdown Reader & AI Editor".
+- [x] **P19 PDF trình chiếu không cắt chữ:** slide dài tự chia theo chiều cao thật (danh sách, bảng tách theo mục/hàng, bảng lặp tiêu đề), khối không tách được thì thu nhỏ và cảnh báo; dấu ngắt thủ công `<!-- slide-break -->` và nút "Ngắt slide tại đây" khi Sửa; công tắc "Tự chia slide" trong Cài đặt; trang PDF đúng 1280×720.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)
@@ -32,10 +36,6 @@ Người dùng mục tiêu: người nhờ AI viết tài liệu Markdown (báo 
 - [x] **Cầu nối cục bộ:** AI (Claude Desktop / Claude Code / Cursor) nói chuyện với extension qua cầu nối chỉ nghe ở `127.0.0.1`, mặc định tắt. Không gửi gì ra internet; chỉ khi chia sẻ (sau khi người dùng xác nhận) tài liệu mới lên máy chủ.
 - [x] **7 tool MCP** để tạo, đọc, cập nhật tài liệu và chia sẻ / liệt kê / thu hồi link. Chia sẻ phải được người dùng xác nhận.
 - [x] **Gia cố multi-tenant:** khoá bản cài ẩn danh, giới hạn theo ngày, xoá dữ liệu phòng trên máy chủ, báo cáo nội dung trên trang xem.
-
-## Đã hoãn
-
-- [ ] **Remote MCP + OAuth:** endpoint MCP trên máy chủ cho agent chạy trên đám mây. Làm bản tự host trước, và chỉ khi có nhu cầu thật.
 
 ## v1.4 Hiển thị và xuất bản mở rộng
 
@@ -77,9 +77,20 @@ Cộng tác:
 
 Phát hành:
 
-- [ ] Chrome Web Store
+- [x] Chrome Web Store
 - [ ] Microsoft Edge Add-ons
 - [ ] Firefox AMO (kèm đường thay thế cho File System Access ở Firefox)
+
+## Lề sách Cloud (bản trả phí)
+
+Dịch vụ cloud trả phí, mã nguồn đóng. Extension, core và máy chủ tự host vẫn MIT và miễn phí. Chỉ làm khi đã có vài trăm người dùng thật.
+
+- [ ] Lưu vĩnh viễn và không giới hạn tài liệu chia sẻ (bản free tự xoá sau 90 ngày bỏ không)
+- [ ] Project `.md` theo cây thư mục local, đồng bộ hai chiều
+- [ ] Xem, sửa, ghi chú và duyệt tài liệu trên điện thoại
+- [ ] Remote MCP + OAuth: endpoint MCP trên máy chủ cho agent AI chạy trên cloud (đang hoãn, chỉ làm khi có nhu cầu thật)
+- [ ] Link có mật khẩu, lịch sử trên cloud
+- [ ] Team: workspace, SSO
 
 ## v2.0 Ra khỏi trình duyệt
 
@@ -88,6 +99,12 @@ Phát hành:
 - [ ] **Obsidian plugin**
 - [ ] **CLI không giao diện:** `md → HTML / PDF` cho CI và script
 - [ ] **Di động** (sau cùng, phạm vi chưa định)
+
+## Yêu cầu người dùng (song song)
+
+Yêu cầu từ người dùng store / GitHub Issues, làm xen kẽ với lộ trình chính theo mức cần.
+
+- [x] **PDF trình chiếu không cắt chữ:** người dùng tự thiết lập chỗ ngắt slide/trang, để nội dung dài hiển thị đúng ý thay vì bị cắt như hiện tại. Xong ở P19.
 
 ## Cách đóng góp ý kiến
 

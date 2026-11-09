@@ -71,7 +71,7 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/en/05-present.png" alt="Presenting">
       <h4>Present</h4>
-      Split slides on <code>---</code> or headings, scaled automatically to the screen. The speaker view has a clock, the next slide and notes; export a landscape slide PDF.
+      Split slides on <code>---</code> or headings, scaled automatically to the screen. Slides that are too long are split onto extra slides instead of being cut off; put <code>&lt;!-- slide-break --&gt;</code> on its own line (or press "Break slide here" in Edit mode) to choose the break yourself. The speaker view has a clock, the next slide and notes; export a landscape slide PDF.
     </td>
     <td width="50%" valign="top">
       <img src="docs/store/screenshots/en/06-dark.png" alt="Graphite">

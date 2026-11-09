@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { Icon } from './Icon'
 import { useT } from '../i18n'
 import type { Slide } from '@md-reader/core'
@@ -28,6 +28,7 @@ export interface DeckProps {
   mode?: 'light' | 'dark' | 'system'
   presentationSettings?: PresentationSettings
   mermaid?: boolean
+  fitWarnings?: Array<{ slideId: string; zoom: number }>
 }
 
 export const SLIDE_W = 1280
@@ -38,8 +39,25 @@ export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slide
   return Math.min(stageW / slideW, stageH / slideH)
 }
 
-export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
+export function slideCssVars(s?: PresentationSettings): React.CSSProperties {
+  const vars: Record<string, string | undefined> = {
+    '--slide-custom-heading': s?.slideHeadingColor,
+    '--slide-custom-accent': s?.slideAccentColor,
+    '--slide-bg': s?.slideBgColor || undefined,
+    '--slide-fg': s?.slideTextColor || undefined,
+    '--slide-font': s?.slideFont || undefined,
+  }
+  return vars as React.CSSProperties
+}
+
+export function SlideContent({ html, mermaid, zoom }: { html: string; mermaid: boolean; zoom?: number }): React.JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof zoom === 'number' && zoom < 1) el.style.setProperty('zoom', String(zoom))
+    else el.style.removeProperty('zoom')
+  }, [zoom, html])
   const theme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
   useEffect(() => {
     if (!mermaid) return
@@ -50,6 +68,7 @@ export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean
       const pre = codeEl.parentElement
       if (!pre || pre.tagName.toLowerCase() !== 'pre') return
       const node = document.createElement('div')
+      node.dataset.deckMermaid = ''
       pre.parentNode?.insertBefore(node, pre.nextSibling)
       pre.style.display = 'none'
       const root = createRoot(node)
@@ -235,11 +254,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,
     '--slide-custom-accent': presentationSettings?.slideAccentColor,
   }
-  const frameVars: Record<string, string | undefined> = {
-    '--slide-bg': presentationSettings?.slideBgColor || undefined,
-    '--slide-fg': presentationSettings?.slideTextColor || undefined,
-    '--slide-font': presentationSettings?.slideFont || undefined,
-  }
+  const frameVars = slideCssVars(presentationSettings)
 
   return (
     <ThemeProvider mode={props.mode ?? 'system'}>
@@ -272,12 +287,15 @@ export function Deck(props: DeckProps): React.JSX.Element {
                 aria-hidden="true"
               />
             )}
-            <SlideContent html={currentSlide?.html ?? ''} mermaid={props.mermaid !== false} />
+            <SlideContent html={currentSlide?.html ?? ''} mermaid={props.mermaid !== false} zoom={currentSlide?.zoom} />
           </div>
         </div>
 
         <div className={`deck-controls${controlsVisible ? '' : ' deck-controls-hidden'}`}>
           <span className="deck-counter">{counterText}</span>
+          {currentSlide && props.fitWarnings?.some((w) => w.slideId === currentSlide.id) && (
+            <span className="deck-counter" role="status">{t('present.smallText')}</span>
+          )}
           <button
             type="button"
             aria-label={t('present.prevSlide')} title={t('present.prevSlide')}

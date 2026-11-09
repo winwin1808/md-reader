@@ -18,6 +18,7 @@ import {
   UnderlineType,
   type Math,
 } from 'docx'
+import { isSlideBreakLine } from '../slides/split.js'
 import { texToDocxMath } from './docx-math.js'
 import type {
   Root,
@@ -186,6 +187,7 @@ function convertPhrasingNode(
       return [new TextRun({ break: 1 })]
     }
     case 'html': {
+      if (isSlideBreakLine((n.value ?? '').trim())) return []
       return [
         new TextRun({
           text: n.value ?? '',
@@ -449,6 +451,7 @@ function convertBlockNode(
       ]
     }
     default: {
+      if (n.type === 'html' && isSlideBreakLine((n.value ?? '').trim())) return []
       const text = extractText(n)
       if (!text.trim()) return []
       return [

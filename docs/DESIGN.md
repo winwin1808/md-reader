@@ -580,6 +580,51 @@ Spec: `docs/superpowers/specs/2026-11-03-phase-17-design.md`. ID store `eolclcci
 | 17c2 | Docs MCP + privacy | `1.3.2`, cài từ store, `MDR_EXTENSION_ID` mặc định; email liên hệ `qhao.work@gmail.com` |
 | 17d | Tên extension | `extName` vi + en = "LeSach – Markdown Reader & AI Editor"; chữ "MD Reader" trong UI/docs giữ nguyên |
 
+### Phase 18 — Các luồng vòng đời người dùng
+
+Ship: *cài xong có hướng dẫn; bản lớn báo "Có gì mới" đúng một lần; góp ý được trong Cài đặt; sao lưu trước khi gỡ; gỡ xong được hỏi lý do. Không telemetry.*
+Spec: `docs/superpowers/specs/2026-11-09-phase-18-design.md`.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 18a | Móc vòng đời | `decideLifecycle` thuần theo từng `reason`; `setUninstallURL` ở mọi lần khởi động; `RELEASE_NOTES` có cờ `showOnUpdate` |
+| 18b1 | Tài liệu mẫu | Markdown mẫu vi/en dùng được Trình chiếu, Mindmap |
+| 18b2 | Trang chào | Cài mới mở tab một lần; checklist theo trạng thái thật |
+| 18c1 | Có gì mới | Bật cờ → mở một lần ở lần mở Chrome hoặc app page kế tiếp |
+| 18c2 | Chấm báo | Chấm báo, công tắc tắt tự mở, xem lại trong Cài đặt |
+| 18d1 | Lưu góp ý | Migration 0005, `FeedbackStore`, giới hạn, tự xoá sau 180 ngày, không định danh |
+| 18d2 | Route góp ý | `POST /api/feedback`, `GET /api/admin/feedback` |
+| 18e | Trang sau gỡ | `site/uninstall.html` vi/en, form lý do, nói rõ số phận dữ liệu |
+| 18f1 | `FeedbackForm` | Xem trước thông tin kèm theo; lỗi → mailto |
+| 18f2 | Nối góp ý | `sendFeedback` không gửi khoá bản cài |
+| 18f3 | Xin đánh giá | Hỏi một lần sau ≥ 10 lần mở và ≥ 7 ngày; bộ đếm cục bộ |
+| 18g1 | Sao lưu | `.zip` mọi tài liệu, chỉ đọc, chống trùng tên |
+| 18g2 | Trước khi gỡ | Mục trong Cài đặt; dẫn tới xoá dữ liệu máy chủ theo từng tài liệu |
+| 18h1 | E2E | Tab chào mở đúng một lần |
+| 18h2 | Tài liệu | Privacy, ROADMAP, phiên bản 1.5.0, thứ tự phát hành |
+
+### Phase 19 — PDF trình chiếu không cắt chữ
+
+Ship: *tài liệu dài xuất PDF trình chiếu và trình chiếu trên màn hình không còn chữ bị cắt; người dùng tự đặt được chỗ ngắt.*
+Spec: `docs/superpowers/specs/2026-11-09-phase-19-design.md`. Làm trước Phase 18.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 19a | Dấu ngắt | `<!-- slide-break -->` ngắt ở mọi chiến lược, không đổi chiến lược, không lộ ở bản đọc/xuất |
+| 19b | `paginateBlocks` | Hàm thuần chia khối theo chiều cao, heading không mồ côi |
+| 19c1 | Tách khối | Dựng slide từ HTML đã sanitize |
+| 19c2 | Đo | `useSlidePagination` đo trên sân khấu ẩn 1280×720, chờ font/ảnh/sơ đồ |
+| 19d1 | Danh sách, bảng dài | Tách theo mục/hàng, giữ `start`, lặp `thead` |
+| 19d2 | Khối quá lớn | Zoom cho vừa, cảnh báo khi zoom < 0.6 |
+| 19e1 | Print CSS | `@page` 1280×720 |
+| 19e2 | Present + Speaker | Cùng dãy slide, đồng bộ không lệch |
+| 19e3 | Xuất PDF | Chờ chia xong mới in, tối đa 5 giây |
+| 19f | Cài đặt | `slideAutoSplit`, mặc định bật |
+| 19g1 | Vị trí chèn | `slideBreakInsertion` |
+| 19g2 | Nút ngắt | "Ngắt slide tại đây" ở chế độ Sửa |
+| 19h1 | E2E | Không slide nào tràn; số trang PDF = số slide |
+| 19h2 | Tài liệu | ROADMAP, cú pháp dấu ngắt |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh

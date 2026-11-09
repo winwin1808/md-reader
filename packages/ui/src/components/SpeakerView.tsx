@@ -37,7 +37,7 @@ function formatElapsed(totalSeconds: number): string {
   return `${mm}:${ss}`
 }
 
-function ScaledSlide({ html, className = '', mermaid }: { html: string; className?: string; mermaid: boolean }): React.JSX.Element {
+function ScaledSlide({ html, className = '', mermaid, zoom }: { html: string; className?: string; mermaid: boolean; zoom?: number }): React.JSX.Element {
   const paneRef = useRef<HTMLDivElement | null>(null)
   const [scale, setScale] = useState(1)
   useEffect(() => {
@@ -57,7 +57,7 @@ function ScaledSlide({ html, className = '', mermaid }: { html: string; classNam
           className="speaker-slide-canvas"
           style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}
         >
-          <SlideContent html={html} mermaid={mermaid} />
+          <SlideContent html={html} mermaid={mermaid} zoom={zoom} />
         </div>
       </div>
     </div>
@@ -216,14 +216,14 @@ export function SpeakerView({
       <main className="speaker-view-body">
         <section className="speaker-current-slide-wrapper">
           <div className="speaker-section-label">{t('present.currentSlide')}</div>
-          <ScaledSlide html={currentSlide?.html || ''} mermaid={mermaid !== false} />
+          <ScaledSlide html={currentSlide?.html || ''} mermaid={mermaid !== false} zoom={currentSlide?.zoom} />
         </section>
 
         <section className="speaker-sidebar-wrapper">
           <div className="speaker-next-slide-wrapper">
             <div className="speaker-section-label">{t('present.nextSlideLabel')}</div>
             {nextSlide ? (
-              <ScaledSlide html={nextSlide.html || ''} mermaid={mermaid !== false} />
+              <ScaledSlide html={nextSlide.html || ''} mermaid={mermaid !== false} zoom={nextSlide.zoom} />
             ) : (
               <div className="speaker-slide-frame speaker-slide-empty">
                 <span>{t('present.lastSlide')}</span>

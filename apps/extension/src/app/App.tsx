@@ -1,6 +1,6 @@
 import { docQuery, getRecord, touchRecord } from './doc-registry'
 import { nearestHeadingAtTop, lineOfHeading, headingIdAtLine } from './view-anchor'
-import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import React, { Suspense, useEffect, useLayoutEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   ThemeProvider,
   SettingsModal,
@@ -27,7 +27,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { inlineMermaid, usePeers, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -610,67 +610,77 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
+  const slidesRef = useRef<{ id: string; html: string; zoom?: number }[]>([])
+  const slidesReadyRef = useRef(false)
+  const slideWaitersRef = useRef<Array<() => void>>([])
+  const [printHtml, setPrintHtml] = useState<{ id: string; html: string; zoom?: number }[] | null>(null)
+  const [preparingSlides, setPreparingSlides] = useState(false)
+
+  const waitSlidesReady = useCallback(async (signal: AbortSignal): Promise<void> => {
+    const clearBusy = () => flushSync(() => setPreparingSlides(false))
+    if (signal.aborted) { clearBusy(); return }
+    signal.addEventListener('abort', clearBusy, { once: true })
+    try {
+      if (!slidesReadyRef.current) {
+        await new Promise<void>((resolve) => {
+          const waiter = () => { signal.removeEventListener('abort', onAbort); resolve() }
+          const onAbort = () => {
+            slideWaitersRef.current = slideWaitersRef.current.filter((w) => w !== waiter)
+            resolve()
+          }
+          slideWaitersRef.current.push(waiter)
+          signal.addEventListener('abort', onAbort, { once: true })
+        })
+      }
+      if (signal.aborted) return
+      if (readerSettings.enableMermaid !== false) {
+        try {
+          const out = await Promise.all(
+            slidesRef.current.map(async (sl) => ({ id: sl.id, zoom: sl.zoom, html: await inlineMermaid(sl.html, 'default') })),
+          )
+          if (signal.aborted) return
+          flushSync(() => setPrintHtml(out))
+        } catch {
+          if (!signal.aborted) setPrintHtml(null)
+        }
+      }
+    } finally {
+      signal.removeEventListener('abort', clearBusy)
+      clearBusy()
+    }
+  }, [readerSettings.enableMermaid])
+
   const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
     resolveImage,
+    waitSlidesReady,
   })
 
-  const [printHtml, setPrintHtml] = useState<{ id: string; html: string }[] | null>(null)
-  const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
     if (preparingSlides) return
     if (/\$/.test(content)) {
       try { await loadMathPlugin() } catch { setImageNotice(t('ext.export.mathFailed')) }
     }
-    if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
-      setPreparingSlides(true)
+    if (format === 'slides-pdf') {
+      setPrintHtml(null)
+      if (readerSettings.enableMermaid !== false) setPreparingSlides(true)
       try {
-        const list = splitIntoSlides(content, {
-            math: readerSettings.enableMath !== false,
-            render: {
-              typographer: readerSettings.typographer,
-              externalLinks: readerSettings.externalLinks,
-              githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
-              plugins: PLUGINS,
-            },
-          })
-        const out = await Promise.all(
-          list.map(async (sl) => ({ id: sl.id, html: await inlineMermaid(sl.html, 'default') })),
-        )
-        flushSync(() => setPrintHtml(out))
-      } catch {
-        setPrintHtml(null)
+        await baseExportAs(format)
       } finally {
         setPreparingSlides(false)
       }
     } else {
-      setPrintHtml(null)
+      await baseExportAs(format)
     }
-    await baseExportAs(format)
   }
   useEffect(() => {
     if (!isPrintingSlides) setPrintHtml(null)
   }, [isPrintingSlides])
 
-  const hasSlides = useMemo(
-    () => (exportOpen ? splitIntoSlides(content, {
-            math: readerSettings.enableMath !== false,
-            render: {
-              typographer: readerSettings.typographer,
-              externalLinks: readerSettings.externalLinks,
-              githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
-              plugins: PLUGINS,
-            },
-          }).length > 1 : false),
-    [exportOpen, content, readerSettings.enableMath],
-  )
-
-  const slides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, {
+  const baseSlides = useMemo(
+    () => (isPresenting || isPrintingSlides || isSpeakerMode || exportOpen ? splitIntoSlides(content, {
             math: readerSettings.enableMath !== false,
             render: {
               typographer: readerSettings.typographer,
@@ -680,8 +690,48 @@ export function App(): React.JSX.Element {
               plugins: PLUGINS,
             },
           }) : []),
-    [content, mathRev, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
+    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
+
+  const presentationSettings = useMemo(
+    () => ({
+      slideBgColor: readerSettings.slideBgColor,
+      slideTextColor: readerSettings.slideTextColor,
+      slideHeadingColor: readerSettings.slideHeadingColor,
+      slideAccentColor: readerSettings.slideAccentColor,
+      slideFont: readerSettings.slideFont,
+      slideBgImage: readerSettings.slideBgImage,
+      slideImageOpacity: readerSettings.slideImageOpacity,
+    }),
+    [
+      readerSettings.slideBgColor,
+      readerSettings.slideTextColor,
+      readerSettings.slideHeadingColor,
+      readerSettings.slideAccentColor,
+      readerSettings.slideFont,
+      readerSettings.slideBgImage,
+      readerSettings.slideImageOpacity,
+    ],
+  )
+  const { slides, ready: slidesReady, warnings: slideWarnings, stage: slideStage } = useSlidePagination(baseSlides, {
+    enabled: baseSlides.length > 0 && readerSettings.slideAutoSplit !== false,
+    mermaid: readerSettings.enableMermaid !== false,
+    presentationSettings,
+  })
+  useLayoutEffect(() => {
+    slidesRef.current = slides
+    slidesReadyRef.current = slidesReady
+    if (slidesReady) {
+      const ws = slideWaitersRef.current
+      slideWaitersRef.current = []
+      ws.forEach((w) => w())
+    }
+  }, [slides, slidesReady])
+  const hasSlides = exportOpen && slides.length > 1
+  const smallSlides = slidesReady
+    ? slideWarnings.map((w) => slides.findIndex((s) => s.id === w.slideId) + 1).filter((n) => n > 0)
+    : []
+  const clampedSlideIndex = Math.max(0, Math.min(slides.length - 1, currentSlideIndex))
 
   useShortcuts({
     onSearch: () => setIsSearchOpen(true),
@@ -695,15 +745,18 @@ export function App(): React.JSX.Element {
   if (isSpeakerMode) {
     return (
       <ThemeProvider mode={readerSettings.mode || 'system'} contrast={readerSettings.contrast}>
+      {slideStage}
+      {slidesReady ? (
       <SpeakerView
         slides={slides}
-        currentSlideIndex={currentSlideIndex}
+        currentSlideIndex={clampedSlideIndex}
         onSlideChange={(idx) => {
           setCurrentSlideIndex(idx)
           channelRef.current?.postMessage({ type: 'NAVIGATE', index: idx })
         }}
         mermaid={readerSettings.enableMermaid !== false}
       />
+      ) : <LazyFallback />}
       </ThemeProvider>
     )
   }
@@ -734,22 +787,25 @@ export function App(): React.JSX.Element {
 
   return (
     <ThemeProvider mode={themeMode} contrast={readerSettings.contrast} onModeChange={handleModeChange}>
+      {slideStage}
       {preparingSlides && <div role="status" className="deck-print-busy">{t('ext.app.preparingDiagrams')}</div>}
       {isPrintingSlides && (
         <div className="deck-print-container" aria-hidden="true">
-          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html }))).map((slide, idx) => (
-            <div key={slide.id || idx} className="deck-print-slide md-viewer">
-              <div className="deck-slide-content" dangerouslySetInnerHTML={{ __html: slide.html }} />
+          {(printHtml ?? slides.map((sl) => ({ id: sl.id, html: sl.html, zoom: sl.zoom }))).map((slide, idx) => (
+            <div key={slide.id || idx} className="deck-print-slide deck-slide">
+              <SlideContent html={slide.html} mermaid={false} zoom={slide.zoom} />
             </div>
           ))}
         </div>
       )}
-      {isPresenting && (
+      {isPresenting && !slidesReady && <LazyFallback />}
+      {isPresenting && slidesReady && (
         <Suspense fallback={<LazyFallback />}>
         <Deck
           slides={slides}
           mermaid={readerSettings.enableMermaid !== false}
-          initialSlide={currentSlideIndex}
+          initialSlide={clampedSlideIndex}
+          fitWarnings={slideWarnings}
           onClose={() => setIsPresenting(false)}
           onSlideChange={(idx) => {
             setCurrentSlideIndex(idx)
@@ -763,15 +819,7 @@ export function App(): React.JSX.Element {
           }
           }
           mode={themeMode}
-          presentationSettings={{
-            slideBgColor: readerSettings.slideBgColor,
-            slideTextColor: readerSettings.slideTextColor,
-            slideHeadingColor: readerSettings.slideHeadingColor,
-            slideAccentColor: readerSettings.slideAccentColor,
-            slideFont: readerSettings.slideFont,
-            slideBgImage: readerSettings.slideBgImage,
-            slideImageOpacity: readerSettings.slideImageOpacity,
-          }}
+          presentationSettings={presentationSettings}
         />
         </Suspense>
       )}
@@ -833,7 +881,7 @@ export function App(): React.JSX.Element {
           {agentConfirm.pending && (
             <ConfirmAgentDialog req={agentConfirm.pending.req} client={agentConfirm.pending.client} onAllow={agentConfirm.allow} onDeny={agentConfirm.deny} />
           )}
-          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} smallSlides={smallSlides} />
           <ShareModal
             open={shareOpen}
             onClose={() => setShareOpen(false)}

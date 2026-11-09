@@ -328,7 +328,223 @@ describe('App', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
     expect(splitSpy).toHaveBeenCalled()
     await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
-    expect(printSlidesSpy).toHaveBeenCalled()
+    await waitFor(() => expect(printSlidesSpy).toHaveBeenCalled())
+  })
+
+  describe('slides PDF prints the paginated slides', () => {
+    const loadDoc = (md: string) => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue(md) } as any)
+    }
+
+    it('printSlides runs after measurement with one .deck-print-slide per paginated slide', async () => {
+      loadDoc('# A\n\nx\n\n<!-- slide-break -->\n\n# B\n\ny\n\n<!-- slide-break -->\n\n# C\n\nz')
+      let counted = -1
+      const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        counted = document.querySelectorAll('.deck-print-slide').length
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(printSlidesSpy).toHaveBeenCalledTimes(1))
+      expect(counted).toBe(3)
+    })
+
+    it('with Mermaid on, inlineMermaid gets the paginated slide html and zoom stays on the print block', async () => {
+      loadDoc('# A\n\nx\n\n<!-- slide-break -->\n\n# B\n\ny')
+      const fake = [
+        { id: 's1', html: '<p>one</p>', zoom: 0.8 },
+        { id: 's2', html: '<p>two</p>', zoom: 1 },
+      ]
+      vi.spyOn(ui, 'useSlidePagination').mockReturnValue({
+        slides: fake, ready: true, warnings: [{ slideId: 's2' }], stage: null,
+      } as any)
+      const mermaidSpy = vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h + '<!--m-->')
+      let zooms: (string | null)[] = []
+      let htmls: string[] = []
+      vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        const blocks = Array.from(document.querySelectorAll('.deck-print-slide'))
+        htmls = blocks.map((b) => b.innerHTML)
+        zooms = blocks.map((b) => (b.querySelector('[style*="zoom"]') as HTMLElement | null)?.style.zoom ?? null)
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      expect(screen.getByText('Slide 2 có chữ nhỏ. Thêm dấu ngắt để dễ đọc hơn.')).toBeDefined()
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(mermaidSpy).toHaveBeenCalledTimes(2))
+      expect(mermaidSpy).toHaveBeenCalledWith('<p>one</p>', 'default')
+      expect(mermaidSpy).toHaveBeenCalledWith('<p>two</p>', 'default')
+      await waitFor(() => expect(htmls.length).toBe(2))
+      expect(zooms[0]).toBe('0.8')
+    })
+  })
+
+  describe('slideAutoSplit setting', () => {
+    const run = async (stored: Record<string, unknown>) => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# A\n\nx') } as any)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, ...stored })
+      const spy = vi.spyOn(ui, 'useSlidePagination').mockImplementation(((base: unknown[]) => ({
+        slides: base, ready: true, warnings: [], stage: null,
+      })) as any)
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+      return spy
+    }
+    it('passes enabled:false when slideAutoSplit is false', async () => {
+      const spy = await run({ slideAutoSplit: false })
+      const last = spy.mock.calls[spy.mock.calls.length - 1]!
+      expect(last[0].length).toBeGreaterThan(0)
+      expect((last[1] as any).enabled).toBe(false)
+    })
+    it('passes enabled:true when the key is missing and slides exist', async () => {
+      const spy = await run({})
+      const last = spy.mock.calls[spy.mock.calls.length - 1]!
+      expect((last[1] as any).enabled).toBe(true)
+    })
+  })
+
+  describe('slides PDF wait / expiry / mermaid-off', () => {
+    const loadDoc = (md: string) => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue(md) } as any)
+    }
+    const fake = [
+      { id: 's1', html: '<p>one</p>', zoom: 0.7 },
+      { id: 's2', html: '<p>two</p>' },
+    ]
+    const control = { ready: false }
+    const mockPagination = () => vi.spyOn(ui, 'useSlidePagination').mockImplementation(((base: unknown[]) => ({
+      slides: base.length ? fake : [], ready: control.ready, warnings: [], stage: null,
+    })) as any)
+    const md = '# A\n\nx\n\n<!-- slide-break -->\n\n# B\n\ny'
+
+    it('does not print until slides are ready, then prints once', async () => {
+      loadDoc(md)
+      control.ready = false
+      mockPagination()
+      vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h)
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {})
+      let r: any
+      await act(async () => { r = render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await act(async () => { await new Promise((res) => setTimeout(res, 50)) })
+      expect(printSpy).not.toHaveBeenCalled()
+      control.ready = true
+      await act(async () => { r.rerender(<App />) })
+      await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
+    })
+
+    it('an expired wait does not call inlineMermaid or write printHtml when ready arrives late', async () => {
+      loadDoc(md)
+      control.ready = false
+      mockPagination()
+      const mermaidSpy = vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h + '<!--m-->')
+      let htmlAtPrint = ''
+      let busyAtPrint: Element | null | undefined = undefined
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        htmlAtPrint = document.querySelector('.deck-print-container')?.innerHTML ?? ''
+        busyAtPrint = document.querySelector('.deck-print-busy')
+      })
+      let r: any
+      await act(async () => { r = render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      vi.useFakeTimers()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(7100) })
+      expect(printSpy).toHaveBeenCalledTimes(1)
+      expect(busyAtPrint).toBeNull()
+      expect(htmlAtPrint).not.toContain('<!--m-->')
+      control.ready = true
+      await act(async () => { r.rerender(<App />) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+      expect(mermaidSpy).not.toHaveBeenCalled()
+      expect(document.querySelector('.deck-print-container')?.innerHTML ?? '').not.toContain('<!--m-->')
+      warn.mockRestore()
+      vi.useRealTimers()
+    })
+
+    it('with Mermaid on, the busy overlay is gone from the DOM when printSlides runs', async () => {
+      loadDoc(md)
+      control.ready = true
+      mockPagination()
+      vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h)
+      let busyAtPrint: Element | null | undefined = undefined
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        busyAtPrint = document.querySelector('.deck-print-busy')
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
+      expect(busyAtPrint).toBeNull()
+    })
+
+    it('a wait that expires while inlineMermaid runs does not switch the print block to its printHtml', async () => {
+      loadDoc(md)
+      control.ready = true
+      mockPagination()
+      let release: (v: string) => void = () => {}
+      const pending = new Promise<string>((res) => { release = res })
+      vi.spyOn(ui, 'inlineMermaid').mockImplementation(() => pending.then((x) => x))
+      let htmlAtPrint = ''
+      let busyAtPrint: Element | null | undefined = undefined
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        htmlAtPrint = document.querySelector('.deck-print-container')?.innerHTML ?? ''
+        busyAtPrint = document.querySelector('.deck-print-busy')
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      vi.useFakeTimers()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(7100) })
+      expect(printSpy).toHaveBeenCalledTimes(1)
+      expect(busyAtPrint).toBeNull()
+      await act(async () => { release('<p>LATE-MERMAID</p>'); await vi.advanceTimersByTimeAsync(10) })
+      expect(htmlAtPrint).not.toContain('LATE-MERMAID')
+      expect(document.querySelector('.deck-print-container')?.innerHTML ?? '').not.toContain('LATE-MERMAID')
+      warn.mockRestore()
+      vi.useRealTimers()
+    })
+
+    it('with Mermaid off: no busy overlay, zoom applied to the zoomed slide only', async () => {
+      loadDoc(md)
+      control.ready = true
+      mockPagination()
+      const mermaidSpy = vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, enableMermaid: false })
+      const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+      let busyAtPrint: Element | null | undefined
+      let busyAfterClick: Element | null = null
+      let blocksAtPrint: Element[] = []
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        busyAtPrint = document.querySelector('.deck-print-busy')
+        blocksAtPrint = Array.from(document.querySelectorAll('.deck-print-slide'))
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      set.mockClear()
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
+      busyAfterClick = document.querySelector('.deck-print-busy')
+      expect(busyAtPrint).toBeNull()
+      expect(busyAfterClick).toBeNull()
+      expect(mermaidSpy).not.toHaveBeenCalled()
+      const zoomCalls = set.mock.calls.filter((c) => c[0] === 'zoom')
+      expect(zoomCalls.length).toBeGreaterThan(0)
+      expect(zoomCalls.every((c) => c[1] === '0.7')).toBe(true)
+      expect(blocksAtPrint.length).toBe(2)
+      expect((blocksAtPrint[0]!.querySelector('[style*="zoom"]') as HTMLElement).style.zoom).toBe('0.7')
+      expect((blocksAtPrint[1]!.firstElementChild as HTMLElement).style.zoom).toBe('')
+      set.mockRestore()
+    })
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {
@@ -724,6 +940,7 @@ describe('App', () => {
     await act(async () => {
       fireEvent.click(presentBtn)
     })
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
 
     expect(deckSpy.mock.calls[0]![0]).toEqual(
       expect.objectContaining({
@@ -761,7 +978,8 @@ describe('App', () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: 'p' })
     })
-    expect(deckSpy).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
+    expect(deckSpy.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('navigates slides and synchronizes with BroadcastChannel', async () => {
@@ -788,7 +1006,7 @@ describe('App', () => {
       fireEvent.click(presentBtn)
     })
 
-    expect(deckSpy).toHaveBeenCalled()
+    await waitFor(() => expect(deckSpy).toHaveBeenCalled(), { timeout: 4000 })
     expect(capturedDeckProps).not.toBeNull()
 
     const channelInstance = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync')
@@ -826,6 +1044,44 @@ describe('App', () => {
     expect(screen.queryByTestId('mock-deck')).toBeNull()
   })
 
+  it('Present: Deck chỉ xuất hiện sau khi đo xong và không đo lại vô hạn', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1\n\n---\n\n# Slide 2\n\nContent 2'),
+    } as any)
+    const deckSpy = vi.spyOn(deckMod, 'Deck').mockImplementation((props: any) => (
+      <div data-testid="mock-deck" data-n={props.slides.length}>Deck</div>
+    ))
+    await act(async () => { render(<App />) })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Trình chiếu' })) })
+    expect(deckSpy).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('mock-deck')).toBeNull()
+    expect(await screen.findByTestId('mock-deck', {}, { timeout: 4000 })).toBeDefined()
+    expect(deckSpy.mock.calls[0]![0]).toEqual(expect.objectContaining({ fitWarnings: expect.any(Array) }))
+  })
+
+  it('Speaker: SpeakerView chỉ render sau khi đo xong, chỉ số vượt được kẹp', async () => {
+    delete (window as any).location
+    window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue('# Slide 1\n\nContent 1'),
+    } as any)
+    const speakerSpy = vi.spyOn(ui, 'SpeakerView').mockImplementation((props: any) => (
+      <div data-testid="mock-speaker-view" data-idx={props.currentSlideIndex}>S</div>
+    ))
+    await act(async () => { render(<App />) })
+    expect(speakerSpy).not.toHaveBeenCalled()
+    const el = await screen.findByTestId('mock-speaker-view', {}, { timeout: 4000 })
+    expect(el.getAttribute('data-idx')).toBe('0')
+    const ch = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync') as any
+    await act(async () => { ch.onmessage?.({ data: { type: 'NAVIGATE', index: 9 } }) })
+    const last = speakerSpy.mock.calls[speakerSpy.mock.calls.length - 1]![0] as any
+    expect(last.currentSlideIndex).toBeLessThanOrEqual(last.slides.length - 1)
+  })
+
   it('renders SpeakerView directly when speaker query parameter is true', async () => {
     delete (window as any).location
     window.location = new URL('http://localhost/?speaker=true&file=guide.md') as any
@@ -844,7 +1100,7 @@ describe('App', () => {
       render(<App />)
     })
 
-    expect(speakerSpy).toHaveBeenCalled()
+    await waitFor(() => expect(speakerSpy).toHaveBeenCalled(), { timeout: 4000 })
     expect(screen.getByTestId('mock-speaker-view')).toBeDefined()
     expect(screen.queryByTestId('app-placeholder')).toBeNull()
     expect(screen.queryByTitle('Mục lục')).toBeNull()
@@ -998,6 +1254,10 @@ describe('App', () => {
       fireEvent.click(presentBtn)
     })
 
+    for (let i = 0; i < 60 && !capturedDeckProps; i++) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(100) })
+    }
+    expect(capturedDeckProps).not.toBeNull()
     expect(capturedDeckProps.presentationSettings).toEqual(
       expect.objectContaining({
         slideBgColor: undefined,

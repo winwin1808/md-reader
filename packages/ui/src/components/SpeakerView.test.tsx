@@ -253,4 +253,20 @@ describe('SpeakerView', () => {
     const { container } = render(<SpeakerView slides={ms} currentSlideIndex={0} onSlideChange={() => {}} mermaid />)
     await vi.waitFor(() => expect(container.querySelector('svg')).not.toBeNull())
   })
+
+  it('applies each slide zoom to the current and next previews', () => {
+    const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+    const zs: Slide[] = [
+      { ...slides[0]!, zoom: 0.7 },
+      { ...slides[1]!, zoom: 0.5 },
+      slides[2]!,
+    ]
+    const { container } = render(
+      <SpeakerView slides={zs} currentSlideIndex={0} onSlideChange={() => {}} />,
+    )
+    const calls = set.mock.calls.filter((c) => c[0] === 'zoom').map((c) => c[1])
+    expect(calls).toEqual(['0.7', '0.5'])
+    expect(container.querySelectorAll('.deck-slide-content').length).toBe(2)
+    set.mockRestore()
+  })
 })

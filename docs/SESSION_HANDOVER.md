@@ -1,6 +1,33 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-03. Branch: `phase-17` — MR `phase-17` → `main` **đã mở, chưa merge** (https://github.com/winwin1808/md-reader/pull/18). Mọi phase đến 16 đã merge.
+Cập nhật: 2026-11-09. Branch: `phase-19` — MR `phase-19` → `main` **đã mở, chưa merge** (https://github.com/winwin1808/md-reader/pull/19). Phase 17 đã merge (#18). Phase 18 mới thiết kế, chưa làm.
+
+## Phase 19 — PDF trình chiếu không cắt chữ (2026-11-09)
+
+Intent `docs/superpowers/intent/2026-11-09-phase-19-pdf-trinh-chieu.md` · spec `docs/superpowers/specs/2026-11-09-phase-19-design.md` · plan `docs/superpowers/plans/2026-11-09-phase-19-<sub>-plan.md` (19a..19h2, 14 phase con).
+Bây giờ đúng: dấu ngắt thủ công `<!-- slide-break -->` (`SLIDE_BREAK_MARKER`, `isSlideBreakLine`, Word bỏ dấu); `paginateBlocks` (core) chia theo chiều cao thật;
+`useSlidePagination` (ui) đo trên sân khấu ẩn 1280×720, tách danh sách/bảng theo mục/hàng (bảng lặp `thead`, `ol` nối số), khối không tách được thu nhỏ (`zoom` ≥ 0.6) + cảnh báo
+(`Deck` `fitWarnings`, `ExportModal` `smallSlides`); đo khối cuối gồm margin, chừa `FIT_SAFETY_PX = 2`. Present, Speaker view và khối in dùng cùng dãy slide đã chia; xuất PDF chờ chia xong
+(`waitSlidesReady(signal)`, hết 7 s vẫn in, lượt hết hạn bị huỷ). Trang PDF 1280×720, `.app-container` ẩn khi in (trước đó thừa một trang Letter). Cài đặt "Tự chia slide khi nội dung dài"
+(`slideAutoSplit`, mặc định bật). Nút "Ngắt slide tại đây" khi Sửa (`slideBreakInsertion` trong core, chỉ chèn khi bộ chia thật sự tách thêm slide; `splitSections` dùng chung).
+Docs: ROADMAP vi/en (P19, mục yêu cầu người dùng đã xong), README vi/en, `docs/MCP*.md` có cú pháp dấu ngắt cho AI.
+Test: core 334 · ui 564 · extension 481 · web 64 · e2e Playwright 11 (có `e2e-pw/slides.spec.ts`: 17 slide = 17 trang PDF, không tràn); typecheck/build 0; content.js gz 13.66 KB. api/mcp không đổi.
+
+**MR có thêm 2 commit phase 17 chưa vào `main`:** `25c1aee` (extension 1.4.0) và `5fcf8c7` (roadmap). Phiên bản không đổi trong phase 19.
+
+**Nợ phase 19:**
+- Cửa sổ Present và Speaker tự đo riêng; nếu chia khác nhau, chỉ số `NAVIGATE` có thể lệch (chưa đồng bộ theo `slide.id`).
+- Màu slide tuỳ biến chưa vào PDF vì `print.css` ép `.md-viewer *` thành đen (có từ trước).
+- Lượt xuất cũ treo Mermaid kết thúc muộn có thể tắt lớp phủ của lượt sau (không hỏng PDF).
+- Nút ngắt slide không phản hồi khi không chèn được (khối đầu, ngay sau dấu sẵn có, frontmatter).
+- `slideBreakInsertion`: CRLF chưa fuzz; code thụt 4 cách có dòng trống bị coi là hai khối (lưới đếm vẫn chặn chèn vô hiệu).
+- Chuỗi heading `h1,h2,p` có thể để `h1` lẻ cuối slide.
+- Test: phím tắt `p` nới thành `toBeGreaterThanOrEqual`, test kẹp chỉ số Speaker yếu; `slides.spec.ts` còn `console.log`.
+
+**Tiếp theo:** Phase 18 (vòng đời người dùng: onboarding, lý do gỡ, What's new theo cờ, sao lưu .zip) — spec `docs/superpowers/specs/2026-11-09-phase-18-design.md`, 15 phase con pending; chạy `plan-from-design` với 18a.
+
+### Stale
+Mục Phase 17 "Việc người làm sau merge" vẫn đúng nếu chưa publish `le-sach-mcp@1.3.2` và nộp bản store mới.
 
 ## Phase 17 — Hướng dẫn dùng AI + bản Chrome Web Store (2026-11-03)
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { printDocument } from './print'
 import { printDocument as printDocumentExport } from './index'
 import { printDocument as printDocumentRoot } from '../index'
@@ -165,7 +166,6 @@ describe('deck-print.css', () => {
     expect(content).toContain('.deck-print-container')
     expect(content).toContain('@media print')
     expect(content).toContain('@page slide-deck')
-    expect(content).toContain('size: landscape')
     expect(content).toContain('body.print-slides')
     expect(content).toContain('.deck-print-slide')
     expect(content).toContain('page: slide-deck')
@@ -175,6 +175,29 @@ describe('deck-print.css', () => {
   it('is imported in viewer.css', () => {
     const viewerContent = fs.readFileSync(viewerCssPath, 'utf8')
     expect(viewerContent).toContain("@import './theme/deck-print.css';")
+  })
+
+  it('prints each slide on a 1280x720 page matching .deck-slide geometry', () => {
+    const deckCssPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../theme/deck-print.css')
+    const content = fs.readFileSync(deckCssPath, 'utf8')
+    expect(content).toContain('size: 1280px 720px')
+    const block = content.match(/body\.print-slides \.deck-print-slide\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(block).toMatch(/width:\s*1280px/)
+    expect(block).toMatch(/height:\s*720px/)
+    expect(block).toMatch(/padding:\s*64px 80px/)
+    expect(block).toMatch(/align-items:\s*stretch/)
+    expect(block).toMatch(/font-size:\s*32px/)
+    expect(block).toMatch(/line-height:\s*1\.45/)
+    expect(content).not.toContain('100vh')
+  })
+
+  it('hides the app frame but not the deck container when printing slides', () => {
+    const content = fs.readFileSync(cssPath, 'utf8')
+    const media = content.slice(content.indexOf('@media print'))
+    const rule = media.match(/([^{}]*body\.print-slides \.app-container[^{}]*)\{([^}]*)\}/)
+    expect(rule).not.toBeNull()
+    expect(rule![2]).toMatch(/display:\s*none\s*!important/)
+    expect(rule![1]).not.toContain('.deck-print-container')
   })
 })
 
