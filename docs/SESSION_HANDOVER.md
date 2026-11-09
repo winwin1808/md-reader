@@ -1,6 +1,6 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-09. Branch: `phase-19` — MR `phase-19` → `main` **đã mở, chưa merge** (MR_LINK). Phase 17 đã merge (#18). Phase 18 mới thiết kế, chưa làm.
+Cập nhật: 2026-11-09. Branch: `phase-19` — MR `phase-19` → `main` **đã mở, chưa merge** (https://github.com/winwin1808/md-reader/pull/19). Phase 17 đã merge (#18). Phase 18 mới thiết kế, chưa làm.
 
 ## Phase 19 — PDF trình chiếu không cắt chữ (2026-11-09)
 

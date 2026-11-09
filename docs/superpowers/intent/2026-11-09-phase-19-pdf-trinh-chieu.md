@@ -1,5 +1,5 @@
 # Intent: Phase 19 — PDF trình chiếu không cắt chữ
-Author: haonq. Status: designed. Phase: 19
+Author: haonq. Status: shipped. Phase: 19
 Design: docs/superpowers/specs/2026-11-09-phase-19-design.md
 
 ## Problem
