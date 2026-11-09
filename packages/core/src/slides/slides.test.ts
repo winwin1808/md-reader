@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { splitIntoSlides, SLIDE_BREAK_MARKER } from './index.js'
+import { splitIntoSlides, SLIDE_BREAK_MARKER, slideBreakInsertion } from './index.js'
 import { renderToHtml } from '../render/index.js'
 import { parseMarkdown } from '../parse/index.js'
 import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
@@ -238,6 +238,177 @@ describe('slide-break marker is not visible when reading', () => {
     it(`renderToHtml omits marker (allowRawHtml=${allowRawHtml})`, () => {
       const { html } = renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), allowRawHtml })
       expect(html).not.toContain('slide-break')
+    })
+  }
+})
+
+describe('slideBreakInsertion', () => {
+  const M = SLIDE_BREAK_MARKER
+  function run(text: string, cursor: number) {
+    const r = slideBreakInsertion(text, cursor)
+    const out = text.slice(0, r.at) + r.insert + text.slice(r.at)
+    return { r, out }
+  }
+  function expectOneMore(text: string, out: string) {
+    for (const o of [undefined, { strategy: 'fallback' as never }]) {
+      expect(splitIntoSlides(out, o).length).toBe(splitIntoSlides(text, o).length + 1)
+    }
+    const words = (t: string) => t.replace(M, '').split(/\s+/).filter(Boolean)
+    expect(words(out)).toEqual(words(text))
+  }
+
+  it('cursor mid second paragraph inserts before its first line', () => {
+    const text = 'first\n\nsecond a\nsecond b\n'
+    const { r, out } = run(text, text.indexOf('second b') + 3)
+    expect(r.at).toBe(text.indexOf('second a'))
+    expect(out).toBe(`first\n\n${M}\n\nsecond a\nsecond b\n`)
+    expectOneMore(text, out)
+  })
+
+  it('cursor in ``` block inserts before the opening fence', () => {
+    const text = 'intro\n\n```js\nconst a = 1\n\nb\n```\n\nend'
+    const { r, out } = run(text, text.indexOf('const'))
+    expect(r.at).toBe(text.indexOf('```js'))
+    expect(out).toContain(`intro\n\n${M}\n\n\`\`\`js`)
+    expectOneMore(text, out)
+  })
+
+  it('cursor in ~~~ block inserts before the opening fence', () => {
+    const text = 'intro\n\n~~~\ncode\n~~~\n'
+    const { r, out } = run(text, text.indexOf('code'))
+    expect(r.at).toBe(text.indexOf('~~~'))
+    expectOneMore(text, out)
+  })
+
+  it('longer fence is not closed by a shorter one', () => {
+    const text = 'intro\n\n````md\n```\ninner\n```\n````\n\nend'
+    const { r, out } = run(text, text.indexOf('inner'))
+    expect(r.at).toBe(text.indexOf('````md'))
+    expectOneMore(text, out)
+  })
+
+  it('cursor on blank line picks next block', () => {
+    const text = 'one\n\ntwo\n'
+    const { r, out } = run(text, 4)
+    expect(r.at).toBe(text.indexOf('two'))
+    expectOneMore(text, out)
+  })
+
+  it('cursor in first block returns empty insert', () => {
+    const text = 'one\ntwo\n\nthree'
+    expect(slideBreakInsertion(text, 5)).toEqual({ at: 0, insert: '' })
+  })
+
+  it('right after an existing break returns empty insert', () => {
+    const text = `one\n\n${M}\n\ntwo`
+    expect(slideBreakInsertion(text, text.indexOf('two')).insert).toBe('')
+    const t2 = 'one\n\n   <!--slide-break-->\n\ntwo'
+    expect(slideBreakInsertion(t2, t2.indexOf('two')).insert).toBe('')
+  })
+
+  it('cursor on trailing blank line inserts nothing', () => {
+    const text = 'one\n\ntwo\n\n'
+    expect(slideBreakInsertion(text, text.length).insert).toBe('')
+  })
+
+  it('cursor in block right after a break returns empty insert', () => {
+    const text = `one\n\n${M}\ntwo\n`
+    expect(slideBreakInsertion(text, text.indexOf('two')).insert).toBe('')
+  })
+
+  it('cursor on the break line returns empty insert', () => {
+    const text = `one\n\n${M}\n\ntwo\n`
+    expect(slideBreakInsertion(text, text.indexOf(M) + 3).insert).toBe('')
+  })
+
+  it('inserts between a heading and its list; default strategy gives 3 slides', () => {
+    const text = '## A\n\npara\n\n## B\n- x\n- y\n'
+    const { r, out } = run(text, text.indexOf('- y'))
+    expect(r.at).toBe(text.indexOf('- x'))
+    expect(splitIntoSlides(text).length).toBe(2)
+    expect(splitIntoSlides(out).length).toBe(3)
+    expectOneMore(text, out)
+  })
+
+  it('inserts after a heading directly followed by text', () => {
+    const text = '# T\ntext'
+    const { r, out } = run(text, text.indexOf('text'))
+    expect(r.at).toBe(text.indexOf('text'))
+    expectOneMore(text, out)
+  })
+
+  it('stops at a horizontal rule above', () => {
+    const text = 'a\n\n***\nb\nc\n'
+    const { r, out } = run(text, text.indexOf('c'))
+    expect(r.at).toBe(text.indexOf('b'))
+    expectOneMore(text, out)
+  })
+
+  it('inner ```js line closes the fence exactly like the splitter', () => {
+    const text = 'intro\n\n```\nfoo\n```js\nbar\n\nend'
+    const { r, out } = run(text, text.indexOf('bar'))
+    expect(r.at).toBe(text.indexOf('bar'))
+    expectOneMore(text, out)
+    const t2 = 'intro\n\n```\nfoo\n```js\nbar'
+    const r2 = run(t2, t2.indexOf('foo'))
+    expect(r2.r.at).toBe(t2.indexOf('```\nfoo'))
+    expectOneMore(t2, r2.out)
+  })
+
+  it('block after a closing fence still gets a blank line before the marker', () => {
+    const text = 'a\n\n```\nx\n```\nafter\n'
+    const { r, out } = run(text, text.indexOf('after'))
+    expect(r.at).toBe(text.indexOf('after'))
+    expect(out).toContain(`\`\`\`\n\n${M}\n\nafter`)
+    expectOneMore(text, out)
+  })
+})
+
+describe('slideBreakInsertion verified by the splitter', () => {
+  it('returns empty when the splitter would not add a slide', () => {
+    const a = '## A\n\npara\n\n## B\n\ntext\n'
+    expect(slideBreakInsertion(a, 11).insert).toBe('')
+    const b = 'one\n\n---\ntwo\n\nthree\n'
+    expect(slideBreakInsertion(b, 4).insert).toBe('')
+    const c = '---\ntitle: x\n---\ntext\n\nmore\n'
+    expect(slideBreakInsertion(c, 4).insert).toBe('')
+    const d = 'a\n\nTitle\n---\nbody\n'
+    expect(slideBreakInsertion(d, 13).insert).toBe('')
+  })
+
+  const docs: Record<string, string> = {
+    atx: '# T\n\nintro\n\npara one\n\n## B\n\ntext\n\nmore text\n',
+    setext: 'Title\n=====\n\nintro\n\nSub\n---\nbody\n\nlast para\n',
+    hr: 'one\n\npara two\n\n---\nthree\n\nfour\n',
+    frontmatter: '---\ntitle: x\n---\nfirst\n\nsecond\n\nthird\n',
+    backtick: 'a\n\n```js\ncode\n\nmore\n```\n\nafter\n\nend\n',
+    tilde: 'a\n\n~~~\ncode\n\n---\n~~~\n\nafter\n\nend\n',
+    list: 'intro\n\n- a\n- b\n\n- c\n\npara\n\nlast\n',
+    table: 'intro\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nafter table\n\nend\n',
+    quote: 'intro\n\n> quote\n> more\n\nafter\n\nend\n',
+    existing: 'one\n\n<!-- slide-break -->\n\ntwo\n\nthree\n\nfour\n',
+  }
+
+  for (const [name, text] of Object.entries(docs)) {
+    it(`sweep ${name}`, () => {
+      let nonEmpty = 0
+      const base = splitIntoSlides(text).length
+      for (let cur = 0; cur <= text.length; cur++) {
+        const r = slideBreakInsertion(text, cur)
+        if (r.insert === '') continue
+        nonEmpty++
+        const out = text.slice(0, r.at) + r.insert + text.slice(r.at)
+        expect(splitIntoSlides(out).length, `${name}@${cur}`).toBe(base + 1)
+        expect(out.slice(0, r.at) + out.slice(r.at + r.insert.length)).toBe(text)
+        const upto = text.slice(0, r.at).split('\n').slice(0, -1)
+        let open = ''
+        for (const l of upto) {
+          const m = l.match(/^ {0,3}(`{3,}|~{3,})/)
+          if (m) open = open ? (m[1]![0] === open ? '' : open) : m[1]![0]!
+        }
+        expect(open, `${name}@${cur} in fence`).toBe('')
+      }
+      expect(nonEmpty).toBeGreaterThan(0)
     })
   }
 })
