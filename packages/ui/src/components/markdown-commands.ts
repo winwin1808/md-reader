@@ -1,4 +1,5 @@
 import type { FormatAction } from './FormattingToolbar'
+import { slideBreakInsertion } from '@md-reader/core'
 import { createT, type TFunction } from '../i18n'
 
 export function applyFormat(
@@ -84,6 +85,18 @@ export function applyFormat(
         newText: `${before}${TABLE_TEMPLATE}${after}`,
         newSelectionStart: selectionStart + TABLE_TEMPLATE.length,
         newSelectionEnd: selectionStart + TABLE_TEMPLATE.length,
+      }
+    }
+    case 'slideBreak': {
+      const { at, insert } = slideBreakInsertion(text, selectionStart)
+      if (insert === '') {
+        return { newText: text, newSelectionStart: selectionStart, newSelectionEnd: selectionEnd }
+      }
+      const shift = (p: number) => (p >= at ? p + insert.length : p)
+      return {
+        newText: text.slice(0, at) + insert + text.slice(at),
+        newSelectionStart: shift(selectionStart),
+        newSelectionEnd: shift(selectionEnd),
       }
     }
     case 'h1':

@@ -83,7 +83,7 @@ describe('FormattingToolbar component', () => {
 
 const LABELS = [
   'Đậm (⌘B)', 'Nghiêng (⌘I)', 'Gạch ngang', 'Tiêu đề 1', 'Tiêu đề 2', 'Tiêu đề 3', 'Danh sách', 'Danh sách số',
-  'Danh sách việc', 'Trích dẫn', 'Mã trong dòng', 'Khối mã', 'Công thức', 'Liên kết (⌘K)', 'Bảng',
+  'Danh sách việc', 'Trích dẫn', 'Mã trong dòng', 'Khối mã', 'Công thức', 'Liên kết (⌘K)', 'Bảng', 'Ngắt slide tại đây',
   'Hoàn tác (⌘Z)', 'Làm lại (⇧⌘Z)',
 ]
 
@@ -263,5 +263,52 @@ describe('handleListContinuation', () => {
     expect(res.handled).toBe(false)
     expect(res.newText).toBe('1.1 Note')
     expect(res.newCursorPos).toBe(8)
+  })
+})
+
+describe('slideBreak action', () => {
+  it('renders the slide-break button and triggers onAction', () => {
+    const onAction = vi.fn()
+    render(<FormattingToolbar onAction={onAction} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ngắt slide tại đây' }))
+    expect(onAction).toHaveBeenCalledWith('slideBreak')
+  })
+
+  const doc = 'Đoạn một\n\nĐoạn hai\n\nĐoạn ba\n'
+
+  it('inserts the marker before the paragraph holding the cursor', () => {
+    const cursor = doc.indexOf('hai')
+    const r = applyFormat(doc, cursor, cursor, 'slideBreak')
+    const idx = r.newText.indexOf('<!-- slide-break -->')
+    expect(idx).toBeGreaterThan(-1)
+    expect(idx).toBeLessThan(r.newText.indexOf('Đoạn hai'))
+    expect(idx).toBeGreaterThan(r.newText.indexOf('Đoạn một'))
+    const inserted = r.newText.length - doc.length
+    expect(r.newText.slice(0, idx) + r.newText.slice(idx + inserted)).toBe(doc)
+  })
+
+  it('shifts the selection by insert length', () => {
+    const start = doc.indexOf('hai')
+    const end = start + 3
+    const r = applyFormat(doc, start, end, 'slideBreak')
+    const n = r.newText.length - doc.length
+    expect(n).toBeGreaterThan(0)
+    expect(r.newSelectionStart).toBe(start + n)
+    expect(r.newSelectionEnd).toBe(end + n)
+  })
+
+  it('leaves text unchanged at the first block', () => {
+    const r = applyFormat(doc, 2, 2, 'slideBreak')
+    expect(r).toEqual({ newText: doc, newSelectionStart: 2, newSelectionEnd: 2 })
+  })
+
+  it('never inserts inside a code fence', () => {
+    const code = 'Mở đầu\n\n```\nline1\n\nline2\n```\n\nKết\n'
+    const cursor = code.indexOf('line2')
+    const r = applyFormat(code, cursor, cursor, 'slideBreak')
+    const fenceStart = code.indexOf('```')
+    const fenceEnd = code.lastIndexOf('```') + 3
+    const idx = r.newText.indexOf('<!-- slide-break -->')
+    if (idx !== -1) expect(idx <= fenceStart || idx >= fenceEnd).toBe(true)
   })
 })
