@@ -7,7 +7,7 @@
 **Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
 Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
 
-## Đã xong (phase 1 đến 17 và 19, phiên bản 1.4.0)
+## Đã xong (phase 1 đến 19, phiên bản 1.5.0)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -26,6 +26,7 @@ Yêu cầu từ người dùng thật chạy **song song** với thứ tự này
 - [x] **P15 Trả nợ người dùng và máy chủ:** "Thu hồi tất cả" một lời gọi, KaTeX nạp lười, Word xuất công thức OMML, lịch sử phân trang, nhận file `.Md`, MCP ghi tên client, khoá file CLI, "Làm gọn tài liệu".
 - [x] **P16 Trả nợ test:** e2e cộng tác cổng cấu hình được, làm chặt test yếu, test độc lập thứ tự.
 - [x] **P17 Lên Chrome Web Store:** hướng dẫn kết nối AI ngay trong Cài đặt, `le-sach-mcp` 1.3.2 nhận bản store, tên mới "LeSach – Markdown Reader & AI Editor".
+- [x] **P18 Vòng đời người dùng:** trang chào và tài liệu mẫu khi cài, trang Có gì mới sau cập nhật lớn (tắt được), góp ý tự nguyện trong Cài đặt và trang sau khi gỡ, lời mời đánh giá một lần, sao lưu mọi tài liệu ra `.zip` trước khi gỡ.
 - [x] **P19 PDF trình chiếu không cắt chữ:** slide dài tự chia theo chiều cao thật (danh sách, bảng tách theo mục/hàng, bảng lặp tiêu đề), khối không tách được thì thu nhỏ và cảnh báo; dấu ngắt thủ công `<!-- slide-break -->` và nút "Ngắt slide tại đây" khi Sửa; công tắc "Tự chia slide" trong Cài đặt; trang PDF đúng 1280×720.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
