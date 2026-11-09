@@ -9,6 +9,7 @@ import {
   defaultSettle,
   mermaidSettled,
   type BlockMeasure,
+  expandBoxes,
 } from './useSlidePagination'
 
 function mk(id: string, n: number): Slide {
@@ -272,5 +273,155 @@ describe('useSlidePagination without stage', () => {
       warn.mockRestore()
       vi.useRealTimers()
     }
+  })
+})
+
+describe('splitting oversized lists and tables', () => {
+  const html = (h: string): Slide => ({ id: 's', index: 0, title: 's', html: h, notes: [], rawMarkdown: '' }) as unknown as Slide
+  const lis = (n: number) => Array.from({ length: n }, (_, i) => `<li>item ${i}</li>`).join('')
+  const measure: BlockMeasure = (el) => ({
+    height:
+      el.tagName === 'PRE'
+        ? 2000
+        : el.tagName === 'UL' || el.tagName === 'OL'
+          ? 200 * el.children.length
+          : el.tagName === 'TABLE'
+            ? 50 + 200 * el.querySelectorAll('tbody > tr').length
+            : 100,
+    width: 100,
+    keepWithNext: false,
+  })
+  const measureChild = (c: HTMLElement) => (c.tagName === 'THEAD' ? 50 : 200)
+  async function run(slide: Slide, m: BlockMeasure = measure) {
+    const arr = [slide]
+    const { result } = renderHook(
+      () => useSlidePagination(arr, { enabled: true, mermaid: false, measure: m, measureChild, settle }),
+      { initialProps: { s: arr } }
+    )
+    await waitFor(() => expect(result.current.ready).toBe(true))
+    return result.current.slides
+  }
+  const count = (h: string, re: RegExp) => (h.match(re) ?? []).length
+
+  it('splits a ul taller than maxH across slides keeping every item', async () => {
+    const out = await run(html(`<ul>${lis(6)}</ul>`))
+    expect(out.length).toBeGreaterThan(1)
+    expect(out.reduce((n, s) => n + count(s.html, /<li>/g), 0)).toBe(6)
+    for (let i = 0; i < 6; i++) expect(out.map((s) => s.html).join('')).toContain(`item ${i}<`)
+  })
+
+  it('repeats thead on every slide of a long table', async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => `<tr><td>r${i}</td></tr>`).join('')
+    const out = await run(html(`<table><thead><tr><th>H</th></tr></thead><tbody>${rows}</tbody></table>`))
+    expect(out.length).toBeGreaterThan(1)
+    for (const s of out) expect(s.html).toContain('<thead>')
+    expect(out.reduce((n, s) => n + count(s.html, /<td>/g), 0)).toBe(6)
+  })
+
+  it('continues ol numbering with start', async () => {
+    const out = await run(html(`<ol>${lis(6)}</ol>`))
+    expect(out.length).toBeGreaterThan(1)
+    expect(out[0]!.html).not.toContain('start=')
+    expect(out[1]!.html).toContain('start="3"')
+  })
+
+  it('does not split a block that fits', async () => {
+    const fit: BlockMeasure = () => ({ height: 100, width: 100, keepWithNext: false })
+    const out = await run(html(`<ul>${lis(6)}</ul>`), fit)
+    expect(out.length).toBe(1)
+    expect(count(out[0]!.html, /<li>/g)).toBe(6)
+  })
+
+  it('keeps an unsplittable pre as one element', async () => {
+    const out = await run(html('<pre><code>x</code></pre>'))
+    expect(out.length).toBe(1)
+    expect(count(out[0]!.html, /<pre>/g)).toBe(1)
+  })
+
+  describe('expandBoxes', () => {
+    const mkEl = (h: string) => {
+      const d = document.createElement('div')
+      d.innerHTML = h
+      return d.firstElementChild as HTMLElement
+    }
+    it('replaces only the oversized box and keeps other indexes', () => {
+      const p = mkEl('<p>a</p>')
+      const ul = mkEl(`<ul>${lis(4)}</ul>`)
+      const q = mkEl('<p>b</p>')
+      const live = [p, ul, q]
+      const clean = [mkEl('<p>a</p>'), mkEl(`<ul>${lis(4)}</ul>`), mkEl('<p>b</p>')]
+      const boxes = [
+        { height: 10, width: 5, keepWithNext: false },
+        { height: 800, width: 7, keepWithNext: true },
+        { height: 10, width: 6, keepWithNext: false },
+      ]
+      const r = expandBoxes(live, clean, boxes, 500, measureChild)
+      expect(r.boxes.length).toBe(r.elements.length)
+      expect(r.boxes.length).toBe(4)
+      expect(r.boxes[0]).toBe(boxes[0])
+      expect(r.boxes[3]).toBe(boxes[2])
+      expect(r.elements[0]).toBe(clean[0])
+      expect(r.elements[3]).toBe(clean[2])
+      expect(r.boxes[1]).toEqual({ height: 400, width: 7, keepWithNext: false })
+      expect(r.elements[1]!.tagName).toBe('UL')
+    })
+    it('budget subtracts overhead and every part height includes it', () => {
+      const live = [mkEl(`<ul>${lis(3)}</ul>`)]
+      const clean = [mkEl(`<ul>${lis(3)}</ul>`)]
+      const seen: number[] = []
+      const mc = (c: HTMLElement) => {
+        seen.push(1)
+        return 200
+      }
+      // maxH 350, overhead 100 -> budget 250 -> one child per part
+      const r = expandBoxes(live, clean, [{ height: 700, width: 1, keepWithNext: false }], 350, mc)
+      expect(r.boxes.map((b) => b.height)).toEqual([300, 300, 300])
+      // maxH 500, budget 400 -> [0,1],[2]
+      const r2 = expandBoxes(live, clean, [{ height: 700, width: 1, keepWithNext: false }], 500, mc)
+      expect(r2.boxes.map((b) => b.height)).toEqual([500, 300])
+      expect(r2.boxes.every((b) => b.height <= 500)).toBe(true)
+    })
+    it('does not split when live and clean child counts differ, and never throws', () => {
+      const live = [mkEl(`<ul>${lis(4)}</ul>`)]
+      const clean = [mkEl(`<ul>${lis(3)}</ul>`)]
+      const box = { height: 800, width: 1, keepWithNext: false }
+      const r = expandBoxes(live, clean, [box], 500, () => 200)
+      expect(r.boxes[0]).toBe(box)
+      expect(r.elements[0]).toBe(clean[0])
+    })
+    it('keeps a table with tfoot whole', () => {
+      const t = '<table><tbody><tr><td>1</td></tr><tr><td>2</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table>'
+      const box = { height: 800, width: 1, keepWithNext: false }
+      const clean = [mkEl(t)]
+      const r = expandBoxes([mkEl(t)], clean, [box], 300, () => 200)
+      expect(r.elements).toEqual([clean[0]])
+    })
+  })
+
+  describe('default measureChild', () => {
+    it('returns distance to the next child', async () => {
+      const arr = [html('<ul><li>a</li><li>b</li></ul>')]
+      const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const top = this.tagName === 'LI' ? (this.textContent === 'a' ? 10 : 70) : 0
+        return { top, height: 25, width: 10, bottom: 0, left: 0, right: 0, x: 0, y: top, toJSON() {} } as DOMRect
+      })
+      try {
+        const { result } = renderHook(
+          () =>
+            useSlidePagination(arr, {
+              enabled: true,
+              mermaid: false,
+              measure: () => ({ height: 650, width: 1, keepWithNext: false }),
+              settle,
+            }),
+          { initialProps: { s: arr } }
+        )
+        await waitFor(() => expect(result.current.ready).toBe(true))
+        // gap-based: sum 85, overhead 565, budget 27 -> split; height-only would give no split
+        expect(result.current.slides.length).toBe(2)
+      } finally {
+        spy.mockRestore()
+      }
+    })
   })
 })
