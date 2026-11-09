@@ -341,7 +341,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           ref={moreRef}
           type="button"
           className="tb-btn"
-          aria-label={t('toolbar.more')}
+          aria-label={anyBadge ? `${t('toolbar.more')} — ${t('settings.updates.unseen')}` : t('toolbar.more')}
           title={anyBadge ? `${t('toolbar.more')} — ${t('settings.updates.unseen')}` : t('toolbar.more')}
           data-badge={anyBadge ? 'true' : undefined}
           style={anyBadge ? { position: 'relative' } : undefined}

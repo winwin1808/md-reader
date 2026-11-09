@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { TopToolbar, type FontScale } from './TopToolbar'
 
 function openMenu() {
-  fireEvent.click(screen.getByRole('button', { name: 'Thêm' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Thêm/ }))
 }
 
 describe('TopToolbar', () => {
@@ -275,7 +275,7 @@ describe('TopToolbar', () => {
     const menu = screen.getByRole('menu')
     fireEvent.keyDown(menu, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Thêm' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Thêm/ }))
   })
 
   it('menu arrow keys move focus', () => {
