@@ -79,6 +79,7 @@ export function decideLifecycle(
     return { next, open: [] };
   }
   if (ev.reason === 'install') {
+    if (s.startedAt !== null) return { next: { ...s }, open: [] };
     next.startedAt = now;
     next.lastSeenVersion = current;
     next.pendingWelcome = true;
