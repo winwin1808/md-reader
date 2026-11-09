@@ -175,3 +175,48 @@ describe('splitIntoSlides render options', () => {
     expect(s!.html).toContain('markdown-alert')
   })
 })
+
+describe('slide-break marker', () => {
+  const M = '<!-- slide-break -->'
+  it('breaks within hr strategy', () => {
+    const s = splitIntoSlides(`# A\n\none\n${M}\ntwo\n\n---\n\n# B`)
+    expect(s).toHaveLength(3)
+    expect(s[1]!.rawMarkdown).toBe('two')
+  })
+  it('breaks within heading strategy and keeps heading strategy', () => {
+    const s = splitIntoSlides(`# A\n\none\n${M}\ntwo\n\n## B\n\nthree`)
+    expect(s).toHaveLength(3)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['# A\n\none', 'two', '## B\n\nthree'])
+  })
+  it('breaks in fallback', () => {
+    const s = splitIntoSlides(`para one\n${M}\npara two`)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['para one', 'para two'])
+  })
+  it('ignores marker in code fence', () => {
+    const s = splitIntoSlides('```\n' + M + '\n```\n\ntext')
+    expect(s).toHaveLength(1)
+    const t = splitIntoSlides('~~~\n' + M + '\n~~~')
+    expect(t).toHaveLength(1)
+  })
+  it('accepts case and spacing variants', () => {
+    const s = splitIntoSlides('a\n  <!--SLIDE-BREAK-->  \nb\n<!--   slide-break   -->\nc')
+    expect(s).toHaveLength(3)
+  })
+  it('no empty slides for leading/trailing markers', () => {
+    const s = splitIntoSlides(`${M}\na\n${M}\nb\n${M}`)
+    expect(s.map((x) => x.rawMarkdown)).toEqual(['a', 'b'])
+  })
+  it('marker-only doc returns at least one slide', () => {
+    const s = splitIntoSlides(M)
+    expect(s.length).toBeGreaterThanOrEqual(1)
+  })
+  it('html never contains slide-break', () => {
+    const s = splitIntoSlides(`# A\n${M}\nb\n---\nc`)
+    for (const x of s) expect(x.html).not.toContain('slide-break')
+  })
+  it('notes follow their part', () => {
+    const s = splitIntoSlides(`a <!-- note: n1 -->\n${M}\nb <!-- note: n2 -->`)
+    expect(s[0]!.notes).toEqual(['n1'])
+    expect(s[1]!.notes).toEqual(['n2'])
+  })
+})

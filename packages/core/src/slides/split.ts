@@ -12,6 +12,46 @@ function parseCodeFence(line: string): { isFence: boolean; char?: string; length
   }
 }
 
+export const SLIDE_BREAK_MARKER = '<!-- slide-break -->'
+
+export function isSlideBreakLine(line: string): boolean {
+  return /^\s*<!--\s*slide-break\s*-->\s*$/i.test(line)
+}
+
+function splitAtBreakMarkers(section: string): string[] {
+  const lines = section.split(/\r?\n/)
+  const parts: string[] = []
+  let current: string[] = []
+  let inCodeBlock = false
+  let fenceChar = ''
+  let fenceLength = 0
+  let found = false
+
+  for (const line of lines) {
+    const fence = parseCodeFence(line)
+    const wasInCode = inCodeBlock
+    if (!inCodeBlock && fence.isFence) {
+      inCodeBlock = true
+      fenceChar = fence.char!
+      fenceLength = fence.length!
+    } else if (inCodeBlock && fence.isFence && fence.char === fenceChar && fence.length! >= fenceLength) {
+      inCodeBlock = false
+      fenceChar = ''
+      fenceLength = 0
+    }
+    if (!wasInCode && !fence.isFence && isSlideBreakLine(line)) {
+      found = true
+      parts.push(current.join('\n'))
+      current = []
+    } else {
+      current.push(line)
+    }
+  }
+  if (!found) return [section]
+  parts.push(current.join('\n'))
+  return parts.filter((p) => p.trim() !== '')
+}
+
 function stripFrontmatter(source: string): string {
   const lines = source.split(/\r?\n/)
   if (lines.length >= 2 && /^\s*---\s*$/.test(lines[0]!)) {
@@ -312,6 +352,9 @@ export function splitIntoSlides(source: string, options?: SlideSplitOptions): Sl
   while (sections.length > 1 && sections[sections.length - 1] !== undefined && sections[sections.length - 1]!.trim() === '') {
     sections.pop()
   }
+
+  sections = sections.flatMap(splitAtBreakMarkers)
+  if (sections.length === 0) sections = ['']
 
   return sections.map((rawSection, index) => {
     const rawMarkdown = rawSection.trim()
