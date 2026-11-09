@@ -18,7 +18,7 @@ Mở một link \`.md\` là đọc đẹp ngay. Mục lục bám theo mục bạ
 | Phím | Việc |
 |---|---|
 | Cmd/Ctrl + F | Tìm trong tài liệu |
-| Cmd/Ctrl + M | Mở Mindmap |
+| Cmd/Ctrl + M | Mở Sơ đồ |
 | Cmd/Ctrl + S | Lưu |
 
 ---
@@ -31,7 +31,7 @@ Chuyển sang chế độ Sửa để gõ trực tiếp, dấu Markdown tự ẩ
 
 - Dán hoặc kéo ảnh vào tài liệu.
 - Bảng sửa được từng ô.
-- Bấm "Ngắt slide tại đây" để chèn chỗ cắt slide.
+- Ở chế độ Sửa, bấm nút Ngắt slide tại đây trên thanh định dạng để chèn chỗ cắt slide.
 
 ---
 
@@ -50,7 +50,7 @@ function greet(name: string): string {
 ## Ghi chú
 
 > [!TIP]
-> Ghi chú dạng alert hiện ở lề trang, dễ nhìn mà không cắt mạch đọc.
+> Alert dùng để làm nổi một ghi chú trong tài liệu.
 
 ---
 
@@ -76,7 +76,7 @@ flowchart LR
 
 ## Trình chiếu
 
-Bấm Trình chiếu để biến tài liệu thành slide, mở Mindmap để xem cấu trúc, hoặc xuất PDF để gửi đi.
+Bấm Trình chiếu để biến tài liệu thành slide, mở Sơ đồ để xem cấu trúc, hoặc xuất PDF để gửi đi.
 
 <!-- note: Đây là ghi chú diễn giả, chỉ hiện ở chế độ speaker. -->
 `;
@@ -96,7 +96,7 @@ Open a \`.md\` link and it reads beautifully right away. The table of contents f
 | Key | Action |
 |---|---|
 | Cmd/Ctrl + F | Search the document |
-| Cmd/Ctrl + M | Open Mindmap |
+| Cmd/Ctrl + M | Open Mind map |
 | Cmd/Ctrl + S | Save |
 
 ---
@@ -109,7 +109,7 @@ Switch to Edit mode to type directly; Markdown marks hide when the cursor moves 
 
 - Paste or drag images into the document.
 - Tables are editable cell by cell.
-- Press "Break slide here" to insert a slide break.
+- In Edit mode, press the Break slide here button on the formatting toolbar to insert a slide break.
 
 ---
 
@@ -128,7 +128,7 @@ function greet(name: string): string {
 ## Notes
 
 > [!TIP]
-> Alert notes sit in the margin, easy to spot without breaking your reading flow.
+> Alerts are used to make a note stand out in the document.
 
 ---
 
@@ -154,7 +154,7 @@ flowchart LR
 
 ## Present
 
-Press Present to turn the document into slides, open Mindmap to see its structure, or export to PDF to send it out.
+Press Present to turn the document into slides, open Mind map to see its structure, or export to PDF to send it out.
 
 <!-- note: This is a speaker note, only shown in speaker view. -->
 `;

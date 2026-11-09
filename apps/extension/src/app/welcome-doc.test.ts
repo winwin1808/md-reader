@@ -22,6 +22,22 @@ describe('welcomeMarkdown', () => {
     expect(count(vi, /^# /gm)).toBe(1);
   });
 
+  // Nhãn ghi cứng theo packages/ui/src/i18n/catalog/shell.ts (nút sơ đồ tư duy, Trình chiếu, Sửa) và thanh định dạng (Ngắt slide).
+  const labels = {
+    vi: { mindmap: 'Sơ đồ', present: 'Trình chiếu', edit: 'Sửa', brk: 'nút Ngắt slide tại đây trên thanh định dạng' },
+    en: { mindmap: 'Mind map', present: 'Present', edit: 'Edit', brk: 'the Break slide here button on the formatting toolbar' },
+  } as const;
+
+  for (const l of locales) {
+    it(`${l} uses real UI button names`, () => {
+      const md = welcomeMarkdown(l);
+      for (const label of Object.values(labels[l])) expect(md).toContain(label);
+      if (l === 'vi') expect(md).not.toContain('Mindmap');
+      else expect(md).not.toContain('Mindmap');
+      expect(md).not.toMatch(/margin|lề trang/);
+    });
+  }
+
   for (const l of locales) {
     describe(l, () => {
       const md = welcomeMarkdown(l);
