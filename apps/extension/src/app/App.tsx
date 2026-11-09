@@ -57,6 +57,7 @@ import { useShare } from './collab/useShare'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
+import { useLifecycleSettings } from './hooks/useLifecycleSettings'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
 import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
 import { createBridgeExecutor, type ExecSession } from './bridge-executor'
@@ -105,6 +106,7 @@ export function App(): React.JSX.Element {
   const t = useT()
   const locale = useLocale()
   const bridge = useBridgeSettings()
+  const lifecycle = useLifecycleSettings()
   useEffect(() => {
     try { void Promise.resolve(chrome.runtime.sendMessage({ type: BRIDGE_SCAN_MSG })).catch(() => {}) } catch { /* ignore */ }
   }, [])
@@ -782,7 +784,7 @@ export function App(): React.JSX.Element {
     { id: 'export', label: t('ext.menu.export'), icon: 'export', onSelect: () => setExportOpen(true) },
     ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? t('ext.menu.blameHide') : t('ext.menu.blameShow'), icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
     { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
-    { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true) },
+    { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true), badge: lifecycle.hasUnseenNotes },
   ]
 
   return (
@@ -920,7 +922,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
+          <SettingsModal lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
         </>
         {isReadingMode && (
           <button
