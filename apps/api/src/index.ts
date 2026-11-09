@@ -2,6 +2,7 @@ import { routePartykitRequest } from 'partyserver'
 import type { Env } from './env.js'
 import { D1LimitStore, dayOf, ROOM_TTL_MS, CLEANUP_MAX_ROOMS, type LimitStore } from './limits.js'
 import { authorizeWs, deleteRoomEverywhere, handleApi, safeDecode } from './api.js'
+import { D1FeedbackStore, FEEDBACK_TTL_MS, type FeedbackStore } from './feedback.js'
 import { D1ModerationStore } from './moderation.js'
 import { D1AssetStore, type AssetStore } from './assets.js'
 import { D1TokenStore } from './tokens-d1.js'
@@ -141,13 +142,14 @@ export interface CleanupDeps {
   store: TokenStore
   assets?: AssetStore
   limits?: LimitStore
+  feedback?: FeedbackStore
   purge?: (roomId: string) => Promise<void>
 }
 
 export async function runCleanup(
   d: CleanupDeps,
   now: number = Date.now(),
-): Promise<{ rooms: number; failed: number; usage: number }> {
+): Promise<{ rooms: number; failed: number; usage: number; feedback: number }> {
   let rooms = 0
   let failed = 0
   const tried = new Set<string>()
@@ -163,8 +165,9 @@ export async function runCleanup(
     }
   }
   const usage = d.limits ? await d.limits.pruneUsage(dayOf(now) - 2) : 0
-  console.log('cleanup', { rooms, failed, usage })
-  return { rooms, failed, usage }
+  const feedback = d.feedback ? await d.feedback.prune(now - FEEDBACK_TTL_MS) : 0
+  console.log('cleanup', { rooms, failed, usage, feedback })
+  return { rooms, failed, usage, feedback }
 }
 
 export default {
@@ -176,6 +179,7 @@ export default {
         store: new D1TokenStore(env.DB),
         assets: new D1AssetStore(env.DB),
         limits: new D1LimitStore(env.DB),
+        feedback: new D1FeedbackStore(env.DB),
         purge: purgeVia(defaultDeps, env),
       }),
     ),
