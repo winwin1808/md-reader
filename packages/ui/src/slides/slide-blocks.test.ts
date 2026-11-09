@@ -135,9 +135,21 @@ describe('groupOversizedChildren', () => {
   it('groups greedily within budget', () => {
     expect(groupOversizedChildren(el(ul), 100, () => 40)).toEqual([[0, 1], [2, 3]]);
   });
-  it('subtracts the thead height for tables', () => {
-    const m = (c: HTMLElement) => (c.tagName === 'THEAD' ? 50 : 40);
-    expect(groupOversizedChildren(el(TABLE), 100, m)).toEqual([[0], [1], [2]]);
+  it('uses the given budget as is for tables', () => {
+    expect(groupOversizedChildren(el(TABLE), 50, () => 40)).toEqual([[0], [1], [2]]);
+    expect(groupOversizedChildren(el(TABLE), 100, () => 40)).toEqual([[0, 1], [2]]);
+  });
+  it('returns null for budget <= 0', () => {
+    expect(groupOversizedChildren(el(ul), 0, () => 1)).toBeNull();
+    expect(groupOversizedChildren(el(ul), -5, () => 1)).toBeNull();
+  });
+  it('passes the next sibling (or null) to measureChild', () => {
+    const seen: Array<[string, string | null]> = [];
+    groupOversizedChildren(el('<ul><li>a</li><li>b</li></ul>'), 1, (c, n) => {
+      seen.push([c.textContent ?? '', n ? (n.textContent ?? '') : null]);
+      return 5;
+    });
+    expect(seen).toEqual([['a', 'b'], ['b', null]]);
   });
   it('puts an oversized child in its own group', () => {
     const heights = [10, 500, 10, 10];
@@ -180,5 +192,41 @@ describe('cloneWithChildren', () => {
     expect(c.children.length).toBe(1);
     expect(c.querySelectorAll('li').length).toBe(3);
     expect(o.outerHTML).toBe(before);
+  });
+});
+
+describe('direct-children only splitting (review fixes)', () => {
+  it('does not split a table with tfoot or with several tbody', () => {
+    const tf = '<table><tbody><tr><td>1</td></tr><tr><td>2</td></tr></tbody><tfoot><tr><td>f</td></tr></tfoot></table>';
+    const two = '<table><tbody><tr><td>1</td></tr></tbody><tbody><tr><td>2</td></tr></tbody></table>';
+    expect(splittableChildren(el(tf))).toEqual([]);
+    expect(splittableChildren(el(two))).toEqual([]);
+    expect(groupOversizedChildren(el(tf), 10, () => 40)).toBeNull();
+  });
+  it('ignores a nested table inside a cell', () => {
+    const t = el(
+      '<table><tbody><tr><td><table><thead><tr><th>N</th></tr></thead><tbody><tr><td>x</td></tr></tbody></table></td></tr><tr><td>2</td></tr></tbody></table>',
+    );
+    expect(splittableChildren(t).length).toBe(2);
+    const c = cloneWithChildren(t, [1]);
+    expect(c.querySelector('thead')).toBeNull();
+  });
+  it('copies colgroup and caption to every part', () => {
+    const t = el(
+      '<table><caption>Cap</caption><colgroup><col><col></colgroup><thead><tr><th>H</th></tr></thead><tbody><tr><td>1</td></tr><tr><td>2</td></tr></tbody></table>',
+    );
+    for (const g of [[0], [1]]) {
+      const c = cloneWithChildren(t, g);
+      expect(c.querySelector('colgroup')).not.toBeNull();
+      expect(c.querySelector('caption')?.textContent).toBe('Cap');
+      expect(c.querySelector('thead')).not.toBeNull();
+    }
+  });
+  it('keeps start="0" and offsets from it', () => {
+    const o = el('<ol start="0"><li>a</li><li>b</li><li>c</li><li>d</li></ol>');
+    expect(cloneWithChildren(o, [0]).getAttribute('start')).toBe('0');
+    expect(cloneWithChildren(o, [3]).getAttribute('start')).toBe('3');
+    const bad = el('<ol start="x"><li>a</li><li>b</li></ol>');
+    expect(cloneWithChildren(bad, [1]).getAttribute('start')).toBe('2');
   });
 });
