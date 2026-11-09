@@ -25,7 +25,7 @@ const origLocation = window.location
 function setChrome(c: unknown): void { g.chrome = c }
 
 const PIN_STEP = /Pin MD Reader|Ghim MD Reader lên thanh công cụ/
-const FILE_STEP = /Allow access to local files|Cho phép truy cập file cục bộ/
+const FILE_STEP = /Allow access to local files|Cho phép đọc file trên máy/
 const OPEN_STEP = /Open a \.md file|Mở một file \.md/
 
 function fileAccess(ok: boolean): unknown {
@@ -115,18 +115,21 @@ describe('WelcomeRoute', () => {
     reg.listRecent.mockRejectedValue(new Error('idb'))
     const onUnhandled = vi.fn()
     process.on('unhandledRejection', onUnhandled)
-    setChrome({
-      runtime: { id: 'xyz' },
-      extension: fileAccess(true),
-      action: { getUserSettings: () => Promise.resolve({ isOnToolbar: true }) },
-    })
-    renderRoute()
-    await waitFor(() => expect(stepLi(FILE_STEP).getAttribute('data-done')).toBe('true'))
-    expect(stepLi(OPEN_STEP).getAttribute('data-done')).toBe('false')
-    expect(document.querySelector('main.welcome')).toBeTruthy()
-    await new Promise((r) => setTimeout(r, 0))
-    process.off('unhandledRejection', onUnhandled)
-    expect(onUnhandled).not.toHaveBeenCalled()
+    try {
+      setChrome({
+        runtime: { id: 'xyz' },
+        extension: fileAccess(true),
+        action: { getUserSettings: () => Promise.resolve({ isOnToolbar: true }) },
+      })
+      renderRoute()
+      await waitFor(() => expect(stepLi(FILE_STEP).getAttribute('data-done')).toBe('true'))
+      expect(stepLi(OPEN_STEP).getAttribute('data-done')).toBe('false')
+      expect(document.querySelector('main.welcome')).toBeTruthy()
+      await new Promise((r) => setTimeout(r, 0))
+      expect(onUnhandled).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
   })
 
   it('AI client marks the AI step done', async () => {

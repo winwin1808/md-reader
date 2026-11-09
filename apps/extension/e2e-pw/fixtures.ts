@@ -51,19 +51,11 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
       args: ['--headless=new', '--lang=vi', `--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
     })
     try {
-      const isWelcome = (u: string) => u.includes('app.html?welcome=1')
       const deadline = Date.now() + 5000
       let welcome: Page | undefined
       while (!welcome && Date.now() < deadline) {
-        welcome = context.pages().find((pg) => isWelcome(pg.url()))
-        if (welcome) break
-        const blank = context.pages().find((pg) => pg.url() === '' || pg.url() === 'about:blank')
-        if (blank) {
-          const ok = await blank.waitForURL(/welcome=1/, { timeout: 300 }).then(() => true, () => false)
-          if (ok) { welcome = blank; break }
-        } else {
-          await new Promise((r) => setTimeout(r, 100))
-        }
+        welcome = context.pages().find((pg) => pg.url().includes('app.html?welcome=1'))
+        if (!welcome) await new Promise((r) => setTimeout(r, 100))
       }
       await welcome?.close().catch(() => {})
       await use(context)
