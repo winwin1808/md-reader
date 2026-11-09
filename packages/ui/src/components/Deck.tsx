@@ -38,6 +38,17 @@ export function fitScale(stageW: number, stageH: number, slideW = SLIDE_W, slide
   return Math.min(stageW / slideW, stageH / slideH)
 }
 
+export function slideCssVars(s?: PresentationSettings): React.CSSProperties {
+  const vars: Record<string, string | undefined> = {
+    '--slide-custom-heading': s?.slideHeadingColor,
+    '--slide-custom-accent': s?.slideAccentColor,
+    '--slide-bg': s?.slideBgColor || undefined,
+    '--slide-fg': s?.slideTextColor || undefined,
+    '--slide-font': s?.slideFont || undefined,
+  }
+  return vars as React.CSSProperties
+}
+
 export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean }): React.JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = useResolvedTheme() === 'dark' ? 'dark' : 'default'
@@ -236,11 +247,7 @@ export function Deck(props: DeckProps): React.JSX.Element {
     '--slide-custom-heading': presentationSettings?.slideHeadingColor,
     '--slide-custom-accent': presentationSettings?.slideAccentColor,
   }
-  const frameVars: Record<string, string | undefined> = {
-    '--slide-bg': presentationSettings?.slideBgColor || undefined,
-    '--slide-fg': presentationSettings?.slideTextColor || undefined,
-    '--slide-font': presentationSettings?.slideFont || undefined,
-  }
+  const frameVars = slideCssVars(presentationSettings)
 
   return (
     <ThemeProvider mode={props.mode ?? 'system'}>

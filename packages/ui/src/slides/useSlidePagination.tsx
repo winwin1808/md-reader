@@ -1,0 +1,176 @@
+import React, { useEffect, useRef, useState } from 'react'
+import { paginateBlocks, SMALL_ZOOM, type BlockBox, type Slide } from '@md-reader/core'
+import { splitBlockElements, pristineBlocks, buildPagedSlides } from './slide-blocks'
+import { SlideContent, SLIDE_W, SLIDE_H, slideCssVars, type PresentationSettings } from '../components/Deck'
+
+export interface SlideFitWarning {
+  slideId: string
+  zoom: number
+}
+export interface SlidePagination {
+  slides: Slide[]
+  ready: boolean
+  warnings: SlideFitWarning[]
+}
+export type BlockMeasure = (el: HTMLElement, next: HTMLElement | null) => BlockBox
+
+const FALLBACK_W = 1120
+const FALLBACK_H = 592
+const SETTLE_MAX = 5000
+const SETTLE_STABLE = 150
+
+function resolveMeasured(el: HTMLElement | null): HTMLElement | null {
+  if (!el) return null
+  const sib = el.nextElementSibling as HTMLElement | null
+  if (el.style.display === 'none' && sib && sib.hasAttribute('data-deck-mermaid')) return sib
+  return el
+}
+
+export function defaultBlockMeasure(el: HTMLElement, next: HTMLElement | null): BlockBox {
+  const m = resolveMeasured(el) as HTMLElement
+  const n = resolveMeasured(next)
+  const rect = m.getBoundingClientRect()
+  const height = n ? n.getBoundingClientRect().top - rect.top : rect.height
+  return {
+    height,
+    width: Math.max(m.scrollWidth || 0, rect.width),
+    keepWithNext: /^H[1-6]$/.test(el.tagName),
+  }
+}
+
+async function defaultSettle(root: HTMLElement): Promise<void> {
+  const run = async () => {
+    try {
+      await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready
+    } catch {
+      /* ignore */
+    }
+    await Promise.all(
+      Array.from(root.querySelectorAll('img')).map((img) =>
+        typeof img.decode === 'function' ? img.decode().catch(() => {}) : Promise.resolve()
+      )
+    )
+    let last = root.scrollHeight
+    let since = Date.now()
+    while (Date.now() - since < SETTLE_STABLE) {
+      await new Promise((r) => setTimeout(r, 30))
+      const h = root.scrollHeight
+      if (h !== last) {
+        last = h
+        since = Date.now()
+      }
+    }
+  }
+  await Promise.race([run(), new Promise<void>((r) => setTimeout(r, SETTLE_MAX))])
+}
+
+function contentArea(frame: HTMLElement): { w: number; h: number } {
+  const cs = getComputedStyle(frame)
+  const num = (v: string) => parseFloat(v) || 0
+  const w = frame.clientWidth - num(cs.paddingLeft) - num(cs.paddingRight)
+  const h = frame.clientHeight - num(cs.paddingTop) - num(cs.paddingBottom)
+  return { w: w > 0 ? w : FALLBACK_W, h: h > 0 ? h : FALLBACK_H }
+}
+
+interface Done {
+  slides: Slide[]
+  mermaid: boolean
+  settings: PresentationSettings | undefined
+  out: Slide[]
+  warnings: SlideFitWarning[]
+}
+
+export function useSlidePagination(
+  slides: Slide[],
+  opts: {
+    enabled: boolean
+    mermaid: boolean
+    presentationSettings?: PresentationSettings
+    measure?: BlockMeasure
+    settle?: (root: HTMLElement) => Promise<void>
+  }
+): SlidePagination & { stage: React.ReactNode } {
+  const { enabled, mermaid, presentationSettings } = opts
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const optsRef = useRef(opts)
+  optsRef.current = opts
+  const [done, setDone] = useState<Done | null>(null)
+
+  const fresh =
+    done !== null && done.slides === slides && done.mermaid === mermaid && done.settings === presentationSettings
+
+  useEffect(() => {
+    if (!enabled || fresh) return
+    let cancelled = false
+    const run = async () => {
+      const root = stageRef.current
+      if (!root) return
+      await (optsRef.current.settle ?? defaultSettle)(root)
+      if (cancelled) return
+      const measure = optsRef.current.measure ?? defaultBlockMeasure
+      const frames = Array.from(root.children) as HTMLElement[]
+      const out: Slide[] = []
+      const warnings: SlideFitWarning[] = []
+      slides.forEach((source, i) => {
+        let result: Slide[] = [source]
+        try {
+          const frame = frames[i]
+          const content = frame?.querySelector('.deck-slide-content') as HTMLElement | null
+          if (!frame || !content) throw new Error('missing frame')
+          const visible = splitBlockElements(content)
+          const pristine = pristineBlocks(source.html)
+          if (visible.length !== pristine.length) {
+            console.warn(`[slides] block count mismatch for ${source.id}; keeping slide as is`)
+          } else {
+            const boxes = visible.map((el, k) => measure(el, visible[k + 1] ?? null))
+            const { w, h } = contentArea(frame)
+            const pages = paginateBlocks(boxes, h, w)
+            result = buildPagedSlides(source, pristine, pages)
+          }
+        } catch (err) {
+          console.warn(`[slides] measure failed for ${source.id}`, err)
+          result = [source]
+        }
+        for (const s of result) {
+          if (typeof s.zoom === 'number' && s.zoom < SMALL_ZOOM) warnings.push({ slideId: s.id, zoom: s.zoom })
+          out.push(s)
+        }
+      })
+      setDone({
+        slides,
+        mermaid,
+        settings: presentationSettings,
+        out: out.map((s, index) => ({ ...s, index })),
+        warnings,
+      })
+    }
+    run().catch((err) => {
+      if (!cancelled) console.warn('[slides] pagination failed', err)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, fresh, slides, mermaid, presentationSettings])
+
+  if (!enabled) return { slides, ready: true, warnings: [], stage: null }
+  if (fresh && done) return { slides: done.out, ready: true, warnings: done.warnings, stage: null }
+
+  const stage = (
+    <div
+      ref={stageRef}
+      aria-hidden="true"
+      style={{ position: 'fixed', left: -99999, top: 0, visibility: 'hidden' }}
+    >
+      {slides.map((s) => (
+        <div
+          key={s.id}
+          className="deck-slide deck-slide-frame deck-slide-container"
+          style={{ width: SLIDE_W, height: SLIDE_H, ...slideCssVars(presentationSettings) }}
+        >
+          <SlideContent html={s.html} mermaid={mermaid} />
+        </div>
+      ))}
+    </div>
+  )
+  return { slides, ready: false, warnings: [], stage }
+}
