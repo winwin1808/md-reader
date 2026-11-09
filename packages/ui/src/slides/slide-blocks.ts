@@ -8,14 +8,10 @@ function isEmpty(el: HTMLElement): boolean {
   return el.querySelector(MEDIA_SELECTOR) === null;
 }
 
-function isMermaidPre(el: Element | null): boolean {
-  return !!el && el.tagName === 'PRE' && el.querySelector('code.language-mermaid') !== null;
-}
-
 export function splitBlockElements(root: HTMLElement): HTMLElement[] {
   const out: HTMLElement[] = [];
   for (const child of Array.from(root.children) as HTMLElement[]) {
-    if (isMermaidPre(child.previousElementSibling)) continue;
+    if (child.hasAttribute('data-deck-mermaid')) continue;
     if (isEmpty(child)) continue;
     out.push(child);
   }
@@ -34,6 +30,7 @@ export function buildPagedSlides(source: Slide, elements: HTMLElement[], pages: 
   if (pages.length <= 1) {
     const one: Slide = { ...source };
     if (pages[0] && pages[0].zoom < 1) one.zoom = pages[0].zoom;
+    else delete one.zoom;
     return [one];
   }
   return pages.map((p, i) => {

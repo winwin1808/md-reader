@@ -7,7 +7,7 @@ afterEach(() => {
   cleanup()
 })
 import type { Slide } from '@md-reader/core'
-import { Deck, fitScale } from './Deck'
+import { Deck, fitScale, SlideContent } from './Deck'
 import * as uiIndex from '../index'
 
 vi.mock('mermaid', () => ({ default: { initialize: () => {}, render: async () => ({ svg: '<svg/>' }) } }))
@@ -451,6 +451,17 @@ describe('Deck mermaid prop', () => {
     expect(pre).not.toBeNull()
     expect(pre.style.display).not.toBe('none')
     expect(container.querySelectorAll('.deck-slide-content > div').length).toBe(0)
+  })
+})
+
+describe('SlideContent mermaid marker', () => {
+  it('marks the inserted div with data-deck-mermaid', async () => {
+    const { container } = render(<SlideContent mermaid html={'<pre><code class="language-mermaid">graph TD; A--&gt;B</code></pre>'} />)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    const pre = container.querySelector('pre') as HTMLElement
+    const next = pre.nextElementSibling as HTMLElement
+    expect(next.tagName).toBe('DIV')
+    expect(next.hasAttribute('data-deck-mermaid')).toBe(true)
   })
 })
 
