@@ -714,7 +714,7 @@ export function App(): React.JSX.Element {
     ],
   )
   const { slides, ready: slidesReady, warnings: slideWarnings, stage: slideStage } = useSlidePagination(baseSlides, {
-    enabled: baseSlides.length > 0,
+    enabled: baseSlides.length > 0 && readerSettings.slideAutoSplit !== false,
     mermaid: readerSettings.enableMermaid !== false,
     presentationSettings,
   })

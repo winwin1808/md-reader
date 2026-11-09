@@ -24,6 +24,30 @@ describe('SettingsModal', () => {
     onFontFamilyChange: vi.fn(),
   };
 
+  describe('slideAutoSplit toggle', () => {
+    const renderWith = (settings: any, onSettingChange = vi.fn()) => {
+      render(<SettingsModal {...defaultProps} open settings={settings} onSettingChange={onSettingChange} />)
+      return onSettingChange
+    }
+    it('shows in the slides group, on when the key is missing', () => {
+      renderWith({ settingsVersion: 2 })
+      const box = within(section('Trình chiếu')).getByLabelText('Tự chia slide khi nội dung dài') as HTMLInputElement
+      expect(box.id).toBe('settings-slideAutoSplit')
+      expect(box.checked).toBe(true)
+      expect(within(section('Trình chiếu')).getByText(/<!-- slide-break -->/)).toBeTruthy()
+    })
+    it('is off when slideAutoSplit is false, and clicking fires onSettingChange', () => {
+      const on = renderWith({ settingsVersion: 2, slideAutoSplit: false })
+      const box = document.getElementById('settings-slideAutoSplit') as HTMLInputElement
+      expect(box.checked).toBe(false)
+      cleanup()
+      const on2 = renderWith({ settingsVersion: 2 })
+      fireEvent.click(document.getElementById('settings-slideAutoSplit') as HTMLInputElement)
+      expect(on2).toHaveBeenCalledWith('slideAutoSplit', false)
+      expect(on).not.toHaveBeenCalled()
+    })
+  })
+
   it('opens modal, renders elements, and interacts', () => {
     const onAutoFormatChange = vi.fn();
     render(

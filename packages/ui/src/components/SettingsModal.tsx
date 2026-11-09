@@ -42,6 +42,7 @@ export interface ReaderSettings {
   celebrationConfetti?: boolean;
 
   // Presentation
+  slideAutoSplit?: boolean;
   slideBgColor?: string;
   slideTextColor?: string;
   slideHeadingColor?: string;
@@ -798,6 +799,13 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
 </section>
 <section aria-labelledby="settings-h-slides" id="settings-sec-slides" data-section={"slides"} className="settings-group" ref={(el) => { sectionRefs.current['slides'] = el }}>
 <h3 id="settings-h-slides" className="settings-group-title">{t('settings.section.slides')}</h3>
+                  <ToggleRow
+                    id="settings-slideAutoSplit"
+                    title={t('settings.slideAutoSplit.title')}
+                    description={t('settings.slideAutoSplit.desc')}
+                    checked={settings?.slideAutoSplit !== false}
+                    onChange={(val) => handleSettingChange('slideAutoSplit', val)}
+                  />
                   <ColorPickerRow
                     id="settings-slideBgColor"
                     title={t('settings.row.15')}
