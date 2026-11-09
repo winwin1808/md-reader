@@ -6,6 +6,7 @@ import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
 import { Icon } from './Icon';
 import { AiSetupGuide } from './AiSetupGuide';
+import { FeedbackForm, type FeedbackFormProps } from './FeedbackForm';
 
 export type FontFamily = 'sans' | 'serif' | 'mono';
 
@@ -56,7 +57,29 @@ export interface ReaderSettings {
   displayName?: string;
 }
 
+export interface SettingsLifecycleProps {
+  autoOpenWhatsNew: boolean;
+  onAutoOpenWhatsNewChange(v: boolean): void;
+  onOpenWhatsNew(): void;
+  hasUnseenNotes: boolean;
+}
+
+export interface SettingsHelpProps {
+  feedback: FeedbackFormProps;
+  helpUrl: string;
+  privacyUrl: string;
+}
+
+export interface SettingsBackupProps {
+  onBackupAll(): Promise<{ included: number; failed: number }>
+  sharedDocs: Array<{ docId: string; title: string }>
+  onOpenSharedDoc(docId: string): void
+}
+
 export interface SettingsModalProps {
+  backup?: SettingsBackupProps;
+  help?: SettingsHelpProps;
+  lifecycle?: SettingsLifecycleProps;
   settings?: ReaderSettings;
   onSettingChange?: <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => void;
   // Legacy / convenience props:
@@ -89,6 +112,9 @@ const SECTIONS = [
   { id: 'slides', label: 'settings.section.slides' as const },
   { id: 'collab', label: 'settings.section.collab' as const },
   { id: 'ai', label: 'settings.section.ai' as const },
+  { id: 'updates', label: 'settings.section.updates' as const },
+  { id: 'backup', label: 'settings.section.backup' as const },
+  { id: 'help', label: 'settings.section.help' as const },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -408,6 +434,63 @@ function ImageInputRow({
   );
 }
 
+function BackupSection({ backup }: { backup: SettingsBackupProps }): React.JSX.Element {
+  const t = useT();
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ included: number; failed: number } | null>(null);
+  const [error, setError] = useState(false);
+  const run = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setResult(null);
+    setError(false);
+    try {
+      setResult(await backup.onBackupAll());
+    } catch {
+      setError(true);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <p className="settings-row-desc">{t('settings.backup.warning')}</p>
+      <div className="settings-row">
+        <button type="button" className="settings-btn" disabled={busy} onClick={run}>
+          {busy ? t('settings.backup.busy') : t('settings.backup.button')}
+        </button>
+      </div>
+      <p role="status" aria-live="polite" className="settings-row-desc">
+        {result && (
+          <>
+            {t('settings.backup.done', { included: result.included })}
+            {result.failed > 0 && ' ' + t('settings.backup.failed', { failed: result.failed })}
+          </>
+        )}
+      </p>
+      {error && <p role="alert" className="settings-row-desc">{t('settings.backup.error')}</p>}
+      {backup.sharedDocs.length > 0 && (
+        <>
+          <h4 className="settings-backup-shared-title">{t('settings.backup.shared.title')}</h4>
+          <p className="settings-row-desc">{t('settings.backup.shared.desc')}</p>
+          <ul className="settings-backup-list">
+            {backup.sharedDocs.map((d) => (
+              <li key={d.docId}>
+                <button type="button" className="settings-backup-link" onClick={() => backup.onOpenSharedDoc(d.docId)}>
+                  {d.title || t('settings.backup.untitled')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+}
+
 function useModalOpen(open: boolean | undefined, onOpenChange: ((open: boolean) => void) | undefined): [boolean, (v: boolean) => void] {
   const [inner, setInner] = useState(false)
   const controlled = open !== undefined
@@ -448,7 +531,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   } = props;
 
   const [isOpen, setIsOpen] = useModalOpen(props.open, props.onOpenChange);
-  const sections = SECTIONS.filter((s) => s.id !== 'ai' || props.aiBridge);
+  const sections = SECTIONS.filter((s) => (s.id !== 'ai' || props.aiBridge) && (s.id !== 'updates' || props.lifecycle) && (s.id !== 'backup' || props.backup) && (s.id !== 'help' || props.help));
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -913,6 +996,60 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       </div>
                     ))
                   )}
+</section>
+)}
+{props.lifecycle && (
+<section aria-labelledby="settings-h-updates" id="settings-sec-updates" data-section={"updates"} className="settings-group" ref={(el) => { sectionRefs.current['updates'] = el }}>
+<h3 id="settings-h-updates" className="settings-group-title">{t('settings.section.updates')}</h3>
+                  <ToggleRow
+                    id="settings-updates-autoOpen"
+                    title={t('settings.updates.autoOpen.title')}
+                    description={t('settings.updates.autoOpen.desc')}
+                    checked={props.lifecycle.autoOpenWhatsNew}
+                    onChange={props.lifecycle.onAutoOpenWhatsNewChange}
+                  />
+                  <div className="settings-row">
+                    <button
+                      type="button"
+                      className="settings-btn"
+                      data-unseen={props.lifecycle.hasUnseenNotes ? 'true' : undefined}
+                      onClick={props.lifecycle.onOpenWhatsNew}
+                    >
+                      {t('settings.updates.open')}
+                      {props.lifecycle.hasUnseenNotes && (
+                        <>
+                          <span
+                            className="settings-dot"
+                            aria-hidden="true"
+                            style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginLeft: 6, background: 'var(--accent)' }}
+                          />
+                          <span
+                            className="sr-only"
+                            style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+                          >
+                            {t('settings.updates.unseen')}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+</section>
+)}
+{props.backup && (
+<section aria-labelledby="settings-h-backup" id="settings-sec-backup" data-section={"backup"} className="settings-group" ref={(el) => { sectionRefs.current['backup'] = el }}>
+<h3 id="settings-h-backup" className="settings-group-title">{t('settings.section.backup')}</h3>
+                  <BackupSection backup={props.backup} />
+</section>
+)}
+{props.help && (
+<section aria-labelledby="settings-h-help" id="settings-sec-help" data-section={"help"} className="settings-group" ref={(el) => { sectionRefs.current['help'] = el }}>
+<h3 id="settings-h-help" className="settings-group-title">{t('settings.section.help')}</h3>
+                  <div className="settings-field">
+                    <a href={props.help.helpUrl} target="_blank" rel="noopener noreferrer">{t('settings.help.guide')}</a>
+                    {' · '}
+                    <a href={props.help.privacyUrl} target="_blank" rel="noopener noreferrer">{t('settings.help.privacy')}</a>
+                  </div>
+                  <FeedbackForm {...props.help.feedback} />
 </section>
 )}
           </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SettingsModal } from './SettingsModal';
@@ -45,6 +45,118 @@ describe('SettingsModal', () => {
       fireEvent.click(document.getElementById('settings-slideAutoSplit') as HTMLInputElement)
       expect(on2).toHaveBeenCalledWith('slideAutoSplit', false)
       expect(on).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('backup section', () => {
+    const bk = (o: any = {}) => ({
+      onBackupAll: vi.fn().mockResolvedValue({ included: 3, failed: 1 }),
+      sharedDocs: [] as Array<{ docId: string; title: string }>,
+      onOpenSharedDoc: vi.fn(),
+      ...o,
+    })
+    const draw = (backup?: any) => render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} backup={backup} />)
+    it('is absent without backup', () => {
+      draw()
+      expect(document.getElementById('settings-sec-backup')).toBeNull()
+    })
+    it('shows the warning', () => {
+      draw(bk())
+      expect(screen.getByText(/Gỡ MD Reader sẽ xoá mọi tài liệu/)).toBeTruthy()
+    })
+    it('ignores a second quick click', async () => {
+      const onBackupAll = vi.fn(() => new Promise<any>(() => {}))
+      draw(bk({ onBackupAll }))
+      const btn = screen.getByText('Sao lưu tất cả (.zip)')
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+      expect(onBackupAll).toHaveBeenCalledTimes(1)
+      expect((await screen.findByText('Đang sao lưu…')).closest('button')!.disabled).toBe(true)
+    })
+    it('reports included and failed', async () => {
+      draw(bk())
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('3'))
+      expect(st.textContent).toContain('không đọc được')
+    })
+    it('status region is mounted and empty before clicking', () => {
+      draw(bk())
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      expect(st.textContent).toBe('')
+    })
+    it('failed 0 shows count without the failed text', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockResolvedValue({ included: 2, failed: 0 }) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      const st = within(document.getElementById('settings-sec-backup')!).getByRole('status')
+      await waitFor(() => expect(st.textContent).toContain('2'))
+      expect(st.textContent).not.toContain('không đọc được')
+    })
+    it('button re-enables after reject and a second click calls again', async () => {
+      const onBackupAll = vi.fn().mockRejectedValue(new Error('x'))
+      draw(bk({ onBackupAll }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      await screen.findByRole('alert')
+      const btn = screen.getByText('Sao lưu tất cả (.zip)').closest('button')!
+      expect(btn.disabled).toBe(false)
+      fireEvent.click(btn)
+      await waitFor(() => expect(onBackupAll).toHaveBeenCalledTimes(2))
+    })
+    it('shows an alert on reject', async () => {
+      draw(bk({ onBackupAll: vi.fn().mockRejectedValue(new Error('x')) }))
+      fireEvent.click(screen.getByText('Sao lưu tất cả (.zip)'))
+      expect(await screen.findByRole('alert')).toBeTruthy()
+    })
+    it('lists shared docs and opens the clicked one', () => {
+      const b = bk({ sharedDocs: [{ docId: 'a', title: 'A' }, { docId: 'b', title: '' }] })
+      draw(b)
+      expect(screen.getByText('Tài liệu đã chia sẻ')).toBeTruthy()
+      fireEvent.click(screen.getByText('Không tiêu đề'))
+      expect(b.onOpenSharedDoc).toHaveBeenCalledWith('b')
+    })
+    it('hides the shared title when none', () => {
+      draw(bk())
+      expect(screen.queryByText('Tài liệu đã chia sẻ')).toBeNull()
+    })
+  })
+
+  describe('updates section (lifecycle)', () => {
+    const lc = (o: any = {}) => ({
+      autoOpenWhatsNew: true,
+      onAutoOpenWhatsNewChange: vi.fn(),
+      onOpenWhatsNew: vi.fn(),
+      hasUnseenNotes: false,
+      ...o,
+    })
+    it('is absent without lifecycle', () => {
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} />)
+      expect(document.getElementById('settings-sec-updates')).toBeNull()
+    })
+    it('renders the toggle and fires change', () => {
+      const l = lc()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={l} />)
+      expect(document.getElementById('settings-sec-updates')).not.toBeNull()
+      const box = within(section('Cập nhật')).getByLabelText('Tự mở trang Có gì mới sau khi cập nhật') as HTMLInputElement
+      expect(box.checked).toBe(true)
+      fireEvent.click(box)
+      expect(l.onAutoOpenWhatsNewChange).toHaveBeenCalledWith(false)
+    })
+    it('open button fires onOpenWhatsNew', () => {
+      const l = lc()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={l} />)
+      fireEvent.click(within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ }))
+      expect(l.onOpenWhatsNew).toHaveBeenCalled()
+    })
+    it('unseen marks the button with text, else not', () => {
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={lc({ hasUnseenNotes: true })} />)
+      const btn = within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ })
+      expect(btn.getAttribute('data-unseen')).toBe('true')
+      expect(within(btn).getByText('Có ghi chú phát hành chưa xem')).toBeTruthy()
+      cleanup()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} lifecycle={lc()} />)
+      const b2 = within(section('Cập nhật')).getByRole('button', { name: /Xem có gì mới/ })
+      expect(b2.getAttribute('data-unseen')).toBeNull()
+      expect(screen.queryByText('Có ghi chú phát hành chưa xem')).toBeNull()
     })
   })
 
@@ -514,6 +626,33 @@ describe('SettingsModal', () => {
       renderCollab({ serverUrl: v });
       expect(screen.queryByText(HINT)).toBeNull();
       expect(screen.getByLabelText('Máy chủ đồng bộ')).not.toHaveAttribute('aria-invalid', 'true');
+    });
+  });
+  describe('help section', () => {
+    const help = {
+      feedback: {
+        diagnostics: { version: '1.0', browser: 'Chrome', locale: 'vi' },
+        onSubmit: vi.fn(async () => 'sent' as const),
+        fallbackMailto: () => 'mailto:a@b.c',
+      },
+      helpUrl: 'https://example.com/help',
+      privacyUrl: 'https://example.com/privacy',
+    };
+    it('is absent without help', () => {
+      render(<SettingsModal {...defaultProps} open />);
+      expect(document.getElementById('settings-sec-help')).toBeNull();
+    });
+    it('shows links and feedback form with help', () => {
+      render(<SettingsModal {...defaultProps} open help={help} />);
+      const sec = document.getElementById('settings-sec-help')!;
+      expect(sec).toBeTruthy();
+      const guide = within(sec).getByText('Hướng dẫn sử dụng').closest('a')!;
+      const priv = within(sec).getByText('Quyền riêng tư').closest('a')!;
+      expect(guide).toHaveAttribute('href', 'https://example.com/help');
+      expect(priv).toHaveAttribute('href', 'https://example.com/privacy');
+      expect(guide).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(priv).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(within(sec).getByRole('button', { name: 'Gửi góp ý' })).toBeTruthy();
     });
   });
 });

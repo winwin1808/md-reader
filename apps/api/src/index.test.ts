@@ -6,6 +6,7 @@ import { _resetAuthCache } from './api.js'
 import { MemoryTokenStore } from './tokens.js'
 import type { AssetStore } from "./assets.js"
 import type { Env } from './env.js'
+import { MemoryFeedbackStore, FEEDBACK_TTL_MS } from './feedback.js'
 
 const env = {} as Env
 const ok = () => Promise.resolve(new Response('party', { status: 200 }))
@@ -390,7 +391,7 @@ describe('runCleanup', () => {
     const { store, old, fresh, assets, limits } = await setup()
     const purge = vi.fn(async () => {})
     const r = await runCleanup({ store, assets, limits, purge } as CleanupDeps, NOW)
-    expect(r).toEqual({ rooms: 1, failed: 0, usage: 0 })
+    expect(r).toEqual({ rooms: 1, failed: 0, usage: 0, feedback: 0 })
     expect(purge).toHaveBeenCalledWith(old.roomId)
     expect(assets.deleteRoom).toHaveBeenCalledWith(old.roomId)
     expect(store.rooms.has(old.roomId)).toBe(false)
@@ -409,6 +410,33 @@ describe('runCleanup', () => {
     const spy = vi.spyOn(limits, 'pruneUsage')
     await runCleanup({ store, limits } as CleanupDeps, NOW)
     expect(spy).toHaveBeenCalledWith(dayOf(NOW) - 2)
+  })
+})
+
+describe('18d1.2: runCleanup feedback prune', () => {
+  const NOW = 400 * 86_400_000
+  const input = { kind: 'bug', reason: null, message: 'm', email: null, version: null, browser: null, locale: null } as const
+  it('deletes feedback older than 180 days', async () => {
+    let t = NOW - FEEDBACK_TTL_MS - 1000
+    const feedback = new MemoryFeedbackStore(() => t)
+    await feedback.add(input)
+    t = NOW - 1000
+    await feedback.add(input)
+    const r = await runCleanup({ store: new MemoryTokenStore(), feedback } as CleanupDeps, NOW)
+    expect(r.feedback).toBe(1)
+    expect(await feedback.list({ limit: 10 })).toHaveLength(1)
+  })
+  it('prune throwing does not break cleanup', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const feedback = { add: async () => {}, list: async () => [], prune: async () => { throw new Error('no table') } }
+    const r = await runCleanup({ store: new MemoryTokenStore(), feedback } as CleanupDeps, NOW)
+    expect(r).toEqual({ rooms: 0, failed: 0, usage: 0, feedback: 0 })
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+  it('feedback: 0 when no store', async () => {
+    const r = await runCleanup({ store: new MemoryTokenStore() } as CleanupDeps, NOW)
+    expect(r.feedback).toBe(0)
   })
 })
 

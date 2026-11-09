@@ -1,4 +1,4 @@
-import { test as base, chromium, type BrowserContext } from '@playwright/test'
+import { test as base, chromium, type BrowserContext, type Page } from '@playwright/test'
 import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -51,6 +51,13 @@ export const test = base.extend<{ server: MdServer; context: BrowserContext; ext
       args: ['--headless=new', '--lang=vi', `--disable-extensions-except=${dist}`, `--load-extension=${dist}`],
     })
     try {
+      const deadline = Date.now() + 5000
+      let welcome: Page | undefined
+      while (!welcome && Date.now() < deadline) {
+        welcome = context.pages().find((pg) => pg.url().includes('app.html?welcome=1'))
+        if (!welcome) await new Promise((r) => setTimeout(r, 100))
+      }
+      await welcome?.close().catch(() => {})
       await use(context)
     } finally {
       await context.close()

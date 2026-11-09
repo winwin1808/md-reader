@@ -1,8 +1,9 @@
 import type { CreateLinkRequest, ResolveTokenResponse, ShareRole } from '@md-reader/core'
 import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAssetResponse } from '@md-reader/core'
 import type { AssetStore } from './assets.js'
+import { MAX_FEEDBACK_BODY, parseFeedback, type FeedbackStore } from './feedback.js'
 import { MAX_REASON, adminAuthorized, type ModerationStore } from './moderation.js'
-import { subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
+import { ipSubject, subjectFrom, type LimitStore, type LimitVerdict } from './limits.js'
 import { RoomNotFoundError, hashToken, type ResolvedToken, type TokenStore } from './tokens.js'
 
 function json(body: unknown, status = 200): Response {
@@ -54,6 +55,7 @@ export interface ApiDeps {
   purge?: (roomId: string) => Promise<void>
   revokeLive?: (roomId: string, prefix: string) => Promise<void>
   moderation?: ModerationStore
+  feedback?: FeedbackStore
   adminSecret?: string
 }
 
@@ -118,8 +120,45 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     return json({ ok: true }, 202)
   }
 
+  if (path === '/api/feedback' && method === 'POST') {
+    const text = await req.text()
+    if (utf8Len(text) > MAX_FEEDBACK_BODY) return json({ error: 'too large' }, 413)
+    let body: unknown
+    try {
+      body = JSON.parse(text)
+    } catch {
+      return json({ error: 'invalid body' }, 400)
+    }
+    if (typeof body === 'object' && body !== null) {
+      const w = (body as Record<string, unknown>).website
+      if (typeof w === 'string' && w.trim() !== '') return new Response(null, { status: 204 })
+    }
+    const input = parseFeedback(body)
+    if (!input) return json({ error: 'invalid body' }, 400)
+    if (!deps.feedback) return json({ error: 'not available' }, 501)
+    const subj = { installHash: null, ipHash: await hashToken(ipSubject(req.headers.get('CF-Connecting-IP') ?? '')) }
+    if (deps.limits) {
+      const v = await deps.limits.check('feedback', subj)
+      if (v) return limited(v)
+    }
+    await deps.feedback.add(input)
+    await deps.limits?.record('feedback', subj, { roomId: '-' })
+    return new Response(null, { status: 204 })
+  }
+
   if (path.startsWith('/api/admin/')) {
     if (!deps.adminSecret) return json({ error: 'not found' }, 404)
+    if (path === '/api/admin/feedback' && method === 'GET') {
+      if (!(await adminAuthorized(req, deps.adminSecret))) return json({ error: 'unauthorized' }, 401)
+      const q = url.searchParams
+      const lr = q.get('limit')
+      const ln = lr !== null && /^-?\d+$/.test(lr) ? Number(lr) : 50
+      const limit = Math.min(200, Math.max(1, ln))
+      const br = q.get('before')
+      const bn = br !== null && /^\d+$/.test(br) ? Number(br) : 0
+      if (!deps.feedback) return json({ error: 'not available' }, 501)
+      return json({ items: await deps.feedback.list({ limit, ...(bn > 0 ? { before: bn } : {}) }) })
+    }
     const m = /^\/api\/admin\/rooms\/([^/]+)\/takedown$/.exec(path)
     if (m && method === 'POST') {
       if (!(await adminAuthorized(req, deps.adminSecret))) return json({ error: 'unauthorized' }, 401)

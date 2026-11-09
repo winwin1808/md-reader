@@ -7,7 +7,7 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 **Order from here:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Beyond the browser.
 Requests from real users run **in parallel** with this order (see [User requests](#user-requests-in-parallel)).
 
-## Done (phases 1 to 17 and 19, version 1.4.0)
+## Done (phases 1 to 19, version 1.5.0)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -26,6 +26,7 @@ Requests from real users run **in parallel** with this order (see [User requests
 - [x] **P15 User and server debt:** one-call "Revoke all", lazy KaTeX, Word equations as OMML, paginated history, `.Md` files recognised, MCP edits named after the client, CLI file lock, "Compact document".
 - [x] **P16 Test debt:** configurable-port collaboration e2e, tightened weak tests, order-independent suites.
 - [x] **P17 On the Chrome Web Store:** AI connection setup guide right in Settings, `le-sach-mcp` 1.3.2 accepts the store build, new name "LeSach – Markdown Reader & AI Editor".
+- [x] **P18 User lifecycle:** welcome page and sample document on install, a What's new page after major updates (can be turned off), optional feedback in Settings and on the page after uninstall, a one-time review invitation, backup of all documents to a `.zip` before uninstalling.
 - [x] **P19 Slide PDF without clipped text:** long slides split automatically by their real height (lists and tables split by item/row, tables repeat their header), blocks that cannot be split are scaled down with a warning; manual `<!-- slide-break -->` marker and a "Break slide here" button in Edit mode; a "Split long slides automatically" switch in Settings; PDF pages are exactly 1280×720.
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 

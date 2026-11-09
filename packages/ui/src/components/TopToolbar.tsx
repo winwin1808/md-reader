@@ -14,7 +14,7 @@ export type SaveStatus =
 
 export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline' | 'revoked' | 'full'
 
-export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void }
+export interface ToolbarAction { id: string; label: string; icon: IconName; onSelect(): void; badge?: boolean }
 
 export interface TopToolbarProps {
   presence?: Peer[]
@@ -161,10 +161,28 @@ function SyncStatusView({ status }: { status: SyncStatus }): React.JSX.Element |
   )
 }
 
-function IconBtn(props: { icon: IconName; label: string; title?: string; onClick?: () => void }): React.JSX.Element {
+const DOT_STYLE: React.CSSProperties = {
+  position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)',
+}
+const HIDDEN_STYLE: React.CSSProperties = {
+  position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap',
+}
+
+function IconBtn(props: { icon: IconName; label: string; title?: string; onClick?: () => void; badge?: boolean }): React.JSX.Element {
+  const t = useT()
+  const label = props.badge ? `${props.label} — ${t('settings.updates.unseen')}` : props.label
   return (
-    <button type="button" className="tb-btn" aria-label={props.label} title={props.title ?? props.label} onClick={props.onClick}>
+    <button
+      type="button"
+      className="tb-btn"
+      aria-label={label}
+      title={props.badge ? label : props.title ?? props.label}
+      onClick={props.onClick}
+      data-badge={props.badge ? 'true' : undefined}
+      style={props.badge ? { position: 'relative' } : undefined}
+    >
       <Icon name={props.icon} size={20} />
+      {props.badge && <span className="tb-dot" aria-hidden="true" style={DOT_STYLE} />}
     </button>
   )
 }
@@ -254,7 +272,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
   }
 
   const actions = props.actions ?? []
-  const overflowItems: { id: string; label: string; icon: IconName; onSelect: () => void }[] = []
+  const overflowItems: { id: string; label: string; icon: IconName; onSelect: () => void; badge?: boolean }[] = []
   if (narrow) {
     if (props.onOpenSearch) overflowItems.push({ id: 'search', label: t('toolbar.search'), icon: 'search', onSelect: props.onOpenSearch })
     if (props.onPresent) overflowItems.push({ id: 'present', label: t('toolbar.present'), icon: 'present', onSelect: props.onPresent })
@@ -264,6 +282,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
     if (props.onSave) overflowItems.push({ id: 'save', label: t('toolbar.save'), icon: 'save', onSelect: props.onSave })
   }
 
+  const anyBadge = overflowItems.some((i) => i.badge) || actions.some((a) => a.badge)
   const hasView = props.viewMode !== undefined || props.onViewModeChange !== undefined
 
   return (
@@ -313,7 +332,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
             {props.onOpenMindmap && <IconBtn icon="mindmap" label={t('toolbar.mindmap')} title={t('toolbar.mindmapTitle')} onClick={props.onOpenMindmap} />}
             {props.onShare && <IconBtn icon="share" label={t('toolbar.share')} onClick={props.onShare} />}
             {actions.map((a) => (
-              <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} />
+              <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} badge={a.badge} />
             ))}
             {props.onSave && <IconBtn icon="save" label={t('toolbar.save')} title={t('toolbar.saveTitle')} onClick={props.onSave} />}
           </>
@@ -322,21 +341,30 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           ref={moreRef}
           type="button"
           className="tb-btn"
-          aria-label={t('toolbar.more')}
-          title={t('toolbar.more')}
+          aria-label={anyBadge ? `${t('toolbar.more')} — ${t('settings.updates.unseen')}` : t('toolbar.more')}
+          title={anyBadge ? `${t('toolbar.more')} — ${t('settings.updates.unseen')}` : t('toolbar.more')}
+          data-badge={anyBadge ? 'true' : undefined}
+          style={anyBadge ? { position: 'relative' } : undefined}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((o) => !o)}
           onBlur={menuOpen ? onFocusOut : undefined}
         >
           <Icon name="more" size={20} />
+          {anyBadge && <span className="tb-dot" aria-hidden="true" style={DOT_STYLE} />}
         </button>
         {menuOpen && (
           <div ref={menuRef} className="tb-menu" role="menu" aria-label={t('toolbar.more')} onKeyDown={onMenuKeyDown} onBlur={onFocusOut}>
             {overflowItems.map((it) => (
-              <button key={it.id} type="button" role="menuitem" className="tb-menu-item" onClick={select(it.onSelect)}>
+              <button key={it.id} type="button" role="menuitem" className="tb-menu-item" onClick={select(it.onSelect)} data-badge={it.badge ? 'true' : undefined}>
                 <Icon name={it.icon} size={20} />
                 <span>{it.label}</span>
+                {it.badge && (
+                  <>
+                    <span className="tb-dot" aria-hidden="true" style={{ ...DOT_STYLE, position: 'static', marginLeft: 'auto' }} />
+                    <span style={HIDDEN_STYLE}>{t('settings.updates.unseen')}</span>
+                  </>
+                )}
               </button>
             ))}
             <div className="tb-menu-row">

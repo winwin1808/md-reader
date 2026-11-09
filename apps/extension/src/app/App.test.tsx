@@ -12,6 +12,7 @@ import * as docxMod from '@md-reader/core/docx'
 import type { ReaderSettings } from '@md-reader/ui'
 import { WordCountBar, CelebrationConfetti, SettingsModal, EditorView } from '@md-reader/ui'
 import { DEFAULT_SERVER_URL } from '../shared/collab'
+import { HELP_URL } from './feedback-client'
 import * as fsSystem from './fs/file-system'
 
 
@@ -1072,8 +1073,16 @@ describe('App', () => {
     const speakerSpy = vi.spyOn(ui, 'SpeakerView').mockImplementation((props: any) => (
       <div data-testid="mock-speaker-view" data-idx={props.currentSlideIndex}>S</div>
     ))
-    await act(async () => { render(<App />) })
+    const control = { ready: false }
+    vi.spyOn(ui, 'useSlidePagination').mockImplementation(((base: unknown[]) => ({
+      slides: base.length ? [{ id: 's1', html: '<p>one</p>' }] : [], ready: control.ready, warnings: [], stage: null,
+    })) as any)
+    let r: any
+    await act(async () => { r = render(<App />) })
+    await act(async () => { await new Promise((res) => setTimeout(res, 50)) })
     expect(speakerSpy).not.toHaveBeenCalled()
+    control.ready = true
+    await act(async () => { r.rerender(<App />) })
     const el = await screen.findByTestId('mock-speaker-view', {}, { timeout: 4000 })
     expect(el.getAttribute('data-idx')).toBe('0')
     const ch = MockBroadcastChannel.instances.find(c => c.name === 'md-reader-slides-sync') as any
@@ -1866,6 +1875,30 @@ describe('App', () => {
       expect(last.room.ownerToken).toBe('tok')
     } finally {
       docOverride.shareDoc = false
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('Cài đặt có mục Trợ giúp & góp ý, chỉ gửi khi bấm Gửi góp ý', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
+      const sec = document.getElementById('settings-sec-help')!
+      expect(sec).not.toBeNull()
+      expect(within(sec).getByRole('link', { name: /Hướng dẫn/ }).getAttribute('href')).toBe(HELP_URL)
+      expect(fetchMock).not.toHaveBeenCalled()
+      fireEvent.change(within(sec).getByRole('textbox', { name: 'Nội dung' }), { target: { value: 'góp ý thử' } })
+      await act(async () => { fireEvent.click(within(sec).getByRole('button', { name: 'Gửi góp ý' })) })
+      if (DEFAULT_SERVER_URL === '') {
+        expect(await within(sec).findByRole('link', { name: 'Gửi qua email' })).toBeDefined()
+        expect(fetchMock).not.toHaveBeenCalled()
+      } else {
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+        expect(fetchMock.mock.calls[0]![0]).toBe(DEFAULT_SERVER_URL + '/api/feedback')
+      }
+    } finally {
       vi.unstubAllGlobals()
     }
   })

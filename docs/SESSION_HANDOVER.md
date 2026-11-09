@@ -1,6 +1,27 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-09. Branch: `phase-19` — MR `phase-19` → `main` **đã mở, chưa merge** (https://github.com/winwin1808/md-reader/pull/19). Phase 17 đã merge (#18). Phase 18 mới thiết kế, chưa làm.
+Cập nhật: 2026-11-09. **Phase 18 HOÀN TẤT**, MR #20 `phase-18` → `main` đã mở (https://github.com/winwin1808/md-reader/pull/20), **chưa merge**. MR #19 (phase 19) đã merge vào `main`.
+
+## Phase 18 — Vòng đời người dùng, v1.5.0 (2026-11-09)
+
+Spec `docs/superpowers/specs/2026-11-09-phase-18-design.md` (`Status: shipped`) · plan `docs/superpowers/plans/2026-11-09-phase-18-<sub>-plan.md` (15 phase con, mỗi plan có Handoff + Deferred).
+
+**Bây giờ đúng (trên `phase-18`):**
+- Worker: `onInstalled`/`onStartup` tuần tự, trạng thái `mdr:lifecycle` (`decideLifecycle` thuần); cài mới mở `app.html?welcome=1` đúng một lần — sự kiện `install` lặp lại khi đã có `startedAt` (Chromium bắn lại lúc khởi động profile có bản unpacked) không mở lại, không đặt lại bộ đếm; cập nhật lớn mở "Có gì mới" một lần (cờ `showOnUpdate`); `setUninstallURL` → `site/uninstall.html?v&lang`.
+- Trang chào + tài liệu mẫu song ngữ + checklist trạng thái thật; "Có gì mới" + chấm báo + công tắc trong Cài đặt → "Cập nhật".
+- Máy chủ: bảng `feedback` (migration `0005`, không cột IP/định danh), `POST /api/feedback` (bẫy `website`, 5/IP/ngày, 500/ngày, không đọc `x-mdr-install`), `GET /api/admin/feedback`, cron xoá > 180 ngày.
+- `site/uninstall.html`: góp ý lý do gỡ tự nguyện, ô bẫy `mdr_hp`, lỗi → mailto.
+- Cài đặt → "Trợ giúp & góp ý" (`FeedbackForm`, `feedback-client.ts`); lời mời đánh giá một lần (≥ 10 lần mở, ≥ 7 ngày; quyết định ở khoá riêng `mdr:review-decision`, cửa sổ speaker không đếm, dải nổi, ẩn khi in).
+- Cài đặt → "Trước khi gỡ": sao lưu mọi tài liệu ra `.zip` (`backup.ts` đọc store `updates` của IndexedDB thô — không ghi, không tạo DB; `fflate` 0.8.2 nạp lười, chunk `browser.js` 4.4 KB gz), danh sách tài liệu đã chia sẻ (mở từng cái để xoá dữ liệu máy chủ).
+- E2E `e2e-pw/lifecycle.spec.ts`: cài mới → chào một lần → mở mẫu → khởi động lại không mở thêm tab, `startedAt` giữ nguyên. Chạy riêng: `cd apps/extension && npx playwright test e2e-pw/lifecycle.spec.ts` (`pnpm --filter extension e2e -- <file>` không lọc).
+- Quyền riêng tư (`docs/store/privacy-policy.md`, `site/privacy.html`) nêu góp ý tự nguyện, trang sau gỡ, trạng thái trên máy; ROADMAP có P18; version 1.5.0 (manifest + package.json; `release-notes.ts` đã có 1.5.0).
+- Test: core 334 · ui 602 · extension 622 · api 244 · web 64 · mcp 47 · e2e 12; typecheck/build 0; content.js gz 13 660; app.js gz ~451 KB.
+
+**Thứ tự phát hành (người làm, bắt buộc):** (1) migration D1 `0005_feedback.sql` remote + deploy Worker → (2) merge MR #20 để `site/` lên GitHub Pages → (3) mới nộp 1.5.0 lên store, kiểm lại form Data usage (góp ý tự nguyện) → (4) gỡ bản thử để kiểm tay `setUninstallURL`. Làm ngược thì URL gỡ trỏ vào trang chưa có.
+
+**Nợ phase 18 (chi tiết ở Deferred từng plan):** các writer khác của `mdr:lifecycle` đọc-sửa-ghi cả object (`docOpens` có thể lệch một lần); `startup` có thể xoá pending "Có gì mới" khi cờ tắt; `hasUnseenNotes(null)` bỏ qua pending; route góp ý đọc hết body trước khi kiểm 8192, hạn mức không nguyên tử; host máy chủ ghi cứng trong `site/uninstall.js`; test App góp ý chỉ đi nhánh mailto khi CI không có `VITE_MDR_SERVER_URL`; sao lưu chưa xử lý tên dành riêng Windows, đóng/mở lại Cài đặt khi đang sao lưu có thể bấm lần hai.
+
+**Phase tiếp theo:** chưa định — cần intent mới. File chưa commit của người dùng KHÔNG đụng: `docs/store/listing.md`, `docs/store/src/`, `docs/store/promo-marquee-*.png`, `apps/extension/promo/`.
 
 ## Phase 19 — PDF trình chiếu không cắt chữ (2026-11-09)
 

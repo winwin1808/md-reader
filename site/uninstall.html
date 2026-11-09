@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi" data-lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MD Reader — Đã gỡ / Uninstalled</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+<script>
+(function(){var l=new URLSearchParams(location.search).get("lang");if(l!=="vi"&&l!=="en"){try{l=localStorage.getItem("lang")}catch(e){}}
+if(l!=="vi"&&l!=="en")l=/^vi\b/i.test(navigator.language||"")?"vi":"en";
+document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
+</script>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="./"><img src="logo.svg" alt="" width="32" height="32"><span>MD Reader</span></a>
+  <nav aria-label="Main"><a href="./"><span lang="vi">Trang chủ</span><span lang="en">Home</span></a>
+  <a href="https://github.com/winwin1808/md-reader">GitHub</a>
+  <button class="lang" type="button" id="langbtn"><span lang="vi">EN</span><span lang="en">VI</span></button></nav>
+</header>
+<main class="doc">
+<div lang="vi">
+<h1>Đã gỡ MD Reader</h1>
+<p>MD Reader đã được gỡ khỏi trình duyệt của bạn. Cảm ơn bạn đã dùng thử.</p>
+<p class="fb-note"><strong>Tài liệu lưu trong trình duyệt đã bị xoá cùng extension.</strong> Nếu cần, hãy cài lại và nhập lại file từ đĩa.</p>
+<p>Link đã chia sẻ vẫn hoạt động. Phòng tự xoá sau 90 ngày không ai mở. Muốn xoá sớm, gửi link tới <a href="mailto:qhao.work@gmail.com">qhao.work@gmail.com</a>.</p>
+</div>
+<div lang="en">
+<h1>MD Reader was uninstalled</h1>
+<p>MD Reader has been removed from your browser. Thanks for trying it.</p>
+<p class="fb-note"><strong>Documents stored in your browser were deleted along with the extension.</strong> If needed, reinstall and import your files from disk again.</p>
+<p>Shared links keep working. Rooms are deleted automatically after 90 days with nobody opening them. To delete earlier, send the link to <a href="mailto:qhao.work@gmail.com">qhao.work@gmail.com</a>.</p>
+</div>
+<form id="fb" class="fb">
+<h2><span lang="vi">Góp ý (không bắt buộc)</span><span lang="en">Feedback (optional)</span></h2>
+<fieldset><legend><span lang="vi">Vì sao bạn gỡ?</span><span lang="en">Why did you uninstall?</span></legend>
+<label class="fb-opt"><input type="radio" name="reason" value="not_needed"> <span lang="vi">Không còn cần</span><span lang="en">No longer needed</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="missing_feature"> <span lang="vi">Thiếu tính năng</span><span lang="en">Missing a feature</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="bugs"> <span lang="vi">Gặp lỗi</span><span lang="en">Bugs</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="hard_to_use"> <span lang="vi">Khó dùng</span><span lang="en">Hard to use</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="privacy"> <span lang="vi">Lo ngại quyền riêng tư</span><span lang="en">Privacy concerns</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="switched"> <span lang="vi">Chuyển sang công cụ khác</span><span lang="en">Switched to another tool</span></label>
+<label class="fb-opt"><input type="radio" name="reason" value="other"> <span lang="vi">Lý do khác</span><span lang="en">Other</span></label>
+</fieldset>
+<p><label for="fb-message"><span lang="vi">Chi tiết thêm</span><span lang="en">More detail</span></label><br>
+<textarea id="fb-message" name="message" maxlength="2000" rows="4"></textarea></p>
+<p><label for="fb-email">Email <span lang="vi">(tuỳ chọn)</span><span lang="en">(optional)</span></label><br>
+<input id="fb-email" type="email" name="email" maxlength="254"></p>
+<div class="fb-trap" aria-hidden="true" inert><input name="mdr_hp" tabindex="-1" autocomplete="off"></div>
+<p><small><span lang="vi">Sẽ gửi kèm: phiên bản <span id="fb-version">—</span>, trình duyệt <span id="fb-browser">—</span>.</span><span lang="en">Sent along: version <span id="fb-version-en">—</span>, browser <span id="fb-browser-en">—</span>.</span> <span lang="vi">Chỉ gửi khi bạn bấm Gửi.</span><span lang="en">Nothing is sent until you press Send.</span></small></p>
+<p><button class="btn main" type="submit"><span lang="vi">Gửi</span><span lang="en">Send</span></button></p>
+<p id="fb-status" role="status" aria-live="polite"></p>
+</form>
+<p class="reinstall"><a class="btn" href="https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog"><span lang="vi">Cài lại MD Reader</span><span lang="en">Reinstall MD Reader</span></a></p>
+</main>
+</div>
+<script src="uninstall.js"></script>
+<script src="lang.js"></script>
+</body>
+</html>
