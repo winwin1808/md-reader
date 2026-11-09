@@ -5,6 +5,7 @@ import { BRIDGE_PORTS } from '@md-reader/core/bridge'
 import { App } from './App'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { WelcomeRoute } from './WelcomeRoute'
+import { WhatsNewRoute, maybeRedirectToWhatsNew } from './WhatsNewRoute'
 import { LocaleRoot } from './LocaleRoot'
 import { PAIR_DECISION_MSG } from '../worker/bridge-storage'
 import { onMathLoaded } from '@md-reader/core/plugins'
@@ -41,11 +42,14 @@ if (container) {
   const root = createRoot(container)
   const pair = pairParams()
   const welcome = new URLSearchParams(window.location.search).get('welcome') === '1'
-  root.render(
+  const whatsnew = new URLSearchParams(window.location.search).get('whatsnew') === '1'
+  const tree = (
     <React.StrictMode>
       <LocaleRoot>
         {welcome ? (
           <WelcomeRoute />
+        ) : whatsnew ? (
+          <WhatsNewRoute />
         ) : pair === 'invalid' ? (
           <PairInvalid />
         ) : pair ? (
@@ -58,4 +62,16 @@ if (container) {
       </LocaleRoot>
     </React.StrictMode>
   )
+  if (welcome || whatsnew || pair) {
+    root.render(tree)
+  } else {
+    void (async () => {
+      const ctrl = new AbortController()
+      const redirected = await Promise.race([
+        maybeRedirectToWhatsNew(ctrl.signal),
+        new Promise<boolean>((r) => setTimeout(() => { ctrl.abort(); r(false) }, 300)),
+      ])
+      if (!redirected) root.render(tree)
+    })()
+  }
 }
