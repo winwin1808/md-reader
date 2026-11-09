@@ -18,6 +18,94 @@ export function isSlideBreakLine(line: string): boolean {
   return /^ {0,3}<!--\s*slide-break\s*-->\s*$/i.test(line)
 }
 
+export function slideBreakInsertion(text: string, cursor: number): { at: number; insert: string } {
+  const pos = Math.min(Math.max(cursor, 0), text.length)
+  const lines = text.split('\n')
+  const starts: number[] = []
+  let off = 0
+  for (const l of lines) {
+    starts.push(off)
+    off += l.length + 1
+  }
+  const blank = (i: number) => lines[i]!.trim() === ''
+
+  // fence regions: [openIdx, closeIdx]; closeIdx = last line when unclosed
+  const regions: Array<{ open: number; end: number; closed: boolean }> = []
+  const closing = new Set<number>()
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i]!.match(/^ {0,3}(`{3,}|~{3,})/)
+    if (!m || !m[1]) continue
+    const ch = m[1][0]!
+    const len = m[1].length
+    let end = -1
+    for (let j = i + 1; j < lines.length; j++) {
+      const c = lines[j]!.match(/^ {0,3}(`{3,}|~{3,})\s*$/)
+      if (c && c[1] && c[1][0] === ch && c[1].length >= len) {
+        end = j
+        break
+      }
+    }
+    if (end === -1) {
+      regions.push({ open: i, end: lines.length - 1, closed: false })
+      break
+    }
+    regions.push({ open: i, end, closed: true })
+    closing.add(end)
+    i = end
+  }
+
+  let anchor = 0
+  for (let i = 0; i < lines.length; i++) if (starts[i]! <= pos) anchor = i
+  const region = regions.find((r) => anchor >= r.open && anchor <= r.end)
+  let at: number
+  if (region) {
+    anchor = region.open
+    at = -1
+  } else if (blank(anchor)) {
+    let n = anchor + 1
+    while (n < lines.length && blank(n)) n++
+    if (n >= lines.length) {
+      at = text.length
+    } else {
+      anchor = n
+      at = -1
+    }
+  } else {
+    at = -1
+  }
+
+  if (at === -1) {
+    let i = anchor
+    while (i > 0 && !blank(i - 1) && !closing.has(i - 1)) i--
+    at = starts[i]!
+    if (at === 0) return { at: 0, insert: '' }
+  } else if (at === 0) {
+    return { at: 0, insert: '' }
+  }
+
+  // nearest non-blank line above `at`
+  let prev = -1
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (starts[i]! < at && !blank(i)) {
+      prev = i
+      break
+    }
+  }
+  if (prev !== -1 && isSlideBreakLine(lines[prev]!)) return { at, insert: '' }
+
+  let prefix = ''
+  if (at > 0) {
+    if (text[at - 1] !== '\n') prefix = '\n\n'
+    else {
+      const before = text.slice(0, at - 1).split('\n')
+      const last = before[before.length - 1]!
+      prefix = last.trim() === '' ? '' : '\n'
+    }
+  }
+  const suffix = at < text.length ? '\n\n' : '\n'
+  return { at, insert: prefix + SLIDE_BREAK_MARKER + suffix }
+}
+
 function splitAtBreakMarkers(section: string): string[] {
   const lines = section.split(/\r?\n/)
   const parts: string[] = []

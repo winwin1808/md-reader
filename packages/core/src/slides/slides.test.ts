@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { splitIntoSlides, SLIDE_BREAK_MARKER } from './index.js'
+import { splitIntoSlides, SLIDE_BREAK_MARKER, slideBreakInsertion } from './index.js'
 import { renderToHtml } from '../render/index.js'
 import { parseMarkdown } from '../parse/index.js'
 import { defaultRenderPlugins, loadMathPlugin } from '../plugins/index.js'
@@ -240,4 +240,85 @@ describe('slide-break marker is not visible when reading', () => {
       expect(html).not.toContain('slide-break')
     })
   }
+})
+
+describe('slideBreakInsertion', () => {
+  const M = SLIDE_BREAK_MARKER
+  function run(text: string, cursor: number) {
+    const r = slideBreakInsertion(text, cursor)
+    const out = text.slice(0, r.at) + r.insert + text.slice(r.at)
+    return { r, out }
+  }
+  function expectOneMore(text: string, out: string) {
+    expect(splitIntoSlides(out, { strategy: 'fallback' as never }).length).toBe(
+      splitIntoSlides(text, { strategy: 'fallback' as never }).length + 1,
+    )
+    const words = (t: string) => t.replace(M, '').split(/\s+/).filter(Boolean)
+    expect(words(out)).toEqual(words(text))
+  }
+
+  it('cursor mid second paragraph inserts before its first line', () => {
+    const text = 'first\n\nsecond a\nsecond b\n'
+    const { r, out } = run(text, text.indexOf('second b') + 3)
+    expect(r.at).toBe(text.indexOf('second a'))
+    expect(out).toBe(`first\n\n${M}\n\nsecond a\nsecond b\n`)
+    expectOneMore(text, out)
+  })
+
+  it('cursor in ``` block inserts before the opening fence', () => {
+    const text = 'intro\n\n```js\nconst a = 1\n\nb\n```\n\nend'
+    const { r, out } = run(text, text.indexOf('const'))
+    expect(r.at).toBe(text.indexOf('```js'))
+    expect(out).toContain(`intro\n\n${M}\n\n\`\`\`js`)
+    expectOneMore(text, out)
+  })
+
+  it('cursor in ~~~ block inserts before the opening fence', () => {
+    const text = 'intro\n\n~~~\ncode\n~~~\n'
+    const { r, out } = run(text, text.indexOf('code'))
+    expect(r.at).toBe(text.indexOf('~~~'))
+    expectOneMore(text, out)
+  })
+
+  it('longer fence is not closed by a shorter one', () => {
+    const text = 'intro\n\n````md\n```\ninner\n```\n````\n\nend'
+    const { r, out } = run(text, text.indexOf('inner'))
+    expect(r.at).toBe(text.indexOf('````md'))
+    expectOneMore(text, out)
+  })
+
+  it('cursor on blank line picks next block', () => {
+    const text = 'one\n\ntwo\n'
+    const { r, out } = run(text, 4)
+    expect(r.at).toBe(text.indexOf('two'))
+    expectOneMore(text, out)
+  })
+
+  it('cursor in first block returns empty insert', () => {
+    const text = 'one\ntwo\n\nthree'
+    expect(slideBreakInsertion(text, 5)).toEqual({ at: 0, insert: '' })
+  })
+
+  it('right after an existing break returns empty insert', () => {
+    const text = `one\n\n${M}\n\ntwo`
+    expect(slideBreakInsertion(text, text.indexOf('two')).insert).toBe('')
+    const t2 = 'one\n\n   <!--slide-break-->\n\ntwo'
+    expect(slideBreakInsertion(t2, t2.indexOf('two')).insert).toBe('')
+  })
+
+  it('cursor on trailing blank line inserts at end', () => {
+    const text = 'one\n\ntwo\n\n'
+    const { r, out } = run(text, text.length)
+    expect(r.at).toBe(text.length)
+    expect(out).toBe(`one\n\ntwo\n\n${M}\n`)
+    expect(r.insert).not.toBe('')
+  })
+
+  it('block after a closing fence still gets a blank line before the marker', () => {
+    const text = 'a\n\n```\nx\n```\nafter\n'
+    const { r, out } = run(text, text.indexOf('after'))
+    expect(r.at).toBe(text.indexOf('after'))
+    expect(out).toContain(`\`\`\`\n\n${M}\n\nafter`)
+    expectOneMore(text, out)
+  })
 })
