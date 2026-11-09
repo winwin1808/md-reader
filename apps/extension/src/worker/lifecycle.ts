@@ -117,3 +117,24 @@ export function uninstallUrl(version: string, uiLang: string): string {
   const lang = uiLang.startsWith('vi') ? 'vi' : 'en';
   return `https://winwin1808.github.io/md-reader/uninstall.html?v=${encodeURIComponent(version)}&lang=${lang}`;
 }
+
+export const REVIEW_MIN_OPENS = 10;
+export const REVIEW_MIN_AGE_MS = 7 * 86_400_000;
+const DOC_OPENS_CAP = 1000;
+
+export function shouldAskReview(s: LifecycleState, now: number): boolean {
+  return (
+    s.review === 'idle' &&
+    s.docOpens >= REVIEW_MIN_OPENS &&
+    s.startedAt !== null &&
+    now - s.startedAt >= REVIEW_MIN_AGE_MS
+  );
+}
+
+export function bumpDocOpens(s: LifecycleState): LifecycleState {
+  return { ...s, docOpens: Math.min(s.docOpens + 1, DOC_OPENS_CAP) };
+}
+
+export function setReview(s: LifecycleState, v: 'dismissed' | 'accepted'): LifecycleState {
+  return { ...s, review: v };
+}

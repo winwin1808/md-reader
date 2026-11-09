@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { RELEASE_NOTES, type ReleaseNote } from '../shared/release-notes';
 import {
   LIFECYCLE_KEY,
+  REVIEW_MIN_AGE_MS,
+  REVIEW_MIN_OPENS,
+  bumpDocOpens,
+  setReview,
+  shouldAskReview,
   compareVersions,
   decideLifecycle,
   markWhatsNewSeen,
@@ -155,5 +160,35 @@ describe('lifecycle', () => {
   it('RELEASE_NOTES vi/en same length', () => {
     expect(RELEASE_NOTES.length).toBeGreaterThan(0);
     for (const n of RELEASE_NOTES) expect(n.items.vi.length).toBe(n.items.en.length);
+  });
+});
+
+describe('review prompt', () => {
+  const base: LifecycleState = { ...def, startedAt: 0, docOpens: 10 };
+  const day = 86_400_000;
+  it('constants', () => {
+    expect(REVIEW_MIN_OPENS).toBe(10);
+    expect(REVIEW_MIN_AGE_MS).toBe(7 * day);
+  });
+  it('9 opens -> false', () => expect(shouldAskReview({ ...base, docOpens: 9 }, 7 * day)).toBe(false));
+  it('10 opens + 7 days -> true', () => expect(shouldAskReview(base, 7 * day)).toBe(true));
+  it('10 opens + 6d23h -> false', () => expect(shouldAskReview(base, 7 * day - 3_600_000)).toBe(false));
+  it('startedAt null -> false', () => expect(shouldAskReview({ ...base, startedAt: null }, 99 * day)).toBe(false));
+  it('dismissed/accepted -> false', () => {
+    expect(shouldAskReview({ ...base, review: 'dismissed' }, 7 * day)).toBe(false);
+    expect(shouldAskReview({ ...base, review: 'accepted' }, 7 * day)).toBe(false);
+  });
+  it('bumpDocOpens increments, clamps, is pure', () => {
+    const s = { ...base, docOpens: 3 };
+    const n = bumpDocOpens(s);
+    expect(n.docOpens).toBe(4);
+    expect(s.docOpens).toBe(3);
+    expect(n).toEqual({ ...s, docOpens: 4 });
+    expect(bumpDocOpens({ ...s, docOpens: 1000 }).docOpens).toBe(1000);
+  });
+  it('setReview', () => {
+    expect(setReview(base, 'dismissed').review).toBe('dismissed');
+    expect(setReview(base, 'accepted').review).toBe('accepted');
+    expect(base.review).toBe('idle');
   });
 });

@@ -149,6 +149,10 @@ export const vi = {
   'feedback.sent': 'Cảm ơn bạn! Góp ý đã được gửi.',
   'feedback.failed': 'Không gửi được.',
   'feedback.mailto': 'Gửi qua email',
+  'review.label': 'Mời đánh giá',
+  'review.text': 'Nếu MD Reader có ích với bạn, một đánh giá trên Chrome Web Store giúp mình rất nhiều.',
+  'review.rate': 'Đánh giá',
+  'review.dismiss': 'Không hỏi nữa',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -302,4 +306,8 @@ export const en: Record<keyof typeof vi, string> = {
   'feedback.sent': 'Thanks! Your feedback was sent.',
   'feedback.failed': "Couldn't send.",
   'feedback.mailto': 'Send by email',
+  'review.label': 'Rate MD Reader',
+  'review.text': 'If MD Reader helps you, a review on the Chrome Web Store helps a lot.',
+  'review.rate': 'Rate it',
+  'review.dismiss': "Don't ask again",
 }
