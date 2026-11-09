@@ -11,8 +11,10 @@ const feedback = readFileSync(resolve(root, 'apps/api/src/feedback.ts'), 'utf8')
 
 describe('uninstall page', () => {
   it('reason values equal server UNINSTALL_REASONS', () => {
-    const m = /UNINSTALL_REASONS\s*=\s*\[([^\]]*)\]/.exec(feedback)!
-    const server = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort()
+    const m = /UNINSTALL_REASONS\s*=\s*\[([^\]]*)\]/.exec(feedback)
+    const body = m?.[1]
+    if (body === undefined) throw new Error('UNINSTALL_REASONS not found in feedback.ts')
+    const server = [...body.matchAll(/'([^']+)'/g)].map((x) => x[1]).sort()
     const page = [...html.matchAll(/<input[^>]*name="reason"[^>]*>/g)]
       .map((x) => /value="([^"]+)"/.exec(x[0])![1])
       .sort()
