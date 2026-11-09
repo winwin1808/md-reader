@@ -380,6 +380,33 @@ describe('App', () => {
     })
   })
 
+  describe('slideAutoSplit setting', () => {
+    const run = async (stored: Record<string, unknown>) => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# A\n\nx') } as any)
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, ...stored })
+      const spy = vi.spyOn(ui, 'useSlidePagination').mockImplementation(((base: unknown[]) => ({
+        slides: base, ready: true, warnings: [], stage: null,
+      })) as any)
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+      return spy
+    }
+    it('passes enabled:false when slideAutoSplit is false', async () => {
+      const spy = await run({ slideAutoSplit: false })
+      const last = spy.mock.calls[spy.mock.calls.length - 1]!
+      expect(last[0].length).toBeGreaterThan(0)
+      expect((last[1] as any).enabled).toBe(false)
+    })
+    it('passes enabled:true when the key is missing and slides exist', async () => {
+      const spy = await run({})
+      const last = spy.mock.calls[spy.mock.calls.length - 1]!
+      expect((last[1] as any).enabled).toBe(true)
+    })
+  })
+
   describe('slides PDF wait / expiry / mermaid-off', () => {
     const loadDoc = (md: string) => {
       delete (window as any).location
