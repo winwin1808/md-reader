@@ -135,6 +135,17 @@ export const vi = {
   'settings.collab.server': 'Máy chủ đồng bộ',
   'settings.collab.serverDesc': 'Tài liệu đã chia sẻ vẫn dùng máy chủ lúc bật chia sẻ.',
   'settings.collab.serverError': 'Địa chỉ phải bắt đầu bằng https:// (http:// chỉ cho localhost)',
+  'feedback.kind.legend': 'Loại góp ý',
+  'feedback.kind.bug': 'Báo lỗi',
+  'feedback.kind.idea': 'Đề xuất',
+  'feedback.message': 'Nội dung',
+  'feedback.email': 'Email (tuỳ chọn, để mình trả lời)',
+  'feedback.attached': 'Sẽ gửi kèm: Phiên bản {version} · Trình duyệt {browser} · Ngôn ngữ {locale}',
+  'feedback.noContent': 'Không gửi nội dung tài liệu hay địa chỉ trang.',
+  'feedback.submit': 'Gửi góp ý',
+  'feedback.sent': 'Cảm ơn bạn! Góp ý đã được gửi.',
+  'feedback.failed': 'Không gửi được.',
+  'feedback.mailto': 'Gửi qua email',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -274,4 +285,15 @@ export const en: Record<keyof typeof vi, string> = {
   'settings.collab.server': 'Sync server',
   'settings.collab.serverDesc': 'Shared documents keep using the server they were shared with.',
   'settings.collab.serverError': 'The address must start with https:// (http:// only for localhost)',
+  'feedback.kind.legend': 'Type',
+  'feedback.kind.bug': 'Report a bug',
+  'feedback.kind.idea': 'Suggest an idea',
+  'feedback.message': 'Message',
+  'feedback.email': 'Email (optional, so we can reply)',
+  'feedback.attached': 'Sent with it: Version {version} · Browser {browser} · Language {locale}',
+  'feedback.noContent': 'Your documents and page addresses are never sent.',
+  'feedback.submit': 'Send feedback',
+  'feedback.sent': 'Thanks! Your feedback was sent.',
+  'feedback.failed': "Couldn't send.",
+  'feedback.mailto': 'Send by email',
 }
