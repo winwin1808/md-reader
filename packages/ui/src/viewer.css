@@ -82,3 +82,4 @@
 .md-viewer .hljs-builtin-name {
   color: var(--code-attr);
 }
+@import './theme/tour.css';
