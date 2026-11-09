@@ -74,6 +74,7 @@ export async function handleRequest(
         assets: new D1AssetStore(env.DB),
         limits: new D1LimitStore(env.DB),
         moderation: new D1ModerationStore(env.DB),
+        feedback: new D1FeedbackStore(env.DB),
         ...(env.ADMIN_SECRET ? { adminSecret: env.ADMIN_SECRET } : {}),
         purge: (roomId) =>
           deps

@@ -671,3 +671,81 @@ describe('revoke-all + byte limits (15a)', () => {
     expect(res!.status).toBe(413)
   })
 })
+
+describe('feedback routes', () => {
+  const fb = (body: unknown, h: Record<string, string> = {}, raw?: string) =>
+    new Request('http://x/api/feedback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...h },
+      body: raw ?? JSON.stringify(body),
+    })
+  const mk = async () => {
+    const { MemoryLimitStore } = await import('./limits.js')
+    const { MemoryFeedbackStore } = await import('./feedback.js')
+    return { store: new MemoryTokenStore(now), limits: new MemoryLimitStore(now), feedback: new MemoryFeedbackStore(now) }
+  }
+  const ok = { kind: 'bug', message: 'broken' }
+
+  it('valid -> 204 and stored', async () => {
+    const d = await mk()
+    expect((await handleApi(fb(ok), d.store, d))!.status).toBe(204)
+    expect(await d.feedback.list({ limit: 10 })).toHaveLength(1)
+  })
+  it('too large 413, bad json 400, bad kind 400, no store 501', async () => {
+    const d = await mk()
+    expect((await handleApi(fb({ ...ok, message: 'a'.repeat(9000) }), d.store, d))!.status).toBe(413)
+    expect((await handleApi(fb(null, {}, '{nope'), d.store, d))!.status).toBe(400)
+    expect((await handleApi(fb({ kind: 'zzz' }), d.store, d))!.status).toBe(400)
+    expect((await handleApi(fb(ok), d.store, { limits: d.limits }))!.status).toBe(501)
+  })
+  it('honeypot -> 204, nothing stored or recorded', async () => {
+    const d = await mk()
+    const spy = vi.spyOn(d.limits, 'record')
+    expect((await handleApi(fb({ ...ok, website: 'x' }), d.store, d))!.status).toBe(204)
+    expect(await d.feedback.list({ limit: 10 })).toHaveLength(0)
+    expect(spy).not.toHaveBeenCalled()
+  })
+  it('6th from same IP is 429 with retry-after', async () => {
+    const d = await mk()
+    const h = { 'CF-Connecting-IP': '5.5.5.5' }
+    for (let i = 0; i < 5; i++) expect((await handleApi(fb(ok, h), d.store, d))!.status).toBe(204)
+    const r = (await handleApi(fb(ok, h), d.store, d))!
+    expect(r.status).toBe(429)
+    expect(r.headers.get('retry-after')).toBeTruthy()
+  })
+  it('ignores x-mdr-install: not stored, limit by IP', async () => {
+    const d = await mk()
+    for (let i = 0; i < 5; i++)
+      await handleApi(fb(ok, { 'CF-Connecting-IP': '6.6.6.6', 'x-mdr-install': 'secret-inst-' + i }), d.store, d)
+    const rows = await d.feedback.list({ limit: 10 })
+    for (const row of rows) for (const v of Object.values(row)) expect(String(v)).not.toContain('secret-inst')
+    const r = (await handleApi(fb(ok, { 'CF-Connecting-IP': '6.6.6.6', 'x-mdr-install': 'another' }), d.store, d))!
+    expect(r.status).toBe(429)
+  })
+  it('admin list: 404/401/200 desc, limit clamp, before', async () => {
+    const d = await mk()
+    for (let i = 0; i < 3; i++) await d.feedback.add({ kind: 'bug', reason: null, message: 'm' + i, email: null, version: null, browser: null, locale: null })
+    const get = (q: string, b?: string) =>
+      req('GET', '/api/admin/feedback' + q, b === undefined ? {} : { bearer: b })
+    expect((await handleApi(get(''), d.store, d))!.status).toBe(404)
+    expect((await handleApi(get('', 'bad'), d.store, { ...d, adminSecret: 's3' }))!.status).toBe(401)
+    const res = (await handleApi(get('', 's3'), d.store, { ...d, adminSecret: 's3' }))!
+    const { items } = (await res.json()) as { items: { id: number }[] }
+    expect(items.map((i) => i.id)).toEqual([3, 2, 1])
+    const spy = vi.spyOn(d.feedback, 'list')
+    await handleApi(get('?limit=500&before=3', 's3'), d.store, { ...d, adminSecret: 's3' })
+    expect(spy).toHaveBeenCalledWith({ limit: 200, before: 3 })
+  })
+  it('CORS preflight for /api/feedback', async () => {
+    const res = await handleRequest(
+      new Request('http://x/api/feedback', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://winwin1808.github.io', 'access-control-request-method': 'POST' },
+      }),
+      {} as never,
+    )
+    expect(res.status).toBe(204)
+    expect(['*', 'https://winwin1808.github.io']).toContain(res.headers.get('access-control-allow-origin'))
+    expect(res.headers.get('access-control-allow-headers')).toContain('content-type')
+  })
+})
