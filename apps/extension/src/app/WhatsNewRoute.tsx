@@ -69,12 +69,17 @@ export function WhatsNewRoute(): React.JSX.Element {
   return <WhatsNewPage notes={RELEASE_NOTES} locale={locale} highlight={highlight} onDone={onDone} />
 }
 
-export async function maybeRedirectToWhatsNew(): Promise<boolean> {
+const NO_REDIRECT_PARAMS = ['doc', 'd', 'file', 'speaker', 'welcome', 'whatsnew', 'pair']
+
+export async function maybeRedirectToWhatsNew(signal?: AbortSignal): Promise<boolean> {
   try {
+    const q = new URLSearchParams(window.location.search)
+    if (NO_REDIRECT_PARAMS.some((k) => q.has(k))) return false
     try { if (sessionStorage.getItem(WHATSNEW_SHOWN_KEY)) return false } catch { /* ignore */ }
     const s = await readState()
     const url = shouldRedirectToWhatsNew(window.location.search, s)
     if (!url) return false
+    if (signal?.aborted) return false
     window.location.replace(url)
     return true
   } catch {

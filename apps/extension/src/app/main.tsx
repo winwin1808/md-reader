@@ -66,9 +66,10 @@ if (container) {
     root.render(tree)
   } else {
     void (async () => {
+      const ctrl = new AbortController()
       const redirected = await Promise.race([
-        maybeRedirectToWhatsNew(),
-        new Promise<boolean>((r) => setTimeout(() => r(false), 300)),
+        maybeRedirectToWhatsNew(ctrl.signal),
+        new Promise<boolean>((r) => setTimeout(() => { ctrl.abort(); r(false) }, 300)),
       ])
       if (!redirected) root.render(tree)
     })()

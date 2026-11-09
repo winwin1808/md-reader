@@ -108,6 +108,27 @@ describe('redirect guards', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
+  it('does not replace when aborted while storage.get is pending', async () => {
+    setSearch('')
+    let resolveGet: (v: unknown) => void = () => {}
+    const get = vi.fn(() => new Promise((r) => { resolveGet = r }))
+    setChrome(get)
+    const ctrl = new AbortController()
+    const p = maybeRedirectToWhatsNew(ctrl.signal)
+    ctrl.abort()
+    resolveGet({ [LIFECYCLE_KEY]: state() })
+    await expect(p).resolves.toBe(false)
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('does not touch storage when a doc param is present', async () => {
+    setSearch('?d=x')
+    const get = vi.fn(() => Promise.resolve({ [LIFECYCLE_KEY]: state() }))
+    setChrome(get)
+    await expect(maybeRedirectToWhatsNew()).resolves.toBe(false)
+    expect(get).not.toHaveBeenCalled()
+  })
+
   it('does not redirect when autoOpenWhatsNew is false', async () => {
     setSearch('')
     setChrome(() => Promise.resolve({ [LIFECYCLE_KEY]: state({ autoOpenWhatsNew: false }) }))
