@@ -50,6 +50,7 @@ export function SlideContent({ html, mermaid }: { html: string; mermaid: boolean
       const pre = codeEl.parentElement
       if (!pre || pre.tagName.toLowerCase() !== 'pre') return
       const node = document.createElement('div')
+      node.dataset.deckMermaid = ''
       pre.parentNode?.insertBefore(node, pre.nextSibling)
       pre.style.display = 'none'
       const root = createRoot(node)
