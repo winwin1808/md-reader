@@ -52,3 +52,6 @@ export * from './components/HistoryTimeline'
 export type { HistoryTimelineProps } from './components/HistoryTimeline'
 
 export * from './i18n'
+
+export { GuidedTour } from './components/GuidedTour'
+export type { TourStep, GuidedTourProps } from './components/GuidedTour'
