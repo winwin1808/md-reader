@@ -1,6 +1,6 @@
 # Phase 19 — PDF trình chiếu không cắt chữ
 
-Author: haonq. Status: designed. Phase: 19
+Author: haonq. Status: shipped. Phase: 19
 Intent: docs/superpowers/intent/2026-11-09-phase-19-pdf-trinh-chieu.md
 
 Ship: *tài liệu dài xuất PDF trình chiếu và trình chiếu trên màn hình không còn chữ bị cắt; người dùng tự đặt được chỗ ngắt.*
