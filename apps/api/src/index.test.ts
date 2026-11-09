@@ -426,6 +426,14 @@ describe('18d1.2: runCleanup feedback prune', () => {
     expect(r.feedback).toBe(1)
     expect(await feedback.list({ limit: 10 })).toHaveLength(1)
   })
+  it('prune throwing does not break cleanup', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const feedback = { add: async () => {}, list: async () => [], prune: async () => { throw new Error('no table') } }
+    const r = await runCleanup({ store: new MemoryTokenStore(), feedback } as CleanupDeps, NOW)
+    expect(r).toEqual({ rooms: 0, failed: 0, usage: 0, feedback: 0 })
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
   it('feedback: 0 when no store', async () => {
     const r = await runCleanup({ store: new MemoryTokenStore() } as CleanupDeps, NOW)
     expect(r.feedback).toBe(0)

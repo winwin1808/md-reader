@@ -74,6 +74,7 @@ export async function handleRequest(
         assets: new D1AssetStore(env.DB),
         limits: new D1LimitStore(env.DB),
         moderation: new D1ModerationStore(env.DB),
+        feedback: new D1FeedbackStore(env.DB),
         ...(env.ADMIN_SECRET ? { adminSecret: env.ADMIN_SECRET } : {}),
         purge: (roomId) =>
           deps
@@ -165,7 +166,14 @@ export async function runCleanup(
     }
   }
   const usage = d.limits ? await d.limits.pruneUsage(dayOf(now) - 2) : 0
-  const feedback = d.feedback ? await d.feedback.prune(now - FEEDBACK_TTL_MS) : 0
+  let feedback = 0
+  if (d.feedback) {
+    try {
+      feedback = await d.feedback.prune(now - FEEDBACK_TTL_MS)
+    } catch (e) {
+      console.warn('cleanup feedback', e)
+    }
+  }
   console.log('cleanup', { rooms, failed, usage, feedback })
   return { rooms, failed, usage, feedback }
 }
