@@ -1903,6 +1903,17 @@ describe('App', () => {
     }
   })
 
+  it('Cài đặt → Xem hướng dẫn từng bước đóng Cài đặt và mở tour', async () => {
+    await act(async () => { render(<App />) })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' })) })
+    const sec = document.getElementById('settings-sec-help')!
+    await act(async () => { fireEvent.click(within(sec).getByRole('button', { name: 'Xem hướng dẫn từng bước' })) })
+    const all = screen.getAllByRole('dialog')
+    expect(all.length).toBe(1)
+    expect(all[0]!.textContent).toContain('Đây là tài liệu mẫu')
+    expect(all[0]!.textContent).toContain('1/9')
+  })
+
   describe('collab settings', () => {
     const enableShare = async (stored: any) => {
       docOverride.shareDoc = true

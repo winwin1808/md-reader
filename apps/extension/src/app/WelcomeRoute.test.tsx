@@ -67,7 +67,7 @@ describe('WelcomeRoute', () => {
     expect(arg.originKind).toBe('drop')
     expect(String(arg.originPath)).toMatch(/^mdr:\/\/welcome\//)
     expect(reg.writeDocText.mock.calls[0]![2]).toBe('if-clean')
-    expect(assign).toHaveBeenCalledWith('app.html?d=abc')
+    expect(assign).toHaveBeenCalledWith('app.html?d=abc&tour=1')
   })
 
   it('hides the pin step when getUserSettings is missing', async () => {
