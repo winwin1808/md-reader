@@ -328,7 +328,56 @@ describe('App', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
     expect(splitSpy).toHaveBeenCalled()
     await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
-    expect(printSlidesSpy).toHaveBeenCalled()
+    await waitFor(() => expect(printSlidesSpy).toHaveBeenCalled())
+  })
+
+  describe('slides PDF prints the paginated slides', () => {
+    const loadDoc = (md: string) => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue(md) } as any)
+    }
+
+    it('printSlides runs after measurement with one .deck-print-slide per paginated slide', async () => {
+      loadDoc('# A\n\nx\n\n<!-- slide-break -->\n\n# B\n\ny\n\n<!-- slide-break -->\n\n# C\n\nz')
+      let counted = -1
+      const printSlidesSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        counted = document.querySelectorAll('.deck-print-slide').length
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(printSlidesSpy).toHaveBeenCalledTimes(1))
+      expect(counted).toBe(3)
+    })
+
+    it('with Mermaid on, inlineMermaid gets the paginated slide html and zoom stays on the print block', async () => {
+      loadDoc('# A\n\nx\n\n<!-- slide-break -->\n\n# B\n\ny')
+      const fake = [
+        { id: 's1', html: '<p>one</p>', zoom: 0.8 },
+        { id: 's2', html: '<p>two</p>', zoom: 1 },
+      ]
+      vi.spyOn(ui, 'useSlidePagination').mockReturnValue({
+        slides: fake, ready: true, warnings: [{ slideId: 's2' }], stage: null,
+      } as any)
+      const mermaidSpy = vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h + '<!--m-->')
+      let zooms: (string | null)[] = []
+      let htmls: string[] = []
+      vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        const blocks = Array.from(document.querySelectorAll('.deck-print-slide'))
+        htmls = blocks.map((b) => b.innerHTML)
+        zooms = blocks.map((b) => (b.querySelector('[style*="zoom"]') as HTMLElement | null)?.style.zoom ?? null)
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      expect(screen.getByText('Slide 2 có chữ nhỏ. Thêm dấu ngắt để dễ đọc hơn.')).toBeDefined()
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(mermaidSpy).toHaveBeenCalledTimes(2))
+      expect(mermaidSpy).toHaveBeenCalledWith('<p>one</p>', 'default')
+      expect(mermaidSpy).toHaveBeenCalledWith('<p>two</p>', 'default')
+      await waitFor(() => expect(htmls.length).toBe(2))
+      expect(zooms[0]).toBe('0.8')
+    })
   })
 
   it('renders placeholder with loaded theme and yjs doc', async () => {

@@ -1,6 +1,6 @@
 import { docQuery, getRecord, touchRecord } from './doc-registry'
 import { nearestHeadingAtTop, lineOfHeading, headingIdAtLine } from './view-anchor'
-import React, { Suspense, useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import React, { Suspense, useEffect, useLayoutEffect, useState, useMemo, useRef, useCallback } from 'react'
 import {
   ThemeProvider,
   SettingsModal,
@@ -610,67 +610,59 @@ export function App(): React.JSX.Element {
     setIsMindmapOpen(false)
   }
 
+  const slidesRef = useRef<{ id: string; html: string; zoom?: number }[]>([])
+  const slidesReadyRef = useRef(false)
+  const slideWaitersRef = useRef<Array<() => void>>([])
+  const [printHtml, setPrintHtml] = useState<{ id: string; html: string; zoom?: number }[] | null>(null)
+  const [preparingSlides, setPreparingSlides] = useState(false)
+
+  const waitSlidesReady = useCallback(async (): Promise<void> => {
+    if (!slidesReadyRef.current) {
+      await new Promise<void>((resolve) => { slideWaitersRef.current.push(resolve) })
+    }
+    if (readerSettings.enableMermaid !== false) {
+      try {
+        const out = await Promise.all(
+          slidesRef.current.map(async (sl) => ({ id: sl.id, zoom: sl.zoom, html: await inlineMermaid(sl.html, 'default') })),
+        )
+        flushSync(() => setPrintHtml(out))
+      } catch {
+        setPrintHtml(null)
+      }
+    }
+  }, [readerSettings.enableMermaid])
+
   const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
     resolveImage,
+    waitSlidesReady,
   })
 
-  const [printHtml, setPrintHtml] = useState<{ id: string; html: string; zoom?: number }[] | null>(null)
-  const [preparingSlides, setPreparingSlides] = useState(false)
   const exportAs = async (format: ExportFormat): Promise<void> => {
     if (preparingSlides) return
     if (/\$/.test(content)) {
       try { await loadMathPlugin() } catch { setImageNotice(t('ext.export.mathFailed')) }
     }
-    if (format === 'slides-pdf' && readerSettings.enableMermaid !== false) {
+    if (format === 'slides-pdf') {
+      setPrintHtml(null)
       setPreparingSlides(true)
       try {
-        const list = splitIntoSlides(content, {
-            math: readerSettings.enableMath !== false,
-            render: {
-              typographer: readerSettings.typographer,
-              externalLinks: readerSettings.externalLinks,
-              githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
-              plugins: PLUGINS,
-            },
-          })
-        const out = await Promise.all(
-          list.map(async (sl) => ({ id: sl.id, html: await inlineMermaid(sl.html, 'default') })),
-        )
-        flushSync(() => setPrintHtml(out))
-      } catch {
-        setPrintHtml(null)
+        await baseExportAs(format)
       } finally {
         setPreparingSlides(false)
       }
     } else {
-      setPrintHtml(null)
+      await baseExportAs(format)
     }
-    await baseExportAs(format)
   }
   useEffect(() => {
     if (!isPrintingSlides) setPrintHtml(null)
   }, [isPrintingSlides])
 
-  const hasSlides = useMemo(
-    () => (exportOpen ? splitIntoSlides(content, {
-            math: readerSettings.enableMath !== false,
-            render: {
-              typographer: readerSettings.typographer,
-              externalLinks: readerSettings.externalLinks,
-              githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
-              plugins: PLUGINS,
-            },
-          }).length > 1 : false),
-    [exportOpen, content, readerSettings.enableMath],
-  )
-
   const baseSlides = useMemo(
-    () => (isPresenting || isPrintingSlides || isSpeakerMode ? splitIntoSlides(content, {
+    () => (isPresenting || isPrintingSlides || isSpeakerMode || exportOpen ? splitIntoSlides(content, {
             math: readerSettings.enableMath !== false,
             render: {
               typographer: readerSettings.typographer,
@@ -680,7 +672,7 @@ export function App(): React.JSX.Element {
               plugins: PLUGINS,
             },
           }) : []),
-    [content, mathRev, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
+    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
   )
 
   const presentationSettings = useMemo(
@@ -708,6 +700,19 @@ export function App(): React.JSX.Element {
     mermaid: readerSettings.enableMermaid !== false,
     presentationSettings,
   })
+  useLayoutEffect(() => {
+    slidesRef.current = slides
+    slidesReadyRef.current = slidesReady
+    if (slidesReady) {
+      const ws = slideWaitersRef.current
+      slideWaitersRef.current = []
+      ws.forEach((w) => w())
+    }
+  }, [slides, slidesReady])
+  const hasSlides = exportOpen && slides.length > 1
+  const smallSlides = slidesReady
+    ? slideWarnings.map((w) => slides.findIndex((s) => s.id === w.slideId) + 1).filter((n) => n > 0)
+    : []
   const clampedSlideIndex = Math.max(0, Math.min(slides.length - 1, currentSlideIndex))
 
   useShortcuts({
@@ -858,7 +863,7 @@ export function App(): React.JSX.Element {
           {agentConfirm.pending && (
             <ConfirmAgentDialog req={agentConfirm.pending.req} client={agentConfirm.pending.client} onAllow={agentConfirm.allow} onDeny={agentConfirm.deny} />
           )}
-          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} />
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} onExport={exportAs} hasSlides={hasSlides} smallSlides={smallSlides} />
           <ShareModal
             open={shareOpen}
             onClose={() => setShareOpen(false)}
