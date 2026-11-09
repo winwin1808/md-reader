@@ -440,6 +440,47 @@ describe('App', () => {
       vi.useRealTimers()
     })
 
+    it('with Mermaid on, the busy overlay is gone from the DOM when printSlides runs', async () => {
+      loadDoc(md)
+      control.ready = true
+      mockPagination()
+      vi.spyOn(ui, 'inlineMermaid').mockImplementation(async (h: string) => h)
+      let busyAtPrint: Element | null | undefined = undefined
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        busyAtPrint = document.querySelector('.deck-print-busy')
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
+      expect(busyAtPrint).toBeNull()
+    })
+
+    it('a wait that expires while inlineMermaid runs does not switch the print block to its printHtml', async () => {
+      loadDoc(md)
+      control.ready = true
+      mockPagination()
+      let release: (v: string) => void = () => {}
+      const pending = new Promise<string>((res) => { release = res })
+      vi.spyOn(ui, 'inlineMermaid').mockImplementation(() => pending.then((x) => x))
+      let htmlAtPrint = ''
+      const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
+        htmlAtPrint = document.querySelector('.deck-print-container')?.innerHTML ?? ''
+      })
+      await act(async () => { render(<App />) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
+      vi.useFakeTimers()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await act(async () => { fireEvent.click(screen.getByText('PDF trình chiếu')) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(7100) })
+      expect(printSpy).toHaveBeenCalledTimes(1)
+      await act(async () => { release('<p>LATE-MERMAID</p>'); await vi.advanceTimersByTimeAsync(10) })
+      expect(htmlAtPrint).not.toContain('LATE-MERMAID')
+      expect(document.querySelector('.deck-print-container')?.innerHTML ?? '').not.toContain('LATE-MERMAID')
+      warn.mockRestore()
+      vi.useRealTimers()
+    })
+
     it('with Mermaid off: no busy overlay, zoom applied to the zoomed slide only', async () => {
       loadDoc(md)
       control.ready = true
@@ -449,8 +490,10 @@ describe('App', () => {
       const set = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
       let busyAtPrint: Element | null | undefined
       let busyAfterClick: Element | null = null
+      let blocksAtPrint: Element[] = []
       const printSpy = vi.spyOn(ui, 'printSlides').mockImplementation(() => {
         busyAtPrint = document.querySelector('.deck-print-busy')
+        blocksAtPrint = Array.from(document.querySelectorAll('.deck-print-slide'))
       })
       await act(async () => { render(<App />) })
       await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Xuất file' })) })
@@ -464,10 +507,9 @@ describe('App', () => {
       const zoomCalls = set.mock.calls.filter((c) => c[0] === 'zoom')
       expect(zoomCalls.length).toBeGreaterThan(0)
       expect(zoomCalls.every((c) => c[1] === '0.7')).toBe(true)
-      const blocks = Array.from(document.querySelectorAll('.deck-print-slide'))
-      if (blocks.length) {
-        expect((blocks[1]!.firstElementChild as HTMLElement).style.zoom).toBe('')
-      }
+      expect(blocksAtPrint.length).toBe(2)
+      expect((blocksAtPrint[0]!.querySelector('[style*="zoom"]') as HTMLElement).style.zoom).toBe('0.7')
+      expect((blocksAtPrint[1]!.firstElementChild as HTMLElement).style.zoom).toBe('')
       set.mockRestore()
     })
   })

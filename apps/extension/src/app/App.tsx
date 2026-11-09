@@ -617,29 +617,33 @@ export function App(): React.JSX.Element {
   const [preparingSlides, setPreparingSlides] = useState(false)
 
   const waitSlidesReady = useCallback(async (signal: AbortSignal): Promise<void> => {
-    if (signal.aborted) return
-    if (!slidesReadyRef.current) {
-      await new Promise<void>((resolve) => {
-        const waiter = () => { signal.removeEventListener('abort', onAbort); resolve() }
-        const onAbort = () => {
-          slideWaitersRef.current = slideWaitersRef.current.filter((w) => w !== waiter)
-          resolve()
-        }
-        slideWaitersRef.current.push(waiter)
-        signal.addEventListener('abort', onAbort, { once: true })
-      })
-    }
-    if (signal.aborted) return
-    if (readerSettings.enableMermaid !== false) {
-      try {
-        const out = await Promise.all(
-          slidesRef.current.map(async (sl) => ({ id: sl.id, zoom: sl.zoom, html: await inlineMermaid(sl.html, 'default') })),
-        )
-        if (signal.aborted) return
-        flushSync(() => setPrintHtml(out))
-      } catch {
-        if (!signal.aborted) setPrintHtml(null)
+    try {
+      if (signal.aborted) return
+      if (!slidesReadyRef.current) {
+        await new Promise<void>((resolve) => {
+          const waiter = () => { signal.removeEventListener('abort', onAbort); resolve() }
+          const onAbort = () => {
+            slideWaitersRef.current = slideWaitersRef.current.filter((w) => w !== waiter)
+            resolve()
+          }
+          slideWaitersRef.current.push(waiter)
+          signal.addEventListener('abort', onAbort, { once: true })
+        })
       }
+      if (signal.aborted) return
+      if (readerSettings.enableMermaid !== false) {
+        try {
+          const out = await Promise.all(
+            slidesRef.current.map(async (sl) => ({ id: sl.id, zoom: sl.zoom, html: await inlineMermaid(sl.html, 'default') })),
+          )
+          if (signal.aborted) return
+          flushSync(() => setPrintHtml(out))
+        } catch {
+          if (!signal.aborted) setPrintHtml(null)
+        }
+      }
+    } finally {
+      flushSync(() => setPreparingSlides(false))
     }
   }, [readerSettings.enableMermaid])
 
