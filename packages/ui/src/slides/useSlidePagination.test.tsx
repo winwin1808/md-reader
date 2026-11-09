@@ -2,7 +2,14 @@ import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, waitFor, act } from '@testing-library/react'
 import type { Slide } from '@md-reader/core'
-import { useSlidePagination, type SlidePagination, defaultBlockMeasure, type BlockMeasure } from './useSlidePagination'
+import {
+  useSlidePagination,
+  type SlidePagination,
+  defaultBlockMeasure,
+  defaultSettle,
+  mermaidSettled,
+  type BlockMeasure,
+} from './useSlidePagination'
 
 function mk(id: string, n: number): Slide {
   return {
@@ -136,5 +143,134 @@ describe('defaultBlockMeasure', () => {
     expect(pBox.height).toBe(200)
     expect(pBox.width).toBeGreaterThanOrEqual(400)
     expect(pBox.keepWithNext).toBe(false)
+  })
+})
+
+describe('defaultSettle', () => {
+  function setup(html: string) {
+    const root = document.createElement('div')
+    root.innerHTML = html
+    document.body.appendChild(root)
+    return root
+  }
+  async function flag(p: Promise<void>) {
+    const st = { done: false }
+    void p.then(() => (st.done = true))
+    return st
+  }
+  const adv = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+
+  it('mermaidSettled needs svg or p inside every mermaid div', () => {
+    const root = setup('<div data-deck-mermaid><pre>x</pre></div>')
+    expect(mermaidSettled(root)).toBe(false)
+    root.querySelector('[data-deck-mermaid]')!.innerHTML = '<p>err</p>'
+    expect(mermaidSettled(root)).toBe(true)
+  })
+
+  it('waits for mermaid svg, then 150ms stable, and leaves no timers', async () => {
+    vi.useFakeTimers()
+    try {
+      const root = setup('<div class="deck-slide-content"><div data-deck-mermaid><pre>x</pre></div></div>')
+      const st = await flag(defaultSettle(root))
+      await adv(1000)
+      expect(st.done).toBe(false)
+      root.querySelector('[data-deck-mermaid]')!.innerHTML = '<svg></svg>'
+      await adv(100)
+      expect(st.done).toBe(false)
+      await adv(200)
+      expect(st.done).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('treats the error paragraph as settled', async () => {
+    vi.useFakeTimers()
+    try {
+      const root = setup('<div class="deck-slide-content"><div data-deck-mermaid><p>err</p></div></div>')
+      const st = await flag(defaultSettle(root))
+      await adv(400)
+      expect(st.done).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('restarts the 150ms count when content height changes', async () => {
+    vi.useFakeTimers()
+    try {
+      const root = setup('<div class="deck-slide-content"></div>')
+      const c = root.querySelector('.deck-slide-content') as HTMLElement
+      let h = 100
+      Object.defineProperty(c, 'scrollHeight', { get: () => h })
+      const st = await flag(defaultSettle(root))
+      await adv(100)
+      h = 200
+      await adv(100)
+      expect(st.done).toBe(false)
+      await adv(200)
+      expect(st.done).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('resolves at timeout when fonts.ready never settles, and img.decode rejecting is fine', async () => {
+    vi.useFakeTimers()
+    const orig = Object.getOwnPropertyDescriptor(document, 'fonts')
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: new Promise(() => {}) } })
+    try {
+      const root = setup('<div class="deck-slide-content"><img></div>')
+      ;(root.querySelector('img') as HTMLImageElement).decode = () => Promise.reject(new Error('x'))
+      const st = await flag(defaultSettle(root, 5000))
+      await adv(4900)
+      expect(st.done).toBe(false)
+      await adv(200)
+      expect(st.done).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      if (orig) Object.defineProperty(document, 'fonts', orig)
+      else delete (document as unknown as Record<string, unknown>).fonts
+      vi.useRealTimers()
+    }
+  })
+
+  it('img.decode rejecting does not break settling', async () => {
+    vi.useFakeTimers()
+    try {
+      const root = setup('<div class="deck-slide-content"><img></div>')
+      ;(root.querySelector('img') as HTMLImageElement).decode = () => Promise.reject(new Error('x'))
+      const st = await flag(defaultSettle(root))
+      await adv(400)
+      expect(st.done).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('useSlidePagination without stage', () => {
+  it('falls back to input slides with ready:true after 5000ms', async () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const slides = [mk('a', 2)]
+      const result = { current: undefined as unknown as Out }
+      function H() {
+        result.current = useSlidePagination(slides, { enabled: true, mermaid: false })
+        return null
+      }
+      render(<H />)
+      await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
+      expect(result.current.ready).toBe(false)
+      await act(async () => { await vi.advanceTimersByTimeAsync(1500) })
+      expect(result.current.ready).toBe(true)
+      expect(result.current.slides).toBe(slides)
+      expect(warn).toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+      vi.useRealTimers()
+    }
   })
 })

@@ -38,7 +38,29 @@ export function defaultBlockMeasure(el: HTMLElement, next: HTMLElement | null): 
   }
 }
 
-async function defaultSettle(root: HTMLElement): Promise<void> {
+export function mermaidSettled(root: HTMLElement): boolean {
+  return Array.from(root.querySelectorAll('[data-deck-mermaid]')).every((el) => el.querySelector('svg, p'))
+}
+
+function contentHeight(root: HTMLElement): number {
+  let total = 0
+  root.querySelectorAll<HTMLElement>('.deck-slide-content').forEach((el) => {
+    total += Math.max(el.scrollHeight || 0, el.getBoundingClientRect().height || 0)
+  })
+  return total
+}
+
+export async function defaultSettle(root: HTMLElement, timeoutMs: number = SETTLE_MAX): Promise<void> {
+  let aborted = false
+  const timers = new Set<ReturnType<typeof setTimeout>>()
+  const sleep = (ms: number) =>
+    new Promise<void>((r) => {
+      const t = setTimeout(() => {
+        timers.delete(t)
+        r()
+      }, ms)
+      timers.add(t)
+    })
   const run = async () => {
     try {
       await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready
@@ -50,18 +72,27 @@ async function defaultSettle(root: HTMLElement): Promise<void> {
         typeof img.decode === 'function' ? img.decode().catch(() => {}) : Promise.resolve()
       )
     )
-    let last = root.scrollHeight
+    let last = contentHeight(root)
     let since = Date.now()
-    while (Date.now() - since < SETTLE_STABLE) {
-      await new Promise((r) => setTimeout(r, 30))
-      const h = root.scrollHeight
-      if (h !== last) {
+    while (!aborted) {
+      await sleep(30)
+      if (aborted) return
+      const h = contentHeight(root)
+      if (h !== last || !mermaidSettled(root)) {
         last = h
         since = Date.now()
+      } else if (Date.now() - since >= SETTLE_STABLE) {
+        return
       }
     }
   }
-  await Promise.race([run(), new Promise<void>((r) => setTimeout(r, SETTLE_MAX))])
+  try {
+    await Promise.race([run(), sleep(timeoutMs)])
+  } finally {
+    aborted = true
+    timers.forEach(clearTimeout)
+    timers.clear()
+  }
 }
 
 function contentArea(frame: HTMLElement): { w: number; h: number } {
@@ -102,9 +133,22 @@ export function useSlidePagination(
   useEffect(() => {
     if (!enabled || fresh) return
     let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
     const run = async () => {
-      const root = stageRef.current
-      if (!root) return
+      let root = stageRef.current
+      const startedAt = Date.now()
+      while (!root) {
+        if (Date.now() - startedAt >= SETTLE_MAX) {
+          console.warn('[slides] measuring stage never mounted; keeping slides as is')
+          if (!cancelled) setDone({ slides, mermaid, settings: presentationSettings, out: slides, warnings: [] })
+          return
+        }
+        await new Promise<void>((r) => {
+          retryTimer = setTimeout(r, 50)
+        })
+        if (cancelled) return
+        root = stageRef.current
+      }
       await (optsRef.current.settle ?? defaultSettle)(root)
       if (cancelled) return
       const measure = optsRef.current.measure ?? defaultBlockMeasure
@@ -149,6 +193,7 @@ export function useSlidePagination(
     })
     return () => {
       cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
     }
   }, [enabled, fresh, slides, mermaid, presentationSettings])
 
