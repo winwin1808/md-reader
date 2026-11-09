@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, waitFor, cleanup } from '@testing-library/react'
 import { WhatsNewRoute, maybeRedirectToWhatsNew, resolveSeenVersion, WHATSNEW_SHOWN_KEY } from './WhatsNewRoute'
 import { LocaleRoot } from './LocaleRoot'
-import { LIFECYCLE_KEY } from '../worker/lifecycle'
+import { LIFECYCLE_KEY, parseLifecycleState, markWhatsNewSeen } from '../worker/lifecycle'
+import { hasUnseenNotes } from './hooks/useLifecycleSettings'
 
 const g = globalThis as unknown as { chrome?: unknown }
 const assign = vi.fn()
@@ -73,17 +74,25 @@ describe('maybeRedirectToWhatsNew', () => {
 describe('resolveSeenVersion', () => {
   const mk = (version: string, showOnUpdate = true) => ({ version, showOnUpdate, title: { vi: '', en: '' }, items: { vi: [], en: [] } })
   const notes = [mk('1.6.0'), mk('1.5.0'), mk('1.4.0'), mk('1.3.0', false)]
-  it('rejects a future/unknown v and falls back to the newest valid note', () => {
+  it('returns the newest note <= current regardless of v', () => {
     expect(resolveSeenVersion('99.0.0', notes, '1.5.0')).toBe('1.5.0')
     expect(resolveSeenVersion(null, notes, '1.5.0')).toBe('1.5.0')
     expect(resolveSeenVersion('1.2.0', notes, '1.5.0')).toBe('1.5.0')
+    expect(resolveSeenVersion('1.4.0', notes, '1.5.0')).toBe('1.5.0')
   })
-  it('keeps a valid v', () => {
-    expect(resolveSeenVersion('1.5.0', notes, '1.5.0')).toBe('1.5.0')
-    expect(resolveSeenVersion('1.4.0', notes, '1.5.0')).toBe('1.4.0')
+  it('counts notes with showOnUpdate false', () => {
+    const n = [mk('1.5.1', false), mk('1.5.0')]
+    expect(resolveSeenVersion('1.5.0', n, '1.5.1')).toBe('1.5.1')
   })
   it('returns null when nothing qualifies', () => {
     expect(resolveSeenVersion(null, [mk('2.0.0')], '1.5.0')).toBeNull()
+  })
+  it('opening the page clears the unseen dot', () => {
+    const n = [mk('1.5.0'), mk('1.5.1', false)]
+    const s = parseLifecycleState({ lastSeenVersion: '1.4.0' })
+    expect(hasUnseenNotes(s.lastSeenVersion, n, '1.5.1')).toBe(true)
+    const after = markWhatsNewSeen(s, resolveSeenVersion('1.5.0', n, '1.5.1')!)
+    expect(hasUnseenNotes(after.lastSeenVersion, n, '1.5.1')).toBe(false)
   })
 })
 

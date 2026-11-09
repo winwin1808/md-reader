@@ -6,9 +6,8 @@ import { RELEASE_NOTES } from '../../shared/release-notes'
 import type { ReleaseNote } from '../../shared/release-notes'
 
 export function hasUnseenNotes(lastSeen: string | null, notes: readonly ReleaseNote[], current: string): boolean {
-  return notes.some(
-    (n) => compareVersions(n.version, current) <= 0 && (lastSeen === null || compareVersions(n.version, lastSeen) > 0),
-  )
+  if (lastSeen === null) return false
+  return notes.some((n) => compareVersions(n.version, current) <= 0 && compareVersions(n.version, lastSeen) > 0)
 }
 
 function currentVersion(): string {

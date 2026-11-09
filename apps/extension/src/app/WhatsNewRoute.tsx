@@ -27,11 +27,12 @@ function currentVersion(): string {
   }
 }
 
-export function resolveSeenVersion(v: string | null, notes: readonly ReleaseNote[], current: string): string | null {
-  if (v !== null && notes.some((n) => n.version === v) && compareVersions(v, current) <= 0) return v
+// The page lists every note, so opening it means all notes <= current were seen.
+// `v` only picks the highlighted section; it no longer affects what is marked seen.
+export function resolveSeenVersion(_v: string | null, notes: readonly ReleaseNote[], current: string): string | null {
   let best: string | null = null
   for (const n of notes) {
-    if (!n.showOnUpdate || compareVersions(n.version, current) > 0) continue
+    if (compareVersions(n.version, current) > 0) continue
     if (best === null || compareVersions(n.version, best) > 0) best = n.version
   }
   return best

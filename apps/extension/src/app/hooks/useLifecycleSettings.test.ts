@@ -10,7 +10,7 @@ const note = (version: string, showOnUpdate = true): ReleaseNote => ({
 })
 
 describe('hasUnseenNotes', () => {
-  it('true when never seen', () => expect(hasUnseenNotes(null, [note('1.5.0')], '1.5.0')).toBe(true))
+  it('false when no marker yet', () => expect(hasUnseenNotes(null, [note('1.5.0')], '1.5.0')).toBe(false))
   it('false when seen current', () => expect(hasUnseenNotes('1.5.0', [note('1.5.0')], '1.5.0')).toBe(false))
   it('counts showOnUpdate false', () => expect(hasUnseenNotes('1.4.0', [note('1.4.1', false)], '1.5.0')).toBe(true))
   it('ignores notes newer than current', () => expect(hasUnseenNotes('1.4.0', [note('1.6.0')], '1.5.0')).toBe(false))
@@ -31,7 +31,7 @@ function install(init: unknown, getImpl?: () => Promise<unknown>) {
     runtime: { getManifest: () => ({ version: '1.5.0' }), getURL: (p: string) => 'chrome-extension://x/' + p },
     tabs: { create },
   }
-  return { set, create, removeListener, emit: (v: unknown) => listener?.({ [LIFECYCLE_KEY]: { newValue: v } }, 'local') }
+  return { set, create, removeListener, emitRaw: (c: Record<string, { newValue?: unknown }>, area: string) => listener?.(c, area), emit: (v: unknown) => listener?.({ [LIFECYCLE_KEY]: { newValue: v } }, 'local') }
 }
 
 describe('useLifecycleSettings', () => {
@@ -72,6 +72,25 @@ describe('useLifecycleSettings', () => {
     expect(result.current.autoOpenWhatsNew).toBe(true)
     expect(result.current.hasUnseenNotes).toBe(false)
     warn.mockRestore()
+  })
+
+  it('ignores sync area and other keys', async () => {
+    const s = install({ lastSeenVersion: '1.4.0' })
+    const { result } = renderHook(() => useLifecycleSettings())
+    await waitFor(() => expect(result.current.hasUnseenNotes).toBe(true))
+    const l = (globalThis as any).chrome.storage.onChanged
+    expect(l).toBeTruthy()
+    act(() => { s.emitRaw({ [LIFECYCLE_KEY]: { newValue: { lastSeenVersion: '1.5.0' } } }, 'sync') })
+    act(() => { s.emitRaw({ other: { newValue: 1 } }, 'local') })
+    expect(result.current.hasUnseenNotes).toBe(true)
+  })
+
+  it('toggle updates autoOpenWhatsNew', async () => {
+    install({ lastSeenVersion: '1.4.0' })
+    const { result } = renderHook(() => useLifecycleSettings())
+    await waitFor(() => expect(result.current.hasUnseenNotes).toBe(true))
+    await act(async () => { await result.current.onAutoOpenWhatsNewChange(false) })
+    await waitFor(() => expect(result.current.autoOpenWhatsNew).toBe(false))
   })
 
   it('unmount removes listener', async () => {
