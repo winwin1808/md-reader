@@ -15,6 +15,7 @@
 @import './theme/editor.css';
 @import './theme/formatting-toolbar.css';
 @import './theme/split-view.css';
+@import './theme/tour.css';
 .md-viewer {
   background-color: var(--paper);
   color: var(--ink);

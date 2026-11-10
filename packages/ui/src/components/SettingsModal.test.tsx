@@ -654,5 +654,16 @@ describe('SettingsModal', () => {
       expect(priv).toHaveAttribute('rel', 'noopener noreferrer');
       expect(within(sec).getByRole('button', { name: 'Gửi góp ý' })).toBeTruthy();
     });
+    it('shows tour button only with onStartTour and calls it once', () => {
+      const onStartTour = vi.fn();
+      const { unmount } = render(<SettingsModal {...defaultProps} open help={{ ...help, onStartTour }} />);
+      const sec = document.getElementById('settings-sec-help')!;
+      fireEvent.click(within(sec).getByRole('button', { name: 'Xem hướng dẫn từng bước' }));
+      expect(onStartTour).toHaveBeenCalledTimes(1);
+      unmount();
+      render(<SettingsModal {...defaultProps} open help={help} />);
+      const sec2 = document.getElementById('settings-sec-help')!;
+      expect(within(sec2).queryByRole('button', { name: 'Xem hướng dẫn từng bước' })).toBeNull();
+    });
   });
 });

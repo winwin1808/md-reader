@@ -15,14 +15,14 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       vi: [
         'PDF trình chiếu không còn cắt chữ, slide dài tự chia',
         'Dấu <!-- slide-break --> và nút "Ngắt slide tại đây" khi Sửa',
-        'Trang chào và tài liệu mẫu cho người mới',
+        'Trang chào mới, tài liệu mẫu và hướng dẫn từng bước',
         'Sao lưu mọi tài liệu ra file .zip',
         'Gửi góp ý ngay trong Cài đặt',
       ],
       en: [
         'Slide PDFs no longer clip text; long slides split automatically',
         'The <!-- slide-break --> marker and a "Break slide here" button while editing',
-        'A welcome page and sample document for new users',
+        'A new welcome page, sample document and step-by-step tour',
         'Back up all your documents to a .zip file',
         'Send feedback right from Settings',
       ],

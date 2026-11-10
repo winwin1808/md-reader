@@ -62,6 +62,30 @@ describe('WelcomePage', () => {
   })
   it('renders English', () => {
     setup({}, 'en')
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome to MD Reader')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Markdown that reads like a book.')
+  })
+  it('renders new title, hint and aria-hidden figure', () => {
+    const { container } = setup()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Markdown, đọc như một cuốn sách.')
+    expect(screen.getByText('Tài liệu mẫu mở kèm hướng dẫn từng bước, chừng một phút.')).toBeTruthy()
+    expect(container.querySelector('figure')!.getAttribute('aria-hidden')).toBe('true')
+  })
+  it('shows progress 2 of 4 with progressbar', () => {
+    setup({ pinned: true, fileAccess: true, openedFile: false, aiConnected: false })
+    expect(screen.getByText('2 trên 4 đã xong')).toBeTruthy()
+    const bar = screen.getByRole('progressbar')
+    expect(bar.getAttribute('aria-valuenow')).toBe('2')
+    expect(bar.getAttribute('aria-valuemax')).toBe('4')
+  })
+  it('pinned null gives total 3', () => {
+    setup({ pinned: null })
+    expect(screen.getByText(/trên 3 /)).toBeTruthy()
+  })
+  it('done step shows check, todo shows its ordinal', () => {
+    setup({ pinned: true, fileAccess: false, openedFile: true, aiConnected: false })
+    const mark = (t: string) => screen.getByText(t).closest('li')!.querySelector('.welcome-step-mark')!.textContent
+    expect(mark('Ghim MD Reader lên thanh công cụ')).toBe('✓')
+    expect(mark('Cho phép đọc file trên máy')).toBe('2')
+    expect(mark('Kết nối AI (tuỳ chọn)')).toBe('4')
   })
 })

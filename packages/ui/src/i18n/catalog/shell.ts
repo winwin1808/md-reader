@@ -147,6 +147,12 @@ export const vi = {
   'format.undo': 'Hoàn tác (⌘Z)',
   'format.redo': 'Làm lại (⇧⌘Z)',
   'format.tableTemplate': '\n| Cột 1 | Cột 2 | Cột 3 |\n| --- | --- | --- |\n| Ô 1 | Ô 2 | Ô 3 |\n',
+  'tour.skip': 'Bỏ qua',
+  'tour.prev': 'Trước',
+  'tour.next': 'Tiếp',
+  'tour.done': 'Xong',
+  'tour.progress': '{current}/{total}',
+  'tour.progressLabel': 'Bước {current} trên {total}',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -298,4 +304,10 @@ export const en: Record<keyof typeof vi, string> = {
   'format.undo': 'Undo (⌘Z)',
   'format.redo': 'Redo (⇧⌘Z)',
   'format.tableTemplate': '\n| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| Cell 1 | Cell 2 | Cell 3 |\n',
+  'tour.skip': 'Skip',
+  'tour.prev': 'Back',
+  'tour.next': 'Next',
+  'tour.done': 'Done',
+  'tour.progress': '{current}/{total}',
+  'tour.progressLabel': 'Step {current} of {total}',
 }

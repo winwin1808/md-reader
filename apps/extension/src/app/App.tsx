@@ -27,7 +27,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -60,6 +60,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import { useLifecycleSettings } from './hooks/useLifecycleSettings'
 import { useReviewPrompt } from './hooks/useReviewPrompt'
+import { tourSteps, useGuidedTour } from './tour'
 import { useBackupSettings } from './hooks/useBackupSettings'
 import { BRIDGE_SCAN_MSG } from '../worker/bridge-storage'
 import { BRIDGE_EXEC_MSG, type ExecMsg } from '../shared/bridge-msg'
@@ -172,15 +173,6 @@ export function App(): React.JSX.Element {
   const [compactedNotice, setCompactedNotice] = useState<boolean>(false)
   const [room, setRoom] = useState<RoomBinding | null>(null)
   const diag = useMemo(() => diagnostics(), [])
-  const help = useMemo(() => ({
-    feedback: {
-      diagnostics: diag,
-      onSubmit: (d: Parameters<typeof toFeedbackInput>[0]) => sendFeedback(toFeedbackInput(d, diag)),
-      fallbackMailto: (d: Parameters<typeof feedbackMailto>[0]) => feedbackMailto(d, diag),
-    },
-    helpUrl: HELP_URL,
-    privacyUrl: PRIVACY_URL,
-  }), [diag])
   const serverUrl = normalizeServerUrl(readerSettings.serverUrl ?? '') ?? (DEFAULT_SERVER_URL || null)
   const [retryNonce, setRetryNonce] = useState(0)
   const displayName = readerSettings.displayName?.trim() || 'Bạn'
@@ -196,6 +188,8 @@ export function App(): React.JSX.Element {
     } catch { /* storage unavailable */ }
   }, [session.docId])
   const review = useReviewPrompt(new URLSearchParams(window.location.search).get('speaker') === 'true' ? null : session.docId)
+  const tour = useGuidedTour(!!session.docId && session.synced && new URLSearchParams(window.location.search).get('speaker') !== 'true')
+  const steps = useMemo(() => tourSteps(t as (key: string) => string), [t])
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
@@ -417,6 +411,16 @@ export function App(): React.JSX.Element {
   }, [shareOpen, shareRoomId, shareRefresh])
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const backup = useBackupSettings(settingsOpen)
+  const help = useMemo(() => ({
+    feedback: {
+      diagnostics: diag,
+      onSubmit: (d: Parameters<typeof toFeedbackInput>[0]) => sendFeedback(toFeedbackInput(d, diag)),
+      fallbackMailto: (d: Parameters<typeof feedbackMailto>[0]) => feedbackMailto(d, diag),
+    },
+    helpUrl: HELP_URL,
+    privacyUrl: PRIVACY_URL,
+    onStartTour: () => { setSettingsOpen(false); tour.start() },
+  }), [diag, tour])
 
 
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -1106,7 +1110,8 @@ export function App(): React.JSX.Element {
             </div>
           )}
         </FileDrop>
-        {review.show && <ReviewPrompt onRate={review.onRate} onDismiss={review.onDismiss} />}
+        {review.show && !tour.open && <ReviewPrompt onRate={review.onRate} onDismiss={review.onDismiss} />}
+        <GuidedTour steps={steps} open={tour.open} onClose={tour.onClose} />
       </div>
     </ThemeProvider>
   )

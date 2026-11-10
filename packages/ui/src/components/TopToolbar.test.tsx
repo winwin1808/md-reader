@@ -397,4 +397,22 @@ describe('TopToolbar sync status', () => {
     const b = render(<TopToolbar {...base} presence={[]} />)
     expect(b.container.querySelector('.presence-bar')).toBeNull()
   })
+
+  it('exposes data-tour anchors', () => {
+    const { container } = render(
+      <TopToolbar
+        {...base}
+        onPresent={vi.fn()}
+        onOpenSearch={vi.fn()}
+        onOpenMindmap={vi.fn()}
+        onShare={vi.fn()}
+        viewMode="reading"
+        actions={[{ id: 'settings', label: 'Cài đặt', icon: 'settings', onSelect: vi.fn() }]}
+      />,
+    )
+    for (const k of ['present', 'mindmap', 'share', 'search', 'view-mode', 'toc', 'settings', 'more']) {
+      expect(container.querySelector(`[data-tour="${k}"]`), k).toBeTruthy()
+    }
+    expect(container.querySelector('[data-tour="present"]')?.getAttribute('aria-label')).toBe('Trình chiếu')
+  })
 })

@@ -168,7 +168,7 @@ const HIDDEN_STYLE: React.CSSProperties = {
   position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap',
 }
 
-function IconBtn(props: { icon: IconName; label: string; title?: string; onClick?: () => void; badge?: boolean }): React.JSX.Element {
+function IconBtn(props: { icon: IconName; label: string; title?: string; onClick?: () => void; badge?: boolean; tour?: string }): React.JSX.Element {
   const t = useT()
   const label = props.badge ? `${props.label} — ${t('settings.updates.unseen')}` : props.label
   return (
@@ -178,6 +178,7 @@ function IconBtn(props: { icon: IconName; label: string; title?: string; onClick
       aria-label={label}
       title={props.badge ? label : props.title ?? props.label}
       onClick={props.onClick}
+      data-tour={props.tour}
       data-badge={props.badge ? 'true' : undefined}
       style={props.badge ? { position: 'relative' } : undefined}
     >
@@ -288,7 +289,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
   return (
     <header className="top-toolbar md-no-print">
       <div className="tb-left">
-        <button type="button" className="tb-btn" title={t('toolbar.toc')} aria-label={t('toolbar.toc')} aria-pressed={props.tocOpen} onClick={props.onToggleToc}>
+        <button type="button" className="tb-btn" title={t('toolbar.toc')} aria-label={t('toolbar.toc')} aria-pressed={props.tocOpen} data-tour="toc" onClick={props.onToggleToc}>
           <Icon name="toc" size={20} />
         </button>
         <Logo size={20} />
@@ -300,7 +301,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
 
       {hasView && (
         <div className="tb-mid">
-          <div className="tb-seg view-mode-group" role="radiogroup" aria-label={t('toolbar.viewMode')}>
+          <div className="tb-seg view-mode-group" data-tour="view-mode" role="radiogroup" aria-label={t('toolbar.viewMode')}>
             {VIEW_OPTIONS.map((opt, i) => {
               const checked = props.viewMode === opt.mode
               return (
@@ -327,14 +328,14 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
       <div className="tb-right" ref={rightRef}>
         {!narrow && (
           <>
-            {props.onOpenSearch && <IconBtn icon="search" label={t('toolbar.search')} title={t('toolbar.searchTitle')} onClick={props.onOpenSearch} />}
-            {props.onPresent && <IconBtn icon="present" label={t('toolbar.present')} title={t('toolbar.presentTitle')} onClick={props.onPresent} />}
-            {props.onOpenMindmap && <IconBtn icon="mindmap" label={t('toolbar.mindmap')} title={t('toolbar.mindmapTitle')} onClick={props.onOpenMindmap} />}
-            {props.onShare && <IconBtn icon="share" label={t('toolbar.share')} onClick={props.onShare} />}
+            {props.onOpenSearch && <IconBtn icon="search" label={t('toolbar.search')} title={t('toolbar.searchTitle')} onClick={props.onOpenSearch} tour="search" />}
+            {props.onPresent && <IconBtn icon="present" label={t('toolbar.present')} title={t('toolbar.presentTitle')} onClick={props.onPresent} tour="present" />}
+            {props.onOpenMindmap && <IconBtn icon="mindmap" label={t('toolbar.mindmap')} title={t('toolbar.mindmapTitle')} onClick={props.onOpenMindmap} tour="mindmap" />}
+            {props.onShare && <IconBtn icon="share" label={t('toolbar.share')} onClick={props.onShare} tour="share" />}
             {actions.map((a) => (
-              <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} badge={a.badge} />
+              <IconBtn key={a.id} icon={a.icon} label={a.label} onClick={a.onSelect} badge={a.badge} tour={a.id} />
             ))}
-            {props.onSave && <IconBtn icon="save" label={t('toolbar.save')} title={t('toolbar.saveTitle')} onClick={props.onSave} />}
+            {props.onSave && <IconBtn icon="save" label={t('toolbar.save')} title={t('toolbar.saveTitle')} onClick={props.onSave} tour="save" />}
           </>
         )}
         <button
@@ -345,6 +346,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           title={anyBadge ? `${t('toolbar.more')} — ${t('settings.updates.unseen')}` : t('toolbar.more')}
           data-badge={anyBadge ? 'true' : undefined}
           style={anyBadge ? { position: 'relative' } : undefined}
+          data-tour="more"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((o) => !o)}
