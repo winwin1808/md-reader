@@ -142,7 +142,6 @@ export async function startBridgeServer(opts: {
     }
     const nonce = newNonce()
     let authStarted = false
-    ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, serverKey: opts.identity.publicKey, nonce }))
     const deadline = setTimeout(() => {
       if (paired !== ws) ws.close()
     }, authDeadlineMs)
@@ -221,6 +220,17 @@ export async function startBridgeServer(opts: {
       failPendingOn(ws)
     })
     ws.on('error', () => {})
+    // hello is sent after handlers/deadline are attached (no await before them); it stays the first message.
+    void (async () => {
+      let pinnedExt: string | null = null
+      try {
+        pinnedExt = opts.identity.extKey ? await keyId(opts.identity.extKey) : null
+      } catch {
+        pinnedExt = null
+      }
+      if (ws.readyState !== WebSocket.OPEN) return
+      ws.send(JSON.stringify({ type: 'hello', protocol: BRIDGE_PROTOCOL, client, serverKey: opts.identity.publicKey, nonce, pinnedExt }))
+    })()
   })
 
   const waitPaired = (): Promise<WebSocket> => {

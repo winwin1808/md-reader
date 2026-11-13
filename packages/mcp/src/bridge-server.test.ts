@@ -101,10 +101,32 @@ describe('bridge server', () => {
     const s = await start()
     const e = await connect(s.port)
     const hello = await e.next()
-    expect(hello).toEqual({ type: 'hello', protocol: 2, client: 'test-client', serverKey: lastIdentity.publicKey, nonce: hello.nonce })
+    expect(hello).toEqual({ type: 'hello', protocol: 2, client: 'test-client', serverKey: lastIdentity.publicKey, nonce: hello.nonce, pinnedExt: null })
     expect(typeof hello.nonce).toBe('string')
     expect(hello.nonce.length).toBeGreaterThan(10)
     expect('pairKey' in hello).toBe(false)
+  })
+
+  it('hello.pinnedExt is keyId of the already-pinned extension key', async () => {
+    const extKey = await exportPublicKey((await generateBridgeKeyPair()).publicKey)
+    const s = await start({ identity: await makeIdentity(extKey) })
+    const e = await connect(s.port)
+    const hello = await e.next()
+    expect(hello.type).toBe('hello')
+    expect(hello.pinnedExt).toBe(await keyId(extKey))
+  })
+
+  it('a connection after a successful pairing sees the freshly pinned key in pinnedExt', async () => {
+    const s = await start()
+    const a = await connect(s.port)
+    const helloA = await a.next((m) => m.type === 'hello')
+    expect(helloA.pinnedExt).toBeNull()
+    const { extKey } = await sendAuth(a, helloA, s.port)
+    await a.next((m) => m.type === 'auth-ok')
+    const b = await connect(s.port)
+    const helloB = await b.next()
+    expect(helloB.type).toBe('hello')
+    expect(helloB.pinnedExt).toBe(await keyId(extKey))
   })
 
   it('valid auth gets auth-ok verifiable with the right port, then receives req', async () => {
