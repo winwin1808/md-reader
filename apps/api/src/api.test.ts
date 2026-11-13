@@ -797,6 +797,21 @@ describe('asset upload vs room delete race (22e)', () => {
     expect(await assets.roomUsage(roomId)).toBe(0)
   })
 
+  it('post-put re-check throws: the just-written asset is removed', async () => {
+    const { MemoryAssetStore } = await import('./assets.js')
+    const { store, roomId, ownerToken } = await setup()
+    const assets = new MemoryAssetStore()
+    const realVerify = store.verifyOwner.bind(store)
+    let calls = 0
+    store.verifyOwner = async (r: string, t: string) => {
+      if (++calls >= 2) throw new Error('transient')
+      return realVerify(r, t)
+    }
+    await Promise.resolve(handleApi(upReq(roomId, ownerToken), store, { assets })).catch(() => undefined)
+    expect(calls).toBeGreaterThanOrEqual(2)
+    expect(await assets.roomUsage(roomId)).toBe(0)
+  })
+
   it('asset inserted after first sweep is removed by the post-delete sweep', async () => {
     const { MemoryAssetStore } = await import('./assets.js')
     const { store, roomId, ownerToken } = await setup()

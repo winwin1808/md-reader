@@ -294,7 +294,19 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       if (v) return limited(v)
     }
     const { id, size } = await deps.assets.put(roomId, mime, bytes)
-    if (!(await isAllowed())) {
+    let stillAllowed: boolean
+    try {
+      stillAllowed = await isAllowed()
+    } catch (err) {
+      // Re-check failed: do not leave the just-written asset behind, then surface the original error.
+      try {
+        await deps.assets.deleteOne(id)
+      } catch (e) {
+        console.error('assets.deleteOne (recheck failure cleanup) failed', roomId, e)
+      }
+      throw err
+    }
+    if (!stillAllowed) {
       // Room was deleted while we were writing: do not leave an orphan asset behind.
       try {
         await deps.assets.deleteOne(id)

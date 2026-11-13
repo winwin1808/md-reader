@@ -119,6 +119,14 @@ describe('peerUpdateViolation (14a)', () => {
     expect(peerUpdateViolation(mutual, doc, own())).not.toBeNull()
     expect(peerUpdateViolation(self, doc, own())).not.toBeNull()
   })
+  it('rejects a parent-ID cycle between type items as unresolved parent', { timeout: 2000 }, () => {
+    const doc = setup()
+    const C = 5
+    // client C: item0 (type, parent=ID(C,1)), item1 (type, parent=ID(C,0)), item2 (string 'a', parent=ID(C,0))
+    // info 0x07 = ContentType, no origins, parent-info 0 => parent is an ID; type ref 0 (YArray)
+    const u = Uint8Array.from([1, 3, C, 0, 0x07, 0, C, 1, 0, 0x07, 0, C, 0, 0, 0x04, 0, C, 0, 1, 97, 0])
+    expect(peerUpdateViolation(u, doc, own())).toBe('unresolved parent')
+  })
   it('rejects non-string content in source', () => {
     const doc = setup()
     expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insertEmbed(0, { a: 1 })), doc, own())).toBe('forbidden content in source')
