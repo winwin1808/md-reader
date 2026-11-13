@@ -25,7 +25,6 @@ async function isOwner(req: Request, store: TokenStore, roomId: string): Promise
 }
 
 const MAX_BODY = 4096
-const utf8Len = (s: string): number => new TextEncoder().encode(s).byteLength
 const MAX_EXPIRES = 10 * 365 * 86_400_000
 const MAX_LABEL = 120
 
@@ -208,9 +207,9 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       if (!(await isOwner(req, store, roomId))) return json({ error: 'unauthorized' }, 401)
       let body: unknown
       try {
-        const text = await req.text()
-        if (utf8Len(text) > MAX_BODY) return json({ error: 'body too large' }, 413)
-        body = JSON.parse(text)
+        const raw = await readCapped(req, MAX_BODY)
+        if (!raw) return json({ error: 'body too large' }, 413)
+        body = JSON.parse(new TextDecoder().decode(raw))
       } catch {
         return json({ error: 'invalid body' }, 400)
       }
@@ -275,15 +274,13 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     const roomId = safeDecode(up[1]!)
     if (roomId === null) return badPath()
     const tok = bearer(req)
-    let allowed = false
-    if (tok !== null) {
-      if (await store.verifyOwner(roomId, tok)) allowed = true
-      else {
-        const r = await store.resolve(tok)
-        allowed = r !== null && r.roomId === roomId && r.role === 'edit'
-      }
+    const isAllowed = async (): Promise<boolean> => {
+      if (tok === null) return false
+      if (await store.verifyOwner(roomId, tok)) return true
+      const r = await store.resolve(tok)
+      return r !== null && r.roomId === roomId && r.role === 'edit'
     }
-    if (!allowed) return json({ error: 'forbidden' }, 403)
+    if (!(await isAllowed())) return json({ error: 'forbidden' }, 403)
     if (!deps.assets) return json({ error: 'assets not available' }, 501)
     const mime = (req.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
     if (!(ASSET_MIME as readonly string[]).includes(mime)) return json({ error: 'unsupported_type' }, 415)
@@ -297,6 +294,15 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
       if (v) return limited(v)
     }
     const { id, size } = await deps.assets.put(roomId, mime, bytes)
+    if (!(await isAllowed())) {
+      // Room was deleted while we were writing: do not leave an orphan asset behind.
+      try {
+        await deps.assets.deleteOne(id)
+      } catch (e) {
+        console.error('assets.deleteOne (race cleanup) failed', roomId, e)
+      }
+      return json({ error: 'forbidden' }, 403)
+    }
     if (deps.limits && subj) await deps.limits.record('asset', subj, { roomId, bytes: size })
     const out: UploadAssetResponse = { id, url: url.origin + API_PATHS.asset(id), size, mime }
     return json(out, 201)
@@ -413,6 +419,12 @@ export async function deleteRoomEverywhere(
     console.error('limits.forgetRoom failed', roomId, e)
   }
   const ok = await d.store.deleteRoom(roomId)
+  try {
+    // Second sweep: an upload that passed its check before the delete may have written after the first sweep.
+    await d.assets?.deleteRoom(roomId)
+  } catch (e) {
+    console.error('assets.deleteRoom (post-delete) failed', roomId, e)
+  }
   forgetRoomAuth(roomId)
   return ok ? 'deleted' : 'not_found'
 }
