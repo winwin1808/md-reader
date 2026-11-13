@@ -13,7 +13,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21d1 — Trang ghép cặp báo kết quả (ui + extension): done
 - 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): done
 - 21d3 — Nối Cài đặt (extension app): done
-- 21e1 — E2E máy chủ đã ghim khoá khác: pending
+- 21e1 — E2E máy chủ đã ghim khoá khác: planned
 - 21e2 — Tài liệu + phiên bản: planned
 
 ## Approach chosen
