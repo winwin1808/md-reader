@@ -13,6 +13,9 @@ import { importPublicKey, keyId, newNonce, authPayload, signPayload, verifyPaylo
 export const PING_MS = 20_000
 export const IDLE_SCANS_BEFORE_BACKOFF = 10
 const CONNECT_TIMEOUT_MS = 1000
+export const DECIDE_HELLO_WAIT_MS = 3000
+export const DECIDE_AUTH_WAIT_MS = 5000
+export type PairOutcome = 'paired' | 'denied' | 'rejected' | 'gone'
 
 export interface ApprovedClient { keyHash: string; client: string; at: number; serverKey: string }
 export interface BridgeConn { port: number; client: string; keyHash: string; state: 'pending' | 'authing' | 'paired'; pinned: BridgePinState }
@@ -44,16 +47,24 @@ interface Entry {
   serverKey: string
   serverNonce: string
   myNonce: string
-  deciding?: boolean
+  authStarted?: boolean
+  silent?: boolean
+  outcome?: Promise<PairOutcome>
+  settle?: (o: PairOutcome) => void
+  helloDone: Promise<void>
+  helloResolve: () => void
   pingTimer: unknown
 }
 
 export function createBridge(deps: BridgeDeps) {
   const entries = new Map<number, Entry>()
   const connecting = new Set<number>()
+  const inflight = new Map<number, { p: Promise<PairOutcome>; keyHash: string | undefined }>()
   let scanning: Promise<number> | null = null
 
   function drop(port: number, e: Entry) {
+    e.settle?.('rejected')
+    e.helloResolve()
     if (entries.get(port) === e) entries.delete(port)
     if (e.pingTimer !== undefined) { deps.clearTimer(e.pingTimer); e.pingTimer = undefined }
   }
@@ -68,6 +79,8 @@ export function createBridge(deps: BridgeDeps) {
   }
 
   async function authenticate(e: Entry) {
+    if (e.authStarted) return
+    e.authStarted = true
     const live = () => entries.get(e.conn.port) === e && e.ws.readyState < 2
     const { privateKey, publicKey } = await deps.extKey()
     if (!live()) return
@@ -89,7 +102,7 @@ export function createBridge(deps: BridgeDeps) {
       ok = await verifyPayload(await importPublicKey(e.serverKey), payload, sig)
     } catch { ok = false }
     if (!live() || e.conn.state !== 'authing') return
-    if (ok) e.conn.state = 'paired'
+    if (ok) { e.conn.state = 'paired'; e.settle?.('paired') }
     else kill(e)
   }
 
@@ -110,13 +123,73 @@ export function createBridge(deps: BridgeDeps) {
     const list = await deps.approved()
     if (!live()) return
     if (pinned !== 'other' && list.some((a) => a.keyHash === kid && a.serverKey === h.serverKey)) {
+      e.helloResolve()
       await authenticate(e)
     } else {
       e.conn.state = 'pending'
+      e.helloResolve()
+      if (e.silent) return
       let keep = false
       try { keep = await deps.onUnpaired({ port: e.conn.port, client: e.conn.client, keyHash: kid, pinned }) } catch { keep = false }
       if (live() && !keep) kill(e)
     }
+  }
+
+  function waitHello(e: Entry): Promise<boolean> {
+    return new Promise((resolve) => {
+      let t: unknown
+      t = deps.setTimer(() => { deps.clearTimer(t); resolve(false) }, DECIDE_HELLO_WAIT_MS)
+      void e.helloDone.then(() => { deps.clearTimer(t); resolve(true) })
+    })
+  }
+
+  function startAuth(e: Entry, add?: (c: ApprovedClient) => Promise<void>): Promise<PairOutcome> {
+    if (e.outcome) return e.outcome
+    const outcome = new Promise<PairOutcome>((resolve) => {
+      let t: unknown
+      let done = false
+      const finish = (o: PairOutcome) => {
+        if (done) return
+        done = true
+        deps.clearTimer(t)
+        e.settle = undefined
+        resolve(o)
+      }
+      e.settle = finish
+      t = deps.setTimer(() => { finish('rejected'); kill(e) }, DECIDE_AUTH_WAIT_MS)
+    })
+    e.outcome = outcome
+    void (async () => {
+      try {
+        if (e.conn.state === 'pending') await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now(), serverKey: e.serverKey })
+        await authenticate(e)
+      } catch { kill(e) }
+    })()
+    return outcome
+  }
+
+  async function allowFlow(port: number, add?: (c: ApprovedClient) => Promise<void>, keyHash?: string): Promise<PairOutcome> {
+    let e = entries.get(port)
+    let reconnected = false
+    if (!e) {
+      if (keyHash === undefined) return 'gone'
+      await tryConnect(port, true)
+      e = entries.get(port)
+      if (!e) return 'gone'
+      reconnected = true
+    }
+    if (!e.conn.keyHash) {
+      if (!(await waitHello(e)) || !e.conn.keyHash || entries.get(port) !== e) {
+        if (reconnected || !e.conn.keyHash) kill(e)
+        return 'gone'
+      }
+    }
+    if (keyHash !== undefined && keyHash !== e.conn.keyHash) {
+      if (reconnected) kill(e)
+      return 'gone'
+    }
+    if (e.conn.state === 'paired') return 'paired'
+    return startAuth(e, add)
   }
 
   async function onReq(e: Entry, req: BridgeRequest) {
@@ -130,13 +203,15 @@ export function createBridge(deps: BridgeDeps) {
     send(e.ws, res)
   }
 
-  function tryConnect(port: number): Promise<void> {
+  function tryConnect(port: number, silent = false): Promise<void> {
     if (connecting.has(port) || entries.has(port)) return Promise.resolve()
     connecting.add(port)
     return new Promise((resolve) => {
       let ws: WsLike
       try { ws = deps.connect(`ws://127.0.0.1:${port}`) } catch { connecting.delete(port); resolve(); return }
-      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending', pinned: 'unknown' }, hello: false, serverKey: '', serverNonce: '', myNonce: '', pingTimer: undefined }
+      let helloResolve = () => {}
+      const helloDone = new Promise<void>((r) => { helloResolve = r })
+      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending', pinned: 'unknown' }, hello: false, serverKey: '', serverNonce: '', myNonce: '', pingTimer: undefined, silent, helloDone, helloResolve: () => helloResolve() }
       let settled = false
       let timeout: unknown
       const settle = () => {
@@ -184,7 +259,7 @@ export function createBridge(deps: BridgeDeps) {
     scan(ports: readonly number[] = BRIDGE_PORTS): Promise<number> {
       if (scanning) return scanning
       const p = (async () => {
-        await Promise.all(ports.filter((x) => !entries.has(x) && !connecting.has(x)).map(tryConnect))
+        await Promise.all(ports.filter((x) => !entries.has(x) && !connecting.has(x)).map((x) => tryConnect(x)))
         return entries.size
       })()
       scanning = p
@@ -192,22 +267,23 @@ export function createBridge(deps: BridgeDeps) {
       p.then(clear, clear)
       return p
     },
-    async decide(port: number, allow: boolean, add?: (c: ApprovedClient) => Promise<void>, keyHash?: string): Promise<void> {
-      const e = entries.get(port)
-      if (!e || e.conn.state !== 'pending' || !e.conn.keyHash) return
-      if (keyHash !== undefined && keyHash !== e.conn.keyHash) return
-      if (e.deciding) return
-      e.deciding = true
-      if (allow) {
-        try {
-          await add?.({ keyHash: e.conn.keyHash, client: e.conn.client, at: Date.now(), serverKey: e.serverKey })
-          await authenticate(e)
-        } catch { kill(e) }
-      } else {
-        send(e.ws, { type: 'reject', code: 'DENIED' })
-        try { e.ws.close() } catch { /* ignore */ }
-        drop(port, e)
+    decide(port: number, allow: boolean, add?: (c: ApprovedClient) => Promise<void>, keyHash?: string): Promise<PairOutcome> {
+      if (!allow) {
+        const e = entries.get(port)
+        if (e && e.conn.state === 'pending' && e.conn.keyHash && (keyHash === undefined || keyHash === e.conn.keyHash)) {
+          send(e.ws, { type: 'reject', code: 'DENIED' })
+          try { e.ws.close() } catch { /* ignore */ }
+          drop(port, e)
+        }
+        return Promise.resolve('denied')
       }
+      const running = inflight.get(port)
+      if (running) return running.keyHash === keyHash ? running.p : Promise.resolve('gone')
+      const p = allowFlow(port, add, keyHash)
+      inflight.set(port, { p, keyHash })
+      const clear = () => { if (inflight.get(port)?.p === p) inflight.delete(port) }
+      p.then(clear, clear)
+      return p
     },
     revoke(keyHash: string): void {
       for (const [port, e] of [...entries]) {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   generateBridgeKeyPair, exportPublicKey, importPublicKey, keyId, newNonce, authPayload, signPayload, verifyPayload,
 } from '@md-reader/core/bridge-auth'
-import { createBridge, PING_MS, type BridgeDeps, type WsLike, type ApprovedClient } from './bridge'
+import { createBridge, PING_MS, DECIDE_HELLO_WAIT_MS, DECIDE_AUTH_WAIT_MS, type BridgeDeps, type WsLike, type ApprovedClient } from './bridge'
 
 class FakeWs implements WsLike {
   readyState = 0
@@ -107,7 +107,9 @@ describe('bridge v2', () => {
     sockets[0]!.recv(hello)
     await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
     const add = vi.fn(async () => {})
-    await bridge.decide(PORT, true, add)
+    const outcome = bridge.decide(PORT, true, add)
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    void outcome
     expect(add).toHaveBeenCalledWith(expect.objectContaining({ keyHash: srvKid, client: 'claude-code', serverKey: srvPub }))
     const a = authOf(sockets[0]!)!
     expect(a.extKey).toBe(extPub)
@@ -304,11 +306,170 @@ describe('bridge v2 double decide (13c)', () => {
     sockets[0]!.recv(hello)
     await vi.waitFor(() => expect(bridge.conns()[0]!.keyHash).toBe(srvKid))
     const add = vi.fn(async () => {})
-    await Promise.all([bridge.decide(PORT, true, add), bridge.decide(PORT, true, add)])
+    const p1 = bridge.decide(PORT, true, add)
+    const p2 = bridge.decide(PORT, true, add)
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
     await flush()
+    expect(p1).toBe(p2)
     expect(add).toHaveBeenCalledTimes(1)
     expect(sockets[0]!.sent.filter((m) => (m as { type: string }).type === 'auth')).toHaveLength(1)
     sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
     await vi.waitFor(() => expect(bridge.conns()[0]!.state).toBe('paired'))
+  })
+})
+
+async function pendingSetup() {
+  const t = setup()
+  await t.bridge.scan([PORT])
+  t.sockets[0]!.recv(hello)
+  await vi.waitFor(() => expect(t.bridge.conns()[0]!.keyHash).toBe(srvKid))
+  return t
+}
+
+describe('bridge v2 decide outcome (21c2)', () => {
+  it('deny -> denied with reject sent; deny with no entry -> denied', async () => {
+    const { bridge, sockets } = await pendingSetup()
+    await expect(bridge.decide(PORT, false)).resolves.toBe('denied')
+    expect(sockets[0]!.sent.at(-1)).toEqual({ type: 'reject', code: 'DENIED' })
+    await expect(bridge.decide(PORT, false)).resolves.toBe('denied')
+  })
+
+  it('allow + auth-ok -> paired', async () => {
+    const { bridge, sockets } = await pendingSetup()
+    const p = bridge.decide(PORT, true, async () => {})
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await expect(p).resolves.toBe('paired')
+  })
+
+  it('server reject -> rejected; socket closed -> rejected', async () => {
+    const a = await pendingSetup()
+    const p = a.bridge.decide(PORT, true, async () => {})
+    await vi.waitFor(() => expect(authOf(a.sockets[0]!)).toBeTruthy())
+    a.sockets[0]!.recv({ type: 'reject', code: 'DENIED' })
+    await expect(p).resolves.toBe('rejected')
+
+    const b = await pendingSetup()
+    const q = b.bridge.decide(PORT, true, async () => {})
+    await vi.waitFor(() => expect(authOf(b.sockets[0]!)).toBeTruthy())
+    b.sockets[0]!.close()
+    await expect(q).resolves.toBe('rejected')
+  })
+
+  it('no answer within DECIDE_AUTH_WAIT_MS -> rejected', async () => {
+    const { bridge, sockets, timers } = await pendingSetup()
+    const p = bridge.decide(PORT, true, async () => {})
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    const t = timers.find((x) => x.ms === DECIDE_AUTH_WAIT_MS && !x.cleared)!
+    expect(t).toBeTruthy()
+    t.fn()
+    await expect(p).resolves.toBe('rejected')
+    expect(t.cleared).toBe(true)
+  })
+
+  it('allow after entry dropped -> reconnects same port silently, paired, add once', async () => {
+    const { bridge, sockets, deps } = await pendingSetup()
+    sockets[0]!.close()
+    expect(bridge.conns()).toEqual([])
+    const add = vi.fn(async () => {})
+    const p = bridge.decide(PORT, true, add, srvKid)
+    await vi.waitFor(() => expect(sockets).toHaveLength(2))
+    expect(sockets[1]!.url).toBe(`ws://127.0.0.1:${PORT}`)
+    await vi.waitFor(() => expect(bridge.conns()).toHaveLength(1))
+    sockets[1]!.recv(hello)
+    await vi.waitFor(() => expect(authOf(sockets[1]!)).toBeTruthy())
+    sockets[1]!.recv(await srvAuthOk(authOf(sockets[1]!)!))
+    await expect(p).resolves.toBe('paired')
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(deps.onUnpaired).toHaveBeenCalledTimes(1)
+  })
+
+  it('reconnect with a different key -> gone, no add, no auth', async () => {
+    const { bridge, sockets } = await pendingSetup()
+    sockets[0]!.close()
+    const add = vi.fn(async () => {})
+    const p = bridge.decide(PORT, true, add, srvKid)
+    await vi.waitFor(() => expect(bridge.conns()).toHaveLength(1))
+    const otherPub = await exportPublicKey(otherPair.publicKey)
+    sockets[1]!.recv({ ...hello, serverKey: otherPub })
+    await expect(p).resolves.toBe('gone')
+    expect(add).not.toHaveBeenCalled()
+    expect(authOf(sockets[1]!)).toBeUndefined()
+  })
+
+  it('reconnect without hello in DECIDE_HELLO_WAIT_MS -> gone', async () => {
+    const { bridge, sockets, timers } = await pendingSetup()
+    sockets[0]!.close()
+    const add = vi.fn(async () => {})
+    const p = bridge.decide(PORT, true, add, srvKid)
+    await vi.waitFor(() => expect(bridge.conns()).toHaveLength(1))
+    const t = timers.find((x) => x.ms === DECIDE_HELLO_WAIT_MS && !x.cleared)!
+    expect(t).toBeTruthy()
+    t.fn()
+    await expect(p).resolves.toBe('gone')
+    expect(add).not.toHaveBeenCalled()
+    expect(sockets[1]!.closed).toBe(true)
+  })
+
+  it('concurrent allow -> same promise, one auth, one add', async () => {
+    const { bridge, sockets } = await pendingSetup()
+    const add = vi.fn(async () => {})
+    const p1 = bridge.decide(PORT, true, add)
+    const p2 = bridge.decide(PORT, true, add)
+    expect(p1).toBe(p2)
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    await flush()
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await expect(p1).resolves.toBe('paired')
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(sockets[0]!.sent.filter((m) => (m as { type: string }).type === 'auth')).toHaveLength(1)
+  })
+
+  it('decide landing while onHello still awaits sends at most one auth', async () => {
+    const t = setup({ approved: [approvedOk] })
+    await t.bridge.scan([PORT])
+    t.sockets[0]!.recv(hello)
+    const p = t.bridge.decide(PORT, true, async () => {}, srvKid)
+    await vi.waitFor(() => expect(authOf(t.sockets[0]!)).toBeTruthy())
+    await flush()
+    t.sockets[0]!.recv(await srvAuthOk(authOf(t.sockets[0]!)!))
+    await expect(p).resolves.toBe('paired')
+    expect(t.sockets[0]!.sent.filter((m) => (m as { type: string }).type === 'auth')).toHaveLength(1)
+  })
+
+  it('auth timeout kills the connection; late auth-ok changes nothing', async () => {
+    const { bridge, sockets, timers } = await pendingSetup()
+    const p = bridge.decide(PORT, true, async () => {})
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    timers.find((x) => x.ms === DECIDE_AUTH_WAIT_MS && !x.cleared)!.fn()
+    await expect(p).resolves.toBe('rejected')
+    expect(sockets[0]!.closed).toBe(true)
+    expect(bridge.conns()).toEqual([])
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await flush()
+    expect(bridge.conns()).toEqual([])
+  })
+
+  it('no live entry + keyHash omitted -> gone, no connect-and-approve', async () => {
+    const { bridge, sockets, deps } = await pendingSetup()
+    sockets[0]!.close()
+    const add = vi.fn(async () => {})
+    await expect(bridge.decide(PORT, true, add)).resolves.toBe('gone')
+    expect(deps.connect).toHaveBeenCalledTimes(1)
+    expect(add).not.toHaveBeenCalled()
+  })
+
+  it('concurrent decide with a different keyHash -> gone, no extra add/auth', async () => {
+    const { bridge, sockets } = await pendingSetup()
+    const add = vi.fn(async () => {})
+    const a = bridge.decide(PORT, true, add, srvKid)
+    const b = bridge.decide(PORT, true, add, 'other-key')
+    await expect(b).resolves.toBe('gone')
+    await vi.waitFor(() => expect(authOf(sockets[0]!)).toBeTruthy())
+    await flush()
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(sockets[0]!.sent.filter((m) => (m as { type: string }).type === 'auth')).toHaveLength(1)
+    sockets[0]!.recv(await srvAuthOk(authOf(sockets[0]!)!))
+    await expect(a).resolves.toBe('paired')
   })
 })
