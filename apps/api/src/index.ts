@@ -118,7 +118,8 @@ export async function handleRequest(
     const [, , party, roomId, ...rest] = url.pathname.split('/')
     if (party !== 'doc-room' || rest.some((s) => s !== '')) return json({ error: 'not found' }, 404)
     const wantedRoom = safeDecode(roomId ?? '')
-    if (wantedRoom === null) return json({ error: 'bad path' }, 400)
+    if (wantedRoom === null) return json({ error: 'not found' }, 404)
+    if ((roomId ?? '') !== encodeURIComponent(wantedRoom)) return json({ error: 'not found' }, 404)
     const auth = await authorizeWs(req, store)
     if (auth instanceof Response) return auth
     if (wantedRoom !== auth.roomId) return json({ error: 'forbidden' }, 403)
