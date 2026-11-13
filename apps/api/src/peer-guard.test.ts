@@ -128,6 +128,35 @@ describe('peerUpdateViolation (14a)', () => {
     xt.setAttribute('k', 'v')
     expect(peerUpdateViolation(Y.encodeStateAsUpdate(x), doc, own())).toBe('forbidden content in source')
   })
+  describe('clock gaps (22b)', () => {
+    function chain() {
+      const c = new Y.Doc()
+      c.clientID = 4242
+      const us: Uint8Array[] = []
+      c.on('update', (x: Uint8Array) => us.push(x))
+      const t = c.getText('source')
+      t.insert(0, 'a')
+      t.insert(1, 'b')
+      t.insert(2, 'c')
+      return us as [Uint8Array, Uint8Array, Uint8Array]
+    }
+    const owned = () => ({ owners: new Map<number, string>([[4242, 'p']]), claimed: new Set<number>([4242]), prefix: 'p' })
+    it('rejects an owned clientID whose first struct starts after a gap', () => {
+      const [, u2] = chain()
+      expect(peerUpdateViolation(u2, new Y.Doc(), owned())).toBe('clock gap')
+    })
+    it('accepts u2 once u1 is applied, and merged u1+u2 retransmission', () => {
+      const [u1, u2] = chain()
+      const doc = new Y.Doc()
+      Y.applyUpdate(doc, u1)
+      expect(peerUpdateViolation(u2, doc, owned())).toBeNull()
+      expect(peerUpdateViolation(Y.mergeUpdates([u1, u2]), doc, owned())).toBeNull()
+    })
+    it('rejects an update containing a Skip struct', () => {
+      const [u1, , u3] = chain()
+      expect(peerUpdateViolation(Y.mergeUpdates([u1, u3]), new Y.Doc(), owned())).toBe('clock gap')
+    })
+  })
   it('still accepts plain insert and delete in source', () => {
     const doc = setup()
     expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insert(2, 'zz')), doc, own())).toBeNull()
