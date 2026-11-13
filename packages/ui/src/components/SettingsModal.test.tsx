@@ -48,6 +48,41 @@ describe('SettingsModal', () => {
     })
   })
 
+  describe('ai discovered apps', () => {
+    const draw = (aiBridge: any) => render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} aiBridge={{ enabled: true, clients: [], onToggle: vi.fn(), onRevoke: vi.fn(), ...aiBridge }} />)
+    const items = [
+      { keyHash: 'abcd1234ffff', client: 'Claude Code', status: 'waiting' as const },
+      { keyHash: 'ef567890ffff', client: 'Cursor', status: 'other' as const },
+    ]
+    it('waiting shows name, id and a Connect button calling onConnect', () => {
+      const onConnect = vi.fn()
+      draw({ discovered: items, onConnect })
+      expect(screen.getByText('Ứng dụng AI đang chạy trên máy này')).toBeTruthy()
+      expect(screen.getAllByText('Claude Code').some((e) => e.className === 'settings-row-label')).toBe(true)
+      expect(screen.getByText(/^ABCD-1234 · /)).toBeTruthy()
+      const btns = screen.getAllByRole('button', { name: 'Kết nối' })
+      expect(btns).toHaveLength(1)
+      fireEvent.click(btns[0]!)
+      expect(onConnect).toHaveBeenCalledWith('abcd1234ffff')
+    })
+    it('other shows the paired text and no button', () => {
+      draw({ discovered: [items[1]], onConnect: vi.fn() })
+      expect(screen.getByText(/Đã ghép với một trình duyệt hoặc profile Chrome khác/)).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Kết nối' })).toBeNull()
+    })
+    it('no title when discovered is empty or missing', () => {
+      draw({ discovered: [] })
+      expect(screen.queryByText('Ứng dụng AI đang chạy trên máy này')).toBeNull()
+      cleanup()
+      draw({})
+      expect(screen.queryByText('Ứng dụng AI đang chạy trên máy này')).toBeNull()
+    })
+    it('hidden when disabled', () => {
+      draw({ enabled: false, discovered: items })
+      expect(screen.queryByText('Ứng dụng AI đang chạy trên máy này')).toBeNull()
+    })
+  })
+
   describe('backup section', () => {
     const bk = (o: any = {}) => ({
       onBackupAll: vi.fn().mockResolvedValue({ included: 3, failed: 1 }),
