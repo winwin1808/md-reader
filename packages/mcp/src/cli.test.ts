@@ -6,7 +6,8 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
-import { main, VERSION, isDirectRun } from './cli'
+import { main, VERSION, isDirectRun, runCli } from './cli'
+import { loadOrCreateIdentity } from './pairing'
 import { MCP_PACKAGE_SPEC } from '@md-reader/core/bridge'
 
 function freePort(): Promise<number> {
@@ -94,4 +95,32 @@ describe('cli via symlink', () => {
     if (code === 'timeout') child.kill()
     expect(code).toBe(0)
   }, 15000)
+})
+
+describe('runCli', () => {
+  it('unpair prints one stderr line, returns done', async () => {
+    const pairPath = join(mkdtempSync(join(tmpdir(), 'mdr-cli-')), 'pair.json')
+    const id = await loadOrCreateIdentity(pairPath)
+    await id.pinExtKey('k1')
+    const stderr = new PassThrough()
+    let err = ''
+    stderr.on('data', (d) => (err += d))
+    const r = await runCli(['unpair'], { stderr, pairPath })
+    expect(r).toBe('done')
+    expect(err.trim().split('\n')).toHaveLength(1)
+    expect(err).toContain('đã bỏ ghép cặp')
+    expect((await loadOrCreateIdentity(pairPath)).extKey).toBeNull()
+  })
+  it('unpair without pairing says not paired', async () => {
+    const pairPath = join(mkdtempSync(join(tmpdir(), 'mdr-cli-')), 'pair.json')
+    const stderr = new PassThrough()
+    let err = ''
+    stderr.on('data', (d) => (err += d))
+    expect(await runCli(['unpair'], { stderr, pairPath })).toBe('done')
+    expect(err).toBe('le-sach-mcp: chưa ghép cặp với MD Reader nào\n')
+    expect(existsSync(pairPath)).toBe(false)
+  })
+  it('other argv serves', async () => {
+    expect(await runCli([])).toBe('serve')
+  })
 })

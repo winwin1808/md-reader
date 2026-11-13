@@ -191,3 +191,15 @@ export async function loadOrCreateIdentity(path: string = defaultPairPath()): Pr
   };
   return identity;
 }
+
+export async function unpairIdentity(path: string = defaultPairPath()): Promise<'unpaired' | 'not-paired' | 'missing'> {
+  return withLock(path, async () => {
+    const st = await readState(path);
+    if (st.reason === 'missing') return 'missing';
+    if (!st.file) throw new Error('pairing file unreadable');
+    if (st.file.extKey === undefined) return 'not-paired';
+    const { extKey: _drop, ...rest } = st.file;
+    await writeAtomic(path, rest);
+    return 'unpaired';
+  });
+}
