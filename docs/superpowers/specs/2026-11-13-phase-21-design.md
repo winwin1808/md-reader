@@ -5,7 +5,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 ## Sub-phase queue
 - 21a — Giao thức `hello.pinnedExt` (core): done
 - 21b1 — Máy chủ gửi `pinnedExt` (mcp): done
-- 21b2 — Lệnh `le-sach-mcp unpair` (mcp): planned
+- 21b2 — Lệnh `le-sach-mcp unpair` (mcp): done
 - 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): planned
 - 21c2 — Bridge: `decide` trả kết quả, tự nối lại (extension worker): pending
 - 21c3 — Chính sách hỏi + kho `asked`/`seen` (extension worker): planned
