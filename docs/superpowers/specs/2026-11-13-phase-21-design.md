@@ -8,7 +8,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21b2 — Lệnh `le-sach-mcp unpair` (mcp): done
 - 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): planned
 - 21c2 — Bridge: `decide` trả kết quả, tự nối lại (extension worker): pending
-- 21c3 — Chính sách hỏi + kho `asked`/`seen` (extension worker): planned
+- 21c3 — Chính sách hỏi + kho `asked`/`seen` (extension worker): done
 - 21c4 — Nối worker (extension worker): pending
 - 21d1 — Trang ghép cặp báo kết quả (ui + extension): planned
 - 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): pending
