@@ -47,6 +47,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
   const t = useT()
   const INVALID = t('ext.share.invalid')
   const [binding, setBinding] = useState<RoomBinding | null>(null)
+  const [bindingLoaded, setBindingLoaded] = useState(false)
   const [links, setLinks] = useState<ShareLink[]>([])
   const [pending, setPending] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -76,14 +77,18 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     tokens.current.clear()
     session.current.clear()
     setBinding(null)
+    setBindingLoaded(false)
     put([])
     if (docId) {
       getRecord(docId).then((r) => {
-        if (cancelled || !r?.room) return
-        bindingRef.current = r.room
-        boundDoc.current = docId
-        setBinding(r.room)
-      }).catch(() => {})
+        if (cancelled) return
+        if (r?.room) {
+          bindingRef.current = r.room
+          boundDoc.current = docId
+          setBinding(r.room)
+        }
+        setBindingLoaded(true)
+      }).catch(() => { if (!cancelled) setBindingLoaded(true) })
     }
     return () => { cancelled = true }
   }, [docId])
@@ -276,7 +281,7 @@ export function useShare(opts: { docId: string | null; serverUrl: string }) {
     }
   }), [run, docId])
 
-  return { binding, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error,
+  return { binding, bindingLoaded, links, enable, deleteRemote, createLink, revoke, recreate, revokeAll, refresh, busy: pending > 0, error,
     currentLinks: (): ShareLink[] => linksRef.current,
     currentBinding: (): RoomBinding | null => live() }
 }
