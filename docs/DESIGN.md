@@ -625,6 +625,42 @@ Spec: `docs/superpowers/specs/2026-11-09-phase-19-design.md`. Làm trước Phas
 | 19h1 | E2E | Không slide nào tràn; số trang PDF = số slide |
 | 19h2 | Tài liệu | ROADMAP, cú pháp dấu ngắt |
 
+### Phase 21 — Ghép cặp MCP: một profile, không hỏi lặp
+
+Ship: *chỉ profile Chrome đã ghép với một ứng dụng AI mới dùng kết nối đó; profile khác không tự mở tab hỏi, thấy trạng thái trong Cài đặt và tự bấm kết nối khi cần.*
+Spec: `docs/superpowers/specs/2026-11-13-phase-21-design.md`. `hello` của cầu nối có thêm `pinnedExt` (tuỳ chọn, tương thích `le-sach-mcp@1.3.2`); extension hỏi tối đa một lần cho mỗi khoá máy chủ.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 21a | `hello.pinnedExt` | Parser nhận `hello` cũ và mới; `bridgePinState` |
+| 21b1 | Máy chủ gửi `pinnedExt` | `null` khi chưa ghim, `keyId` khi đã ghim |
+| 21b2 | `unpair` | `le-sach-mcp unpair` bỏ ghim, giữ khoá máy chủ |
+| 21c1 | `onUnpaired` | Máy chủ ghim khoá khác không được `auth`; im lặng thì đóng kết nối |
+| 21c2 | `decide` có kết quả | `paired`/`denied`/`rejected`/`gone`; tự nối lại khi Cho phép muộn |
+| 21c3 | Chính sách + kho | `pairPolicy`, `mdr.bridgeAsked`, `mdr.bridgeSeen`, `BRIDGE_CONNECT_MSG` |
+| 21c4 | Nối worker | Hỏi tối đa một lần mỗi khoá máy chủ; bị từ chối thì gỡ phê duyệt |
+| 21d1 | Trang ghép cặp | Cho phép luôn có kết quả hiển thị |
+| 21d2 | Cài đặt (ui) | Danh sách ứng dụng AI phát hiện được + nút Kết nối |
+| 21d3 | Nối Cài đặt | Đọc `mdr.bridgeSeen`, gửi `BRIDGE_CONNECT_MSG` |
+| 21e1 | E2E | Máy chủ đã ghim khoá khác: không tab hỏi nào mở |
+| 21e2 | Tài liệu + phiên bản | `le-sach-mcp@1.3.3`, extension 1.5.1, `docs/MCP.md` |
+
+### Phase 22 — Vá bảo mật sau audit run-2
+
+Ship: *chín lead của audit run-2 (2026-11-13) được vá ở mã nguồn, mỗi lead một test hồi quy.*
+Spec: `docs/superpowers/specs/2026-11-13-phase-22-design.md`. Không đổi schema, giao thức cầu nối hay phiên bản.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 22a | peer-guard: chu trình + nội dung | Chu trình `origin` không treo DO; chỉ chuỗi/xoá vào `source` |
+| 22b | peer-guard: nhảy clock | Update có khoảng hở clock bị từ chối |
+| 22c | Tên phòng chuẩn | Đoạn đường dẫn không ở dạng chuẩn → 404 |
+| 22d | Body có trần | Upload ảnh, report, feedback đọc theo luồng có trần |
+| 22e | Ảnh vs xoá phòng | Không còn ảnh mồ côi sau khi phòng bị xoá |
+| 22f | `update_doc` đã chia sẻ | AI sửa tài liệu đang chia sẻ phải được đồng ý |
+| 22g | Mã khoá máy chủ + zod | `le-sach-mcp` in mã nhận dạng; `zod` 4.6.6 |
+| 22h | Tài liệu | `docs/MCP.md`, changelog, handover |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh

@@ -64,6 +64,26 @@ describe('handleRequest', () => {
     expect(routeParty).not.toHaveBeenCalled()
   })
 
+  it('22c: non-canonical room spelling is 404 and never reaches the DO', async () => {
+    const { store, a } = await twoRooms()
+    const routeParty = vi.fn(ok)
+    const first = a.roomId[0]!
+    const alias = '%' + first.charCodeAt(0).toString(16).toUpperCase() + a.roomId.slice(1)
+    const res = await handleRequest(
+      new Request(`http://x/parties/doc-room/${alias}?token=${a.ownerToken}`),
+      env,
+      { routeParty, store },
+    )
+    expect(res.status).toBe(404)
+    expect(routeParty).not.toHaveBeenCalled()
+    const good = await handleRequest(
+      new Request(`http://x/parties/doc-room/${a.roomId}?token=${a.ownerToken}`),
+      env,
+      { routeParty, store },
+    )
+    expect(good.status).toBe(200)
+  })
+
   it.each([undefined, 'edit', 'view'])('overwrites x-mdr-role with the token role (client sent %s)', async (sent) => {
     const { store, a, view } = await twoRooms()
     const routeParty = vi.fn(ok)

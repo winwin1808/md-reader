@@ -1,6 +1,58 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-09. **Phase 20 HOÀN TẤT**, MR phase 20 đã mở, chưa merge. Phase 18 đã merge (MR #20). MR #19 (phase 19) đã merge vào `main`.
+Cập nhật: 2026-11-13. **Phase 22 HOÀN TẤT**, MR `phase-22` → `phase-21` (xếp chồng) đã mở, chưa merge. Phase 21: MR #22 `phase-21` → `main` đã mở, chưa merge.
+
+## Phase 22 — Vá bảo mật sau audit run-2 (2026-11-13)
+
+Spec `docs/superpowers/specs/2026-11-13-phase-22-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-13-phase-22-va-bao-mat-audit-2.md` · plan `docs/superpowers/plans/2026-11-13-phase-22-<sub>-plan.md`. Branch `phase-22` xếp chồng trên `phase-21`. Báo cáo audit: `~/security-audit-skill/md-reader/run-2/` (chỉ đọc mã nguồn, không lead nào được xác nhận bằng chạy thật).
+
+- `apps/api/src/peer-guard.ts`: chu trình `origin` và chu trình `parent` → `'unresolved parent'` (không treo, không dựa vào tràn stack); vào `source` chỉ `ContentString`/`ContentDeleted`, `parentSub === null` (`'forbidden content in source'`); mọi clientID phải liền clock, bắt đầu ≤ state máy chủ, không `Y.Skip` (`'clock gap'`).
+- `apps/api/src/index.ts`: `/parties/doc-room/:id` — đoạn thô phải bằng `encodeURIComponent(safeDecode(đoạn))`, sai → 404 trước xác thực (decode lỗi cũng 404, trước là 400).
+- `apps/api/src/body.ts` `readCapped(req, max)`: dùng ở upload ảnh, `/api/report`, `/api/feedback`, tạo link.
+- Upload ảnh: sau `put` kiểm lại quyền, không còn (hoặc ném lỗi) → `AssetStore.deleteOne`; `deleteRoomEverywhere` quét ảnh lần hai sau khi xoá dòng phòng.
+- Extension: `update_doc` vào tài liệu đang chia sẻ hỏi `ConfirmAgentDialog` (`kind: 'update_shared'`), đóng khi thiếu `confirm`, kiểm lại `baseHash` sau khi đồng ý; chờ `sharedKnown` (`useShare().bindingLoaded`) rồi mới chạy.
+- `le-sach-mcp`: dòng khởi động stderr `… listening on 127.0.0.1:<cổng> · mã máy chủ ABCD-1234` (`startupLine`); `zod` 4.6.6. Phiên bản giữ 1.3.3 / extension 1.5.1 (chưa phát hành).
+- `docs/MCP.md`: so mã máy chủ trước khi bấm Cho phép; `update_doc` cần đồng ý khi tài liệu đang chia sẻ; giới hạn ghim-lần-đầu trên máy nhiều người dùng.
+- Test (guard đo 2026-11-13 trước hai bản vá sau review): core 341 · ui 626 · extension 695 · api 259 · web 64 · mcp 57; typecheck/build exit 0; content.js gz 13.66 KB. Sau review: api 261, extension 698 (builder đo). e2e chưa chạy lại.
+
+**Người làm:** (1) merge MR `phase-22` vào `phase-21` (hoặc merge #22 trước rồi đổi base sang `main`); (2) `wrangler deploy` Worker — sáu bản vá máy chủ chỉ có hiệu lực sau deploy, không cần migration; (3) publish `le-sach-mcp@1.3.3`, build zip 1.5.1 và nộp store như ghi ở phase 21.
+
+Để lại có chủ ý: trần tổng dung lượng Durable Object + bộ đếm quota nguyên tử (`limits.ts`, cần quyết định vận hành); cửa sổ ghim-lần-đầu 10 phút (chỉ ghi ở tài liệu).
+
+Nợ (nhỏ, từ review):
+- Kiểm lại quyền sau `put` có thể đọc cache `resolve` trong khe rất hẹp giữa `store.deleteRoom` và `forgetRoomAuth` → ảnh lọt sau lượt quét hai.
+- `ContentString` độ dài 0 qua được bộ lọc `source` (chưa kiểm Yjs xử lý thế nào).
+- Client gộp `pendingStructs` vào `encodeStateAsUpdate` có thể sinh `Y.Skip` → bị đóng 4403; nối lại sẽ tự lành.
+- `/api/report` vượt trần vẫn trả 400 `invalid body` (như cũ), không phải 413.
+- Một lượt chạy suite extension đỏ 2 test không rõ tên rồi xanh lại hai lượt sau (nghi flake IDB cũ).
+- Bốn đơn vị audit chưa săn: tài nguyên parser (yaml/remark), chuỗi cài đặt vào CSS slide (`Deck.tsx`), ảnh từ xa trong tài liệu chia sẻ, token trong URL với observability bật.
+
+## Phase 21 — Ghép cặp MCP: một profile, không hỏi lặp (2026-11-13)
+
+Spec `docs/superpowers/specs/2026-11-13-phase-21-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md` · plan `docs/superpowers/plans/2026-11-13-phase-21-<sub>-plan.md`. Branch `phase-21`.
+
+Lỗi gốc: hai profile Chrome cùng bật Kết nối AI; `le-sach-mcp` chỉ ghim một khoá extension; profile kia mở lại tab `app.html?pair=…` ở mỗi lượt quét 30 giây (từ chối không được nhớ, máy chủ đóng kết nối chưa xác thực sau 10 giây, Cho phép muộn bị bỏ lặng lẽ).
+
+- Giao thức: `hello.pinnedExt?` (`undefined` máy chủ cũ · `null` chưa ghim · keyId 64-hex), `bridgePinState` → `unknown|none|self|other` (`@md-reader/core/bridge`). `BRIDGE_PROTOCOL` vẫn 2.
+- `le-sach-mcp` 1.3.3: gửi `pinnedExt`; lệnh `le-sach-mcp unpair` (`unpairIdentity`, `runCli`) bỏ `extKey`, giữ khoá máy chủ.
+- Worker (`apps/extension/src/worker/bridge.ts`, `bridge-storage.ts`, `index.ts`): `onUnpaired` + `pairPolicy`; tự mở tab tối đa một lần mỗi khoá máy chủ (`mdr.bridgeAsked`, ghi trước khi mở tab); máy chủ ghim khoá khác → không `auth`, không tab; `decide` trả `paired|denied|rejected|gone`, Cho phép muộn tự nối lại; danh sách phát hiện `mdr.bridgeSeen` (TTL), `BRIDGE_CONNECT_MSG` cho kết nối tay.
+- UI: `PairDialog` có `busy`/`result`/Đóng; Cài đặt → Kết nối AI có "Ứng dụng AI đang chạy trên máy này" + nút Kết nối / dòng "Đã ghép với một trình duyệt hoặc profile Chrome khác".
+- Extension 1.5.1, ghi chú phát hành `showOnUpdate: false` (không mở tab Có gì mới). Bảo mật cầu nối v2 không đổi: mọi lần ghép vẫn cần người bấm Cho phép.
+- Test (đo 2026-11-13 trên `phase-21`): core 341 · ui 624 · extension 689 · mcp 56 · e2e `mcp.spec.ts` 2/2 (MCP thật, có một `le-sach-mcp` khác đang chạy trên máy); typecheck/build exit 0; content.js gz 13.66 KB. Chưa chạy lại: api, web, toàn bộ e2e trên tip cuối (builder chạy cả suite e2e trước bản sửa test: 12 xanh, 1 đỏ là kịch bản MCP cũ — đã sửa test).
+- e2e MCP giờ chỉ ghép với máy chủ của chính test (`key=<keyId>`), không còn đỏ khi máy có `le-sach-mcp` khác đang chạy.
+
+**Người làm (đúng thứ tự):** (1) `cd packages/mcp && pnpm build && pnpm publish --access public --no-git-checks --otp=<mã>` → `le-sach-mcp@1.3.3` — snippet trong app và thông báo "chạy `npx le-sach-mcp unpair`" cần bản này trên npm; (2) merge MR; (3) build zip 1.5.1 (`node apps/extension/scripts/package.mjs`, nhớ `VITE_MDR_SERVER_URL`) và nộp store.
+
+Nợ (nhỏ, chưa sửa):
+- Chuỗi UI ghi `npx le-sach-mcp unpair` không kèm phiên bản: máy còn cache npx 1.3.2 sẽ chạy bản cũ (không có `unpair`, treo chờ stdio). Tài liệu ghi `npx -y le-sach-mcp@1.3.3 unpair`.
+- Sau `unpair`, profile cũ còn phê duyệt sẽ tự nối lại và ghim trước — tài liệu hướng dẫn thu hồi ở profile cũ trước; chưa có test.
+- 21c4: hai `hello` đồng thời cùng khoá (hai cổng) có thể mở hai tab một lần; `markAsked` đọc-sửa-ghi có race; `selfRemoved` có thể nuốt một lần thu hồi thật trong 5 giây; kết nối chờ lâu biến mất khỏi Cài đặt sau 11 phút (`pruneSeen` theo giờ `hello`); thiếu test đồng thời / `markAsked` lỗi.
+- 21c1: khoá vừa thu hồi bị đóng socket mỗi lượt quét; máy chủ bị bỏ im lặng không tính là hoạt động cho idle backoff. 21c3: `markAsked` không kiểm keyHash, `parseSeen` không kiểm dải cổng.
+- 21b1: `keyId` lỗi → `pinnedExt: null` lặng lẽ. 21b2: `unpair` trên máy mới tạo thư mục rỗng; thông báo file hỏng chưa thân thiện.
+- 21d: không có test `main.tsx` cho ánh xạ kết quả; các nút Kết nối trùng tên truy cập; TTL chỉ tính lúc render; ba test âm ở 21d3 yếu.
+- 21e1: kiểm "không tab" cuối cùng không có độ trễ sau khi dòng Cài đặt hiện.
+- Máy chủ đổi khoá mỗi lần chạy sẽ được hỏi một lần mỗi lần chạy (đúng thiết kế).
+- Flake ui: `blame.test.ts > adds and removes the gutter without rebuilding the view` (1/3 lượt dưới tải).
 
 ## Phase 20 — Trang chào mới + hướng dẫn từng bước (2026-11-09)
 

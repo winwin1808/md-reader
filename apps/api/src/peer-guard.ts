@@ -65,7 +65,17 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
   // --- clientID ownership
   const fresh: number[] = []
   for (const [c, a] of byClient) {
-    if (own.owners.get(c) === own.prefix) continue
+    // Clock continuity for every clientID: no Skip, no hole, no start beyond the server state (pending structs).
+    for (let i = 0; i < a.length; i++) {
+      const s = a[i] as Struct
+      if (s instanceof Y.Skip) return 'clock gap'
+      const prev = a[i - 1]
+      if (prev && s.id.clock > prev.id.clock + prev.length) return 'clock gap'
+    }
+    if (own.owners.get(c) === own.prefix) {
+      if ((a[0] as Struct).id.clock > Y.getState(doc.store, c)) return 'clock gap'
+      continue
+    }
     if (own.owners.has(c) || Y.getState(doc.store, c) > 0) return `foreign clientID ${c}`
     if ((a[0] as Struct).id.clock !== 0) return `clientID ${c} does not start at clock 0`
     fresh.push(c)
@@ -118,17 +128,25 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     } else kind = null
     return kind === null ? null : { kind, sub: item.parentSub }
   }
+  const active = new Set<Struct>() // structs mid-resolve across the whole resolve/direct/containerOf recursion
   const resolve = (start: Struct): Res => {
     const chain: Struct[] = []
     let cur: Struct | null = start
     let res: Res = null
+    const seen = new Set<Struct>()
     while (cur) {
+      if (seen.has(cur) || active.has(cur)) {
+        res = null
+        break
+      }
+      seen.add(cur)
       if (memo.has(cur)) {
         res = memo.get(cur) as Res
         break
       }
       if (!(cur instanceof Y.Item)) break
       chain.push(cur)
+      active.add(cur)
       if (cur.parent !== null) {
         res = direct(cur)
         break
@@ -136,7 +154,10 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
       const ref: { client: number; clock: number } | null = cur.origin ?? cur.rightOrigin
       cur = ref ? find(ref.client, ref.clock) : null
     }
-    for (const c of chain) memo.set(c, res)
+    for (const c of chain) {
+      active.delete(c)
+      memo.set(c, res)
+    }
     return res
   }
 
@@ -145,7 +166,11 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     const r = resolve(s)
     if (!r) return 'unresolved parent'
     if (s.content.getRef() === CONTENT_TYPE_REF) return 'nested type'
-    if (r.kind === 'source') continue
+    if (r.kind === 'source') {
+      const ref = s.content.getRef()
+      if ((ref === 4 || ref === 1) && r.sub === null) continue
+      return 'forbidden content in source'
+    }
     if (r.kind === 'actors' && r.sub === String(s.id.client) && owns(s.id.client)) continue
     return `forbidden ${r.kind}${r.sub !== null ? '.' + r.sub : ''}`
   }

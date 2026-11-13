@@ -34,6 +34,60 @@ describe('PairDialog', () => {
   })
 })
 
+describe('PairDialog busy/result', () => {
+  const base = { client: 'Claude', fingerprint: 'ABCD-1234' }
+  it('busy disables both buttons and shows pair.busy', () => {
+    const onAllow = vi.fn()
+    const onDeny = vi.fn()
+    render(<PairDialog {...base} busy onAllow={onAllow} onDeny={onDeny} />)
+    const allow = screen.getByRole('button', { name: 'Đang kết nối…' })
+    const deny = screen.getByRole('button', { name: 'Từ chối' })
+    expect(allow).toBeDisabled()
+    expect(deny).toBeDisabled()
+    fireEvent.click(allow)
+    fireEvent.click(deny)
+    expect(onAllow).not.toHaveBeenCalled()
+    expect(onDeny).not.toHaveBeenCalled()
+  })
+
+  it('Esc while busy does nothing', () => {
+    const onDeny = vi.fn()
+    const onClose = vi.fn()
+    render(<PairDialog {...base} busy onAllow={vi.fn()} onDeny={onDeny} onClose={onClose} />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onDeny).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['rejected-other', /npx le-sach-mcp unpair/],
+    ['rejected', /từ chối kết nối/],
+    ['gone', /Không còn thấy/],
+  ] as const)('result %s shows message and a single Close button', (result, re) => {
+    const onClose = vi.fn()
+    const onAllow = vi.fn()
+    const onDeny = vi.fn()
+    render(<PairDialog {...base} result={result} onAllow={onAllow} onDeny={onDeny} onClose={onClose} />)
+    expect(screen.getByText(re)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cho phép' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Từ chối' })).toBeNull()
+    const close = screen.getByRole('button', { name: 'Đóng' })
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(close).toHaveFocus()
+    fireEvent.click(close)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Esc with result calls onClose, not onDeny', () => {
+    const onDeny = vi.fn()
+    const onClose = vi.fn()
+    render(<PairDialog {...base} result="gone" onAllow={vi.fn()} onDeny={onDeny} onClose={onClose} />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onDeny).not.toHaveBeenCalled()
+  })
+})
+
 describe('SettingsModal AI section', () => {
   it('toggles and revokes', () => {
     const onToggle = vi.fn()

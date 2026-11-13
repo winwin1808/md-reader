@@ -7,7 +7,7 @@
 **Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
 Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
 
-## Đã xong (phase 1 đến 19, phiên bản 1.5.0)
+## Đã xong (phase 1 đến 21, phiên bản 1.5.1)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -28,6 +28,8 @@ Yêu cầu từ người dùng thật chạy **song song** với thứ tự này
 - [x] **P17 Lên Chrome Web Store:** hướng dẫn kết nối AI ngay trong Cài đặt, `le-sach-mcp` 1.3.2 nhận bản store, tên mới "LeSach – Markdown Reader & AI Editor".
 - [x] **P18 Vòng đời người dùng:** trang chào và tài liệu mẫu khi cài, trang Có gì mới sau cập nhật lớn (tắt được), góp ý tự nguyện trong Cài đặt và trang sau khi gỡ, lời mời đánh giá một lần, sao lưu mọi tài liệu ra `.zip` trước khi gỡ.
 - [x] **P19 PDF trình chiếu không cắt chữ:** slide dài tự chia theo chiều cao thật (danh sách, bảng tách theo mục/hàng, bảng lặp tiêu đề), khối không tách được thì thu nhỏ và cảnh báo; dấu ngắt thủ công `<!-- slide-break -->` và nút "Ngắt slide tại đây" khi Sửa; công tắc "Tự chia slide" trong Cài đặt; trang PDF đúng 1280×720.
+- [x] **P20 Trang chào mới và hướng dẫn từng bước:** trang chào dạng tờ giấy có checklist, tour 9 bước tô sáng nút thật, xem lại trong Cài đặt → Trợ giúp.
+- [x] **P21 Ghép cặp MCP một profile, không hỏi lặp:** hộp ghép cặp tự mở tối đa một lần cho mỗi ứng dụng AI, từ chối được ghi nhớ; profile Chrome khác với profile đã ghép không mở tab nào; Cài đặt → Kết nối AI liệt kê ứng dụng AI đang chạy kèm nút Kết nối; bấm Cho phép luôn có kết quả rõ; lệnh `le-sach-mcp unpair` (1.3.3) để chuyển sang profile khác.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)

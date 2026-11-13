@@ -3,8 +3,10 @@ import { createBridge } from './bridge'
 import { createExecuteInApp } from './bridge-route'
 import { createRecord, writeDocText, deleteRecord, listRecent, getRecord, docQuery, ensureShortKey, docParam } from '../app/doc-registry'
 import {
-  BRIDGE_SCAN_MSG, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, nextScanDelayMin, parseBridgeSettings, parsePairDecision, readBridgeSettings,
+  BRIDGE_CONNECT_MSG, BRIDGE_SCAN_MSG, BRIDGE_SEEN_KEY, BRIDGE_STORAGE_KEY, PAIR_DECISION_MSG, addApproved, loadOrCreateExtKey, markAsked, nextScanDelayMin,
+  pairPolicy, parseBridgeSettings, parseConnectMsg, parsePairDecision, pruneSeen, readAsked, readBridgeSettings, readSeen, removeApproved, removeSeen, upsertSeen,
 } from './bridge-storage'
+import type { PairDecisionReply, StoreLike } from './bridge-storage'
 import { LIFECYCLE_KEY, parseLifecycleState, decideLifecycle, uninstallUrl } from './lifecycle'
 import type { LifecycleEvent } from './lifecycle'
 import { RELEASE_NOTES } from '../shared/release-notes'
@@ -95,6 +97,18 @@ const ALARM = 'mdr-bridge'
 const IDLE_KEY = 'mdr.bridgeIdle'
 
 const revokedUntil = new Map<string, number>()
+// keys whose approval we remove ourselves after a server rejection: not a user revoke
+const selfRemoved = new Map<string, number>()
+// keys the user asked to connect by hand from Settings
+const manual = new Set<string>()
+// keys for which onUnpaired opened a pair tab; lets the connect handler avoid a second tab per click
+const openedByHello = new Set<string>()
+
+// chrome.storage.session may be absent (tests, old browsers): behave as an empty store
+const sessionStore: StoreLike = {
+  get: async (k) => (await chrome.storage?.session?.get?.(k)) ?? {},
+  set: async (v) => { await chrome.storage?.session?.set?.(v) },
+}
 
 const execute = createExecuteInApp({
   createRecord,
@@ -137,11 +151,32 @@ const bridge = createBridge({
   extKey: () => (extKeyP ??= loadOrCreateExtKey(chrome.storage.local)),
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
-  requestPairing: ({ port, client, keyHash }) => {
-    if (isExpiryActive(revokedUntil, keyHash)) return
-    void chrome.tabs.create({
-      url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client) + '&key=' + keyHash),
-    })
+  onUnpaired: async (s) => {
+    try {
+      const asked = await readAsked(chrome.storage.local)
+      const policy = pairPolicy({
+        pinned: s.pinned,
+        asked: s.keyHash in asked,
+        manual: manual.has(s.keyHash),
+        recentlyRevoked: isExpiryActive(revokedUntil, s.keyHash),
+      })
+      try {
+        await upsertSeen(sessionStore, {
+          keyHash: s.keyHash, client: s.client, port: s.port, pinned: s.pinned,
+          rejected: asked[s.keyHash]?.rejected === true, at: Date.now(),
+        })
+      } catch { /* seen list is best effort */ }
+      manual.delete(s.keyHash)
+      if (policy === 'silent') return false
+      await markAsked(chrome.storage.local, s.keyHash, Date.now())
+      await chrome.tabs.create({
+        url: chrome.runtime.getURL('app.html?pair=' + s.port + '&client=' + encodeURIComponent(s.client) + '&key=' + s.keyHash),
+      })
+      openedByHello.add(s.keyHash)
+      return true
+    } catch {
+      return false
+    }
   },
   execute,
   // setInterval so the 20 s ping repeats; bridge clears the one-shot connect timer itself when it fires or the socket opens.
@@ -164,9 +199,11 @@ async function tick(): Promise<void> {
     if (!s.enabled) {
       bridge.stopAll()
       await chrome.alarms?.clear?.(ALARM)
+      try { await chrome.storage?.session?.remove?.(BRIDGE_SEEN_KEY) } catch { /* ignore */ }
       return
     }
     const n = await bridge.scan()
+    try { await pruneSeen(sessionStore, Date.now()) } catch { /* ignore */ }
     const idle = n > 0 ? 0 : (await readIdle()) + 1
     await setIdle(idle)
     await chrome.alarms?.create?.(ALARM, { periodInMinutes: nextScanDelayMin(idle) })
@@ -248,7 +285,7 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   for (const a of before) {
     if (!after.has(a.keyHash)) {
       bridge.revoke(a.keyHash)
-      setExpiry(revokedUntil, a.keyHash, Date.now() + 60_000)
+      if (!isExpiryActive(selfRemoved, a.keyHash)) setExpiry(revokedUntil, a.keyHash, Date.now() + 60_000)
     }
   }
   if (parseBridgeSettings(changes[BRIDGE_STORAGE_KEY].oldValue).enabled !== next.enabled) void tick()
@@ -256,21 +293,72 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
 
 chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
   const type = message?.type
-  if (type !== PAIR_DECISION_MSG && type !== BRIDGE_SCAN_MSG) return
+  if (type !== PAIR_DECISION_MSG && type !== BRIDGE_SCAN_MSG && type !== BRIDGE_CONNECT_MSG) return
   const appUrl = chrome.runtime.getURL('app.html')
   if (sender?.id !== chrome.runtime.id || !sender?.url || !sender.url.startsWith(appUrl)) return
   void (async () => {
-    if (type === BRIDGE_SCAN_MSG) {
-      await setIdle(0)
-      await tick()
-    } else if (parsePairDecision(message)) {
-      const d = parsePairDecision(message)!
-      await bridge.decide(d.port, d.allow, (c) => addApproved(chrome.storage.local, c), d.keyHash)
-      if (sender.tab?.id !== undefined) {
-        try { await chrome.tabs.remove(sender.tab.id) } catch { /* tab gone */ }
+    try {
+      if (type === BRIDGE_SCAN_MSG) {
+        await setIdle(0)
+        await tick()
+        sendResponse?.({ ok: true })
+      } else if (type === BRIDGE_CONNECT_MSG) {
+        const c = parseConnectMsg(message)
+        if (!c) { sendResponse?.({ ok: false }); return }
+        manual.add(c.keyHash)
+        openedByHello.delete(c.keyHash)
+        await setIdle(0)
+        await tick()
+        const live = bridge.conns().find((x) => x.keyHash === c.keyHash)
+        if (live) {
+          manual.delete(c.keyHash)
+          if (live.state === 'pending' && live.pinned !== 'other' && !openedByHello.has(c.keyHash)) {
+            await markAsked(chrome.storage.local, c.keyHash, Date.now())
+            await chrome.tabs.create({
+              url: chrome.runtime.getURL('app.html?pair=' + live.port + '&client=' + encodeURIComponent(live.client) + '&key=' + c.keyHash),
+            })
+          }
+          openedByHello.delete(c.keyHash)
+          sendResponse?.({ ok: true })
+        } else {
+          manual.delete(c.keyHash)
+          try { await removeSeen(sessionStore, c.keyHash) } catch { /* ignore */ }
+          sendResponse?.({ ok: false })
+        }
+      } else {
+        const d = parsePairDecision(message)
+        if (!d) { sendResponse?.({ ok: true }); return }
+        const find = () => bridge.conns().find((x) => x.keyHash === d.keyHash && x.port === d.port) ?? bridge.conns().find((x) => x.keyHash === d.keyHash)
+        let pinned = find()?.pinned ?? 'unknown'
+        const outcome = await bridge.decide(d.port, d.allow, (c) => addApproved(chrome.storage.local, c), d.keyHash)
+        pinned = find()?.pinned ?? pinned
+        const closeTab = async () => {
+          if (sender.tab?.id !== undefined) {
+            try { await chrome.tabs.remove(sender.tab.id) } catch { /* tab gone */ }
+          }
+        }
+        if (outcome === 'paired') {
+          try { await removeSeen(sessionStore, d.keyHash) } catch { /* best effort */ }
+          await closeTab()
+        } else if (outcome === 'denied') {
+          await closeTab()
+        } else if (outcome === 'rejected') {
+          setExpiry(selfRemoved, d.keyHash, Date.now() + 5_000)
+          await removeApproved(chrome.storage.local, d.keyHash)
+          await markAsked(chrome.storage.local, d.keyHash, Date.now(), true)
+          const seen = (await readSeen(sessionStore)).find((x) => x.keyHash === d.keyHash)
+          await upsertSeen(sessionStore, {
+            keyHash: d.keyHash, client: seen?.client ?? '', port: seen?.port ?? d.port, pinned, rejected: true, at: Date.now(),
+          })
+        } else {
+          await removeSeen(sessionStore, d.keyHash)
+        }
+        const reply: PairDecisionReply = { ok: true, outcome, pinned }
+        sendResponse?.(reply)
       }
+    } catch {
+      try { sendResponse?.({ ok: false }) } catch { /* channel closed */ }
     }
-    sendResponse?.({ ok: true })
   })()
   return true
 })

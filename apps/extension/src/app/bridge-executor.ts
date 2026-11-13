@@ -16,7 +16,7 @@ export interface ExecShare {
   bound(): boolean
 }
 export interface ExecSession {
-  docId: string; title: string; yText: Y.Text; shared: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null
+  docId: string; title: string; yText: Y.Text; shared: boolean; sharedKnown: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null
   share: ExecShare | null
   confirm: ((c: ConfirmRequest, client: string) => Promise<boolean>) | null
 }
@@ -38,7 +38,7 @@ export function createBridgeExecutor(
     let s = get()
     if (s && s.docId !== docId) return fail(req.id, 'NOT_FOUND', NOT_OPEN)
     let waited = 0
-    const ready = (x: ExecSession | null) => !!x && x.synced && (req.tool !== 'update_doc' || x.checkpoints !== null)
+    const ready = (x: ExecSession | null) => !!x && x.synced && (req.tool !== 'update_doc' || (x.checkpoints !== null && x.sharedKnown))
     while (!s || !ready(s)) {
       if (waited >= waitMs) return s ? fail(req.id, 'TIMEOUT', 'document is still loading') : fail(req.id, 'NOT_FOUND', NOT_OPEN)
       await sleep(pollMs)
@@ -56,6 +56,22 @@ export function createBridgeExecutor(
       const curHash = await textHash(cur)
       if (curHash !== baseHash) return fail(req.id, 'CONFLICT', `document changed since baseHash; current hash ${curHash}`)
       if (s.yText.toString() !== cur) return fail(req.id, 'CONFLICT', `document changed since baseHash; current hash ${await textHash(s.yText.toString())}`)
+      if (s.shared) {
+        const confirm = s.confirm
+        if (!confirm) return fail(req.id, 'INTERNAL', 'confirmation unavailable')
+        try {
+          if (!(await confirm({ kind: 'update_shared', docTitle: s.title }, client))) return fail(req.id, 'DENIED', 'user declined')
+        } catch (e) {
+          const m = e instanceof Error ? e.message : String(e)
+          if (m === 'busy') return fail(req.id, 'DENIED', 'another request is waiting for the user')
+          return m === 'timeout' ? fail(req.id, 'TIMEOUT', 'no answer from user') : fail(req.id, 'INTERNAL', m)
+        }
+        const s2 = get()
+        if (!s2 || s2.docId !== s.docId) return fail(req.id, 'NOT_FOUND', 'document changed in tab before approval')
+        s = s2
+        const now = await textHash(s.yText.toString())
+        if (now !== baseHash) return fail(req.id, 'CONFLICT', `document changed since baseHash; current hash ${now}`)
+      }
       const doc = s.yText.doc
       if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
       s.checkpoints?.flush('auto', 'Bạn')

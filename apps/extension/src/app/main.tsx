@@ -11,12 +11,45 @@ import { PAIR_DECISION_MSG } from '../worker/bridge-storage'
 import { onMathLoaded } from '@md-reader/core/plugins'
 import '@md-reader/ui/fonts.css'
 
+type PairReply = { ok?: boolean; outcome?: 'paired' | 'denied' | 'rejected' | 'gone'; pinned?: 'unknown' | 'none' | 'self' | 'other' } | undefined
+
 function PairPage({ port, client, keyHash }: { port: number; client: string; keyHash: string }): React.JSX.Element {
-  const decide = (allow: boolean) => {
-    try { void Promise.resolve(chrome.runtime.sendMessage({ type: PAIR_DECISION_MSG, port, allow, keyHash })).catch(() => {}) } catch { /* ignore */ }
+  const [busy, setBusy] = React.useState(false)
+  const [result, setResult] = React.useState<'rejected-other' | 'rejected' | 'gone' | undefined>(undefined)
+  const deny = () => {
+    try { void Promise.resolve(chrome.runtime.sendMessage({ type: PAIR_DECISION_MSG, port, allow: false, keyHash })).catch(() => {}) } catch { /* ignore */ }
+  }
+  const allow = async () => {
+    setBusy(true)
+    try {
+      const reply = (await chrome.runtime.sendMessage({ type: PAIR_DECISION_MSG, port, allow: true, keyHash })) as PairReply
+      if (!reply || reply.ok === false) setResult('gone')
+      else if (reply?.outcome === 'rejected') setResult(reply.pinned === 'other' ? 'rejected-other' : 'rejected')
+      else if (reply?.outcome === 'gone') setResult('gone')
+    } catch {
+      setResult('gone')
+    }
   }
   const fp = keyHash.slice(0, 4).toUpperCase() + '-' + keyHash.slice(4, 8).toUpperCase()
-  return <PairDialog client={client} fingerprint={fp} onAllow={() => decide(true)} onDeny={() => decide(false)} />
+  return (
+    <PairDialog
+      client={client}
+      fingerprint={fp}
+      busy={busy && !result}
+      result={result}
+      onAllow={() => void allow()}
+      onDeny={deny}
+      onClose={() => {
+        void (async () => {
+          try {
+            const tab = await chrome.tabs.getCurrent()
+            if (tab?.id !== undefined) { await chrome.tabs.remove(tab.id); return }
+          } catch { /* fall through */ }
+          window.close()
+        })()
+      }}
+    />
+  )
 }
 
 function PairInvalid(): React.JSX.Element {

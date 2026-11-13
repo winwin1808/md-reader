@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS, sanitizeClientName, BRIDGE_MAX_CLIENT } from './protocol.js'
+import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS, sanitizeClientName, BRIDGE_MAX_CLIENT, bridgePinState } from './protocol.js'
 import { hashText } from '../doc/hash.js'
 
 const p = (o: unknown) => parseBridgeMessage(JSON.stringify(o))
@@ -150,3 +150,31 @@ describe('bridge protocol v2', () => {
   })
 })
 
+
+describe('hello pinnedExt + bridgePinState', () => {
+  const p = parseBridgeMessage
+  const base = { type: 'hello', protocol: 2, client: 'c', serverKey: 'A'.repeat(120), nonce: 'B'.repeat(43) }
+  const hex = 'a1'.repeat(32)
+  it('hello cũ không có pinnedExt', () => {
+    const r = p(JSON.stringify(base))
+    expect(r).toEqual(base)
+    expect('pinnedExt' in (r as object)).toBe(false)
+  })
+  it('pinnedExt null', () => {
+    expect(p(JSON.stringify({ ...base, pinnedExt: null }))).toEqual({ ...base, pinnedExt: null })
+  })
+  it('pinnedExt 64-hex', () => {
+    expect(p(JSON.stringify({ ...base, pinnedExt: hex }))).toEqual({ ...base, pinnedExt: hex })
+  })
+  it.each([123, 'abc', hex.toUpperCase().replace(/^A1/, 'A1').replace(/a/gi, 'A')])('bỏ giá trị rác %s', (bad) => {
+    const r = p(JSON.stringify({ ...base, pinnedExt: bad }))
+    expect(r).toEqual(base)
+    expect('pinnedExt' in (r as object)).toBe(false)
+  })
+  it('bridgePinState', () => {
+    expect(bridgePinState(undefined, hex)).toBe('unknown')
+    expect(bridgePinState(null, hex)).toBe('none')
+    expect(bridgePinState(hex, hex)).toBe('self')
+    expect(bridgePinState('b2'.repeat(32), hex)).toBe('other')
+  })
+})

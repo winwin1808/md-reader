@@ -9,7 +9,7 @@ export const BRIDGE_MAX_CONNECTIONS = 4
 export const STORE_EXTENSION_ID = 'eolclccibhickmpbpbdodbhopnddcdog'
 export const DEV_EXTENSION_ID = 'ojcemoafaibjfghljkbagnkbgljakbji'
 export const KNOWN_EXTENSION_IDS: readonly string[] = [STORE_EXTENSION_ID, DEV_EXTENSION_ID]
-export const MCP_PACKAGE_SPEC = 'le-sach-mcp@1.3.2'
+export const MCP_PACKAGE_SPEC = 'le-sach-mcp@1.3.3'
 
 export function isAllowedExtensionOrigin(origin: string, ids: readonly string[] = KNOWN_EXTENSION_IDS): boolean {
   return ids.some((id) => origin === `chrome-extension://${id}`)
@@ -37,7 +37,17 @@ export interface RevokeLinkResult { revoked: boolean }
 export interface BridgeArgsMap { publish_doc: PublishDocArgs; list_docs: Record<string, never>; get_doc: GetDocArgs; update_doc: UpdateDocArgs; share_doc: ShareDocArgs; list_links: ListLinksArgs; revoke_link: RevokeLinkArgs }
 export interface BridgeResultMap { publish_doc: PublishDocResult; list_docs: ListDocsResult; get_doc: GetDocResult; update_doc: UpdateDocResult; share_doc: ShareDocResult; list_links: ListLinksResult; revoke_link: RevokeLinkResult }
 
-export interface BridgeHello { type: 'hello'; protocol: 2; client: string; serverKey: string; nonce: string }
+export interface BridgeHello {
+  type: 'hello'; protocol: 2; client: string; serverKey: string; nonce: string
+  /** undefined = máy chủ cũ (không biết) · null = chưa ghim · 64-hex = keyId khoá extension đã ghim */
+  pinnedExt?: string | null
+}
+export type BridgePinState = 'unknown' | 'none' | 'self' | 'other'
+export function bridgePinState(pinnedExt: string | null | undefined, myKeyId: string): BridgePinState {
+  if (pinnedExt === undefined) return 'unknown'
+  if (pinnedExt === null) return 'none'
+  return pinnedExt === myKeyId ? 'self' : 'other'
+}
 export type BridgeHelloV2 = BridgeHello
 export interface BridgeAuth { type: 'auth'; extKey: string; nonce: string; sig: string }
 export interface BridgeAuthOk { type: 'auth-ok'; sig: string }
@@ -65,7 +75,12 @@ export function parseBridgeMessage(raw: string): BridgeMessage | null {
   switch (o.type) {
     case 'hello':
       if (o.protocol !== 2 || !str(o.client, 1, 100) || !b64u(o.serverKey, 80, 200) || !b64u(o.nonce, 43, 43)) return null
-      return { type: 'hello', protocol: 2, client: o.client, serverKey: o.serverKey, nonce: o.nonce }
+    {
+      const h: BridgeHello = { type: 'hello', protocol: 2, client: o.client, serverKey: o.serverKey, nonce: o.nonce }
+      if (o.pinnedExt === null) h.pinnedExt = null
+      else if (typeof o.pinnedExt === 'string' && /^[0-9a-f]{64}$/.test(o.pinnedExt)) h.pinnedExt = o.pinnedExt
+      return h
+    }
     case 'auth':
       if (!b64u(o.extKey, 80, 200) || !b64u(o.nonce, 43, 43) || !b64u(o.sig, 80, 100)) return null
       return { type: 'auth', extKey: o.extKey, nonce: o.nonce, sig: o.sig }
