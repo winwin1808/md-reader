@@ -12,10 +12,10 @@ The bridge is **off by default**. The extension accepts connections only after y
 
 ## 2. Install
 
-Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.2` with:
+Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.3` with:
 
 ```
-npx -y le-sach-mcp@1.3.2
+npx -y le-sach-mcp@1.3.3
 ```
 
 ## 3. Client configuration
@@ -27,7 +27,7 @@ npx -y le-sach-mcp@1.3.2
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.2"]
+      "args": ["-y", "le-sach-mcp@1.3.3"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp@1.3.2
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp@1.3.2
+claude mcp add md-reader -- npx -y le-sach-mcp@1.3.3
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.2
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.2"]
+      "args": ["-y", "le-sach-mcp@1.3.3"]
     }
   }
 }
@@ -66,6 +66,22 @@ Optional environment variables:
    Remaining limit: another program on the same machine, running as the same user, that connects to `le-sach-mcp` before the extension within those 10 minutes can take the server-side pairing slot. The real extension is then refused (you will see pairing fail) — delete the pairing file and restart.
    Key pinning uses a file lock, so several `le-sach-mcp` processes starting at the same time (for example several client windows) are safe. Clicking Allow twice in a row in the pairing dialog does not break pairing either.
 4. Revoke: revoke a client in Settings → AI connection. A revoked client that reconnects within 60 seconds is **not asked again**; to pair again, turn AI connection off and on after 60 seconds.
+
+### One AI app, one Chrome profile
+
+Each `le-sach-mcp` pairs with **one** extension, which means one Chrome profile. From extension 1.5.1 and `le-sach-mcp` 1.3.3:
+
+- The pairing dialog opens by itself **at most once** per AI app in each profile. Denying, closing the tab or not answering is remembered; the extension does not ask again.
+- A profile other than the paired one **opens no tab at all**. In Settings → AI connection, the **AI apps running on this machine** list shows the app with "Paired with another browser or Chrome profile". (With `le-sach-mcp` 1.3.2 and older the extension cannot tell where the server is paired, so it still asks once, then stops.)
+- To connect later: open Settings → AI connection and press **Connect** next to an app marked "Not connected". The pairing dialog opens and you still have to click Allow.
+- Clicking Allow always gives a result: it connects, or the dialog says why not (the AI app is paired elsewhere, more than 10 minutes have passed since it started, or it is no longer running).
+
+**Moving an AI app to another profile:**
+
+1. In the old profile: revoke that AI app in Settings → AI connection (or turn AI connection off). If you skip this, the old profile reconnects by itself and takes the pairing slot first.
+2. Run `npx -y le-sach-mcp@1.3.3 unpair`. It removes the pinned extension key from the pairing file and **keeps the server key**, so the identifier stays the same. It prints one result line and exits.
+3. Restart the AI app (the 10-minute pairing window starts when `le-sach-mcp` starts).
+4. In the new profile: Settings → AI connection → **Connect** → Allow.
 
 ## 5. The seven tools
 
@@ -99,6 +115,7 @@ Limits: Markdown up to 2,000,000 characters; for a shared document, each sync me
 |---|---|
 | `NOT_CONNECTED` | Chrome with MD Reader is not open, or AI connection is off. Open Chrome and turn on Settings → AI connection. |
 | `NOT_PAIRED` | The client is not paired or was revoked. Accept the pairing dialog; if revoked, turn AI connection off and on after 60 seconds. |
+| The "Allow an AI app to connect?" tab keeps reopening | Two Chrome profiles both have AI connection on, with an extension older than 1.5.1. Update the extension, or turn AI connection off in the profile you do not use. |
 | `TIMEOUT` | The extension did not answer in time (or a confirmation dialog went unanswered). Retry. |
 | `CONFLICT` | `update_doc` with a stale `baseHash`. Call `get_doc` again. |
 | `INVALID_ARGS` | Bad arguments (for example `baseHash` must be 64 lowercase hex characters). |

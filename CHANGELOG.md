@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+- The "Allow an AI app to connect?" tab no longer reopens every 30 seconds when two Chrome profiles both have AI connection on. The extension asks at most once per AI app, remembers a Deny, and never opens a tab for an AI app paired with another profile (extension 1.5.1).
+- Clicking Allow in the pairing dialog always ends with a visible result: connected, paired elsewhere, refused, or no longer running. A late Allow reconnects instead of being dropped silently.
+
+### Added
+- Settings → AI connection lists the AI apps running on this machine with their state ("Not connected" / "Paired with another browser or Chrome profile") and a Connect button for manual pairing.
+- `le-sach-mcp` 1.3.3: `hello` carries an optional `pinnedExt` fingerprint (older extensions ignore it; the extension still works with 1.3.2), and a new `le-sach-mcp unpair` command removes the pinned extension key while keeping the server key.
+
 ### Added
 - Community files: CONTRIBUTING, Code of Conduct, Security policy, issue and PR templates.
 - Settings → AI connection shows a 3-step setup guide when turned on: copyable command/JSON for Claude Code, Claude Desktop and Cursor, how to approve pairing, and example requests. Open by default until an AI app is approved.

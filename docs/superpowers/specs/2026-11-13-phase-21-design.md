@@ -14,7 +14,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): done
 - 21d3 — Nối Cài đặt (extension app): done
 - 21e1 — E2E máy chủ đã ghim khoá khác: planned
-- 21e2 — Tài liệu + phiên bản: planned
+- 21e2 — Tài liệu + phiên bản: done
 
 ## Approach chosen
 **Extension không bao giờ tự mở tab hỏi quá một lần cho một khoá máy chủ; máy chủ nói cho extension biết nó đã ghim ai.**
