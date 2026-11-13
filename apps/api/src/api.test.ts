@@ -245,13 +245,13 @@ describe('hardening (8a2.5)', () => {
     expect(_authCacheSize()).toBeLessThanOrEqual(5000)
   })
 
-  it('handleRequest: bad roomId encoding -> 400 before routeParty', async () => {
+  it('handleRequest: bad roomId encoding -> 404 before routeParty', async () => {
     const routeParty = vi.fn(async () => new Response('x'))
     const res = await handleRequest(new Request('http://x/parties/doc-room/%?token=x'), {} as never, {
       routeParty,
       store: new MemoryTokenStore(now),
     })
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(404)
     expect(routeParty).not.toHaveBeenCalled()
   })
 
@@ -771,5 +771,67 @@ describe('feedback routes', () => {
     expect(res.status).toBe(204)
     expect(['*', 'https://winwin1808.github.io']).toContain(res.headers.get('access-control-allow-origin'))
     expect(res.headers.get('access-control-allow-headers')).toContain('content-type')
+  })
+})
+
+describe('asset upload vs room delete race (22e)', () => {
+  const PNG8 = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
+  const upReq = (roomId: string, bearer: string) =>
+    new Request(`http://x/api/rooms/${roomId}/assets`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${bearer}`, 'content-type': 'image/png' },
+      body: PNG8,
+    })
+
+  it('room deleted between check and put: 403 and no orphan asset', async () => {
+    const { MemoryAssetStore } = await import('./assets.js')
+    const { store, roomId, ownerToken } = await setup()
+    const assets = new MemoryAssetStore()
+    const realPut = assets.put.bind(assets)
+    assets.put = async (r, m, b) => {
+      await store.deleteRoom(roomId)
+      return realPut(r, m, b)
+    }
+    const res = (await handleApi(upReq(roomId, ownerToken), store, { assets }))!
+    expect(res.status).toBe(403)
+    expect(await assets.roomUsage(roomId)).toBe(0)
+  })
+
+  it('asset inserted after first sweep is removed by the post-delete sweep', async () => {
+    const { MemoryAssetStore } = await import('./assets.js')
+    const { store, roomId, ownerToken } = await setup()
+    const assets = new MemoryAssetStore()
+    const realDel = assets.deleteRoom.bind(assets)
+    let calls = 0
+    assets.deleteRoom = async (r) => {
+      const n = await realDel(r)
+      if (++calls === 1) await assets.put(r, 'image/png', PNG8)
+      return n
+    }
+    const res = (await handleApi(req('DELETE', `/api/rooms/${roomId}`, { bearer: ownerToken }), store, { assets }))!
+    expect(res.status).toBe(204)
+    expect(await assets.roomUsage(roomId)).toBe(0)
+  })
+
+  it('links POST: streamed over-cap body -> 413 without reading it all', async () => {
+    const { store, roomId, ownerToken } = await setup()
+    let pulls = 0
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(c) {
+          if (++pulls > 100_000) return c.close()
+          c.enqueue(new Uint8Array(64 * 1024))
+        },
+      },
+      { highWaterMark: 0 },
+    )
+    const r = new Request(`http://x/api/rooms/${roomId}/links`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${ownerToken}`, 'content-type': 'application/json' },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit)
+    expect((await handleApi(r, store))!.status).toBe(413)
+    expect(pulls).toBeLessThan(50)
   })
 })
