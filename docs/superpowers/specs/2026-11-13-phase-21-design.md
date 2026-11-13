@@ -9,7 +9,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): done
 - 21c2 — Bridge: `decide` trả kết quả, tự nối lại (extension worker): done
 - 21c3 — Chính sách hỏi + kho `asked`/`seen` (extension worker): done
-- 21c4 — Nối worker (extension worker): planned
+- 21c4 — Nối worker (extension worker): done
 - 21d1 — Trang ghép cặp báo kết quả (ui + extension): done
 - 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): done
 - 21d3 — Nối Cài đặt (extension app): planned
