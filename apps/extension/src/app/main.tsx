@@ -23,7 +23,8 @@ function PairPage({ port, client, keyHash }: { port: number; client: string; key
     setBusy(true)
     try {
       const reply = (await chrome.runtime.sendMessage({ type: PAIR_DECISION_MSG, port, allow: true, keyHash })) as PairReply
-      if (reply?.outcome === 'rejected') setResult(reply.pinned === 'other' ? 'rejected-other' : 'rejected')
+      if (!reply || reply.ok === false) setResult('gone')
+      else if (reply?.outcome === 'rejected') setResult(reply.pinned === 'other' ? 'rejected-other' : 'rejected')
       else if (reply?.outcome === 'gone') setResult('gone')
     } catch {
       setResult('gone')
@@ -38,7 +39,15 @@ function PairPage({ port, client, keyHash }: { port: number; client: string; key
       result={result}
       onAllow={() => void allow()}
       onDeny={deny}
-      onClose={() => window.close()}
+      onClose={() => {
+        void (async () => {
+          try {
+            const tab = await chrome.tabs.getCurrent()
+            if (tab?.id !== undefined) { await chrome.tabs.remove(tab.id); return }
+          } catch { /* fall through */ }
+          window.close()
+        })()
+      }}
     />
   )
 }

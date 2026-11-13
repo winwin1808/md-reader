@@ -178,3 +178,5 @@ export function parseConnectMsg(v: unknown): ConnectMsg | null {
   if (typeof o.keyHash !== 'string' || !HEX64.test(o.keyHash)) return null
   return { type: BRIDGE_CONNECT_MSG, keyHash: o.keyHash }
 }
+
+export type PairDecisionReply = { ok: true; outcome: import('./bridge').PairOutcome; pinned: BridgePinState }
