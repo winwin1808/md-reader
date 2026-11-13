@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   BRIDGE_STORAGE_KEY, parseBridgeSettings, readBridgeSettings, addApproved, removeApproved, nextScanDelayMin, parsePairDecision, PAIR_DECISION_MSG, loadOrCreateExtKey, BRIDGE_KEY_STORAGE,
-  type StoreLike,
+  pairPolicy, parseAsked, readAsked, markAsked, parseSeen, readSeen, upsertSeen, removeSeen, pruneSeen, parseConnectMsg,
+  BRIDGE_ASKED_KEY, BRIDGE_SEEN_KEY, BRIDGE_CONNECT_MSG, ASKED_MAX, SEEN_TTL_MS,
+  type StoreLike, type SeenServer,
 } from './bridge-storage'
 
 function fakeStore(init: Record<string, unknown> = {}): StoreLike & { data: Record<string, unknown> } {
@@ -76,5 +78,91 @@ describe('loadOrCreateExtKey', () => {
     const c = await loadOrCreateExtKey(s)
     expect(c.publicKey).not.toBe(a.publicKey)
     expect((await loadOrCreateExtKey(s)).publicKey).toBe(c.publicKey)
+  })
+})
+
+const H1 = 'a'.repeat(64)
+const H2 = 'b'.repeat(64)
+
+describe('pairPolicy', () => {
+  const base = { pinned: 'unknown' as const, asked: false, manual: false, recentlyRevoked: false }
+  it('bảng nhánh', () => {
+    expect(pairPolicy({ ...base, pinned: 'other', manual: true })).toBe('silent')
+    expect(pairPolicy({ ...base, manual: true, asked: true })).toBe('ask')
+    expect(pairPolicy({ ...base, manual: true, recentlyRevoked: true })).toBe('ask')
+    expect(pairPolicy({ ...base, recentlyRevoked: true })).toBe('silent')
+    expect(pairPolicy({ ...base, asked: true })).toBe('silent')
+    for (const pinned of ['unknown', 'none', 'self'] as const) expect(pairPolicy({ ...base, pinned })).toBe('ask')
+  })
+})
+
+describe('asked', () => {
+  it('parseAsked bỏ rác', () => {
+    expect(parseAsked(null)).toEqual({})
+    expect(parseAsked('x')).toEqual({})
+    expect(parseAsked({ bad: { at: 1 }, [H1]: { at: 'x' }, [H2]: { at: 5, rejected: 'yes' } })).toEqual({ [H2]: { at: 5 } })
+    expect(parseAsked({ [H1]: { at: 5, rejected: true } })).toEqual({ [H1]: { at: 5, rejected: true } })
+  })
+  it('readAsked trống', async () => { expect(await readAsked(fakeStore())).toEqual({}) })
+  it('markAsked giữ rejected cũ, ghi đè khi truyền', async () => {
+    const s = fakeStore()
+    await markAsked(s, H1, 1, true)
+    await markAsked(s, H1, 2)
+    expect(await readAsked(s)).toEqual({ [H1]: { at: 2, rejected: true } })
+    await markAsked(s, H1, 3, false)
+    expect((await readAsked(s))[H1]).toEqual({ at: 3 })
+    expect('rejected' in (s.data[BRIDGE_ASKED_KEY] as any)[H1]).toBe(false)
+  })
+  it('cắt còn 20 mục mới nhất', async () => {
+    const s = fakeStore()
+    const hs = Array.from({ length: ASKED_MAX + 1 }, (_, i) => i.toString(16).padStart(64, '0'))
+    for (let i = 0; i < hs.length; i++) await markAsked(s, hs[i]!, i + 1)
+    const m = await readAsked(s)
+    expect(Object.keys(m)).toHaveLength(ASKED_MAX)
+    expect(m[hs[0]!]).toBeUndefined()
+    expect(m[hs[ASKED_MAX]!]).toBeDefined()
+  })
+})
+
+describe('seen', () => {
+  const sv = (o: Partial<SeenServer> = {}): SeenServer => ({ keyHash: H1, client: 'c', port: 47821, pinned: 'none', rejected: false, at: 100, ...o })
+  it('parseSeen bỏ rác', () => {
+    expect(parseSeen({})).toEqual([])
+    expect(parseSeen([sv(), { ...sv(), keyHash: 'x' }, { ...sv(), port: 1.5 }, { ...sv(), pinned: 'z' }, { ...sv(), rejected: 1 }, { ...sv(), at: NaN }, null, { ...sv(), client: 3 }])).toEqual([sv()])
+  })
+  it('upsert thay mục trùng, thêm cuối', async () => {
+    const s = fakeStore()
+    await upsertSeen(s, sv())
+    await upsertSeen(s, sv({ keyHash: H2 }))
+    await upsertSeen(s, sv({ client: 'd' }))
+    const r = await readSeen(s)
+    expect(r.map((x) => x.client)).toEqual(['d', 'c'])
+    expect(r.map((x) => x.keyHash)).toEqual([H1, H2])
+  })
+  it('removeSeen', async () => {
+    const s = fakeStore()
+    await upsertSeen(s, sv()); await upsertSeen(s, sv({ keyHash: H2 }))
+    await removeSeen(s, H1)
+    expect((await readSeen(s)).map((x) => x.keyHash)).toEqual([H2])
+  })
+  it('pruneSeen bỏ mục quá TTL, giữ mục mới, không ghi khi không đổi', async () => {
+    const now = 10_000_000
+    const s = fakeStore()
+    await upsertSeen(s, sv({ at: now - SEEN_TTL_MS - 1 }))
+    await upsertSeen(s, sv({ keyHash: H2, at: now - 1000 }))
+    await pruneSeen(s, now)
+    expect((await readSeen(s)).map((x) => x.keyHash)).toEqual([H2])
+    const before = s.data[BRIDGE_SEEN_KEY]
+    await pruneSeen(s, now)
+    expect(s.data[BRIDGE_SEEN_KEY]).toBe(before)
+  })
+})
+
+describe('parseConnectMsg', () => {
+  it('nhận đúng, chặn sai', () => {
+    expect(parseConnectMsg({ type: BRIDGE_CONNECT_MSG, keyHash: H1 })).toEqual({ type: BRIDGE_CONNECT_MSG, keyHash: H1 })
+    expect(parseConnectMsg({ type: BRIDGE_CONNECT_MSG, keyHash: 'zz' })).toBeNull()
+    expect(parseConnectMsg({ type: 'other', keyHash: H1 })).toBeNull()
+    expect(parseConnectMsg(null)).toBeNull()
   })
 })
