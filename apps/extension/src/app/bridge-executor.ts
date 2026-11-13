@@ -16,7 +16,7 @@ export interface ExecShare {
   bound(): boolean
 }
 export interface ExecSession {
-  docId: string; title: string; yText: Y.Text; shared: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null
+  docId: string; title: string; yText: Y.Text; shared: boolean; sharedKnown: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null
   share: ExecShare | null
   confirm: ((c: ConfirmRequest, client: string) => Promise<boolean>) | null
 }
@@ -38,7 +38,7 @@ export function createBridgeExecutor(
     let s = get()
     if (s && s.docId !== docId) return fail(req.id, 'NOT_FOUND', NOT_OPEN)
     let waited = 0
-    const ready = (x: ExecSession | null) => !!x && x.synced && (req.tool !== 'update_doc' || x.checkpoints !== null)
+    const ready = (x: ExecSession | null) => !!x && x.synced && (req.tool !== 'update_doc' || (x.checkpoints !== null && x.sharedKnown))
     while (!s || !ready(s)) {
       if (waited >= waitMs) return s ? fail(req.id, 'TIMEOUT', 'document is still loading') : fail(req.id, 'NOT_FOUND', NOT_OPEN)
       await sleep(pollMs)

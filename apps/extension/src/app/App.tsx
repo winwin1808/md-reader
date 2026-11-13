@@ -361,7 +361,7 @@ export function App(): React.JSX.Element {
   const execSessionRef = useRef<ExecSession | null>(null)
   const agentConfirm = useAgentConfirm()
   execSessionRef.current = session.docId && yText ? {
-    docId: session.docId, title: session.title, yText, shared: !!share.binding, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null,
+    docId: session.docId, title: session.title, yText, shared: !!share.binding, sharedKnown: share.bindingLoaded, synced: session.synced, checkpoints: session.checkpoints ?? null, persisted: session.persisted ?? null,
     share: {
       serverUrl: share.binding?.serverUrl ?? serverUrl ?? '',
       enable: share.enable,
