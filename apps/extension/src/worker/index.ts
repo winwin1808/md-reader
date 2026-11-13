@@ -137,11 +137,12 @@ const bridge = createBridge({
   extKey: () => (extKeyP ??= loadOrCreateExtKey(chrome.storage.local)),
   connect: (url) => new WebSocket(url) as unknown as import('./bridge').WsLike,
   approved: async () => (await readBridgeSettings(chrome.storage.local)).approved,
-  requestPairing: ({ port, client, keyHash }) => {
-    if (isExpiryActive(revokedUntil, keyHash)) return
+  onUnpaired: async ({ port, client, keyHash }) => {
+    if (isExpiryActive(revokedUntil, keyHash)) return false
     void chrome.tabs.create({
       url: chrome.runtime.getURL('app.html?pair=' + port + '&client=' + encodeURIComponent(client) + '&key=' + keyHash),
     })
+    return true
   },
   execute,
   // setInterval so the 20 s ping repeats; bridge clears the one-shot connect timer itself when it fires or the socket opens.
