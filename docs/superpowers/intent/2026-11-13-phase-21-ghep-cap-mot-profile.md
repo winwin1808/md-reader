@@ -1,5 +1,6 @@
 # Intent: Phase 21 — Ghép cặp MCP: một profile, không hỏi lặp
-Author: haonq. Status: draft. Phase: 21
+Author: haonq. Status: designed. Phase: 21
+Design: docs/superpowers/specs/2026-11-13-phase-21-design.md
 
 ## Problem
 Bật `le-sach-mcp` lên, sau một lúc trình duyệt cứ mở tab "Cho phép ứng dụng AI kết nối?" liên tục, không dứt.
