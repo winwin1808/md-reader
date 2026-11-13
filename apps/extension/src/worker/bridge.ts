@@ -59,7 +59,7 @@ interface Entry {
 export function createBridge(deps: BridgeDeps) {
   const entries = new Map<number, Entry>()
   const connecting = new Set<number>()
-  const inflight = new Map<number, Promise<PairOutcome>>()
+  const inflight = new Map<number, { p: Promise<PairOutcome>; keyHash: string | undefined }>()
   let scanning: Promise<number> | null = null
 
   function drop(port: number, e: Entry) {
@@ -156,7 +156,7 @@ export function createBridge(deps: BridgeDeps) {
         resolve(o)
       }
       e.settle = finish
-      t = deps.setTimer(() => finish('rejected'), DECIDE_AUTH_WAIT_MS)
+      t = deps.setTimer(() => { finish('rejected'); kill(e) }, DECIDE_AUTH_WAIT_MS)
     })
     e.outcome = outcome
     void (async () => {
@@ -172,6 +172,7 @@ export function createBridge(deps: BridgeDeps) {
     let e = entries.get(port)
     let reconnected = false
     if (!e) {
+      if (keyHash === undefined) return 'gone'
       await tryConnect(port, true)
       e = entries.get(port)
       if (!e) return 'gone'
@@ -277,10 +278,10 @@ export function createBridge(deps: BridgeDeps) {
         return Promise.resolve('denied')
       }
       const running = inflight.get(port)
-      if (running) return running
+      if (running) return running.keyHash === keyHash ? running.p : Promise.resolve('gone')
       const p = allowFlow(port, add, keyHash)
-      inflight.set(port, p)
-      const clear = () => { if (inflight.get(port) === p) inflight.delete(port) }
+      inflight.set(port, { p, keyHash })
+      const clear = () => { if (inflight.get(port)?.p === p) inflight.delete(port) }
       p.then(clear, clear)
       return p
     },
