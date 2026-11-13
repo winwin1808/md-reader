@@ -1,18 +1,18 @@
 # Phase 22 — Vá bảo mật sau audit run-2
 
-Author: haonq. Status: designed. Phase: 22
+Author: haonq. Status: shipped. Phase: 22
 Intent: docs/superpowers/intent/2026-11-13-phase-22-va-bao-mat-audit-2.md
 
 ## Sub-phase queue
 
-- 22a — planned
-- 22b — planned
-- 22c — planned
-- 22d — planned
-- 22e — planned
-- 22f — planned
-- 22g — planned
-- 22h — planned
+- 22a — done
+- 22b — done
+- 22c — done
+- 22d — done
+- 22e — done
+- 22f — done
+- 22g — done
+- 22h — done
 
 ## Approach chosen
 

@@ -1,6 +1,6 @@
 # Intent: Phase 22 — Vá bảo mật sau audit run-2
 
-Author: haonq. Status: designed. Phase: 22
+Author: haonq. Status: shipped. Phase: 22
 Design: docs/superpowers/specs/2026-11-13-phase-22-design.md
 
 ## Problem
