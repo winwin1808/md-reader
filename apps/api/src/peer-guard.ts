@@ -128,13 +128,14 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     } else kind = null
     return kind === null ? null : { kind, sub: item.parentSub }
   }
+  const active = new Set<Struct>() // structs mid-resolve across the whole resolve/direct/containerOf recursion
   const resolve = (start: Struct): Res => {
     const chain: Struct[] = []
     let cur: Struct | null = start
     let res: Res = null
     const seen = new Set<Struct>()
     while (cur) {
-      if (seen.has(cur)) {
+      if (seen.has(cur) || active.has(cur)) {
         res = null
         break
       }
@@ -145,6 +146,7 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
       }
       if (!(cur instanceof Y.Item)) break
       chain.push(cur)
+      active.add(cur)
       if (cur.parent !== null) {
         res = direct(cur)
         break
@@ -152,7 +154,10 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
       const ref: { client: number; clock: number } | null = cur.origin ?? cur.rightOrigin
       cur = ref ? find(ref.client, ref.clock) : null
     }
-    for (const c of chain) memo.set(c, res)
+    for (const c of chain) {
+      active.delete(c)
+      memo.set(c, res)
+    }
     return res
   }
 
