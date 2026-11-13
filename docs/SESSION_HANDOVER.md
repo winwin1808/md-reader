@@ -1,6 +1,6 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-13. **Phase 22 HOÀN TẤT**, MR `phase-22` → `phase-21` (xếp chồng) đã mở, chưa merge. Phase 21: MR #22 `phase-21` → `main` đã mở, chưa merge.
+Cập nhật: 2026-11-13. **Phase 21 + 22 đã merge vào `main`** (MR #23 → `phase-21`, MR #22 → `main`, `93e5918`). Worker đã deploy bản `0cc7bcd7` (kèm migration remote `0005_feedback`); `le-sach-mcp@1.3.3` đã có trên npm; zip `docs/store/md-reader-1.5.1.zip` đã build. Các nhánh phase đã xoá — chỉ còn `main`.
 
 ## Phase 22 — Vá bảo mật sau audit run-2 (2026-11-13)
 
@@ -15,7 +15,7 @@ Spec `docs/superpowers/specs/2026-11-13-phase-22-design.md` (shipped) · intent 
 - `docs/MCP.md`: so mã máy chủ trước khi bấm Cho phép; `update_doc` cần đồng ý khi tài liệu đang chia sẻ; giới hạn ghim-lần-đầu trên máy nhiều người dùng.
 - Test (guard đo 2026-11-13 trước hai bản vá sau review): core 341 · ui 626 · extension 695 · api 259 · web 64 · mcp 57; typecheck/build exit 0; content.js gz 13.66 KB. Sau review: api 261, extension 698 (builder đo). e2e chưa chạy lại.
 
-**Người làm:** (1) merge MR `phase-22` vào `phase-21` (hoặc merge #22 trước rồi đổi base sang `main`); (2) `wrangler deploy` Worker — sáu bản vá máy chủ chỉ có hiệu lực sau deploy, không cần migration; (3) publish `le-sach-mcp@1.3.3`, build zip 1.5.1 và nộp store như ghi ở phase 21.
+**Còn lại cho người làm:** nộp extension 1.5.1 lên Chrome Web Store (nếu chưa). Chưa chạy `apps/api/scripts/smoke.mjs` sau deploy — chỉ kiểm đọc: `/` 200, tên phòng bí danh 404.
 
 Để lại có chủ ý: trần tổng dung lượng Durable Object + bộ đếm quota nguyên tử (`limits.ts`, cần quyết định vận hành); cửa sổ ghim-lần-đầu 10 phút (chỉ ghi ở tài liệu).
 
