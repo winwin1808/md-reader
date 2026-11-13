@@ -6,12 +6,12 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21a — Giao thức `hello.pinnedExt` (core): done
 - 21b1 — Máy chủ gửi `pinnedExt` (mcp): done
 - 21b2 — Lệnh `le-sach-mcp unpair` (mcp): done
-- 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): planned
-- 21c2 — Bridge: `decide` trả kết quả, tự nối lại (extension worker): pending
+- 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): done
+- 21c2 — Bridge: `decide` trả kết quả, tự nối lại (extension worker): planned
 - 21c3 — Chính sách hỏi + kho `asked`/`seen` (extension worker): done
 - 21c4 — Nối worker (extension worker): pending
 - 21d1 — Trang ghép cặp báo kết quả (ui + extension): done
-- 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): pending
+- 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): planned
 - 21d3 — Nối Cài đặt (extension app): pending
 - 21e1 — E2E máy chủ đã ghim khoá khác: pending
 - 21e2 — Tài liệu + phiên bản: pending
