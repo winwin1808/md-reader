@@ -80,6 +80,54 @@ describe('createBridgeExecutor', () => {
     }
     const upd = (markdown: string, baseHash: string) => req('update_doc', { docId: 'd1', markdown, baseHash })
 
+    describe('shared document needs consent', () => {
+      it('deny -> DENIED, no write', async () => {
+        const { yText, s } = real('one')
+        const confirm = vi.fn(async () => false)
+        const r = await createBridgeExecutor(() => ({ ...s, shared: true, confirm }))(upd('two', await textHash('one')))
+        expect(r).toMatchObject({ ok: false, error: { code: 'DENIED' } })
+        expect(confirm).toHaveBeenCalledWith({ kind: 'update_shared', docTitle: 'T' }, 'test')
+        expect(yText.toString()).toBe('one')
+      })
+      it('allow -> written', async () => {
+        const { yText, s } = real('one')
+        const confirm = vi.fn(async () => true)
+        const r = await createBridgeExecutor(() => ({ ...s, shared: true, confirm }))(upd('two', await textHash('one')))
+        expect(r).toMatchObject({ ok: true })
+        expect(yText.toString()).toBe('two')
+      })
+      it('allow but text changed while dialog open -> CONFLICT, no write', async () => {
+        const { yText, s } = real('one')
+        const confirm = vi.fn(async () => { yText.insert(3, '!'); return true })
+        const r = await createBridgeExecutor(() => ({ ...s, shared: true, confirm }))(upd('two', await textHash('one')))
+        expect(r).toMatchObject({ ok: false, error: { code: 'CONFLICT' } })
+        expect(yText.toString()).toBe('one!')
+      })
+      it('timeout -> TIMEOUT, busy -> DENIED, no write', async () => {
+        for (const [msg, code] of [['timeout', 'TIMEOUT'], ['busy', 'DENIED']] as const) {
+          const { yText, s } = real('one')
+          const confirm = vi.fn(async () => { throw new Error(msg) })
+          const r = await createBridgeExecutor(() => ({ ...s, shared: true, confirm }))(upd('two', await textHash('one')))
+          expect(r).toMatchObject({ ok: false, error: { code } })
+          expect(yText.toString()).toBe('one')
+        }
+      })
+      it('shared but no confirm available -> INTERNAL, no write', async () => {
+        const { yText, s } = real('one')
+        const r = await createBridgeExecutor(() => ({ ...s, shared: true, confirm: null }))(upd('two', await textHash('one')))
+        expect(r).toMatchObject({ ok: false, error: { code: 'INTERNAL' } })
+        expect(yText.toString()).toBe('one')
+      })
+      it('not shared -> confirm never called', async () => {
+        const { yText, s } = real('one')
+        const confirm = vi.fn(async () => true)
+        const r = await createBridgeExecutor(() => ({ ...s, shared: false, confirm }))(upd('two', await textHash('one')))
+        expect(r).toMatchObject({ ok: true })
+        expect(confirm).not.toHaveBeenCalled()
+        expect(yText.toString()).toBe('two')
+      })
+    })
+
     it('changes one word with minimal delta and origin mcp', async () => {
       const { doc, yText, s } = real('alpha beta gamma')
       const deltas: unknown[] = []
