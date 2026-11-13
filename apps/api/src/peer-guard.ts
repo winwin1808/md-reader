@@ -122,7 +122,13 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     const chain: Struct[] = []
     let cur: Struct | null = start
     let res: Res = null
+    const seen = new Set<Struct>()
     while (cur) {
+      if (seen.has(cur)) {
+        res = null
+        break
+      }
+      seen.add(cur)
       if (memo.has(cur)) {
         res = memo.get(cur) as Res
         break
@@ -145,7 +151,11 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     const r = resolve(s)
     if (!r) return 'unresolved parent'
     if (s.content.getRef() === CONTENT_TYPE_REF) return 'nested type'
-    if (r.kind === 'source') continue
+    if (r.kind === 'source') {
+      const ref = s.content.getRef()
+      if ((ref === 4 || ref === 1) && r.sub === null) continue
+      return 'forbidden content in source'
+    }
     if (r.kind === 'actors' && r.sub === String(s.id.client) && owns(s.id.client)) continue
     return `forbidden ${r.kind}${r.sub !== null ? '.' + r.sub : ''}`
   }
