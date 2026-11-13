@@ -102,6 +102,8 @@ export interface SettingsModalProps {
     clients: Array<{ keyHash: string; client: string; at: number }>;
     onToggle(enabled: boolean): void;
     onRevoke(keyHash: string): void;
+    discovered?: Array<{ keyHash: string; client: string; status: 'waiting' | 'other' }>;
+    onConnect?(keyHash: string): void;
   };
 }
 
@@ -996,6 +998,26 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                         </button>
                       </div>
                     ))
+                  )}
+                  {props.aiBridge.enabled && props.aiBridge.discovered && props.aiBridge.discovered.length > 0 && (
+                    <>
+                      <div className="settings-row-label">{t('settings.ai.discovered')}</div>
+                      {props.aiBridge.discovered.map((d) => (
+                        <div className="settings-row" key={d.keyHash}>
+                          <div className="settings-row-info">
+                            <div className="settings-row-label">{d.client}</div>
+                            <div className="settings-row-desc">
+                              {d.keyHash.slice(0, 4).toUpperCase()}-{d.keyHash.slice(4, 8).toUpperCase()} · {t(d.status === 'waiting' ? 'settings.ai.waiting' : 'settings.ai.other')}
+                            </div>
+                          </div>
+                          {d.status === 'waiting' && (
+                            <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onConnect?.(d.keyHash)}>
+                              {t('settings.ai.connect')}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </>
                   )}
 </section>
 )}
