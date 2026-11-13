@@ -56,6 +56,13 @@ test.describe('MCP CLI <-> extension', () => {
 
   test('publish / get / update / share-deny', async ({ context, extensionId }) => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mdr-mcp-'))
+    // Pre-generate the (unpinned) pair file so we know OUR server's keyId and can ignore other servers' pair tabs.
+    const own = await generateBridgeKeyPair()
+    const ownPublic = await exportPublicKey(own.publicKey)
+    const ownKid = await keyId(ownPublic)
+    fs.writeFileSync(path.join(tmp, 'mcp.json'), JSON.stringify({
+      version: 2, privateKey: await exportPrivateJwk(own.privateKey), publicKey: ownPublic,
+    }), { mode: 0o600 })
     const proc = spawn('node', [cliPath], {
       env: { ...process.env, MDR_PAIR_FILE: path.join(tmp, 'mcp.json') },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -76,7 +83,7 @@ test.describe('MCP CLI <-> extension', () => {
       await page.evaluate(() => chrome.storage.local.set({ 'mdr.bridge': { enabled: true, approved: [] } }))
 
       // list_docs triggers pairing; scan on demand instead of waiting for the alarm.
-      const pairingTab = context.waitForEvent('page', { predicate: (p) => p.url().includes('pair='), timeout: 60_000 })
+      const pairingTab = context.waitForEvent('page', { predicate: (p) => p.url().includes('pair=') && p.url().includes(`key=${ownKid}`), timeout: 60_000 })
       const listDocs = mcp.call('list_docs', {}, 120_000)
       const scan = setInterval(() => {
         page.evaluate(() => chrome.runtime.sendMessage({ type: 'mdr-bridge-scan' })).catch(() => {})
@@ -92,7 +99,7 @@ test.describe('MCP CLI <-> extension', () => {
       const pub = await mcp.call('publish_doc', { title: 'E2E MCP', markdown: '# Xin chào\n\nđoạn một' })
       expect(pub.isError, pub.text).toBe(false)
       const { docId } = JSON.parse(pub.text) as { docId: string }
-      const findDoc = () => context.pages().find((p) => p !== page && /app\.html\?/.test(p.url()))
+      const findDoc = () => context.pages().find((p) => p !== page && /app\.html\?/.test(p.url()) && !p.url().includes('pair='))
       await expect.poll(() => !!findDoc(), { timeout: 30_000 }).toBe(true)
       const docPage = findDoc()!
       await expect(docPage.getByRole('heading', { name: 'Xin chào' })).toBeVisible({ timeout: 30_000 })
