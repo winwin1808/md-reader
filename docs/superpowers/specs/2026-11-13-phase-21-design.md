@@ -1,5 +1,5 @@
 # Design: Phase 21 — Ghép cặp MCP: một profile, không hỏi lặp
-Author: haonq. Status: designed. Phase: 21
+Author: haonq. Status: shipped. Phase: 21
 Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 
 ## Sub-phase queue
@@ -13,7 +13,7 @@ Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 - 21d1 — Trang ghép cặp báo kết quả (ui + extension): done
 - 21d2 — Cài đặt: ứng dụng AI phát hiện được (ui): done
 - 21d3 — Nối Cài đặt (extension app): done
-- 21e1 — E2E máy chủ đã ghim khoá khác: planned
+- 21e1 — E2E máy chủ đã ghim khoá khác: done
 - 21e2 — Tài liệu + phiên bản: done
 
 ## Approach chosen

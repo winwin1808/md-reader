@@ -1,6 +1,33 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-09. **Phase 20 HOÀN TẤT**, MR phase 20 đã mở, chưa merge. Phase 18 đã merge (MR #20). MR #19 (phase 19) đã merge vào `main`.
+Cập nhật: 2026-11-13. **Phase 21 HOÀN TẤT**, MR `phase-21` → `main` đã mở, chưa merge. Phase 20 đã merge (MR #21).
+
+## Phase 21 — Ghép cặp MCP: một profile, không hỏi lặp (2026-11-13)
+
+Spec `docs/superpowers/specs/2026-11-13-phase-21-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md` · plan `docs/superpowers/plans/2026-11-13-phase-21-<sub>-plan.md`. Branch `phase-21`.
+
+Lỗi gốc: hai profile Chrome cùng bật Kết nối AI; `le-sach-mcp` chỉ ghim một khoá extension; profile kia mở lại tab `app.html?pair=…` ở mỗi lượt quét 30 giây (từ chối không được nhớ, máy chủ đóng kết nối chưa xác thực sau 10 giây, Cho phép muộn bị bỏ lặng lẽ).
+
+- Giao thức: `hello.pinnedExt?` (`undefined` máy chủ cũ · `null` chưa ghim · keyId 64-hex), `bridgePinState` → `unknown|none|self|other` (`@md-reader/core/bridge`). `BRIDGE_PROTOCOL` vẫn 2.
+- `le-sach-mcp` 1.3.3: gửi `pinnedExt`; lệnh `le-sach-mcp unpair` (`unpairIdentity`, `runCli`) bỏ `extKey`, giữ khoá máy chủ.
+- Worker (`apps/extension/src/worker/bridge.ts`, `bridge-storage.ts`, `index.ts`): `onUnpaired` + `pairPolicy`; tự mở tab tối đa một lần mỗi khoá máy chủ (`mdr.bridgeAsked`, ghi trước khi mở tab); máy chủ ghim khoá khác → không `auth`, không tab; `decide` trả `paired|denied|rejected|gone`, Cho phép muộn tự nối lại; danh sách phát hiện `mdr.bridgeSeen` (TTL), `BRIDGE_CONNECT_MSG` cho kết nối tay.
+- UI: `PairDialog` có `busy`/`result`/Đóng; Cài đặt → Kết nối AI có "Ứng dụng AI đang chạy trên máy này" + nút Kết nối / dòng "Đã ghép với một trình duyệt hoặc profile Chrome khác".
+- Extension 1.5.1, ghi chú phát hành `showOnUpdate: false` (không mở tab Có gì mới). Bảo mật cầu nối v2 không đổi: mọi lần ghép vẫn cần người bấm Cho phép.
+- Test (đo 2026-11-13 trên `phase-21`): core 341 · ui 624 · extension 689 · mcp 56 · e2e `mcp.spec.ts` 2/2 (MCP thật, có một `le-sach-mcp` khác đang chạy trên máy); typecheck/build exit 0; content.js gz 13.66 KB. Chưa chạy lại: api, web, toàn bộ e2e trên tip cuối (builder chạy cả suite e2e trước bản sửa test: 12 xanh, 1 đỏ là kịch bản MCP cũ — đã sửa test).
+- e2e MCP giờ chỉ ghép với máy chủ của chính test (`key=<keyId>`), không còn đỏ khi máy có `le-sach-mcp` khác đang chạy.
+
+**Người làm (đúng thứ tự):** (1) `cd packages/mcp && pnpm build && pnpm publish --access public --no-git-checks --otp=<mã>` → `le-sach-mcp@1.3.3` — snippet trong app và thông báo "chạy `npx le-sach-mcp unpair`" cần bản này trên npm; (2) merge MR; (3) build zip 1.5.1 (`node apps/extension/scripts/package.mjs`, nhớ `VITE_MDR_SERVER_URL`) và nộp store.
+
+Nợ (nhỏ, chưa sửa):
+- Chuỗi UI ghi `npx le-sach-mcp unpair` không kèm phiên bản: máy còn cache npx 1.3.2 sẽ chạy bản cũ (không có `unpair`, treo chờ stdio). Tài liệu ghi `npx -y le-sach-mcp@1.3.3 unpair`.
+- Sau `unpair`, profile cũ còn phê duyệt sẽ tự nối lại và ghim trước — tài liệu hướng dẫn thu hồi ở profile cũ trước; chưa có test.
+- 21c4: hai `hello` đồng thời cùng khoá (hai cổng) có thể mở hai tab một lần; `markAsked` đọc-sửa-ghi có race; `selfRemoved` có thể nuốt một lần thu hồi thật trong 5 giây; kết nối chờ lâu biến mất khỏi Cài đặt sau 11 phút (`pruneSeen` theo giờ `hello`); thiếu test đồng thời / `markAsked` lỗi.
+- 21c1: khoá vừa thu hồi bị đóng socket mỗi lượt quét; máy chủ bị bỏ im lặng không tính là hoạt động cho idle backoff. 21c3: `markAsked` không kiểm keyHash, `parseSeen` không kiểm dải cổng.
+- 21b1: `keyId` lỗi → `pinnedExt: null` lặng lẽ. 21b2: `unpair` trên máy mới tạo thư mục rỗng; thông báo file hỏng chưa thân thiện.
+- 21d: không có test `main.tsx` cho ánh xạ kết quả; các nút Kết nối trùng tên truy cập; TTL chỉ tính lúc render; ba test âm ở 21d3 yếu.
+- 21e1: kiểm "không tab" cuối cùng không có độ trễ sau khi dòng Cài đặt hiện.
+- Máy chủ đổi khoá mỗi lần chạy sẽ được hỏi một lần mỗi lần chạy (đúng thiết kế).
+- Flake ui: `blame.test.ts > adds and removes the gutter without rebuilding the view` (1/3 lượt dưới tải).
 
 ## Phase 20 — Trang chào mới + hướng dẫn từng bước (2026-11-09)
 
