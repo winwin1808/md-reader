@@ -357,6 +357,30 @@ describe('handleApi limits', () => {
     expect((await handleApi(post(h), store, { limits }))!.status).toBe(429)
   })
 
+  it('asset upload: streamed over-cap body without content-length -> 413', async () => {
+    const { store, limits, assets } = await mk()
+    const h = { 'x-mdr-install': 'k'.repeat(20) }
+    const room = (await (await handleApi(post(h), store, { limits }))!.json()) as { roomId: string; ownerToken: string }
+    let pulls = 0
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(c) {
+          if (++pulls > 100_000) return c.close()
+          c.enqueue(new Uint8Array(256 * 1024))
+        },
+      },
+      { highWaterMark: 0 },
+    )
+    const req = new Request(`http://x/api/rooms/${room.roomId}/assets`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${room.ownerToken}`, 'content-type': 'image/png', ...h },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit)
+    expect((await handleApi(req, store, { limits, assets }))!.status).toBe(413)
+    expect(pulls).toBeLessThan(50)
+  })
+
   it('asset upload 429 after 100/day; 403 does not consume quota', async () => {
     const { store, limits, assets } = await mk()
     const h = { 'x-mdr-install': 'j'.repeat(20) }

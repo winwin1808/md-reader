@@ -1,5 +1,6 @@
 import type { CreateLinkRequest, ResolveTokenResponse, ShareRole } from '@md-reader/core'
 import { API_PATHS, ASSET_MIME, MAX_ASSET_BYTES, ROOM_ASSET_QUOTA, type UploadAssetResponse } from '@md-reader/core'
+import { readCapped } from './body.js'
 import type { AssetStore } from './assets.js'
 import { MAX_FEEDBACK_BODY, parseFeedback, type FeedbackStore } from './feedback.js'
 import { MAX_REASON, adminAuthorized, type ModerationStore } from './moderation.js'
@@ -97,9 +98,9 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
   if (path === '/api/report' && method === 'POST') {
     let body: unknown
     try {
-      const text = await req.text()
-      if (utf8Len(text) > MAX_BODY) return json({ error: 'invalid body' }, 400)
-      body = JSON.parse(text)
+      const raw = await readCapped(req, MAX_BODY)
+      if (!raw) return json({ error: 'invalid body' }, 400)
+      body = JSON.parse(new TextDecoder().decode(raw))
     } catch {
       return json({ error: 'invalid body' }, 400)
     }
@@ -121,8 +122,9 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
   }
 
   if (path === '/api/feedback' && method === 'POST') {
-    const text = await req.text()
-    if (utf8Len(text) > MAX_FEEDBACK_BODY) return json({ error: 'too large' }, 413)
+    const raw = await readCapped(req, MAX_FEEDBACK_BODY)
+    if (!raw) return json({ error: 'too large' }, 413)
+    const text = new TextDecoder().decode(raw)
     let body: unknown
     try {
       body = JSON.parse(text)
@@ -285,10 +287,8 @@ export async function handleApi(req: Request, store: TokenStore, deps: ApiDeps =
     if (!deps.assets) return json({ error: 'assets not available' }, 501)
     const mime = (req.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
     if (!(ASSET_MIME as readonly string[]).includes(mime)) return json({ error: 'unsupported_type' }, 415)
-    const declared = Number(req.headers.get('content-length') ?? '0')
-    if (declared > MAX_ASSET_BYTES) return json({ error: 'too_large' }, 413)
-    const bytes = new Uint8Array(await req.arrayBuffer())
-    if (bytes.byteLength > MAX_ASSET_BYTES) return json({ error: 'too_large' }, 413)
+    const bytes = await readCapped(req, MAX_ASSET_BYTES)
+    if (!bytes) return json({ error: 'too_large' }, 413)
     if (!sniffOk(mime, bytes)) return json({ error: 'unsupported_type' }, 415)
     if ((await deps.assets.roomUsage(roomId)) + bytes.byteLength > ROOM_ASSET_QUOTA) return json({ error: 'quota' }, 413)
     const subj = deps.limits ? await subjectFrom(req) : null
