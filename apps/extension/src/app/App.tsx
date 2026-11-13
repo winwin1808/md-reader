@@ -941,7 +941,7 @@ export function App(): React.JSX.Element {
             onSaveServer={(u: string) => { handleSettingChange('serverUrl', u); setRetryNonce((n) => n + 1) }}
             guideUrl={SELF_HOST_GUIDE_URL}
           />
-          <SettingsModal backup={backup} lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} help={help} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) } }} />
+          <SettingsModal backup={backup} lifecycle={lifecycle} open={settingsOpen} onOpenChange={setSettingsOpen} settings={readerSettings} onSettingChange={handleSettingChange} defaultServerUrl={DEFAULT_SERVER_URL} help={help} aiBridge={{ enabled: bridge.enabled, clients: bridge.clients, onToggle: (v) => { void bridge.setEnabled(v) }, onRevoke: (h) => { void bridge.revoke(h) }, discovered: bridge.discovered, onConnect: (h) => { void bridge.connect(h) } }} />
         </>
         {isReadingMode && (
           <button
