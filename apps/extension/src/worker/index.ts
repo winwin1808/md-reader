@@ -101,6 +101,8 @@ const revokedUntil = new Map<string, number>()
 const selfRemoved = new Map<string, number>()
 // keys the user asked to connect by hand from Settings
 const manual = new Set<string>()
+// keys for which onUnpaired opened a pair tab; lets the connect handler avoid a second tab per click
+const openedByHello = new Set<string>()
 
 // chrome.storage.session may be absent (tests, old browsers): behave as an empty store
 const sessionStore: StoreLike = {
@@ -170,6 +172,7 @@ const bridge = createBridge({
       await chrome.tabs.create({
         url: chrome.runtime.getURL('app.html?pair=' + s.port + '&client=' + encodeURIComponent(s.client) + '&key=' + s.keyHash),
       })
+      openedByHello.add(s.keyHash)
       return true
     } catch {
       return false
@@ -303,9 +306,19 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
         const c = parseConnectMsg(message)
         if (!c) { sendResponse?.({ ok: false }); return }
         manual.add(c.keyHash)
+        openedByHello.delete(c.keyHash)
         await setIdle(0)
         await tick()
-        if (bridge.conns().some((x) => x.keyHash === c.keyHash)) {
+        const live = bridge.conns().find((x) => x.keyHash === c.keyHash)
+        if (live) {
+          manual.delete(c.keyHash)
+          if (live.state === 'pending' && live.pinned !== 'other' && !openedByHello.has(c.keyHash)) {
+            await markAsked(chrome.storage.local, c.keyHash, Date.now())
+            await chrome.tabs.create({
+              url: chrome.runtime.getURL('app.html?pair=' + live.port + '&client=' + encodeURIComponent(live.client) + '&key=' + c.keyHash),
+            })
+          }
+          openedByHello.delete(c.keyHash)
           sendResponse?.({ ok: true })
         } else {
           manual.delete(c.keyHash)
@@ -325,7 +338,7 @@ chrome.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
           }
         }
         if (outcome === 'paired') {
-          await removeSeen(sessionStore, d.keyHash)
+          try { await removeSeen(sessionStore, d.keyHash) } catch { /* best effort */ }
           await closeTab()
         } else if (outcome === 'denied') {
           await closeTab()

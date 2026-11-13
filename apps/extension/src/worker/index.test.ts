@@ -437,6 +437,7 @@ describe('Service Worker pairing policy (21c4.1)', () => {
   let tabsRemove: ReturnType<typeof vi.fn>
   let decideOutcome: string
   let connList: any[]
+  let scanHook: (() => Promise<void>) | null
 
   const mkStore = (o: Record<string, any>) => ({
     get: vi.fn(async (k: any) => (typeof k === 'string' ? (k in o ? { [k]: o[k] } : {}) : { ...o })),
@@ -454,6 +455,7 @@ describe('Service Worker pairing policy (21c4.1)', () => {
     tabsRemove = vi.fn().mockResolvedValue(undefined)
     decideOutcome = 'paired'
     connList = []
+    scanHook = null
     vi.doMock('./bridge', async (orig) => {
       const actual = await orig<typeof import('./bridge')>()
       return {
@@ -463,7 +465,7 @@ describe('Service Worker pairing policy (21c4.1)', () => {
           const b = actual.createBridge(deps)
           return {
             ...b,
-            scan: async () => 0,
+            scan: async () => { await scanHook?.(); return 0 },
             conns: () => connList,
             decide: async (_p: number, _a: boolean, add: any) => {
               if (decideOutcome === 'paired') await add?.({ keyHash: K, client: 'c', at: 1, serverKey: 's' })
@@ -518,12 +520,13 @@ describe('Service Worker pairing policy (21c4.1)', () => {
   it('manual connect re-enables asking once; other still silent', async () => {
     await un()
     connList = [{ port: 47821, client: 'c', keyHash: K, state: 'pending', pinned: 'unknown' }]
+    scanHook = async () => { await un() }
     const r = await send({ type: 'mdr-bridge-connect', keyHash: K })
     expect(r).toEqual({ ok: true })
-    expect(await un()).toBe(true)
     expect(tabsCreate).toHaveBeenCalledTimes(2)
+    connList[0].pinned = 'other'
+    scanHook = async () => { await un('other') }
     await send({ type: 'mdr-bridge-connect', keyHash: K })
-    expect(await un('other')).toBe(false)
     expect(tabsCreate).toHaveBeenCalledTimes(2)
   })
 
@@ -562,5 +565,36 @@ describe('Service Worker pairing policy (21c4.1)', () => {
     expect(g.outcome).toBe('gone')
     expect(tabsRemove).not.toHaveBeenCalled()
     expect(session['mdr.bridgeSeen']).toEqual([])
+  })
+
+  describe('connect with a live pending connection (21c4.2)', () => {
+    const pending = (pinned: string) => [{ port: 47821, client: 'c', keyHash: K, state: 'pending', pinned }]
+
+    it('opens exactly one tab for an already-asked key, and a later hello opens none', async () => {
+      await un()
+      tabsCreate.mockClear()
+      connList = pending('unknown')
+      expect(await send({ type: 'mdr-bridge-connect', keyHash: K })).toEqual({ ok: true })
+      expect(tabsCreate).toHaveBeenCalledTimes(1)
+      expect(tabsCreate.mock.calls[0]![0].url).toBe('chrome-extension://x/app.html?pair=47821&client=c&key=' + K)
+      expect(await un()).toBe(false)
+      expect(tabsCreate).toHaveBeenCalledTimes(1)
+    })
+
+    it('pinned other opens no tab', async () => {
+      connList = pending('other')
+      expect(await send({ type: 'mdr-bridge-connect', keyHash: K })).toEqual({ ok: true })
+      expect(tabsCreate).not.toHaveBeenCalled()
+      expect(await un('other')).toBe(false)
+    })
+
+    it('a click that triggers a fresh hello still opens exactly one tab', async () => {
+      await un()
+      tabsCreate.mockClear()
+      connList = pending('unknown')
+      scanHook = async () => { await un() }
+      expect(await send({ type: 'mdr-bridge-connect', keyHash: K })).toEqual({ ok: true })
+      expect(tabsCreate).toHaveBeenCalledTimes(1)
+    })
   })
 })
