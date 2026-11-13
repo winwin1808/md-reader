@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { exportPrivateJwk, exportPublicKey, generateBridgeKeyPair, keyId } from '@md-reader/core/bridge-auth'
 import { test, expect } from './fixtures'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
@@ -129,6 +130,67 @@ test.describe('MCP CLI <-> extension', () => {
         const exited = new Promise<void>((r) => proc.once('exit', () => r()))
         proc.kill()
         const t = setTimeout(() => proc.kill('SIGKILL'), 5000)
+        await exited
+        clearTimeout(t)
+      }
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test('server pinned to another profile: no pairing tab, Settings says paired elsewhere', async ({ context, extensionId }) => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mdr-mcp-other-'))
+    const pairFile = path.join(tmp, 'mcp.json')
+    let proc: ChildProcessWithoutNullStreams | null = null
+    try {
+      // Pair file pinned to a random extension key (some other profile), created before the server starts.
+      const server = await generateBridgeKeyPair()
+      const publicKey = await exportPublicKey(server.publicKey)
+      const other = await generateBridgeKeyPair()
+      const extKey = await exportPublicKey(other.publicKey)
+      fs.writeFileSync(pairFile, JSON.stringify({
+        version: 2, privateKey: await exportPrivateJwk(server.privateKey), publicKey, extKey,
+      }), { mode: 0o600 })
+      const kid = await keyId(publicKey)
+      const code = `${kid.slice(0, 4).toUpperCase()}-${kid.slice(4, 8).toUpperCase()}`
+
+      proc = spawn('node', [cliPath], {
+        env: { ...process.env, MDR_PAIR_FILE: pairFile },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      proc.stderr.on('data', () => {})
+      const mcp = new McpClient(proc)
+      const init = await mcp.request('initialize', {
+        protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'e2e-other', version: '0' },
+      })
+      expect(init.result).toBeTruthy()
+      mcp.notify('notifications/initialized')
+
+      const page = await context.newPage()
+      await page.goto(`chrome-extension://${extensionId}/app.html`)
+      await page.evaluate(() => chrome.storage.local.set({ 'mdr.bridge': { enabled: true, approved: [] } }))
+
+      const askedForOurKey = () => context.pages().filter((p) => p.url().includes('pair=') && p.url().includes(`key=${kid}`))
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => chrome.runtime.sendMessage({ type: 'mdr-bridge-scan' })).catch(() => {})
+        await new Promise((r) => setTimeout(r, 1500))
+        expect(askedForOurKey().map((p) => p.url())).toEqual([])
+      }
+
+      await page.reload()
+      await page.getByRole('button', { name: 'Cài đặt' }).first().click()
+      const dlg = page.getByRole('dialog')
+      await dlg.getByRole('button', { name: 'Kết nối AI' }).click()
+      await expect(dlg.getByText('Ứng dụng AI đang chạy trên máy này')).toBeVisible({ timeout: 30_000 })
+      const row = dlg.locator('.settings-row').filter({ hasText: code })
+      await expect(row).toContainText('Đã ghép với một trình duyệt hoặc profile Chrome khác', { timeout: 30_000 })
+      await expect(row.getByRole('button', { name: 'Kết nối' })).toHaveCount(0)
+      expect(askedForOurKey().map((p) => p.url())).toEqual([])
+    } finally {
+      const p = proc
+      if (p && p.exitCode === null && p.signalCode === null) {
+        const exited = new Promise<void>((r) => p.once('exit', () => r()))
+        p.kill()
+        const t = setTimeout(() => p.kill('SIGKILL'), 5000)
         await exited
         clearTimeout(t)
       }
