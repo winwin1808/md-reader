@@ -182,7 +182,7 @@ describe('Service Worker', () => {
 describe('Service Worker revokedUntil expiry (15g)', () => {
   const approved = [{ keyHash: 'k1', client: 'c', at: 1, serverKey: 's' }]
   let changed: ((c: any, area: string) => void) | null = null
-  let reqPairing: ((a: { port: number; client: string; keyHash: string }) => void) | null = null
+  let reqPairing: ((a: { port: number; client: string; keyHash: string; pinned: string }) => unknown) | null = null
   let tabsCreate: ReturnType<typeof vi.fn>
   let expiryMap: Map<string, number> | null = null
 
@@ -199,7 +199,7 @@ describe('Service Worker revokedUntil expiry (15g)', () => {
       return {
         ...actual,
         createBridge: (deps: any) => {
-          reqPairing = deps.requestPairing
+          reqPairing = deps.onUnpaired
           return actual.createBridge(deps)
         },
       }
@@ -236,7 +236,7 @@ describe('Service Worker revokedUntil expiry (15g)', () => {
   })
 
   const revoke = () => changed!({ 'mdr.bridge': { oldValue: { enabled: true, approved }, newValue: { enabled: true, approved: [] } } }, 'local')
-  const pair = () => reqPairing!({ port: 47821, client: 'c', keyHash: 'k1' })
+  const pair = () => reqPairing!({ port: 47821, client: 'c', keyHash: 'k1', pinned: 'unknown' })
 
   it('ignores pairing from a revoked keyHash for 60s, accepts after, and drops the expired entry', () => {
     revoke()

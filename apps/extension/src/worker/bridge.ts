@@ -4,7 +4,9 @@ import {
   sanitizeClientName,
   type BridgeRequest,
   type BridgeResponse,
+  bridgePinState,
   type BridgeHelloV2,
+  type BridgePinState,
 } from '@md-reader/core/bridge'
 import { importPublicKey, keyId, newNonce, authPayload, signPayload, verifyPayload } from '@md-reader/core/bridge-auth'
 
@@ -13,7 +15,8 @@ export const IDLE_SCANS_BEFORE_BACKOFF = 10
 const CONNECT_TIMEOUT_MS = 1000
 
 export interface ApprovedClient { keyHash: string; client: string; at: number; serverKey: string }
-export interface BridgeConn { port: number; client: string; keyHash: string; state: 'pending' | 'authing' | 'paired' }
+export interface BridgeConn { port: number; client: string; keyHash: string; state: 'pending' | 'authing' | 'paired'; pinned: BridgePinState }
+export interface UnpairedServer { port: number; client: string; keyHash: string; pinned: BridgePinState }
 export interface WsLike {
   readyState: number
   send(data: string): void
@@ -27,7 +30,8 @@ export interface BridgeDeps {
   connect(url: string): WsLike
   approved(): Promise<ApprovedClient[]>
   extKey(): Promise<{ privateKey: CryptoKey; publicKey: string }>
-  requestPairing(c: { port: number; client: string; keyHash: string }): void
+  /** true = đã mở hộp hỏi, giữ kết nối chờ quyết định */
+  onUnpaired(s: UnpairedServer): Promise<boolean>
   execute(req: BridgeRequest, client: string): Promise<BridgeResponse>
   setTimer(fn: () => void, ms: number): unknown
   clearTimer(h: unknown): void
@@ -99,13 +103,19 @@ export function createBridge(deps: BridgeDeps) {
     e.conn.keyHash = kid
     e.serverKey = h.serverKey
     e.serverNonce = h.nonce
+    const myKid = await keyId((await deps.extKey()).publicKey)
+    if (!live()) return
+    const pinned = bridgePinState(h.pinnedExt, myKid)
+    e.conn.pinned = pinned
     const list = await deps.approved()
     if (!live()) return
-    if (list.some((a) => a.keyHash === kid && a.serverKey === h.serverKey)) {
+    if (pinned !== 'other' && list.some((a) => a.keyHash === kid && a.serverKey === h.serverKey)) {
       await authenticate(e)
     } else {
       e.conn.state = 'pending'
-      deps.requestPairing({ port: e.conn.port, client: e.conn.client, keyHash: kid })
+      let keep = false
+      try { keep = await deps.onUnpaired({ port: e.conn.port, client: e.conn.client, keyHash: kid, pinned }) } catch { keep = false }
+      if (live() && !keep) kill(e)
     }
   }
 
@@ -126,7 +136,7 @@ export function createBridge(deps: BridgeDeps) {
     return new Promise((resolve) => {
       let ws: WsLike
       try { ws = deps.connect(`ws://127.0.0.1:${port}`) } catch { connecting.delete(port); resolve(); return }
-      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending' }, hello: false, serverKey: '', serverNonce: '', myNonce: '', pingTimer: undefined }
+      const e: Entry = { ws, conn: { port, client: '', keyHash: '', state: 'pending', pinned: 'unknown' }, hello: false, serverKey: '', serverNonce: '', myNonce: '', pingTimer: undefined }
       let settled = false
       let timeout: unknown
       const settle = () => {

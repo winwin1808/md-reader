@@ -44,7 +44,7 @@ function setup(opts: { openPorts?: number[]; approved?: ApprovedClient[] } = {})
     }),
     approved: vi.fn(async () => opts.approved ?? []),
     extKey: vi.fn(async () => ({ privateKey: extPair.privateKey, publicKey: extPub })),
-    requestPairing: vi.fn(),
+    onUnpaired: vi.fn(async () => true),
     execute: vi.fn(async (req: { id: string }) => ({ type: 'res' as const, id: req.id, ok: true as const, result: { x: 1 } })),
     setTimer: (fn: () => void, ms: number) => { const t = { fn, ms, cleared: false }; timers.push(t); return t },
     clearTimer: (h: unknown) => { (h as { cleared: boolean }).cleared = true },
@@ -83,12 +83,12 @@ describe('bridge v2', () => {
     expect(deps.connect).toHaveBeenCalledTimes(1)
   })
 
-  it('(a) unapproved hello -> requestPairing with keyId, no auth sent', async () => {
+  it('(a) unapproved hello -> onUnpaired with keyId, no auth sent', async () => {
     const { bridge, sockets, deps } = setup()
     await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
-    expect(deps.requestPairing).toHaveBeenCalledWith({ port: PORT, client: 'claude-code', keyHash: srvKid })
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalled())
+    expect(deps.onUnpaired).toHaveBeenCalledWith({ port: PORT, client: 'claude-code', keyHash: srvKid, pinned: 'unknown' })
     expect(authOf(sockets[0]!)).toBeUndefined()
     expect(bridge.conns()[0]!.state).toBe('pending')
   })
@@ -97,7 +97,7 @@ describe('bridge v2', () => {
     const { bridge, sockets, deps } = setup()
     await bridge.scan([PORT])
     sockets[0]!.recv({ ...hello, client: '\u202EevilName\n' })
-    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalled())
     expect(bridge.conns()[0]!.client).toBe('evilName')
   })
 
@@ -119,7 +119,7 @@ describe('bridge v2', () => {
 
   it('approved hello authenticates directly without pairing', async () => {
     const { bridge, sockets, deps } = await pairedSetup()
-    expect(deps.requestPairing).not.toHaveBeenCalled()
+    expect(deps.onUnpaired).not.toHaveBeenCalled()
     expect(bridge.conns()[0]!.state).toBe('authing')
     expect(sockets[0]!.sent).not.toContainEqual(expect.objectContaining({ type: 'welcome' }))
   })
@@ -147,13 +147,66 @@ describe('bridge v2', () => {
     expect(bridge.conns()).toEqual([])
   })
 
-  it('(d) approved client but different serverKey -> no auth, requestPairing', async () => {
+  it('(d) approved client but different serverKey -> no auth, onUnpaired', async () => {
     const { bridge, sockets, deps } = setup({ approved: [{ ...approvedOk, serverKey: 'different' }] })
     await bridge.scan([PORT])
     sockets[0]!.recv(hello)
-    await vi.waitFor(() => expect(deps.requestPairing).toHaveBeenCalled())
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalled())
     expect(authOf(sockets[0]!)).toBeUndefined()
     expect(bridge.conns()[0]!.state).toBe('pending')
+  })
+
+  it('(f1) pinnedExt of another key + approved client -> no auth, onUnpaired pinned other', async () => {
+    const { bridge, sockets, deps } = setup({ approved: [approvedOk] })
+    await bridge.scan([PORT])
+    sockets[0]!.recv({ ...hello, pinnedExt: 'f'.repeat(64) })
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalled())
+    expect(deps.onUnpaired).toHaveBeenCalledWith({ port: PORT, client: 'claude-code', keyHash: srvKid, pinned: 'other' })
+    expect(authOf(sockets[0]!)).toBeUndefined()
+    expect(bridge.conns()[0]!.pinned).toBe('other')
+  })
+
+  it('(f2) onUnpaired false -> socket closed silently, no reject', async () => {
+    const { bridge, sockets, deps } = setup()
+    deps.onUnpaired.mockImplementation(async () => false)
+    await bridge.scan([PORT])
+    sockets[0]!.recv(hello)
+    await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
+    expect(bridge.conns()).toEqual([])
+    expect(sockets[0]!.sent.some((m) => (m as { type: string }).type === 'reject')).toBe(false)
+  })
+
+  it('(f3) onUnpaired true -> stays pending', async () => {
+    const { bridge, sockets, deps } = setup()
+    await bridge.scan([PORT])
+    sockets[0]!.recv(hello)
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalled())
+    await flush()
+    expect(bridge.conns()[0]!.state).toBe('pending')
+    expect(sockets[0]!.closed).toBe(false)
+  })
+
+  it('(f4) pinnedExt = own keyId -> pinned self', async () => {
+    const { bridge, sockets, deps } = setup()
+    await bridge.scan([PORT])
+    sockets[0]!.recv({ ...hello, pinnedExt: await keyId(extPub) })
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalledWith(expect.objectContaining({ pinned: 'self' })))
+  })
+
+  it('(f5) pinnedExt null -> pinned none', async () => {
+    const { bridge, sockets, deps } = setup()
+    await bridge.scan([PORT])
+    sockets[0]!.recv({ ...hello, pinnedExt: null })
+    await vi.waitFor(() => expect(deps.onUnpaired).toHaveBeenCalledWith(expect.objectContaining({ pinned: 'none' })))
+  })
+
+  it('(f6) onUnpaired throws -> closed like false', async () => {
+    const { bridge, sockets, deps } = setup()
+    deps.onUnpaired.mockImplementation(async () => { throw new Error('x') })
+    await bridge.scan([PORT])
+    sockets[0]!.recv(hello)
+    await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
+    expect(bridge.conns()).toEqual([])
   })
 
   it('(e) hello v1 -> closed', async () => {
@@ -162,7 +215,7 @@ describe('bridge v2', () => {
     await bridge.scan([PORT])
     sockets[0]!.recv({ type: 'hello', protocol: 1, client: 'c', pairKey: 'k'.repeat(32) })
     await vi.waitFor(() => expect(sockets[0]!.closed).toBe(true))
-    expect(deps.requestPairing).not.toHaveBeenCalled()
+    expect(deps.onUnpaired).not.toHaveBeenCalled()
   })
 
   it('reject closes and drops', async () => {
@@ -227,7 +280,7 @@ describe('bridge v2', () => {
     sockets[0]!.recv(hello)
     sockets[0]!.close()
     await new Promise((r) => setTimeout(r, 100))
-    expect(deps.requestPairing).not.toHaveBeenCalled()
+    expect(deps.onUnpaired).not.toHaveBeenCalled()
     expect(authOf(sockets[0]!)).toBeUndefined()
   })
 
