@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { chmod, mkdir, mkdtemp, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { defaultPairPath, loadOrCreateIdentity } from './pairing';
+import { defaultPairPath, loadOrCreateIdentity, unpairIdentity } from './pairing';
 
 describe('pairing', () => {
   it('defaultPairPath branches', () => {
@@ -124,5 +124,39 @@ describe('15k concurrency', () => {
     await utimes(`${p}.lock`, old, old);
     await a.pinExtKey('K1');
     expect(JSON.parse(await readFile(p, 'utf8')).extKey).toBe('K1');
+  });
+});
+
+describe('unpairIdentity', () => {
+  it('missing when no file', async () => {
+    const p = join(await mkdtemp(join(tmpdir(), 'mdr-')), 'mcp.json');
+    expect(await unpairIdentity(p)).toBe('missing');
+  });
+  it('not-paired when no extKey', async () => {
+    const p = join(await mkdtemp(join(tmpdir(), 'mdr-')), 'mcp.json');
+    await loadOrCreateIdentity(p);
+    expect(await unpairIdentity(p)).toBe('not-paired');
+  });
+  it('unpaired drops extKey, keeps server key byte-for-byte', async () => {
+    const p = join(await mkdtemp(join(tmpdir(), 'mdr-')), 'mcp.json');
+    const a = await loadOrCreateIdentity(p);
+    await a.pinExtKey('ext-key-1');
+    const before = JSON.parse(await readFile(p, 'utf8'));
+    expect(await unpairIdentity(p)).toBe('unpaired');
+    const after = JSON.parse(await readFile(p, 'utf8'));
+    expect(after.extKey).toBeUndefined();
+    expect(after.version).toBe(2);
+    expect(after.privateKey).toEqual(before.privateKey);
+    expect(after.publicKey).toBe(before.publicKey);
+    if (process.platform !== 'win32') expect((await stat(p)).mode & 0o777).toBe(0o600);
+    const b = await loadOrCreateIdentity(p);
+    expect(b.extKey).toBeNull();
+    expect(b.publicKey).toBe(a.publicKey);
+  });
+  it('throws on corrupt file and leaves it unchanged', async () => {
+    const p = join(await mkdtemp(join(tmpdir(), 'mdr-')), 'mcp.json');
+    await writeFile(p, '{not json');
+    await expect(unpairIdentity(p)).rejects.toThrow('pairing file unreadable');
+    expect(await readFile(p, 'utf8')).toBe('{not json');
   });
 });
