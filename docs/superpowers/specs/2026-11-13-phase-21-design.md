@@ -3,7 +3,7 @@ Author: haonq. Status: designed. Phase: 21
 Intent: docs/superpowers/intent/2026-11-13-phase-21-ghep-cap-mot-profile.md
 
 ## Sub-phase queue
-- 21a — Giao thức `hello.pinnedExt` (core): pending
+- 21a — Giao thức `hello.pinnedExt` (core): done
 - 21b1 — Máy chủ gửi `pinnedExt` (mcp): pending
 - 21b2 — Lệnh `le-sach-mcp unpair` (mcp): pending
 - 21c1 — Bridge: `onUnpaired`, đóng im lặng (extension worker): pending
