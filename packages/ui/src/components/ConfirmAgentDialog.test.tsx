@@ -60,6 +60,28 @@ describe('ConfirmAgentDialog', () => {
     expect(onDeny).toHaveBeenCalled()
   })
 
+  it('update_shared renders vi title and body', () => {
+    render(
+      <ConfirmAgentDialog req={{ kind: 'update_shared', docTitle: 'Doc' }} client="Claude" onAllow={vi.fn()} onDeny={vi.fn()} />,
+    )
+    expect(screen.getByText('Cho AI sửa tài liệu đang chia sẻ?')).toBeInTheDocument()
+    expect(
+      screen.getByText('“Claude” muốn sửa “Doc”. Tài liệu này đang được chia sẻ — người có link sẽ thấy thay đổi ngay.'),
+    ).toBeInTheDocument()
+  })
+
+  it('update_shared renders en title and body', () => {
+    render(
+      <I18nProvider locale="en">
+        <ConfirmAgentDialog req={{ kind: 'update_shared', docTitle: 'Doc' }} client="Claude" onAllow={vi.fn()} onDeny={vi.fn()} />
+      </I18nProvider>,
+    )
+    expect(screen.getByText('Let the AI edit a shared document?')).toBeInTheDocument()
+    expect(
+      screen.getByText('“Claude” wants to edit “Doc”. This document is shared — people with the link will see the change right away.'),
+    ).toBeInTheDocument()
+  })
+
   it('renders en', () => {
     render(
       <I18nProvider locale="en">

@@ -645,6 +645,22 @@ Spec: `docs/superpowers/specs/2026-11-13-phase-21-design.md`. `hello` của cầ
 | 21e1 | E2E | Máy chủ đã ghim khoá khác: không tab hỏi nào mở |
 | 21e2 | Tài liệu + phiên bản | `le-sach-mcp@1.3.3`, extension 1.5.1, `docs/MCP.md` |
 
+### Phase 22 — Vá bảo mật sau audit run-2
+
+Ship: *chín lead của audit run-2 (2026-11-13) được vá ở mã nguồn, mỗi lead một test hồi quy.*
+Spec: `docs/superpowers/specs/2026-11-13-phase-22-design.md`. Không đổi schema, giao thức cầu nối hay phiên bản.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 22a | peer-guard: chu trình + nội dung | Chu trình `origin` không treo DO; chỉ chuỗi/xoá vào `source` |
+| 22b | peer-guard: nhảy clock | Update có khoảng hở clock bị từ chối |
+| 22c | Tên phòng chuẩn | Đoạn đường dẫn không ở dạng chuẩn → 404 |
+| 22d | Body có trần | Upload ảnh, report, feedback đọc theo luồng có trần |
+| 22e | Ảnh vs xoá phòng | Không còn ảnh mồ côi sau khi phòng bị xoá |
+| 22f | `update_doc` đã chia sẻ | AI sửa tài liệu đang chia sẻ phải được đồng ý |
+| 22g | Mã khoá máy chủ + zod | `le-sach-mcp` in mã nhận dạng; `zod` 4.6.6 |
+| 22h | Tài liệu | `docs/MCP.md`, changelog, handover |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh

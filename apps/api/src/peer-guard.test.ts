@@ -110,4 +110,64 @@ describe('peerUpdateViolation (14a)', () => {
     const u = upd(doc, (p) => p.getMap('meta').delete('remoteHash'))
     expect(peerUpdateViolation(u, doc, own())).not.toBeNull()
   })
+  it('terminates on origin cycles (self and mutual)', { timeout: 2000 }, () => {
+    const doc = setup()
+    const C = 5
+    // client C, 2 string items (len 1 each); info 0x84 = ContentString + origin; parent omitted
+    const mutual = Uint8Array.from([1, 2, C, 0, 0x84, C, 1, 1, 97, 0x84, C, 0, 1, 97, 0])
+    const self = Uint8Array.from([1, 1, C, 0, 0x84, C, 0, 1, 97, 0])
+    expect(peerUpdateViolation(mutual, doc, own())).not.toBeNull()
+    expect(peerUpdateViolation(self, doc, own())).not.toBeNull()
+  })
+  it('rejects a parent-ID cycle between type items as unresolved parent', { timeout: 2000 }, () => {
+    const doc = setup()
+    const C = 5
+    // client C: item0 (type, parent=ID(C,1)), item1 (type, parent=ID(C,0)), item2 (string 'a', parent=ID(C,0))
+    // info 0x07 = ContentType, no origins, parent-info 0 => parent is an ID; type ref 0 (YArray)
+    const u = Uint8Array.from([1, 3, C, 0, 0x07, 0, C, 1, 0, 0x07, 0, C, 0, 0, 0x04, 0, C, 0, 1, 97, 0])
+    expect(peerUpdateViolation(u, doc, own())).toBe('unresolved parent')
+  })
+  it('rejects non-string content in source', () => {
+    const doc = setup()
+    expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insertEmbed(0, { a: 1 })), doc, own())).toBe('forbidden content in source')
+    expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').format(0, 3, { bold: true })), doc, own())).toBe('forbidden content in source')
+    const x = new Y.Doc()
+    const xt = x.get('source', Y.XmlText) as Y.XmlText
+    xt.setAttribute('k', 'v')
+    expect(peerUpdateViolation(Y.encodeStateAsUpdate(x), doc, own())).toBe('forbidden content in source')
+  })
+  describe('clock gaps (22b)', () => {
+    function chain() {
+      const c = new Y.Doc()
+      c.clientID = 4242
+      const us: Uint8Array[] = []
+      c.on('update', (x: Uint8Array) => us.push(x))
+      const t = c.getText('source')
+      t.insert(0, 'a')
+      t.insert(1, 'b')
+      t.insert(2, 'c')
+      return us as [Uint8Array, Uint8Array, Uint8Array]
+    }
+    const owned = () => ({ owners: new Map<number, string>([[4242, 'p']]), claimed: new Set<number>([4242]), prefix: 'p' })
+    it('rejects an owned clientID whose first struct starts after a gap', () => {
+      const [, u2] = chain()
+      expect(peerUpdateViolation(u2, new Y.Doc(), owned())).toBe('clock gap')
+    })
+    it('accepts u2 once u1 is applied, and merged u1+u2 retransmission', () => {
+      const [u1, u2] = chain()
+      const doc = new Y.Doc()
+      Y.applyUpdate(doc, u1)
+      expect(peerUpdateViolation(u2, doc, owned())).toBeNull()
+      expect(peerUpdateViolation(Y.mergeUpdates([u1, u2]), doc, owned())).toBeNull()
+    })
+    it('rejects an update containing a Skip struct', () => {
+      const [u1, , u3] = chain()
+      expect(peerUpdateViolation(Y.mergeUpdates([u1, u3]), new Y.Doc(), owned())).toBe('clock gap')
+    })
+  })
+  it('still accepts plain insert and delete in source', () => {
+    const doc = setup()
+    expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insert(2, 'zz')), doc, own())).toBeNull()
+    expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').delete(0, 2)), doc, own())).toBeNull()
+  })
 })

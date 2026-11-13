@@ -3,7 +3,7 @@ import { useT } from '../i18n'
 import '../theme/conflict.css'
 
 export interface ConfirmRequest {
-  kind: 'share' | 'revoke'
+  kind: 'share' | 'revoke' | 'update_shared'
   docTitle: string
   role?: 'view' | 'edit'
   expiresInDays?: 7 | 30 | null
@@ -44,6 +44,8 @@ export function ConfirmAgentDialog(p: {
       ? t('agent.expiry.days', { n: req.expiresInDays })
       : t('agent.expiry.never')
     body = t('agent.share', { client: p.client, role, expiry, title: req.docTitle })
+  } else if (req.kind === 'update_shared') {
+    body = t('agent.updateShared', { client: p.client, title: req.docTitle })
   } else {
     body = t('agent.revoke', { client: p.client, prefix: req.tokenPrefix ?? '', title: req.docTitle })
   }
@@ -77,7 +79,7 @@ export function ConfirmAgentDialog(p: {
         }}
       >
         <div className="conflict-modal-header">
-          <h2 id={titleId}>{t('agent.title')}</h2>
+          <h2 id={titleId}>{t(req.kind === 'update_shared' ? 'agent.title.updateShared' : 'agent.title')}</h2>
         </div>
         <div style={{ padding: '16px 20px' }}>
           <p style={{ margin: 0 }}>{body}</p>

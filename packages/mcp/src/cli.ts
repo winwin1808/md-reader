@@ -2,11 +2,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { fingerprint, keyId } from '@md-reader/core/bridge-auth'
 import { startBridgeServer } from './bridge-server'
 import { loadOrCreateIdentity, unpairIdentity } from './pairing'
 import { registerTools } from './tools'
 
 export const VERSION = '1.3.3'
+
+export function startupLine(version: string, port: number, code: string): string {
+  return `le-sach-mcp ${version} listening on 127.0.0.1:${port} · mã máy chủ ${code}\n`
+}
 
 export async function main(
   deps: {
@@ -32,7 +37,7 @@ export async function main(
       (deps.stdout ?? process.stdout) as import('node:stream').Writable,
     ),
   )
-  stderr.write(`le-sach-mcp ${VERSION} listening on 127.0.0.1:${bridge.port}\n`)
+  stderr.write(startupLine(VERSION, bridge.port, fingerprint(await keyId(identity.publicKey))))
   return {
     async close() {
       await server.close()
