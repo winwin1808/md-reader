@@ -1,5 +1,5 @@
 # Design: Phase 23 — Bình luận + AI xử lý góp ý
-Author: winwin1808. Status: shipped. Phase: 23
+Author: winwin1808. Status: in-progress. Phase: 23
 
 Intent: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai.md
 Brainstorm: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai-va-xuat-nhe-brainstorm.md
@@ -25,6 +25,8 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23g2 — done — docs, ROADMAP, phiên bản
 - 23h1 — done — site: trang ghi chú phát hành `changelog.html`
 - 23h2 — done — extension: "Có gì mới" trỏ tới trang phát hành + test đồng bộ phiên bản
+- 23i1 — planned — ui: độ rộng "Rộng" = ~80% bề ngang màn hình (Đọc + Sửa)
+- 23i2 — planned — extension: nút toolbar bật/tắt chế độ rộng
 
 ## Approach chosen
 
@@ -428,3 +430,11 @@ Thiếu: trang công khai (link được từ store listing, README, GitHub Rele
   "Xem toàn bộ ghi chú phát hành" → `RELEASE_NOTES_URL#v<phiên bản mới nhất>`; test đồng bộ: mọi `version` trong `RELEASE_NOTES` có `id="v<version>"`
   trong `site/changelog.html` (quên cập nhật trang khi ra bản mới → test đỏ).
 - Ngoài phạm vi: tag `v1.6.0` + GitHub Release (làm sau khi merge vào `main`, trỏ về trang này).
+
+
+## 23i — Chế độ rộng ~80% bề ngang (bổ sung 2026-11-23, theo yêu cầu người dùng, vào MR #25)
+
+Đã có `pageWidth: 'narrow'|'medium'|'wide'|'full'` (Cài đặt → Hiển thị), áp qua `data-width` trên `.app-container`; `wide` hiện chỉ là
+`--measure: 104ch`, còn bị `max-width` của `.a4-document-container` / `.editor-live-sheet` / `.app-layout` giới hạn. Quyết định: **đổi nghĩa
+`wide` thành tờ giấy rộng tối đa 80vw** (không thêm giá trị mới → không đổi kiểu `PageWidth`, không cần migration cài đặt), nhãn "Rộng (80%)".
+Thêm nút toolbar bật/tắt nhanh, nhớ độ rộng trước đó để tắt thì quay lại. Web `/s/:token` giữ 820px (ngoài phạm vi).
