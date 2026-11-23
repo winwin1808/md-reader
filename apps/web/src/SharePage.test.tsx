@@ -149,7 +149,7 @@ describe('SharePage viewer props and retry', () => {
 
 describe('SharePage roles', () => {
   const load = (role: string) => async () => ({
-    kind: 'ready' as const, text: '# A', info: { roomId: 'r', role: role as 'view' | 'edit', title: 'T' },
+    kind: 'ready' as const, text: '# A', doc: (() => { const d = new Y.Doc({ gc: false }); d.getText('source').insert(0, '# A'); return d })(), info: { roomId: 'r', role: role as 'view' | 'edit', title: 'T' },
   })
   it('edit role renders name form', async () => {
     localStorage.clear()
