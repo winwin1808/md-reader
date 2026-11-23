@@ -7,7 +7,7 @@
 **Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
 Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
 
-## Đã xong (phase 1 đến 21, phiên bản 1.5.1)
+## Đã xong (phase 1 đến 23, phiên bản 1.6.0)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -30,6 +30,7 @@ Yêu cầu từ người dùng thật chạy **song song** với thứ tự này
 - [x] **P19 PDF trình chiếu không cắt chữ:** slide dài tự chia theo chiều cao thật (danh sách, bảng tách theo mục/hàng, bảng lặp tiêu đề), khối không tách được thì thu nhỏ và cảnh báo; dấu ngắt thủ công `<!-- slide-break -->` và nút "Ngắt slide tại đây" khi Sửa; công tắc "Tự chia slide" trong Cài đặt; trang PDF đúng 1280×720.
 - [x] **P20 Trang chào mới và hướng dẫn từng bước:** trang chào dạng tờ giấy có checklist, tour 9 bước tô sáng nút thật, xem lại trong Cài đặt → Trợ giúp.
 - [x] **P21 Ghép cặp MCP một profile, không hỏi lặp:** hộp ghép cặp tự mở tối đa một lần cho mỗi ứng dụng AI, từ chối được ghi nhớ; profile Chrome khác với profile đã ghép không mở tab nào; Cài đặt → Kết nối AI liệt kê ứng dụng AI đang chạy kèm nút Kết nối; bấm Cho phép luôn có kết quả rõ; lệnh `le-sach-mcp unpair` (1.3.3) để chuyển sang profile khác.
+- [x] **P23 Bình luận trên tài liệu:** chọn chữ rồi Bình luận ở chế độ Đọc và Sửa; người có link xem/sửa bình luận trên web, tài liệu chưa chia sẻ vẫn bình luận được (lưu trên máy); bình luận nằm trong Y.Doc (`formatVersion` 3, có migration); AI đọc, trả lời, đánh dấu Xong qua ba tool MCP mới (`le-sach-mcp` 1.4.0).
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)
@@ -64,7 +65,7 @@ Giao diện và hiệu năng:
 
 Cộng tác:
 
-- [ ] Bình luận (link xem, link sửa, cả tài liệu chưa chia sẻ); AI đọc, trả lời và resolve qua MCP (phase 23)
+- [x] Bình luận (link xem, link sửa, cả tài liệu chưa chia sẻ); AI đọc, trả lời và resolve qua MCP (phase 23)
 - [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ") và tự xoá phòng bỏ không 90 ngày
 - [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh, IP, trần ảnh toàn cục)
 - [ ] Deploy một chạm lên Cloudflare (nút "Deploy to Cloudflare")

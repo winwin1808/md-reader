@@ -8,6 +8,23 @@ export interface ReleaseNote {
 /** Mới nhất trước. */
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '1.6.0',
+    showOnUpdate: true,
+    title: { vi: 'Bình luận trên tài liệu', en: 'Comments on documents' },
+    items: {
+      vi: [
+        'Chọn chữ rồi bấm Bình luận (hoặc Cmd/Ctrl+Shift+M), ở cả chế độ Đọc và Sửa.',
+        'Người có link xem hoặc link sửa cũng bình luận, trả lời được ngay trên trang web.',
+        'AI qua le-sach-mcp 1.4.0 đọc bình luận, trả lời và đánh dấu Xong.',
+      ],
+      en: [
+        'Select text and press Comment (or Cmd/Ctrl+Shift+M), in both Read and Edit modes.',
+        'People with a view or edit link can comment and reply right on the web page.',
+        'AI through le-sach-mcp 1.4.0 reads comments, replies and marks them Done.',
+      ],
+    },
+  },
+  {
     version: '1.5.1',
     showOnUpdate: false,
     title: { vi: 'Kết nối AI gọn hơn', en: 'Tidier AI connection' },

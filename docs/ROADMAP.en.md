@@ -7,7 +7,7 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 **Order from here:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Beyond the browser.
 Requests from real users run **in parallel** with this order (see [User requests](#user-requests-in-parallel)).
 
-## Done (phases 1 to 21, version 1.5.1)
+## Done (phases 1 to 23, version 1.6.0)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -30,6 +30,7 @@ Requests from real users run **in parallel** with this order (see [User requests
 - [x] **P19 Slide PDF without clipped text:** long slides split automatically by their real height (lists and tables split by item/row, tables repeat their header), blocks that cannot be split are scaled down with a warning; manual `<!-- slide-break -->` marker and a "Break slide here" button in Edit mode; a "Split long slides automatically" switch in Settings; PDF pages are exactly 1280×720.
 - [x] **P20 New welcome page and guided tour:** paper-style welcome page with a checklist, a 9-step tour that highlights the real buttons, replayable from Settings → Help.
 - [x] **P21 MCP pairing for one profile, no repeated prompts:** the pairing dialog opens by itself at most once per AI app and a Deny is remembered; a Chrome profile other than the paired one opens no tab; Settings → AI connection lists running AI apps with a Connect button; Allow always gives a clear result; `le-sach-mcp unpair` (1.3.3) moves the pairing to another profile.
+- [x] **P23 Comments on documents:** select text, then Comment, in Read and Edit modes; people with a view/edit link comment on the web, and unshared documents can be commented on too (stored on this device); comments live in the Y.Doc (`formatVersion` 3, with migration); AI reads, replies and resolves via three new MCP tools (`le-sach-mcp` 1.4.0).
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
@@ -64,7 +65,7 @@ Look and performance:
 
 Collaboration:
 
-- [ ] Comments (view and edit links, unshared docs too); AI reads, answers and resolves them via MCP (phase 23)
+- [x] Comments (view and edit links, unshared docs too); AI reads, answers and resolves them via MCP (phase 23)
 - [x] Room-data deletion endpoint ("Delete data from server" button) and automatic deletion of rooms unopened for 90 days
 - [x] Daily limits for the Worker (anonymous install key, IP, global image caps)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
