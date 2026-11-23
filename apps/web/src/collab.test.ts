@@ -142,6 +142,33 @@ describe('bindRoom', () => {
       expect(seen).toEqual(['connecting', 'online', final])
     }
   })
+  it('4403 calls onReject once, status stays non-terminal; terminal codes do not', () => {
+    const onReject = vi.fn()
+    const doc = new Y.Doc()
+    bindRoom(
+      doc,
+      { serverUrl: 'https://x.workers.dev', roomId: 'r1', token: 'tok', name: 'Hao', onReject },
+      { Provider: FakeProvider as unknown as typeof YProviderType },
+    )
+    const p = FakeProvider.last
+    const seen: SyncStatus[] = []
+    p.emit('connection-close', [{ code: 1009 }])
+    p.emit('connection-close', [{ code: 4410 }])
+    p.emit('connection-close', [{ code: 4413 }])
+    expect(onReject).not.toHaveBeenCalled()
+    const b = mk()
+    b.conn.status$((s) => seen.push(s))
+    expect(seen).toEqual(['connecting'])
+    const onReject2 = vi.fn()
+    bindRoom(
+      new Y.Doc(),
+      { serverUrl: 'https://x.workers.dev', roomId: 'r1', token: 'tok', name: 'Hao', onReject: onReject2 },
+      { Provider: FakeProvider as unknown as typeof YProviderType },
+    )
+    const q = FakeProvider.last
+    q.emit('connection-close', [{ code: 4403 }])
+    expect(onReject2).toHaveBeenCalledTimes(1)
+  })
   it('non-terminal close (1006) keeps reconnecting', () => {
     const { p } = mk()
     ;(p as any).shouldConnect = true

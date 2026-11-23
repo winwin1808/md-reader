@@ -14,6 +14,7 @@ export interface BindRoomOptions {
   roomId: string
   token: string
   name: string
+  onReject?: () => void
 }
 
 export interface RoomConnection {
@@ -61,6 +62,7 @@ export function bindRoom(
       set(event.code === 4410 ? 'revoked' : 'full')
       return
     }
+    if (event?.code === 4403) opts.onReject?.()
     onConnFail()
   }
   const onSynced = (synced: boolean) => {

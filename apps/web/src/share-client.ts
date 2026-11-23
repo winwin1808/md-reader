@@ -18,7 +18,7 @@ export function tokenFromPath(pathname: string): string | null {
 
 export type ShareState =
   | { kind: 'loading' }
-  | { kind: 'ready'; info: ResolveTokenResponse; text: string }
+  | { kind: 'ready'; info: ResolveTokenResponse; text: string; doc: Y.Doc }
   | { kind: 'gone' }
   | { kind: 'error'; message: string }
 
@@ -37,7 +37,7 @@ export async function loadShare(token: string, fetchFn: typeof fetch = fetch, t:
     try {
       const doc = new Y.Doc({ gc: false })
       Y.applyUpdate(doc, bytes)
-      return { kind: 'ready', info, text: exportText(doc) }
+      return { kind: 'ready', info, text: exportText(doc), doc }
     } catch {
       return { kind: 'error', message: t('web.errInvalid') }
     }
@@ -48,7 +48,7 @@ export async function loadShare(token: string, fetchFn: typeof fetch = fetch, t:
 
 const PLUGINS = defaultRenderPlugins()
 
-export function renderShareHtml(text: string, locale: Locale = 'vi'): string {
+export function renderShareHtml(text: string, locale: Locale = 'vi', opts?: { sourcePositions?: boolean }): string {
   const parsed = parseMarkdown(text, { gfm: true, math: true, parseYaml })
   return renderToHtml(parsed, {
     math: true,
@@ -59,6 +59,7 @@ export function renderShareHtml(text: string, locale: Locale = 'vi'): string {
     typographer: true,
     externalLinks: true,
     plugins: PLUGINS,
+    ...(opts?.sourcePositions ? { sourcePositions: true } : {}),
   }).html
 }
 

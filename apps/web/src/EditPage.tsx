@@ -6,6 +6,7 @@ import type { TFunction } from '@md-reader/ui'
 import type { EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
+import { readName, writeName } from './name'
 import { NoticeStack, useNotices } from './Notice'
 
 export async function uploadImage(serverUrl: string, room: string, token: string, file: File, t: TFunction = createT('vi')): Promise<UploadAssetResponse> {
@@ -40,6 +41,7 @@ export function PageHeader(props: {
   status?: string
   presence?: React.ReactNode
   toggle?: { value: 'edit' | 'view'; onChange: (v: 'edit' | 'view') => void }
+  actions?: React.ReactNode
 }): React.JSX.Element {
   const t = useT()
   return (
@@ -68,26 +70,17 @@ export function PageHeader(props: {
             ))}
           </div>
         )}
+        {props.actions}
       </div>
     </header>
   )
 }
-
-const NAME_KEY = 'mdr.displayName'
 
 export interface EditPageProps {
   token: string
   info: ResolveTokenResponse
   serverUrl?: string
   bind?: typeof bindRoom
-}
-
-function readName(): string {
-  try {
-    return (localStorage.getItem(NAME_KEY) ?? '').trim()
-  } catch {
-    return ''
-  }
 }
 
 const STATUS_KEY = {
@@ -109,11 +102,7 @@ export function EditPage(props: EditPageProps): React.JSX.Element {
       e.preventDefault()
       const v = draft.trim()
       if (!v) return
-      try {
-        localStorage.setItem(NAME_KEY, v)
-      } catch {
-        /* storage may be unavailable */
-      }
+      writeName(v)
       setName(v)
     }
     return (
@@ -184,13 +173,13 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString(), locale)), 120)
+      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString(), locale, { sourcePositions: true })), 120)
     }
     const onStack = () => setTick((n) => n + 1)
     yText.observe(onChange)
     undo.on('stack-item-added', onStack)
     undo.on('stack-item-popped', onStack)
-    setHtml(renderShareHtml(yText.toString(), locale))
+    setHtml(renderShareHtml(yText.toString(), locale, { sourcePositions: true }))
     setSession({ doc, yText, undo, conn })
     return () => {
       if (timer) clearTimeout(timer)
