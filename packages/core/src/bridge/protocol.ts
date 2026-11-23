@@ -15,8 +15,8 @@ export function isAllowedExtensionOrigin(origin: string, ids: readonly string[] 
   return ids.some((id) => origin === `chrome-extension://${id}`)
 }
 
-export type BridgeTool = 'publish_doc' | 'list_docs' | 'get_doc' | 'update_doc' | 'share_doc' | 'list_links' | 'revoke_link'
-export const BRIDGE_TOOLS: readonly BridgeTool[] = ['publish_doc', 'list_docs', 'get_doc', 'update_doc', 'share_doc', 'list_links', 'revoke_link']
+export type BridgeTool = 'publish_doc' | 'list_docs' | 'get_doc' | 'update_doc' | 'share_doc' | 'list_links' | 'revoke_link' | 'list_comments' | 'reply_comment' | 'resolve_comment'
+export const BRIDGE_TOOLS: readonly BridgeTool[] = ['publish_doc', 'list_docs', 'get_doc', 'update_doc', 'share_doc', 'list_links', 'revoke_link', 'list_comments', 'reply_comment', 'resolve_comment']
 
 export type BridgeErrorCode = 'NOT_CONNECTED' | 'NOT_PAIRED' | 'DENIED' | 'TIMEOUT' | 'NOT_FOUND' | 'CONFLICT' | 'INVALID_ARGS' | 'SHARE_FAILED' | 'INTERNAL'
 const ERROR_CODES: readonly string[] = ['NOT_CONNECTED', 'NOT_PAIRED', 'DENIED', 'TIMEOUT', 'NOT_FOUND', 'CONFLICT', 'INVALID_ARGS', 'SHARE_FAILED', 'INTERNAL']
@@ -34,8 +34,20 @@ export interface ListLinksArgs { docId: string }
 export interface ListLinksResult { links: Array<{ tokenPrefix: string; role: 'view' | 'edit'; label: string; expiresAt: number | null; revokedAt: number | null }> }
 export interface RevokeLinkArgs { docId: string; tokenPrefix: string }
 export interface RevokeLinkResult { revoked: boolean }
-export interface BridgeArgsMap { publish_doc: PublishDocArgs; list_docs: Record<string, never>; get_doc: GetDocArgs; update_doc: UpdateDocArgs; share_doc: ShareDocArgs; list_links: ListLinksArgs; revoke_link: RevokeLinkArgs }
-export interface BridgeResultMap { publish_doc: PublishDocResult; list_docs: ListDocsResult; get_doc: GetDocResult; update_doc: UpdateDocResult; share_doc: ShareDocResult; list_links: ListLinksResult; revoke_link: RevokeLinkResult }
+export const BRIDGE_MAX_COMMENT = 4000
+export interface ListCommentsArgs { docId: string; status?: 'open' | 'all' }
+export interface ReplyCommentArgs { docId: string; threadId: string; body: string }
+export interface ResolveCommentArgs { docId: string; threadId: string; reply?: string }
+export interface BridgeCommentReply { author: string; ts: string; body: string }
+export interface BridgeComment {
+  threadId: string; quote: string; currentText: string | null; line: number | null
+  status: 'open' | 'resolved'; author: string; ts: string; body: string; replies: BridgeCommentReply[]
+}
+export interface ListCommentsResult { comments: BridgeComment[] }
+export interface ReplyCommentResult { ok: true; id: string }
+export interface ResolveCommentResult { ok: true }
+export interface BridgeArgsMap { publish_doc: PublishDocArgs; list_docs: Record<string, never>; get_doc: GetDocArgs; update_doc: UpdateDocArgs; share_doc: ShareDocArgs; list_links: ListLinksArgs; revoke_link: RevokeLinkArgs; list_comments: ListCommentsArgs; reply_comment: ReplyCommentArgs; resolve_comment: ResolveCommentArgs }
+export interface BridgeResultMap { publish_doc: PublishDocResult; list_docs: ListDocsResult; get_doc: GetDocResult; update_doc: UpdateDocResult; share_doc: ShareDocResult; list_links: ListLinksResult; revoke_link: RevokeLinkResult; list_comments: ListCommentsResult; reply_comment: ReplyCommentResult; resolve_comment: ResolveCommentResult }
 
 export interface BridgeHello {
   type: 'hello'; protocol: 2; client: string; serverKey: string; nonce: string
@@ -157,6 +169,28 @@ export function validateToolArgs<T extends BridgeTool>(tool: T, args: unknown): 
       if (!docIdOk) return fail('docId must be 1..64 characters')
       if (!str(o.tokenPrefix, 6, 6)) return fail('tokenPrefix must be 6 characters')
       return ok({ docId: o.docId, tokenPrefix: o.tokenPrefix })
+    case 'list_comments': {
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      const status = o.status === undefined ? 'open' : o.status
+      if (status !== 'open' && status !== 'all') return fail("status must be 'open' or 'all'")
+      return ok({ docId: o.docId, status })
+    }
+    case 'reply_comment': {
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      if (!str(o.threadId, 1, 64)) return fail('threadId must be 1..64 characters')
+      if (typeof o.body !== 'string' || !str(o.body.trim(), 1, BRIDGE_MAX_COMMENT)) return fail(`body must be 1..${BRIDGE_MAX_COMMENT} characters`)
+      return ok({ docId: o.docId, threadId: o.threadId, body: o.body.trim() })
+    }
+    case 'resolve_comment': {
+      if (!docIdOk) return fail('docId must be 1..64 characters')
+      if (!str(o.threadId, 1, 64)) return fail('threadId must be 1..64 characters')
+      const r: ResolveCommentArgs = { docId: o.docId as string, threadId: o.threadId }
+      if (o.reply !== undefined) {
+        if (typeof o.reply !== 'string' || !str(o.reply.trim(), 1, BRIDGE_MAX_COMMENT)) return fail(`reply must be 1..${BRIDGE_MAX_COMMENT} characters`)
+        r.reply = o.reply.trim()
+      }
+      return ok(r)
+    }
     default:
       return fail('unknown tool')
   }
