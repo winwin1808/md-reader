@@ -190,7 +190,7 @@ describe('peerUpdateViolation comments (23d1)', () => {
   it('edit and view add an own comment via core addComment', () => {
     const doc = setup()
     for (const role of ['edit', 'view'] as const) {
-      const u = upd(doc, 11, (p) => addComment(p as never, { author: 'A', body: 'x', from: 0, to: 3 }))
+      const u = upd(doc, 11, (p) => addComment(p, { author: 'A', body: 'x', from: 0, to: 3 }))
       expect(peerUpdateViolation(u, doc, own(), role)).toBeNull()
     }
   })
@@ -234,7 +234,7 @@ describe('peerUpdateViolation comments (23d1)', () => {
         const p = new Y.Doc()
         Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
         p.clientID = 21
-        const i = addComment(p as never, { author: 'A', body: 'x', from: 0, to: 3 })
+        const i = addComment(p, { author: 'A', body: 'x', from: 0, to: 3 })
         Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
         return i
       })()
@@ -242,11 +242,47 @@ describe('peerUpdateViolation comments (23d1)', () => {
     }
     it('view sets s: only for own thread; edit for any', () => {
       const { doc, id } = withThread()
-      const mine = upd(doc, 21, (p) => setResolved(p as never, id, true, 'A'))
+      const mine = upd(doc, 21, (p) => setResolved(p, id, true, 'A'))
       expect(peerUpdateViolation(mine, doc, own([21]), 'view')).toBeNull()
-      const theirs = upd(doc, 22, (p) => setResolved(p as never, id, true, 'B'))
+      const theirs = upd(doc, 22, (p) => setResolved(p, id, true, 'B'))
       expect(peerUpdateViolation(theirs, doc, own(), 'view')).toBe('comment_owner')
       expect(peerUpdateViolation(theirs, doc, own(), 'edit')).toBeNull()
+    })
+  })
+  describe('delete (23d1-2)', () => {
+    function threadBy(client: number) {
+      const doc = setup()
+      const p = new Y.Doc()
+      Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+      p.clientID = client
+      const id = addComment(p, { author: 'A', body: 'x', from: 0, to: 3 })
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
+      return { doc, id }
+    }
+    it('deleting own comment is allowed', () => {
+      const { doc, id } = threadBy(31)
+      const u = upd(doc, 31, (p) => p.getMap('comments').delete(id))
+      expect(peerUpdateViolation(u, doc, own([31]), 'edit')).toBeNull()
+      expect(peerUpdateViolation(u, doc, own([31]), 'view')).toBeNull()
+    })
+    it("deleting another user's comment is comment_delete for view and edit", () => {
+      const { doc, id } = threadBy(32)
+      const u = upd(doc, 33, (p) => p.getMap('comments').delete(id))
+      expect(peerUpdateViolation(u, doc, own([33]), 'edit')).toBe('comment_delete')
+      expect(peerUpdateViolation(u, doc, own([33]), 'view')).toBe('comment_delete')
+    })
+    it('edit overwriting a foreign s: state is allowed; view is a violation', () => {
+      const { doc, id } = threadBy(34)
+      const first = upd(doc, 35, (p) => setResolved(p, id, true, 'B'))
+      Y.applyUpdate(doc, first)
+      const reopen = upd(doc, 36, (p) => setResolved(p, id, false, 'C'))
+      expect(peerUpdateViolation(reopen, doc, own([36]), 'edit')).toBeNull()
+      expect(peerUpdateViolation(reopen, doc, own([36]), 'view')).not.toBeNull()
+    })
+    it('view deleting source text is view_write', () => {
+      const doc = setup()
+      const u = upd(doc, 37, (p) => p.getText('source').delete(0, 2))
+      expect(peerUpdateViolation(u, doc, own([37]), 'view')).toBe('view_write')
     })
   })
   it('rejects a nested Y.Map value', () => {

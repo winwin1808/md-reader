@@ -178,7 +178,7 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership, role: PeerRol
       const ref = s.content.getRef()
       if (ref === 1) continue // already-deleted content carries no value
       if (ref !== 8 || s.content.getLength() !== 1) return 'comment_content'
-      const key = s.parentSub ?? ''
+      const key = r.sub ?? s.parentSub ?? '' // origin-chained structs (overwrites) carry no parentSub
       const bad = validateCommentValue(key, s.content.getContent()[0])
       if (bad) return bad
       if (key.startsWith('s:')) {
@@ -226,7 +226,7 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership, role: PeerRol
           const key = r.sub ?? ''
           const owner = commentKeyClient(key.startsWith('s:') ? key.slice(2) : key)
           if (key.startsWith('s:') && role === 'edit') continue
-          if (owner === null || !owns(owner)) return 'comment_owner'
+          if (owner === null || !owns(owner)) return 'comment_delete'
           continue
         }
         if (r.kind === 'actors' && r.sub !== null && owns(Number(r.sub)) && String(Number(r.sub)) === r.sub) continue
