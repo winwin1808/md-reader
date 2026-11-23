@@ -25,8 +25,13 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23g2 — done — docs, ROADMAP, phiên bản
 - 23h1 — done — site: trang ghi chú phát hành `changelog.html`
 - 23h2 — done — extension: "Có gì mới" trỏ tới trang phát hành + test đồng bộ phiên bản
-- 23i1 — planned — ui: độ rộng "Rộng" = ~80% bề ngang màn hình (Đọc + Sửa)
-- 23i2 — planned — extension: nút toolbar bật/tắt chế độ rộng
+- 23i1 — done — ui: độ rộng "Rộng" = ~80% bề ngang màn hình (Đọc + Sửa)
+- 23i2 — done — extension: nút toolbar bật/tắt chế độ rộng
+- 23i3 — done — ui/extension: sửa sau review 23i
+- 23j1 — pending — core: `DocStyle` + Word theo kiểu tài liệu
+- 23j2 — pending — ui: `docStyleCss` + export HTML theo kiểu
+- 23j3 — pending — ui: chọn kiểu tài liệu trong Cài đặt
+- 23j4 — pending — extension: áp kiểu tài liệu cho đọc, sửa, PDF, HTML, Word
 
 ## Approach chosen
 
@@ -438,3 +443,15 @@ Thiếu: trang công khai (link được từ store listing, README, GitHub Rele
 `--measure: 104ch`, còn bị `max-width` của `.a4-document-container` / `.editor-live-sheet` / `.app-layout` giới hạn. Quyết định: **đổi nghĩa
 `wide` thành tờ giấy rộng tối đa 80vw** (không thêm giá trị mới → không đổi kiểu `PageWidth`, không cần migration cài đặt), nhãn "Rộng (80%)".
 Thêm nút toolbar bật/tắt nhanh, nhớ độ rộng trước đó để tắt thì quay lại. Web `/s/:token` giữ 820px (ngoài phạm vi).
+
+## 23j — Kiểu tài liệu business / academic / technical (bổ sung 2026-11-23, theo yêu cầu người dùng, vào MR #25)
+
+Mục ROADMAP v1.4 "Thêm giao diện tài liệu". Thêm cài đặt `docStyle: 'lesach' | 'business' | 'academic' | 'technical'` (mặc định `lesach` = giao diện
+hiện tại), áp cho trang đọc, editor live, PDF (in trang sống), export HTML và Word. Chỉ dùng phông đã đóng gói (Literata, IBM Plex Sans/Mono) — không
+tải phông ngoài. Kiểu `DocStyle` ở core (Word cần); CSS sinh bởi `docStyleCss(style, root)` ở ui, một nguồn cho app và export HTML. Kiểu khác `lesach`
+quyết định phông thân bài → nhóm "Phông chữ" bị khoá kèm ghi chú. Slide/Present không đổi; web `/s/:token` hoãn. `print.css` vẫn ép chữ đen khi in.
+
+- **23j1 — core:** `DocStyle`, `DOC_STYLES`, `isDocStyle`; `ExportDocxOptions.docStyle?` chọn bộ tham số Word (phông, màu heading, căn đều, giãn dòng, viền bảng).
+- **23j2 — ui:** `docStyleCss(style, root)` + `getDefaultExportCss(style?)`.
+- **23j3 — ui:** nhóm radio "Kiểu tài liệu" ở Cài đặt → Hiển thị, khoá nhóm phông khi khác `lesach`.
+- **23j4 — extension:** `data-doc-style` + `<style>` chèn trong `.app-container`, `useExport` truyền `docStyle` cho HTML/Word.
