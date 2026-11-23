@@ -201,7 +201,11 @@ export class DocRoom extends YServer<Env> {
 
   droppedWrites = 0
 
+  /** True only while a guard-approved view-link update is being applied by the base class. */
+  private applyingViewUpdate = false
+
   isReadOnly(conn: Connection): boolean {
+    if (this.applyingViewUpdate) return false
     return (conn.state as { role?: string } | null)?.role !== 'edit'
   }
 
@@ -264,6 +268,15 @@ export class DocRoom extends YServer<Env> {
         this.droppedWrites++
         conn.close(4403, 'forbidden write')
         return
+      }
+    }
+    if (k === 'update' && st?.prefix && this.isReadOnly(conn)) {
+      // peer-guard approved this view-link update (comments only): let the base class apply + broadcast it.
+      this.applyingViewUpdate = true
+      try {
+        return super.handleMessage(conn, message)
+      } finally {
+        this.applyingViewUpdate = false
       }
     }
     if (k === 'awareness') {

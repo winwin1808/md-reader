@@ -845,4 +845,23 @@ describe('DocRoom view-link comments (23d2-1)', () => {
     expect(room.droppedWrites).toBe(1)
     spy.mockRestore()
   })
+  it('real path (no super stub): view link comment is applied to the room doc', () => {
+    const { room, doc } = server()
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(listThreads(doc).length).toBe(1)
+  })
+  it('real path: view link source edit -> 4403 and doc unchanged', () => {
+    const { room, doc } = server()
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, (p) => p.getText('source').insert(0, 'x'))))
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    expect(doc.getText('source').toString()).toBe('hello world')
+  })
+  it('real path: view link without prefix stays read-only', () => {
+    const { room, doc } = server()
+    room.handleMessage(mk('view', '') as never, wrap(peerOf(doc, comment)))
+    expect(listThreads(doc).length).toBe(0)
+  })
 })
