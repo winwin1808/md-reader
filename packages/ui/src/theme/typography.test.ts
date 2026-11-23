@@ -161,12 +161,13 @@ describe('fonts.css local font imports', () => {
 });
 
 describe('viewer.css import order', () => {
-  it('keeps every @import before the first rule and imports tour.css', () => {
+  it('keeps every @import before the first rule and imports tour.css and comments.css', () => {
     const css = fs.readFileSync(path.resolve(__dirname, '../viewer.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '')
     const lines = css.split('\n').map((l) => l.trim()).filter(Boolean)
     const firstRule = lines.findIndex((l) => !l.startsWith('@import'))
     const lastImport = lines.map((l) => l.startsWith('@import')).lastIndexOf(true)
     expect(lastImport).toBeLessThan(firstRule)
     expect(css).toMatch(/@import\s+['"]\.\/theme\/tour\.css['"]/)
+    expect(css).toMatch(/@import\s+['"]\.\/theme\/comments\.css['"]/)
   })
 })
