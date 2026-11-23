@@ -169,6 +169,9 @@ export const vi = {
   'comments.reply': 'Trả lời',
   'comments.replyPlaceholder': 'Viết trả lời…',
   'comments.send': 'Gửi',
+  'comments.add': 'Bình luận',
+  'comments.yourName': 'Tên của bạn',
+  'comments.cancel': 'Huỷ',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -342,4 +345,7 @@ export const en: Record<keyof typeof vi, string> = {
   'comments.reply': 'Reply',
   'comments.replyPlaceholder': 'Write a reply…',
   'comments.send': 'Send',
+  'comments.add': 'Comment',
+  'comments.yourName': 'Your name',
+  'comments.cancel': 'Cancel',
 }

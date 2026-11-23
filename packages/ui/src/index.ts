@@ -57,3 +57,6 @@ export * from './i18n'
 
 export { GuidedTour } from './components/GuidedTour'
 export type { TourStep, GuidedTourProps } from './components/GuidedTour'
+
+export * from './components/CommentLayer'
+export type { CommentLayerProps } from './components/CommentLayer'
