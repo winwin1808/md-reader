@@ -30,7 +30,7 @@ Requests from real users run **in parallel** with this order (see [User requests
 - [x] **P19 Slide PDF without clipped text:** long slides split automatically by their real height (lists and tables split by item/row, tables repeat their header), blocks that cannot be split are scaled down with a warning; manual `<!-- slide-break -->` marker and a "Break slide here" button in Edit mode; a "Split long slides automatically" switch in Settings; PDF pages are exactly 1280×720.
 - [x] **P20 New welcome page and guided tour:** paper-style welcome page with a checklist, a 9-step tour that highlights the real buttons, replayable from Settings → Help.
 - [x] **P21 MCP pairing for one profile, no repeated prompts:** the pairing dialog opens by itself at most once per AI app and a Deny is remembered; a Chrome profile other than the paired one opens no tab; Settings → AI connection lists running AI apps with a Connect button; Allow always gives a clear result; `le-sach-mcp unpair` (1.3.3) moves the pairing to another profile.
-- [x] **P23 Comments on documents:** select text, then Comment, in Read and Edit modes; people with a view/edit link comment on the web, and unshared documents can be commented on too (stored on this device); comments live in the Y.Doc (`formatVersion` 3, with migration); AI reads, replies and resolves via three new MCP tools (`le-sach-mcp` 1.4.0).
+- [x] **P23 Comments on documents:** select text, then Comment, in Read and Edit modes; people with a view/edit link comment on the web, and unshared documents can be commented on too (stored on this device); comments live in the Y.Doc (`formatVersion` 3, with migration); AI reads, replies and resolves via three new MCP tools (`le-sach-mcp` 1.4.0). Also in 1.6.0: Business / Academic / Technical document styles (applied to HTML, PDF and Word too), ~80% wide view, a new History panel.
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
@@ -58,7 +58,7 @@ Export:
 
 Look and performance:
 
-- [ ] More document themes: business, academic, technical
+- [x] More document themes: business, academic, technical (1.6.0)
 - [x] Export through the image resolver (HTML export embeds relative images)
 
 ## v1.5 Finished collaboration and wide release

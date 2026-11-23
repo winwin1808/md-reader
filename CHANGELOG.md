@@ -21,6 +21,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Comments: select text, then Comment, in Read and Edit modes of the extension and on the web view/edit-link page (view links can write, reply and resolve their own comments; edit links can resolve any thread); unshared documents can be commented on too (stored on this device only).
 - AI connection: three new MCP tools `list_comments`, `reply_comment`, `resolve_comment` (`le-sach-mcp` 1.4.0, needs extension 1.6.0 or newer); no confirmation dialog.
 - Document `formatVersion` 3 stores comments in the Y.Doc, with a migration from version 2.
+- Document styles: Business, Academic, Technical (Settings → Display), applied to reading, Edit mode, PDF, HTML and Word export. Lề sách stays the default.
+- Wide view: the page opens up to ~80% of the screen width; toggle from the toolbar.
+- Redesigned History panel.
 - Settings → AI connection lists the AI apps running on this machine with their state ("Not connected" / "Paired with another browser or Chrome profile") and a Connect button for manual pairing.
 - `le-sach-mcp` 1.3.3: `hello` carries an optional `pinnedExt` fingerprint (older extensions ignore it; the extension still works with 1.3.2), and a new `le-sach-mcp unpair` command removes the pinned extension key while keeping the server key.
 
