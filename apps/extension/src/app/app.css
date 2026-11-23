@@ -296,6 +296,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
   min-height: 0;
 }
 
+.a4-document-container { position: relative; }
+
+.editor-comment-composer {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  width: min(320px, 90%);
+}
+
+.comments-drawer .comments-panel,
 .history-drawer .history-panel {
   position: fixed;
   top: 48px;
@@ -336,6 +347,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   top: 48px;
 }
 
+.reading-mode .comments-drawer .comments-panel,
 .reading-mode .history-drawer .history-panel {
   top: 0;
 }

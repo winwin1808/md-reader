@@ -5,10 +5,11 @@ export function useShortcuts(map: {
   onCloseSearch(): void
   isSearchOpen: boolean
   onToggleMindmap(): void
+  onToggleComments(): void
   onPresent(): void
   presentEnabled: boolean
 }): void {
-  const { onSearch, onCloseSearch, isSearchOpen, onToggleMindmap, onPresent, presentEnabled } = map
+  const { onSearch, onCloseSearch, isSearchOpen, onToggleMindmap, onToggleComments, onPresent, presentEnabled } = map
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -49,11 +50,21 @@ export function useShortcuts(map: {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault()
-        onToggleMindmap()
+        if (e.shiftKey) {
+          const target = e.target as HTMLElement | null
+          const isInput =
+            target &&
+            (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+          if (isInput) return
+          e.preventDefault()
+          onToggleComments()
+        } else {
+          e.preventDefault()
+          onToggleMindmap()
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onToggleMindmap])
+  }, [onToggleMindmap, onToggleComments])
 }

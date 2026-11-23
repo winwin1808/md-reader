@@ -2105,4 +2105,61 @@ describe('App', () => {
       expect(core.listHistory(lastSession.s.doc).length).toBe(before + 1)
     })
   })
+  describe('Bình luận (23c-3)', () => {
+    const loadDoc = async () => {
+      delete (window as any).location
+      window.location = new URL('http://localhost/?file=guide.md') as any
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue('# Cũ\n\nBản đầu') } as any)
+      await act(async () => { render(<App />) })
+      await waitFor(() => expect(lastSession.s.checkpoints).toBeTruthy())
+    }
+    it('menu có Bình luận; bấm mở drawer và đóng lịch sử, và ngược lại', async () => {
+      await loadDoc()
+      await act(async () => { fireEvent.click(screen.getByTitle('Lịch sử')) })
+      expect(screen.getByRole('complementary', { name: 'Lịch sử' })).toBeTruthy()
+      await act(async () => { fireEvent.click(screen.getByTitle('Bình luận')) })
+      expect(document.querySelector('.comments-drawer .comments-panel')).not.toBeNull()
+      expect(screen.queryByRole('complementary', { name: 'Lịch sử' })).toBeNull()
+      await act(async () => { fireEvent.click(screen.getByTitle('Lịch sử')) })
+      expect(document.querySelector('.comments-drawer')).toBeNull()
+      expect(screen.getByRole('complementary', { name: 'Lịch sử' })).toBeTruthy()
+    })
+    it('addComment vào doc đổi nhãn menu thành "Bình luận (1)"', async () => {
+      await loadDoc()
+      const d = lastSession.s.doc
+      await act(async () => { core.addComment(d, { author: 'X', body: 'hay', from: 2, to: 5 }) })
+      await waitFor(() => expect(screen.getByTitle(/^Bình luận \(1\)/)).toBeTruthy())
+    })
+    it('HTML chế độ Đọc có data-sp', async () => {
+      await loadDoc()
+      expect(document.querySelector('.a4-document-container [data-sp]')).not.toBeNull()
+    })
+    it('Ctrl+Shift+M mở/đóng drawer, Ctrl+M vẫn mở mindmap', async () => {
+      await loadDoc()
+      await act(async () => { fireEvent.keyDown(window, { key: 'M', ctrlKey: true, shiftKey: true }) })
+      expect(document.querySelector('.comments-drawer')).not.toBeNull()
+      expect(screen.queryByRole('dialog')).toBeNull()
+      await act(async () => { fireEvent.keyDown(window, { key: 'M', ctrlKey: true, shiftKey: true }) })
+      expect(document.querySelector('.comments-drawer')).toBeNull()
+      await act(async () => { fireEvent.keyDown(window, { key: 'm', ctrlKey: true }) })
+      expect(screen.getByRole('dialog')).toBeTruthy()
+    })
+    it('trả lời trong panel ghi reply vào doc', async () => {
+      await loadDoc()
+      const d = lastSession.s.doc
+      let id = ''
+      await act(async () => { id = core.addComment(d, { author: 'X', body: 'hay', from: 2, to: 5 }) })
+      await act(async () => { fireEvent.click(screen.getByTitle(/^Bình luận/)) })
+      const th = await waitFor(() => {
+        const el = document.querySelector(`.comment-thread[data-id="${id}"]`) as HTMLElement
+        expect(el).not.toBeNull()
+        return el
+      })
+      await act(async () => { fireEvent.click(th) })
+      const box = await screen.findByLabelText('Trả lời')
+      await act(async () => { fireEvent.change(box, { target: { value: 'đồng ý' } }) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gửi' })) })
+      await waitFor(() => expect(core.listThreads(d)[0]!.replies.map((r: any) => r.body)).toContain('đồng ý'))
+    })
+  })
 })

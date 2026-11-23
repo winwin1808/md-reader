@@ -23,6 +23,9 @@ import {
   HistoryTimeline,
   historyLabel,
   ConfirmAgentDialog,
+  CommentsPanel,
+  CommentLayer,
+  CommentComposer,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
@@ -51,6 +54,7 @@ import { openLocalFileAsDoc } from './fs/file-system'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useHistory } from './hooks/useHistory'
+import { useComments } from './hooks/useComments'
 import { useExport } from './hooks/useExport'
 import { useAgentConfirm } from './hooks/useAgentConfirm'
 import { useShare } from './collab/useShare'
@@ -192,6 +196,9 @@ export function App(): React.JSX.Element {
   const steps = useMemo(() => tourSteps(t as (key: string) => string), [t])
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [pendingRange, setPendingRange] = useState<{ from: number; to: number } | null>(null)
+  const [docContainerEl, setDocContainerEl] = useState<HTMLDivElement | null>(null)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | undefined>(undefined)
   const [imageNotice, setImageNotice] = useState<string | null>(null)
@@ -234,6 +241,7 @@ export function App(): React.JSX.Element {
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)
+  const comments = useComments(doc, displayName)
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
   const pendingAnchorRef = useRef<{ to: ViewMode; id: string | null } | null>(null)
@@ -570,7 +578,7 @@ export function App(): React.JSX.Element {
   const [mathRev, setMathRev] = useState(0)
   useEffect(() => onMathLoaded(() => setMathRev((n) => n + 1)), [])
 
-  const renderHtmlFor = useCallback((text: string) => {
+  const renderHtmlFor = useCallback((text: string, opts?: { sourcePositions?: boolean }) => {
     const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false, parseYaml })
     const rendered = renderToHtml(parsed, {
       math: readerSettings?.enableMath !== false,
@@ -581,6 +589,7 @@ export function App(): React.JSX.Element {
       githubAlerts: readerSettings?.githubAlerts,
       localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
       plugins: PLUGINS,
+      sourcePositions: opts?.sourcePositions,
     })
     return { parsed, rendered }
   }, [readerSettings, mathRev])
@@ -596,6 +605,39 @@ export function App(): React.JSX.Element {
     </div>
   ) : null
   const closeHistory = () => { history.preview(null); setHistoryOpen(false) }
+  const toggleComments = () => {
+    if (commentsOpen) { setCommentsOpen(false); return }
+    closeHistory()
+    setCommentsOpen(true)
+  }
+  const openThread = (id: string) => {
+    comments.setActive(id)
+    setCommentsOpen(true)
+    closeHistory()
+    const th = comments.threads.find((x) => x.id === id)
+    const from = th?.range?.from
+    if (from == null) return
+    if (viewMode === 'live') {
+      editorViewRef.current?.dispatch({ selection: { anchor: from }, scrollIntoView: true })
+      return
+    }
+    let best: Element | null = null
+    docContainerRef.current?.querySelectorAll('[data-sp]').forEach((el) => {
+      const start = Number((el.getAttribute('data-sp') ?? '').split(':')[0])
+      if (Number.isFinite(start) && start <= from) best = el
+    })
+    ;(best as Element | null)?.scrollIntoView?.({ block: 'center' })
+  }
+  const commentsConfig = useMemo(
+    () => ({
+      threads: comments.threads,
+      activeId: comments.activeId,
+      onCreate: (r: { from: number; to: number }) => setPendingRange(r),
+      onSelect: (id: string) => openThread(id),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [comments.threads, comments.activeId],
+  )
 
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
     if (!content) {
@@ -607,7 +649,7 @@ export function App(): React.JSX.Element {
         parsedDoc: { tree: emptyTree },
       }
     }
-    const { parsed, rendered } = renderHtmlFor(content)
+    const { parsed, rendered } = renderHtmlFor(content, { sourcePositions: true })
     return {
       html: rendered.html,
       toc: rendered.toc,
@@ -759,6 +801,7 @@ export function App(): React.JSX.Element {
     onCloseSearch: () => setIsSearchOpen(false),
     isSearchOpen,
     onToggleMindmap: () => setIsMindmapOpen((prev) => !prev),
+    onToggleComments: toggleComments,
     onPresent: () => setIsPresenting(true),
     presentEnabled: !isPresenting && !isSpeakerMode,
   })
@@ -802,7 +845,8 @@ export function App(): React.JSX.Element {
     { id: 'open', label: t('ext.menu.open'), icon: 'open-file', onSelect: () => { void handleOpenFile() } },
     { id: 'export', label: t('ext.menu.export'), icon: 'export', onSelect: () => setExportOpen(true) },
     ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? t('ext.menu.blameHide') : t('ext.menu.blameShow'), icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
-    { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
+    { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else { setCommentsOpen(false); setHistoryOpen(true) } } },
+    { id: 'comments', label: comments.openCount > 0 ? `${t('comments.title')} (${comments.openCount})` : t('comments.title'), icon: 'comment', badge: comments.openCount > 0, onSelect: toggleComments },
     { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true), badge: lifecycle.hasUnseenNotes },
   ]
 
@@ -1042,8 +1086,9 @@ export function App(): React.JSX.Element {
             <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 {previewBanner}
-                <div ref={docContainerRef} className="a4-document-container">
+                <div ref={(el) => { docContainerRef.current = el; setDocContainerEl((p) => (p === el ? p : el)) }} className="a4-document-container">
                   <Viewer html={previewHtml ?? html} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
+                  <CommentLayer container={docContainerEl} source={content} threads={comments.threads} activeId={comments.activeId} enabled={previewHtml === null} onCreate={(r, body) => { comments.create(r, body) }} onSelect={openThread} askName={false} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
@@ -1076,10 +1121,30 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
+          {commentsOpen && (
+            <div className="comments-drawer">
+              <CommentsPanel
+                threads={comments.threads}
+                activeId={comments.activeId}
+                me={comments.me}
+                onSelect={openThread}
+                onReply={comments.reply}
+                onResolve={comments.resolve}
+                onDelete={comments.remove}
+                onClose={() => setCommentsOpen(false)}
+              />
+            </div>
+          )}
+
           {viewMode === 'live' && (
             <div className="editor-mode-container">
               {previewHtml === null && <FormattingToolbar onAction={handleFormatAction} />}
               <div className="editor-mode-body">
+                {pendingRange && previewHtml === null && (
+                  <div className="editor-comment-composer">
+                    <CommentComposer askName={false} onSubmit={(body) => { comments.create(pendingRange, body); setPendingRange(null) }} onCancel={() => setPendingRange(null)} />
+                  </div>
+                )}
                 {previewHtml !== null ? (
                   <div className="history-preview-scroll">
                     {previewBanner}
@@ -1091,7 +1156,7 @@ export function App(): React.JSX.Element {
                   </div>
                 ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} comments={commentsConfig} />
                 </Suspense>
                 )}
               </div>
