@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS, sanitizeClientName, BRIDGE_MAX_CLIENT, bridgePinState } from './protocol.js'
+import { parseBridgeMessage, BRIDGE_TOOLS, BRIDGE_PORTS, validateToolArgs, textHash, BRIDGE_MAX_TITLE, BRIDGE_MAX_MARKDOWN, KNOWN_EXTENSION_IDS, isAllowedExtensionOrigin, BRIDGE_MAX_PAYLOAD, BRIDGE_MAX_CONNECTIONS, sanitizeClientName, BRIDGE_MAX_CLIENT, bridgePinState, BRIDGE_MAX_COMMENT } from './protocol.js'
 import { hashText } from '../doc/hash.js'
 
 const p = (o: unknown) => parseBridgeMessage(JSON.stringify(o))
@@ -7,7 +7,7 @@ const key = 'k'.repeat(16)
 
 describe('parseBridgeMessage', () => {
   it('constants', () => {
-    expect(BRIDGE_TOOLS).toHaveLength(7)
+    expect(BRIDGE_TOOLS).toHaveLength(10)
     expect(BRIDGE_PORTS).toEqual([47821, 47822, 47823, 47824, 47825, 47826, 47827, 47828, 47829, 47830])
   })
   it('rejects garbage', () => {
@@ -176,5 +176,30 @@ describe('hello pinnedExt + bridgePinState', () => {
     expect(bridgePinState(null, hex)).toBe('none')
     expect(bridgePinState(hex, hex)).toBe('self')
     expect(bridgePinState('b2'.repeat(32), hex)).toBe('other')
+  })
+})
+
+describe('comment tools', () => {
+  it('BRIDGE_TOOLS chứa ba tool mới và req parse được', () => {
+    for (const t of ['list_comments', 'reply_comment', 'resolve_comment']) expect(BRIDGE_TOOLS).toContain(t)
+    const m = parseBridgeMessage(JSON.stringify({ type: 'req', id: 'a', tool: 'list_comments', args: { docId: 'd' } }))
+    expect(m).toEqual({ type: 'req', id: 'a', tool: 'list_comments', args: { docId: 'd' } })
+  })
+  it('args hợp lệ', () => {
+    expect(validateToolArgs('list_comments', { docId: 'd' })).toEqual({ ok: true, args: { docId: 'd', status: 'open' } })
+    expect(validateToolArgs('list_comments', { docId: 'd', status: 'all' })).toEqual({ ok: true, args: { docId: 'd', status: 'all' } })
+    expect(validateToolArgs('reply_comment', { docId: 'd', threadId: 't', body: ' hi ' }).ok).toBe(true)
+    expect(validateToolArgs('resolve_comment', { docId: 'd', threadId: 't' }).ok).toBe(true)
+    expect(validateToolArgs('resolve_comment', { docId: 'd', threadId: 't', reply: 'ok' }).ok).toBe(true)
+  })
+  it('args không hợp lệ', () => {
+    expect(validateToolArgs('list_comments', { docId: 'd', status: 'x' }).ok).toBe(false)
+    expect(validateToolArgs('reply_comment', { docId: 'd', body: 'x' }).ok).toBe(false)
+    expect(validateToolArgs('reply_comment', { docId: 'd', threadId: 't', body: '' }).ok).toBe(false)
+    expect(validateToolArgs('reply_comment', { docId: 'd', threadId: 't', body: '   ' }).ok).toBe(false)
+    expect(validateToolArgs('reply_comment', { docId: 'd', threadId: 't', body: 'a'.repeat(BRIDGE_MAX_COMMENT + 1) }).ok).toBe(false)
+    expect(validateToolArgs('resolve_comment', { docId: 'd', threadId: 't', reply: '' }).ok).toBe(false)
+    expect(validateToolArgs('list_comments', { docId: 'd'.repeat(65) }).ok).toBe(false)
+    expect(validateToolArgs('resolve_comment', null).ok).toBe(false)
   })
 })
