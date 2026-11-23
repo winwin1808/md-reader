@@ -46,17 +46,11 @@ Người dùng mục tiêu: người nhờ AI viết tài liệu Markdown (báo 
 
 Sơ đồ và biểu đồ:
 
-- [ ] PlantUML
 - [ ] Graphviz / dot
 - [ ] Vega / Vega-Lite
-- [ ] ECharts
-- [ ] draw.io
-- [ ] Infographic
-- [ ] OpenAPI / Swagger (YAML) hiển thị thành tài liệu API
 
 Xuất bản:
 
-- [ ] EPUB
 - [ ] XLSX cho bảng
 - [ ] Xuất riêng từng hình (SVG / PNG)
 - [x] Công thức sửa được trong Word (OMML)
@@ -64,15 +58,13 @@ Xuất bản:
 Giao diện và hiệu năng:
 
 - [ ] Thêm giao diện tài liệu: business, academic, technical
-- [ ] Tài liệu lớn: cache và render tăng dần
-- [ ] Thêm ngôn ngữ giao diện ngoài Việt / Anh
 - [x] Xuất qua bộ phân giải ảnh (export HTML nhúng ảnh đường dẫn tương đối)
 
 ## v1.5 Cộng tác hoàn thiện và phát hành rộng
 
 Cộng tác:
 
-- [ ] Bình luận và đề xuất chỉnh sửa (suggestions)
+- [ ] Bình luận (link xem, link sửa, cả tài liệu chưa chia sẻ); AI đọc, trả lời và resolve qua MCP (phase 23)
 - [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ") và tự xoá phòng bỏ không 90 ngày
 - [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh, IP, trần ảnh toàn cục)
 - [ ] Deploy một chạm lên Cloudflare (nút "Deploy to Cloudflare")
@@ -81,8 +73,16 @@ Cộng tác:
 Phát hành:
 
 - [x] Chrome Web Store
-- [ ] Microsoft Edge Add-ons
-- [ ] Firefox AMO (kèm đường thay thế cho File System Access ở Firefox)
+
+## Đã cân nhắc, không làm
+
+Loại ngày 2026-11-23 vì build nặng, vướng cam kết riêng tư hoặc quy tắc extension, hoặc ít nhu cầu thật. Chỉ mở lại khi người dùng yêu cầu.
+
+- PlantUML (cần Java hoặc gửi nội dung lên máy chủ render bên thứ ba), draw.io (cần script viewer từ xa ~2 MB), Infographic, OpenAPI / Swagger, ECharts (trùng vai Vega-Lite)
+- Xuất EPUB
+- Render tăng dần cho tài liệu lớn (vỡ re-parse toàn bộ, mục lục, tìm kiếm, cuộn đồng bộ; chưa ai báo chậm)
+- Thêm ngôn ngữ giao diện (mỗi chuỗi mới phải dịch thêm; thay bằng dịch trang store)
+- Microsoft Edge Add-ons (Edge cài thẳng từ Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (bản trả phí)
 

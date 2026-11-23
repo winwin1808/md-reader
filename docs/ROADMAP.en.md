@@ -46,17 +46,11 @@ Ideas inspired by the feature lists of other Markdown viewers, notably docu.md (
 
 Diagrams and charts:
 
-- [ ] PlantUML
 - [ ] Graphviz / dot
 - [ ] Vega / Vega-Lite
-- [ ] ECharts
-- [ ] draw.io
-- [ ] Infographic
-- [ ] OpenAPI / Swagger (YAML) rendered as API docs
 
 Export:
 
-- [ ] EPUB
 - [ ] XLSX for tables
 - [ ] Export individual figures (SVG / PNG)
 - [x] Editable formulas in Word (OMML)
@@ -64,15 +58,13 @@ Export:
 Look and performance:
 
 - [ ] More document themes: business, academic, technical
-- [ ] Large documents: caching and incremental rendering
-- [ ] More interface languages beyond Vietnamese / English
 - [x] Export through the image resolver (HTML export embeds relative images)
 
 ## v1.5 Finished collaboration and wide release
 
 Collaboration:
 
-- [ ] Comments and suggested edits
+- [ ] Comments (view and edit links, unshared docs too); AI reads, answers and resolves them via MCP (phase 23)
 - [x] Room-data deletion endpoint ("Delete data from server" button) and automatic deletion of rooms unopened for 90 days
 - [x] Daily limits for the Worker (anonymous install key, IP, global image caps)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
@@ -81,8 +73,16 @@ Collaboration:
 Release:
 
 - [x] Chrome Web Store
-- [ ] Microsoft Edge Add-ons
-- [ ] Firefox AMO (with a replacement for File System Access on Firefox)
+
+## Considered, not doing
+
+Dropped on 2026-11-23 as heavy to build, at odds with the privacy promise or the extension rules, or with little real demand. Reopen only if users ask for them.
+
+- PlantUML (needs Java or sending content to a third-party render server), draw.io (needs a ~2 MB remote viewer script), Infographic, OpenAPI / Swagger, ECharts (overlaps Vega-Lite)
+- EPUB export
+- Incremental rendering for large documents (would break full re-parse, outline, search and scroll sync; no reports of slowness yet)
+- More interface languages (ongoing translation cost for every new string; the store listing is translated instead)
+- Microsoft Edge Add-ons (Edge installs from the Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (paid)
 

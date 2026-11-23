@@ -99,11 +99,10 @@ Nền tảng chung: không tài khoản, không theo dõi, font đóng gói sẵ
 | Nền tảng | Trạng thái | Ghi chú |
 |---|---|---|
 | Chrome | **Có** | Cài từ [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) hoặc từ mã nguồn / zip phát hành. |
-| Edge | **Có** | Dùng nguyên zip Chrome. Trang Edge Add-ons: dự kiến. |
+| Edge | **Có** | Cài thẳng từ Chrome Web Store. |
 | Brave / Opera / Arc / Vivaldi | **Có** | Cùng nhân Chromium, dùng zip Chrome. |
 | Firefox (MV3, từ 128) | **Có giới hạn** | Có bản build. Không có File System Access API nên không Mở file / Lưu thẳng về đĩa / ảnh vào `assets/`; một số quyền phải cấp thủ công. Chi tiết: [`docs/PLATFORMS.md`](docs/PLATFORMS.md). |
 | Chrome Web Store | **Có** | [MD Reader](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) |
-| Edge Add-ons / Firefox AMO | **Đang làm** | Hồ sơ listing đã có; chờ publish. |
 | VS Code, Obsidian | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
 | Web app (kéo file, không cài) | **Dự kiến** | Xem [lộ trình](docs/ROADMAP.md). |
 | Di động | **Dự kiến** | Sau cùng. |

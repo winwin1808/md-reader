@@ -99,11 +99,10 @@ Common ground: no account, no tracking, bundled fonts, MIT open source.
 | Platform | Status | Notes |
 |---|---|---|
 | Chrome | **Yes** | Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) or from source / the release zip. |
-| Edge | **Yes** | Use the Chrome zip as is. Edge Add-ons page: planned. |
+| Edge | **Yes** | Install straight from the Chrome Web Store. |
 | Brave / Opera / Arc / Vivaldi | **Yes** | Same Chromium core, use the Chrome zip. |
 | Firefox (MV3, 128+) | **Limited** | A build exists. No File System Access API, so no Open file / save straight to disk / images into `assets/`; some permissions must be granted manually. Details: [`docs/PLATFORMS.md`](docs/PLATFORMS.md). |
 | Chrome Web Store | **Yes** | [MD Reader](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog) |
-| Edge Add-ons / Firefox AMO | **In progress** | Listing material is ready; waiting to publish. |
 | VS Code, Obsidian | **Planned** | See the [roadmap](docs/ROADMAP.en.md). |
 | Web app (drop a file, no install) | **Planned** | See the [roadmap](docs/ROADMAP.en.md). |
 | Mobile | **Planned** | Last. |
