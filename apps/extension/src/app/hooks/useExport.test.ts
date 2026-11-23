@@ -9,16 +9,19 @@ vi.mock('@md-reader/ui', async (orig) => ({
   printSlides: printSlidesMock,
 }))
 
+const docxMock = vi.hoisted(() => vi.fn(async () => new Blob(['x'])))
+vi.mock('@md-reader/core/docx', () => ({ mdastToDocx: docxMock }))
+
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
-function setup(resolveImage?: (s: string) => string) {
+function setup(resolveImage?: (s: string) => string, docStyle?: 'business') {
   const fetchMock = vi.fn(async () => new Response(PNG, { status: 200, headers: { 'content-type': 'image/png' } }))
   vi.stubGlobal('fetch', fetchMock)
   let captured: Blob | null = null
   URL.createObjectURL = ((b: Blob) => { captured = b; return 'blob:dl' }) as typeof URL.createObjectURL
   URL.revokeObjectURL = () => {}
   const { result } = renderHook(() =>
-    useExport({ html: '<p><img src="img/a.png" alt="a"></p>', title: 't', parseResult: {} as never, resolveImage }),
+    useExport({ html: '<p><img src="img/a.png" alt="a"></p>', title: 't', parseResult: {} as never, resolveImage, docStyle }),
   )
   return { result, fetchMock, getBlob: () => captured as Blob | null }
 }
@@ -33,6 +36,19 @@ describe('useExport html', () => {
     const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(getBlob()!) })
     expect(text).toContain('data:image/png;base64,')
     expect(text).not.toContain('src="img/a.png"')
+  })
+
+  it('uses docStyle css in html export', async () => {
+    const { result, getBlob } = setup(undefined, 'business')
+    await result.current.exportAs('html')
+    const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(getBlob()!) })
+    expect(text).toContain('IBM Plex Sans')
+  })
+
+  it('passes docStyle to mdastToDocx', async () => {
+    const { result } = setup(undefined, 'business')
+    await result.current.exportAs('docx').catch(() => {})
+    expect(docxMock).toHaveBeenCalledWith(expect.objectContaining({ docStyle: 'business' }))
   })
 
   it('fetches original src without resolveImage', async () => {
