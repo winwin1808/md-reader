@@ -11,11 +11,12 @@ Spec `docs/superpowers/specs/2026-11-23-phase-23-design.md` (shipped) · intent 
 - extension: nút toolbar "Bình luận (n)", Ctrl/Cmd+Shift+M, composer ở Đọc và Sửa; executor `list_comments` / `reply_comment` / `resolve_comment` (không hỏi xác nhận, chờ IDB).
 - api: peer-guard cho mục bình luận (chỉ mục của clientID mình); link xem gửi update chỉ chứa bình luận — **23g1 phát hiện** y-partyserver `isReadOnly` vứt im lặng update của link xem → `room.ts` bật cờ `applyingViewUpdate` quanh `super.handleMessage` sau peer-guard. Step2 từ link xem vẫn bỏ.
 - web `/s/:token`: bình luận cho link xem (tên khách lưu cục bộ) và link sửa; 4403 → khoá bình luận, không nối lại vòng.
+- Trang ghi chú phát hành công khai `site/changelog.html` (vi/en, mỗi bản một `#v<x.y.z>`; deploy Pages khi merge) — URL `https://winwin1808.github.io/md-reader/changelog.html`. "Có gì mới" trong extension (tự mở một lần khi cập nhật có `showOnUpdate`) có link "Xem toàn bộ ghi chú phát hành" tới đúng anchor. **Mỗi lần ra bản:** thêm mục vào `release-notes.ts` VÀ `site/changelog.html` — test `WhatsNewPage.test.tsx` đỏ nếu thiếu section.
 - `le-sach-mcp` 1.4.0: 10 tool; extension 1.6.0, RELEASE_NOTES `showOnUpdate`; docs MCP vi/en, ROADMAP P23 `[x]`, CHANGELOG, quyền riêng tư.
-- Test (đo 2026-11-23 trên `phase-23`): core 378 · ui 704 · extension 713 · web 78 · api 286 · le-sach-mcp 61 · e2e 13 · e2e:collab 3; typecheck/build 0; content.js gz 13,660 B. Máy tải cao (load ~30) làm vài test core/ui timeout 5 s — chạy lại xanh.
+- Test (đo 2026-11-23 trên `phase-23`): core 378 · ui 704 · extension 716 · web 78 · api 286 · le-sach-mcp 61 · e2e 13 · e2e:collab 3; typecheck/build 0; content.js gz 13,660 B. Máy tải cao (load ~30) làm vài test core/ui timeout 5 s — chạy lại xanh.
 - e2e MCP cần một cổng trống trong 47821–47830; máy dev hay bị các phiên `le-sach-mcp` khác chiếm hết (`no free port`).
 
-**Người làm:** merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store.
+**Người làm:** merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store (mô tả store có thể dẫn link trang phát hành) → tag `v1.6.0` + GitHub Release trỏ về `changelog.html#v1.6.0`.
 
 Nợ:
 - Unit test api chưa kiểm phát lại/lưu của update link xem (e2e phủ).

@@ -1,5 +1,5 @@
 # Design: Phase 23 — Bình luận + AI xử lý góp ý
-Author: winwin1808. Status: in-progress. Phase: 23
+Author: winwin1808. Status: shipped. Phase: 23
 
 Intent: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai.md
 Brainstorm: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai-va-xuat-nhe-brainstorm.md
@@ -23,8 +23,8 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23f2 — done — extension: thực thi tool bình luận
 - 23g1 — done — e2e cộng tác + MCP thật
 - 23g2 — done — docs, ROADMAP, phiên bản
-- 23h1 — planned — site: trang ghi chú phát hành `changelog.html`
-- 23h2 — planned — extension: "Có gì mới" trỏ tới trang phát hành + test đồng bộ phiên bản
+- 23h1 — done — site: trang ghi chú phát hành `changelog.html`
+- 23h2 — done — extension: "Có gì mới" trỏ tới trang phát hành + test đồng bộ phiên bản
 
 ## Approach chosen
 
