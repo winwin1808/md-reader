@@ -28,13 +28,13 @@ importers:
         version: 0.5.10(@cloudflare/workers-types@4.20260702.1)
       y-partyserver:
         specifier: 2.2.0
-        version: 2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.33)
+        version: 2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.32)
       y-protocols:
         specifier: 1.0.7
-        version: 1.0.7(yjs@13.6.33)
+        version: 1.0.7(yjs@13.6.32)
       yjs:
-        specifier: 13.6.33
-        version: 13.6.33
+        specifier: 13.6.32
+        version: 13.6.32
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4
@@ -2959,10 +2959,6 @@ packages:
     resolution: {integrity: sha512-lfiJIIC4Xayt5ItynE407ehlE03pCjeOc4hkR4yxxvvNJ4kuiN25B0g+Qp8XagYz361LLL7DCzR5bvFJ81QKtQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
-  yjs@13.6.33:
-    resolution: {integrity: sha512-q/UYvr1gOk4XII+Cu1CW2dINjYqJJFifTzogEaIARznrvX7uOlHsdTEXcnOBMuIsrCGEEKdNxi74kyMLZlKVfw==}
-    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
-
   youch-core@0.3.3:
     resolution: {integrity: sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA==}
 
@@ -5800,33 +5796,14 @@ snapshots:
       y-protocols: 1.0.7(yjs@13.6.32)
       yjs: 13.6.32
 
-  y-partyserver@2.2.0(@cloudflare/workers-types@4.20260702.1)(partyserver@0.5.10(@cloudflare/workers-types@4.20260702.1))(yjs@13.6.33):
-    dependencies:
-      '@cloudflare/workers-types': 4.20260702.1
-      lib0: 0.2.117
-      lodash.debounce: 4.0.8
-      nanoid: 5.1.16
-      partyserver: 0.5.10(@cloudflare/workers-types@4.20260702.1)
-      y-protocols: 1.0.7(yjs@13.6.33)
-      yjs: 13.6.33
-
   y-protocols@1.0.7(yjs@13.6.32):
     dependencies:
       lib0: 0.2.117
       yjs: 13.6.32
 
-  y-protocols@1.0.7(yjs@13.6.33):
-    dependencies:
-      lib0: 0.2.117
-      yjs: 13.6.33
-
   yaml@2.9.0: {}
 
   yjs@13.6.32:
-    dependencies:
-      lib0: 0.2.117
-
-  yjs@13.6.33:
     dependencies:
       lib0: 0.2.117
 
