@@ -1,6 +1,26 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-13. **Phase 21 + 22 đã merge vào `main`** (MR #23 → `phase-21`, MR #22 → `main`, `93e5918`). Worker đã deploy bản `0cc7bcd7` (kèm migration remote `0005_feedback`); `le-sach-mcp@1.3.3` đã có trên npm; zip `docs/store/md-reader-1.5.1.zip` đã build. Các nhánh phase đã xoá — chỉ còn `main`.
+Cập nhật: 2026-11-23. **Phase 23 HOÀN TẤT trên `phase-23`**, MR #25 → `main` đã mở (https://github.com/winwin1808/md-reader/pull/25), **chưa merge**. Phase 21 + 22 đã merge vào `main` trước đó (`93e5918`).
+
+## Phase 23 — Bình luận + AI xử lý góp ý qua MCP, v1.6.0 (2026-11-23)
+
+Spec `docs/superpowers/specs/2026-11-23-phase-23-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai.md` · plan `docs/superpowers/plans/2026-11-23-phase-23-<sub>-plan.md`. MR #25.
+
+- core: root `Y.Map "comments"` phẳng, mục JSON bất biến neo `Y.RelativePosition` trên `Y.Text "source"`; `formatVersion` 3 + migration + fixture; "Làm gọn" giữ bình luận; `data-sp` trong render + ánh xạ vùng chọn DOM → offset source; `commentAsActor` (fork dưới clientID tác giả AI).
+- ui: `CommentsPanel` (tab Đang mở / Đã xong), `CommentLayer` (chọn chữ → `.comment-add-btn` → composer, tô, mốc lề), bình luận trong editor live preview; `useComments` chung ở `@md-reader/ui`.
+- extension: nút toolbar "Bình luận (n)", Ctrl/Cmd+Shift+M, composer ở Đọc và Sửa; executor `list_comments` / `reply_comment` / `resolve_comment` (không hỏi xác nhận, chờ IDB).
+- api: peer-guard cho mục bình luận (chỉ mục của clientID mình); link xem gửi update chỉ chứa bình luận — **23g1 phát hiện** y-partyserver `isReadOnly` vứt im lặng update của link xem → `room.ts` bật cờ `applyingViewUpdate` quanh `super.handleMessage` sau peer-guard. Step2 từ link xem vẫn bỏ.
+- web `/s/:token`: bình luận cho link xem (tên khách lưu cục bộ) và link sửa; 4403 → khoá bình luận, không nối lại vòng.
+- `le-sach-mcp` 1.4.0: 10 tool; extension 1.6.0, RELEASE_NOTES `showOnUpdate`; docs MCP vi/en, ROADMAP P23 `[x]`, CHANGELOG, quyền riêng tư.
+- Test (đo 2026-11-23 trên `phase-23`): core 378 · ui 704 · extension 713 · web 78 · api 286 · le-sach-mcp 61 · e2e 13 · e2e:collab 3; typecheck/build 0; content.js gz 13,660 B. Máy tải cao (load ~30) làm vài test core/ui timeout 5 s — chạy lại xanh.
+- e2e MCP cần một cổng trống trong 47821–47830; máy dev hay bị các phiên `le-sach-mcp` khác chiếm hết (`no free port`).
+
+**Người làm:** merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store.
+
+Nợ:
+- Unit test api chưa kiểm phát lại/lưu của update link xem (e2e phủ).
+- e2e: `mcp.spec` `nameBox.count()` không chờ, chỉ bắn `mouseup` (nên dùng chung `selectText` của collab.spec); collab.spec bấm Ctrl+Shift+M trên trang chủ không `bringToFront()`.
+- Tên awareness ở link xem cố định lúc bind; panel link xem bị khoá vẫn hiện nút Trả lời/Xong; observer `meta` thừa ở `useComments`; `forkAsActor` tạo fork ngoài `try`.
 
 ## Phase 22 — Vá bảo mật sau audit run-2 (2026-11-13)
 
