@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { UnsupportedFormatVersionError } from './schema.js'
+import fixture from './fixtures/v2-doc.json'
 import { migrateDoc, ensureDoc, getMeta, getSource, getHistory, readMeta } from './doc.js'
 
 function v1Fixture(): Y.Doc {
@@ -99,5 +100,19 @@ describe('ensureDoc', () => {
     const doc = v1Fixture()
     getMeta(doc).set('formatVersion', 99)
     expect(() => ensureDoc(doc)).toThrow(UnsupportedFormatVersionError)
+  })
+})
+
+describe('fixture v2 thật', () => {
+  it('nạp được và giữ nguyên dữ liệu', () => {
+    const bin = atob(fixture.update)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const doc = new Y.Doc({ gc: false })
+    Y.applyUpdate(doc, bytes)
+    expect(getMeta(doc).get('formatVersion')).toBe(2)
+    expect(getSource(doc).toString()).toBe(fixture.source)
+    expect(getHistory(doc).length).toBe(1)
+    expect(Object.values(readMeta(doc).actors)).toContain('Fixture')
   })
 })
