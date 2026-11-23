@@ -30,7 +30,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -54,7 +54,6 @@ import { openLocalFileAsDoc } from './fs/file-system'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useHistory } from './hooks/useHistory'
-import { useComments } from './hooks/useComments'
 import { useExport } from './hooks/useExport'
 import { useAgentConfirm } from './hooks/useAgentConfirm'
 import { useShare } from './collab/useShare'

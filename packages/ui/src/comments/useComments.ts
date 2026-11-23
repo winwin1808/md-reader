@@ -9,7 +9,7 @@ import {
   setResolved,
   type CommentThread,
 } from '@md-reader/core'
-import type { CommentsPanelProps } from '@md-reader/ui'
+import type { CommentsPanelProps } from '../components/CommentsPanel'
 
 const DEBOUNCE_MS = 120
 const EMPTY: CommentThread[] = []
@@ -24,15 +24,22 @@ interface State {
   activeId: string | null
 }
 
+export interface UseCommentsOptions {
+  canModerate?: boolean
+  canResolveAll?: boolean
+  matchActorName?: boolean
+}
+
 export function useComments(
   doc: Y.Doc | null,
   actor: string,
+  opts?: UseCommentsOptions,
 ): {
   threads: CommentThread[]
   openCount: number
   activeId: string | null
   setActive(id: string | null): void
-  create(range: { from: number; to: number }, body: string): string | null
+  create(range: { from: number; to: number }, body: string, author?: string): string | null
   reply(threadId: string, body: string): void
   resolve(threadId: string, resolved: boolean): void
   remove(id: string): void
@@ -87,10 +94,10 @@ export function useComments(
   )
 
   const create = useCallback(
-    (range: { from: number; to: number }, body: string): string | null => {
+    (range: { from: number; to: number }, body: string, author?: string): string | null => {
       if (!doc) return null
       try {
-        const id = addComment(doc, { author: actor, body, from: range.from, to: range.to })
+        const id = addComment(doc, { author: author?.trim() || actor, body, from: range.from, to: range.to })
         setState({ doc, threads: listThreads(doc), activeId: id })
         return id
       } catch (e) {
@@ -144,8 +151,12 @@ export function useComments(
     return () => meta.unobserveDeep(bump)
   }, [doc])
 
+  const canModerate = opts?.canModerate ?? true
+  const canResolveAll = opts?.canResolveAll ?? true
+  const matchActorName = opts?.matchActorName ?? true
+
   const actorsKey = (() => {
-    if (!doc) return ''
+    if (!doc || !matchActorName) return ''
     const actors = doc.getMap('meta').get('actors') as Y.Map<string> | undefined
     if (!actors || typeof actors.forEach !== 'function') return ''
     const ids: string[] = []
@@ -162,8 +173,8 @@ export function useComments(
       const n = Number(k)
       if (k !== '' && Number.isFinite(n)) ids.add(n)
     }
-    return { clientIds: [...ids], canModerate: true, canResolveAll: true }
-  }, [doc, actorsKey])
+    return { clientIds: [...ids], canModerate, canResolveAll }
+  }, [doc, actorsKey, canModerate, canResolveAll])
 
   return { threads, openCount, activeId: current.activeId, setActive, create, reply, resolve, remove, me }
 }

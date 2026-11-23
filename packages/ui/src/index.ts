@@ -60,3 +60,5 @@ export type { TourStep, GuidedTourProps } from './components/GuidedTour'
 
 export * from './components/CommentLayer'
 export type { CommentLayerProps } from './components/CommentLayer'
+export { useComments } from './comments/useComments'
+export type { UseCommentsOptions } from './comments/useComments'

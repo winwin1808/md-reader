@@ -1,11 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { API_PATHS, computeTextChanges, trackLocalActor, type ResolveTokenResponse, type UploadAssetResponse } from '@md-reader/core'
-import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme, useT, useLocale, createT } from '@md-reader/ui'
+import { CommentComposer, CommentLayer, CommentsPanel, useComments, FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme, useT, useLocale, createT } from '@md-reader/ui'
 import type { TFunction } from '@md-reader/ui'
-import type { EditorView, FormatAction } from '@md-reader/ui'
+import type { EditorCommentsConfig, EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
+import { readName, writeName } from './name'
 import { NoticeStack, useNotices } from './Notice'
 
 export async function uploadImage(serverUrl: string, room: string, token: string, file: File, t: TFunction = createT('vi')): Promise<UploadAssetResponse> {
@@ -40,6 +41,7 @@ export function PageHeader(props: {
   status?: string
   presence?: React.ReactNode
   toggle?: { value: 'edit' | 'view'; onChange: (v: 'edit' | 'view') => void }
+  actions?: React.ReactNode
 }): React.JSX.Element {
   const t = useT()
   return (
@@ -68,26 +70,17 @@ export function PageHeader(props: {
             ))}
           </div>
         )}
+        {props.actions}
       </div>
     </header>
   )
 }
-
-const NAME_KEY = 'mdr.displayName'
 
 export interface EditPageProps {
   token: string
   info: ResolveTokenResponse
   serverUrl?: string
   bind?: typeof bindRoom
-}
-
-function readName(): string {
-  try {
-    return (localStorage.getItem(NAME_KEY) ?? '').trim()
-  } catch {
-    return ''
-  }
 }
 
 const STATUS_KEY = {
@@ -109,11 +102,7 @@ export function EditPage(props: EditPageProps): React.JSX.Element {
       e.preventDefault()
       const v = draft.trim()
       if (!v) return
-      try {
-        localStorage.setItem(NAME_KEY, v)
-      } catch {
-        /* storage may be unavailable */
-      }
+      writeName(v)
       setName(v)
     }
     return (
@@ -137,7 +126,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const [status, setStatus] = useState<SyncStatus>('connecting')
   const [wasOnline, setWasOnline] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [html, setHtml] = useState('')
+  const [view, setView] = useState<{ html: string; source: string }>({ html: '', source: '' })
+  const html = view.html
   const [, setTick] = useState(0)
   const [mode, setMode] = useState<'edit' | 'view'>('edit')
   const resolved = useResolvedTheme()
@@ -160,7 +150,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     setStatus('connecting')
     setWasOnline(false)
     setFailed(false)
-    setHtml('')
+    setView({ html: '', source: '' })
     const doc = new Y.Doc({ gc: false })
     const yText = doc.getText('source')
     const undo = new Y.UndoManager(yText)
@@ -184,13 +174,13 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString(), locale)), 120)
+      timer = setTimeout(() => { const src = yText.toString(); setView({ html: renderShareHtml(src, locale, { sourcePositions: true }), source: src }) }, 120)
     }
     const onStack = () => setTick((n) => n + 1)
     yText.observe(onChange)
     undo.on('stack-item-added', onStack)
     undo.on('stack-item-popped', onStack)
-    setHtml(renderShareHtml(yText.toString(), locale))
+    { const src = yText.toString(); setView({ html: renderShareHtml(src, locale, { sourcePositions: true }), source: src }) }
     setSession({ doc, yText, undo, conn })
     return () => {
       if (timer) clearTimeout(timer)
@@ -228,6 +218,40 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     [session],
   )
 
+  const c = useComments(session?.doc ?? null, name, { canModerate: false, canResolveAll: true, matchActorName: false })
+  const [open, setOpen] = useState(false)
+  const [pendingRange, setPendingRange] = useState<{ from: number; to: number } | null>(null)
+  const [sheet, setSheet] = useState<HTMLElement | null>(null)
+  const sheetRef = useCallback((el: HTMLDivElement | null) => setSheet(el), [])
+  const locked = status === 'revoked' || status === 'full'
+
+  useEffect(() => { setPendingRange(null) }, [mode, locked])
+
+  const openThread = (id: string) => {
+    c.setActive(id)
+    setOpen(true)
+    const view = editorViewRef.current
+    const th = c.threads.find((x) => x.id === id)
+    if (mode === 'edit' && view && th?.range) {
+      const len = view.state.doc.length
+      const from = Math.min(th.range.from, len)
+      const to = Math.min(th.range.to, len)
+      view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true })
+    }
+  }
+  const openThreadRef = useRef(openThread)
+  openThreadRef.current = openThread
+
+  const editorComments = useMemo<EditorCommentsConfig>(
+    () => ({
+      threads: c.threads,
+      activeId: c.activeId,
+      onCreate: (range) => setPendingRange(range),
+      onSelect: (id) => openThreadRef.current(id),
+    }),
+    [c.threads, c.activeId],
+  )
+
   if (failed && !wasOnline) {
     return (
       <div className="web-notice">
@@ -238,7 +262,18 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   }
   if (!wasOnline || !session) return <div className="web-notice"><p role="status">{t('web.loadingDoc')}</p></div>
 
-  const locked = status === 'revoked' || status === 'full'
+  const actions = (
+    <button
+      type="button"
+      className="web-comments-toggle"
+      disabled={locked}
+      title={locked ? t('web.commentsFull') : undefined}
+      aria-expanded={open}
+      onClick={() => setOpen((v) => !v)}
+    >
+      {`${t('comments.title')} (${c.openCount})`}
+    </button>
+  )
 
   return (
     <div className="web-page">
@@ -247,6 +282,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
         status={t(STATUS_KEY[status])}
         presence={<PresenceBar peers={peers} />}
         toggle={locked ? undefined : { value: mode, onChange: setMode }}
+        actions={actions}
       />
       {locked && (
         <p role="alert" className="web-banner">{t(STATUS_KEY[status])}</p>
@@ -260,7 +296,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
             onUndo={() => session.undo.undo()}
             onRedo={() => session.undo.redo()}
           />
-          <div className="web-sheet web-sheet-edit">
+          <div className="web-sheet web-sheet-edit" style={{ position: 'relative' }}>
             <Suspense fallback={<div aria-busy="true" />}>
               <Editor
                 variant="live"
@@ -271,14 +307,61 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
                 editorViewRef={editorViewRef}
                 saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file, t)).url })}
                 onImageMessage={(m) => push('error', m)}
+                comments={editorComments}
               />
             </Suspense>
+            {pendingRange && (
+              <div className="web-comment-composer">
+                <CommentComposer
+                  askName={false}
+                  onCancel={() => setPendingRange(null)}
+                  onSubmit={(body) => {
+                    const id = c.create(pendingRange, body)
+                    if (id === null) push('error', t('web.commentRangeChanged'))
+                    else {
+                      setPendingRange(null)
+                      setOpen(true)
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </>
       ) : (
-        <div className="web-sheet">
-          <Viewer html={html} isAppPage={false} />
-        </div>
+        <>
+          <div className="web-sheet" ref={sheetRef}>
+            <Viewer html={html} isAppPage={false} />
+          </div>
+          <CommentLayer
+            container={sheet}
+            source={view.source}
+            threads={c.threads}
+            activeId={c.activeId}
+            enabled={!locked}
+            askName={false}
+            onSelect={openThread}
+            onCreate={(range, body) => {
+              const id = c.create(range, body)
+              if (id === null) push('error', t('web.commentRangeChanged'))
+              else setOpen(true)
+            }}
+          />
+        </>
+      )}
+      {open && (
+        <aside className="web-comments-drawer">
+          <CommentsPanel
+            threads={c.threads}
+            me={c.me}
+            activeId={c.activeId}
+            onSelect={openThread}
+            onReply={c.reply}
+            onResolve={c.resolve}
+            onDelete={c.remove}
+            onClose={() => setOpen(false)}
+          />
+        </aside>
       )}
       {notices.length > 0 && <NoticeStack items={notices} onDismiss={dismiss} />}
     </div>
