@@ -22,7 +22,7 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23f1 — done — core bridge + `le-sach-mcp`: ba tool bình luận
 - 23f2 — done — extension: thực thi tool bình luận
 - 23g1 — pending — e2e cộng tác + MCP thật
-- 23g2 — planned — docs, ROADMAP, phiên bản
+- 23g2 — done — docs, ROADMAP, phiên bản
 
 ## Approach chosen
 
