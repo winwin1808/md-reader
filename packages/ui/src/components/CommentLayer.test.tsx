@@ -70,6 +70,41 @@ describe('CommentLayer', () => {
     expect(r.to).toBe(35)
     expect(r.from).toBe(12)
   })
+  it('triple-click ending at (next block, 0) stays in first block', () => {
+    const { onCreate } = mount()
+    select(p1(), 0, root.children[1]!.firstChild!, 0)
+    submit('x')
+    const r = onCreate.mock.calls[0]![0]
+    expect(r.from).toBe(0)
+    expect(r.to).toBeLessThanOrEqual(21)
+  })
+  it('source change closes composer without onCreate', () => {
+    const { onCreate, rerender } = mount()
+    select(p1(), 0, p1(), 5)
+    fireEvent.click(addBtn()!)
+    expect(ta()).toBeTruthy()
+    rerender(<CommentLayer {...({ container: root, source: 'X' + source, threads: [], activeId: null, enabled: true, onCreate, onSelect: vi.fn(), askName: false } as unknown as CommentLayerProps)} />)
+    expect(ta()).toBeNull()
+    expect(sendBtn()).toBeUndefined()
+    expect(onCreate).not.toHaveBeenCalled()
+  })
+  it('cmd+enter sends', () => {
+    const { onCreate } = mount()
+    select(p1(), 0, p1(), 5)
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'yo' } })
+    fireEvent.keyDown(ta(), { key: 'Enter', metaKey: true })
+    expect(onCreate).toHaveBeenCalledTimes(1)
+  })
+  it('unmount removes selectionchange listener', () => {
+    const spy = vi.spyOn(document, 'removeEventListener')
+    const { unmount } = mount()
+    unmount()
+    expect(spy.mock.calls.some((c) => c[0] === 'selectionchange')).toBe(true)
+    spy.mockRestore()
+    select(p1(), 0, p1(), 5)
+    expect(addBtn()).toBeNull()
+  })
   it('disabled -> no button', () => {
     mount({ enabled: false })
     select(p1(), 0, p1(), 5)
@@ -191,6 +226,13 @@ describe('CommentLayer highlights and markers', () => {
     unmount()
     expect(root.querySelector('.comment-block-marked')).toBeNull()
     expect(hmap.size).toBe(0)
+  })
+  it('cleanup keeps highlight registered by another instance', () => {
+    const { unmount } = mount({ threads: [T1] })
+    const other = {}
+    hmap.set('mdr-comment', other as never)
+    unmount()
+    expect(hmap.get('mdr-comment')).toBe(other)
   })
   it('marker shows count and click selects first thread', () => {
     const onSelect = vi.fn()

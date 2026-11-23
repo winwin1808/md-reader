@@ -54,19 +54,38 @@ function computeRange(
   source: string,
 ): { from: number; to: number } | null {
   const a = blockOf(range.startContainer, container)
-  const b = blockOf(range.endContainer, container)
+  let b = blockOf(range.endContainer, container)
   if (!a || !b) return null
-  const pre = range.cloneRange()
+  let work = range
+  if (a.el !== b.el) {
+    const tail = range.cloneRange()
+    tail.selectNodeContents(b.el)
+    tail.setEnd(range.endContainer, range.endOffset)
+    if (!tail.toString().trim()) {
+      // End point sits at the start of the last block (triple-click): step back.
+      const endEl = b.el
+      const cands = Array.from(container.querySelectorAll('[data-sp]')).filter(
+        (el) => el !== endEl && !el.contains(endEl) && range.intersectsNode(el),
+      )
+      const prev = cands[cands.length - 1]
+      const pb = prev ? blockOf(prev, container) : null
+      if (!pb) return null
+      b = pb
+      work = range.cloneRange()
+      work.setEnd(b.el, b.el.childNodes.length)
+    }
+  }
+  const pre = work.cloneRange()
   pre.selectNodeContents(a.el)
-  pre.setEnd(range.startContainer, range.startOffset)
+  pre.setEnd(work.startContainer, work.startOffset)
   const before = pre.toString()
   let text: string
   if (a.el === b.el) {
-    text = range.toString()
+    text = work === range ? work.toString() : work.toString().trimEnd()
   } else {
-    const head = range.cloneRange()
+    const head = work.cloneRange()
     head.selectNodeContents(a.el)
-    head.setStart(range.startContainer, range.startOffset)
+    head.setStart(work.startContainer, work.startOffset)
     text = head.toString()
   }
   if (!text.trim()) return null
@@ -109,7 +128,7 @@ function findTextRange(block: Element, quote: string): Range | null {
   return null
 }
 
-type HighlightRegistry = { set(k: string, v: unknown): unknown; delete(k: string): unknown }
+type HighlightRegistry = { get(k: string): unknown; set(k: string, v: unknown): unknown; delete(k: string): unknown }
 type HighlightCtor = new () => { add(r: Range): unknown }
 
 function getHighlights(): { reg: HighlightRegistry; Ctor: HighlightCtor } | null {
@@ -149,6 +168,8 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
     const active = hl ? new hl.Ctor() : null
     let nNormal = 0
     let nActive = 0
+    let setNormal: unknown = null
+    let setActive: unknown = null
     for (const th of threads) {
       if (th.resolved || th.deleted || !th.range) continue
       const { from, to } = th.range
@@ -173,8 +194,8 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
       }
     }
     if (hl) {
-      if (nNormal) hl.reg.set('mdr-comment', normal)
-      if (nActive) hl.reg.set('mdr-comment-active', active)
+      if (nNormal) { hl.reg.set('mdr-comment', normal); setNormal = normal }
+      if (nActive) { hl.reg.set('mdr-comment-active', active); setActive = active }
     }
     targetsRef.current = targets
     const measure = () => {
@@ -193,8 +214,8 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
     return () => {
       ro?.disconnect()
       const h = getHighlights()
-      h?.reg.delete('mdr-comment')
-      h?.reg.delete('mdr-comment-active')
+      if (h && setNormal && h.reg.get('mdr-comment') === setNormal) h.reg.delete('mdr-comment')
+      if (h && setActive && h.reg.get('mdr-comment-active') === setActive) h.reg.delete('mdr-comment-active')
       for (const el of marked) el.classList.remove('comment-block-marked')
       for (const el of activeEls) el.removeAttribute('data-comment-active')
       setMarkers([])
@@ -233,6 +254,10 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
     doc.addEventListener('selectionchange', onChange)
     return () => doc.removeEventListener('selectionchange', onChange)
   }, [enabled, container, source])
+
+  useEffect(() => {
+    setComposer(null)
+  }, [source, enabled, container])
 
   const open = useCallback(() => {
     if (!container) return
