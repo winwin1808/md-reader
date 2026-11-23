@@ -20,6 +20,9 @@ const spanAttributes = (defaultSchema.attributes?.span ?? []).filter(
   (attr) => !(Array.isArray(attr) && attr[0] === 'className')
 )
 
+const SP: [string, RegExp] = ['dataSp', /^\d+:\d+$/]
+const withSp = (tag: string) => [...((defaultSchema.attributes as any)?.[tag] ?? []), SP]
+
 export const sanitizeSchema: typeof defaultSchema = {
   ...defaultSchema,
   clobberPrefix: 'user-content-',
@@ -49,12 +52,20 @@ export const sanitizeSchema: typeof defaultSchema = {
       ...spanAttributes,
       ['className', /^hljs-/, LANG_CLASS],
     ],
-    h1: [...(defaultSchema.attributes?.h1 ?? []), 'id'],
-    h2: [...(defaultSchema.attributes?.h2 ?? []), 'id'],
-    h3: [...(defaultSchema.attributes?.h3 ?? []), 'id'],
-    h4: [...(defaultSchema.attributes?.h4 ?? []), 'id'],
-    h5: [...(defaultSchema.attributes?.h5 ?? []), 'id'],
-    h6: [...(defaultSchema.attributes?.h6 ?? []), 'id'],
+    h1: [...(defaultSchema.attributes?.h1 ?? []), 'id', SP],
+    h2: [...(defaultSchema.attributes?.h2 ?? []), 'id', SP],
+    h3: [...(defaultSchema.attributes?.h3 ?? []), 'id', SP],
+    h4: [...(defaultSchema.attributes?.h4 ?? []), 'id', SP],
+    h5: [...(defaultSchema.attributes?.h5 ?? []), 'id', SP],
+    h6: [...(defaultSchema.attributes?.h6 ?? []), 'id', SP],
+    p: withSp('p'),
+    li: withSp('li'),
+    blockquote: withSp('blockquote'),
+    pre: withSp('pre'),
+    table: withSp('table'),
+    tr: withSp('tr'),
+    hr: withSp('hr'),
+    div: withSp('div'),
     svg: svgAttributes,
     g: svgAttributes,
     path: svgAttributes,
