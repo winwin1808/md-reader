@@ -159,13 +159,26 @@
 
 [data-width="narrow"] { --measure: 68ch; }
 [data-width="medium"] { --measure: 84ch; }
-[data-width="wide"] { --measure: 104ch; }
+[data-width="wide"] { --measure: none; }
 [data-width="full"] { --measure: none; }
 [data-width="full"] .a4-document-container,
 [data-width="full"] .a4-document-container:has(.markdown-alert),
 [data-width="full"] .md-viewer,
 [data-width="full"] .notice { max-width: none; }
 [data-width="full"] .app-layout { max-width: none; }
+
+/* Rộng: tờ giấy ~80% bề ngang (width:100% giữ nó không tràn cột khi màn nhỏ). */
+[data-width="wide"] .app-layout,
+[data-width="wide"] .md-viewer,
+[data-width="wide"] .notice { max-width: none; }
+[data-width="wide"] .a4-document-container,
+[data-width="wide"] .a4-document-container:has(.markdown-alert),
+[data-width="wide"] .editor-live-sheet { max-width: 80vw; }
+@media (max-width: 720px) {
+  [data-width="wide"] .a4-document-container,
+  [data-width="wide"] .a4-document-container:has(.markdown-alert),
+  [data-width="wide"] .editor-live-sheet { max-width: calc(104ch + 112px); }
+}
 
 .presence-bar { display: inline-flex; align-items: center; padding-left: 6px; }
 .presence-avatar {

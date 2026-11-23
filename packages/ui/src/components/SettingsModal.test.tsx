@@ -342,8 +342,8 @@ describe('SettingsModal', () => {
     const onSettingChange = vi.fn();
     render(<SettingsModal {...defaultProps} open onSettingChange={onSettingChange} />);
     const look = section('Chữ và màu');
-    expect(within(look).getAllByRole('radio', { name: /^(Hẹp|Vừa|Rộng|Toàn khung)$/ })).toHaveLength(4);
-    fireEvent.click(within(look).getByRole('radio', { name: 'Rộng' }));
+    expect(within(look).getAllByRole('radio', { name: /^(Hẹp|Vừa|Rộng \(80%\)|Toàn khung)$/ })).toHaveLength(4);
+    fireEvent.click(within(look).getByRole('radio', { name: 'Rộng (80%)' }));
     expect(onSettingChange).toHaveBeenCalledWith('pageWidth', 'wide');
   });
 
