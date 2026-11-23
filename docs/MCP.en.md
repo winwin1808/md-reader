@@ -100,7 +100,7 @@ Each `le-sach-mcp` pairs with **one** extension, which means one Chrome profile.
 
 `share_doc` and `revoke_link` always show a confirmation dialog in MD Reader; nothing happens unless you click Allow. The dialog closes by itself after 100 seconds, which counts as a refusal.
 
-**Handling feedback.** The three comment tools never ask for confirmation, even when the document is shared; the author is the paired AI client's name. Suggested flow: `list_comments` → edit with `update_doc` (locate the spot by `currentText` or `line`) → `resolve_comment` with a short `reply`. Needs extension 1.6.0 or newer; an older one returns the error "This needs MD Reader extension 1.6.0 or newer".
+**Handling feedback.** The three comment tools never ask for confirmation, even when the document is shared; the author is the paired AI client's name. Suggested flow: `list_comments` → edit with `update_doc` (locate the spot by `currentText` or `line`) → `resolve_comment` with a short `reply`. Needs extension 1.6.0 or newer; with an older one the tool fails with `TIMEOUT` and a message saying comment tools need MD Reader extension 1.6.0 or newer.
 
 ## 6. Example prompts
 

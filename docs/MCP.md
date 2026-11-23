@@ -60,7 +60,7 @@ Biến môi trường tuỳ chọn:
 ## 4. Bật và ghép cặp
 
 1. Mở Chrome có MD Reader, (cài MD Reader từ [Chrome Web Store](https://chromewebstore.google.com/detail/md-reader/eolclccibhickmpbpbdodbhopnddcdog)), vào **Cài đặt → Kết nối AI** và bật. Ngay dưới công tắc có sẵn lệnh/JSON cho Claude Code, Claude Desktop, Cursor để chép.
-2. Khởi động (hoặc khởi động lại) client AI. Trong **10 phút** đầu sau khi `le-sach-mcp` chạy, extension hiện **hộp ghép cặp** gồm tên client (tối đa 40 ký tự) và **mã nhận dạng** dạng `ABCD-1234`. **Trước khi bấm Cho phép**, so mã này với dòng khởi động của `le-sach-mcp` trong log (stderr) của client AI: `le-sach-mcp 1.3.3 listening on 127.0.0.1:<cổng> · mã máy chủ ABCD-1234`. Hai mã phải giống nhau; khác nhau nghĩa là một chương trình khác đang nghe trên dải cổng đó — chọn Từ chối. (Dòng `đã ghép cặp với MD Reader …` in sau khi ghép là mã của **extension**, không dùng để so ở bước này.) Khớp thì chọn Cho phép.
+2. Khởi động (hoặc khởi động lại) client AI. Trong **10 phút** đầu sau khi `le-sach-mcp` chạy, extension hiện **hộp ghép cặp** gồm tên client (tối đa 40 ký tự) và **mã nhận dạng** dạng `ABCD-1234`. **Trước khi bấm Cho phép**, so mã này với dòng khởi động của `le-sach-mcp` trong log (stderr) của client AI: `le-sach-mcp 1.4.0 listening on 127.0.0.1:<cổng> · mã máy chủ ABCD-1234`. Hai mã phải giống nhau; khác nhau nghĩa là một chương trình khác đang nghe trên dải cổng đó — chọn Từ chối. (Dòng `đã ghép cặp với MD Reader …` in sau khi ghép là mã của **extension**, không dùng để so ở bước này.) Khớp thì chọn Cho phép.
 3. Cách xác thực (giao thức v2): `le-sach-mcp` và extension mỗi bên giữ một cặp khoá ECDSA P-256 riêng. Mỗi lần nối, hai bên ký lên số ngẫu nhiên của bên kia kèm số cổng; không có bí mật nào đi qua kết nối. Extension chỉ chạy lệnh của máy chủ có khoá bạn đã duyệt; `le-sach-mcp` chỉ nhận extension đã ghép cặp đầu tiên (ghim lần đầu, chỉ trong 10 phút đầu).
    Khoá của máy chủ nằm trong `~/.config/md-reader/mcp.json` (quyền 600). Đừng chia sẻ file này. Muốn ghép cặp lại từ đầu: xoá file này, khởi động lại client AI, rồi duyệt lại trong extension. File hỏng hoặc từ phiên bản cũ sẽ được đổi tên thành `mcp.json.bak-…` và tạo khoá mới (log ghi rõ).
    Giới hạn còn lại: một chương trình khác trên cùng máy, chạy với cùng tài khoản và nối vào `le-sach-mcp` trước extension trong 10 phút đầu, có thể chiếm chỗ ghép cặp phía máy chủ. Khi đó extension thật sẽ bị từ chối (bạn sẽ thấy ghép cặp không thành) — xoá file ghép cặp và khởi động lại.
@@ -101,7 +101,7 @@ Mỗi `le-sach-mcp` chỉ ghép với **một** extension — tức một profil
 
 `share_doc` và `revoke_link` luôn hiện hộp xác nhận trong MD Reader; không bấm Cho phép thì không có gì xảy ra. Hộp tự đóng sau 100 giây và được tính là từ chối.
 
-**Xử lý góp ý.** Ba tool bình luận không hỏi xác nhận, kể cả khi tài liệu đang chia sẻ; tác giả là tên client AI đã ghép cặp. Luồng gợi ý: `list_comments` → sửa bằng `update_doc` (định vị chỗ cần sửa bằng `currentText` hoặc `line`) → `resolve_comment` kèm `reply` ngắn. Cần extension 1.6.0 trở lên; bản cũ hơn trả lỗi "This needs MD Reader extension 1.6.0 or newer".
+**Xử lý góp ý.** Ba tool bình luận không hỏi xác nhận, kể cả khi tài liệu đang chia sẻ; tác giả là tên client AI đã ghép cặp. Luồng gợi ý: `list_comments` → sửa bằng `update_doc` (định vị chỗ cần sửa bằng `currentText` hoặc `line`) → `resolve_comment` kèm `reply` ngắn. Cần extension 1.6.0 trở lên; với bản cũ hơn, tool báo lỗi `TIMEOUT` kèm lời nhắc cần MD Reader extension 1.6.0 trở lên.
 
 ## 6. Prompt mẫu
 
