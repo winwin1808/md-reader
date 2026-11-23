@@ -604,7 +604,16 @@ export function App(): React.JSX.Element {
   const previewEntry = history.previewId ? history.entries.find((e) => e.id === history.previewId) : undefined
   const previewBanner = previewHtml !== null && previewEntry ? (
     <div role="status" className="history-preview-banner">
-      {t('ext.history.previewing', { label: historyLabel(previewEntry.label), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+      <span className="history-preview-banner__text">
+        {t('ext.history.previewing', { label: historyLabel(previewEntry.label, t), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+      </span>
+      {history.previewStats && (
+        <span className="history-preview-banner__stats" title={t('ext.history.statsTitle')}>
+          {history.previewStats.added === 0 && history.previewStats.removed === 0
+            ? t('ext.history.same')
+            : `+${history.previewStats.added} −${history.previewStats.removed}`}
+        </span>
+      )}
       <button type="button" onClick={() => history.preview(null)}>{t('ext.history.exitPreview')}</button>
     </div>
   ) : null

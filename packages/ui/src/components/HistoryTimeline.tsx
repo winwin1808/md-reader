@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, JSX } from 'react'
 import type { HistoryEntry } from '@md-reader/core'
 import { createT, useLocale, useT, type TFunction } from '../i18n'
@@ -29,7 +29,9 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const fmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }), [locale])
-  const { entries, actors, previewId, onPreview, onRestore, onClose } = props
+  const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' }), [locale])
+  const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' }), [locale])
+  const { entries, actors, previewId, onPreview, onRestore, onClose, now = Date.now } = props
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -72,17 +74,32 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
     }
   }, [])
 
+  const dayKey = (ts: number) => { const d = new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
+  const today = new Date(now())
+  const todayKey = dayKey(today.getTime())
+  const yesterdayKey = dayKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).getTime())
+  const dayLabel = (ts: number) => {
+    const k = dayKey(ts)
+    if (k === todayKey) return t('history.today')
+    if (k === yesterdayKey) return t('history.yesterday')
+    return dayFmt.format(new Date(ts))
+  }
+  const kindOf = (label: string) =>
+    label.startsWith('Khôi phục: ') ? 'restore' : label === 'save' || label === 'auto' || label === 'import' ? label : 'other'
+
   return (
     <aside className="history-panel" aria-label={t('history.title')} onKeyDown={onKeyDown}>
       <header className="history-panel__head">
         <h2>{t('history.title')}</h2>
-        <button type="button" ref={closeRef} aria-label={t('history.closeLabel')} onClick={onClose}>×</button>
+        {sorted.length > 0 && <span className="history-panel__count">{t('history.count', { n: sorted.length })}</span>}
+        <button type="button" className="history-panel__close" ref={closeRef} aria-label={t('history.closeLabel')} onClick={onClose}>×</button>
       </header>
+      <div className="history-panel__body">
       {sorted.length === 0 ? (
-        <p>{t('history.empty')}</p>
+        <p className="history-empty">{t('history.empty')}</p>
       ) : (
-        <ul role="listbox" aria-label={t('history.list')} ref={listRef}>
-          {visible.map((en) => {
+        <ul role="listbox" aria-label={t('history.list')} ref={listRef} className="history-list">
+          {visible.map((en, i) => {
             const others = Array.from(
               new Set(
                 en.clientIds
@@ -93,39 +110,63 @@ export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
             const noSnap = !en.snapshot
             const title = noSnap ? t('history.noSnapshot') : undefined
             const previewing = en.id === previewId
+            const prev = visible[i - 1]
+            const newDay = !prev || dayKey(prev.ts) !== dayKey(en.ts)
+            const kind = kindOf(en.label)
             return (
-              <li key={en.id} role="option" aria-selected={previewing} tabIndex={0} className="history-row">
-                <div>{historyLabel(en.label, t)}</div>
-                <div>{fmt.format(new Date(en.ts))}</div>
-                <div>{t('history.by', { actor: en.actor })}</div>
-                {others.length > 0 && <div>{t('history.with', { names: others.join(', ') })}</div>}
-                {confirmId === en.id ? (
-                  <div>
-                    <span>{t('history.restoreQ')}</span>
-                    <button type="button" onClick={() => { setConfirmId(null); onRestore(en.id) }}>{t('history.restore')}</button>
-                    <button type="button" onClick={() => setConfirmId(null)}>{t('history.cancel')}</button>
+              <Fragment key={en.id}>
+                {newDay && <li role="presentation" className="history-day">{dayLabel(en.ts)}</li>}
+                <li role="option" aria-selected={previewing} tabIndex={0}
+                  className={`history-row history-row--${kind}${noSnap ? ' history-row--nosnap' : ''}`}
+                  title={title}
+                  onClick={(e) => {
+                    if (noSnap || (e.target as HTMLElement).closest('button')) return
+                    onPreview(previewing ? null : en.id)
+                  }}>
+                  <span className="history-row__dot" aria-hidden="true" />
+                  <div className="history-row__main">
+                    <div className="history-row__top">
+                      <span className="history-row__label">{historyLabel(en.label, t)}</span>
+                      <time className="history-row__time" dateTime={new Date(en.ts).toISOString()} title={fmt.format(new Date(en.ts))}>
+                        {timeFmt.format(new Date(en.ts))}
+                      </time>
+                    </div>
+                    <div className="history-row__meta">
+                      <span>{t('history.by', { actor: en.actor })}</span>
+                      {others.length > 0 && <span> · {t('history.with', { names: others.join(', ') })}</span>}
+                    </div>
+                    {confirmId === en.id ? (
+                      <div className="history-row__confirm">
+                        <span>{t('history.restoreQ')}</span>
+                        <div className="history-row__actions">
+                          <button type="button" className="history-btn history-btn--primary" onClick={() => { setConfirmId(null); onRestore(en.id) }}>{t('history.restore')}</button>
+                          <button type="button" className="history-btn" onClick={() => setConfirmId(null)}>{t('history.cancel')}</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="history-row__actions">
+                        <button type="button" className="history-btn" disabled={noSnap} title={title} aria-pressed={previewing}
+                          onClick={() => onPreview(previewing ? null : en.id)}>
+                          {previewing ? t('history.exitPreview') : t('history.preview')}
+                        </button>
+                        <button type="button" className="history-btn" disabled={noSnap} title={title} onClick={() => setConfirmId(en.id)}>
+                          {t('history.restore')}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div>
-                    <button type="button" disabled={noSnap} title={title}
-                      onClick={() => onPreview(previewing ? null : en.id)}>
-                      {previewing ? t('history.exitPreview') : t('history.preview')}
-                    </button>
-                    <button type="button" disabled={noSnap} title={title} onClick={() => setConfirmId(en.id)}>
-                      {t('history.restore')}
-                    </button>
-                  </div>
-                )}
-              </li>
+                </li>
+              </Fragment>
             )
           })}
         </ul>
       )}
       {sorted.length > limit && (
-        <button type="button" className="history-more" onClick={() => setLimit((n) => n + PAGE)}>
+        <button type="button" className="history-more history-btn" onClick={() => setLimit((n) => n + PAGE)}>
           {t('history.more')}
         </button>
       )}
+      </div>
     </aside>
   )
 }
