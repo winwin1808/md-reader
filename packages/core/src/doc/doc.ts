@@ -99,6 +99,10 @@ export function migrateDoc(doc: Y.Doc): { from: number; to: number } {
     throw new UnsupportedFormatVersionError(v, FORMAT_VERSION)
   }
   if (v === FORMAT_VERSION) return { from: v, to: v }
+  if (v === 2) {
+    doc.transact(() => meta.set('formatVersion', FORMAT_VERSION))
+    return { from: 2, to: FORMAT_VERSION }
+  }
   doc.transact(() => {
     const name = meta.get('name')
     if (meta.get('title') === undefined && typeof name === 'string') meta.set('title', name)

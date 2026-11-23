@@ -21,7 +21,7 @@ describe('compactDoc', () => {
     const n = new Y.Doc({ gc: false })
     Y.applyUpdate(n, out)
     expect(getSource(n).toString()).toBe(src.toString())
-    expect(getMeta(n).get('formatVersion')).toBe(2)
+    expect(getMeta(n).get('formatVersion')).toBe(3)
     expect(getMeta(n).get('title')).toBe('T')
     expect(getMeta(n).get('originHash')).toBe('h1')
     const actors = getMeta(n).get('actors')
