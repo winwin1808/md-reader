@@ -99,3 +99,11 @@ footer a{color:var(--muted)}
 .fb button.btn{font-family:inherit;cursor:pointer;background:var(--ink);color:var(--paper)}
 .fb button.btn:disabled{opacity:.5;cursor:default}
 .fb-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+.rel{border-top:1px solid var(--rule);margin-top:2rem;padding-top:.5rem}
+.rel h2{margin-top:1rem}
+.rel .date{font:400 .9rem var(--sans);color:var(--muted);margin:0 0 .5rem}
+.rel.latest{border-top:2px solid var(--ink)}
+.rel .hl{border-left:4px solid var(--green);background:var(--hi);color:#1B2422;padding:.8rem 1rem;border-radius:4px;margin:1rem 0}
+.rel .hl p{margin:.3rem 0}
+.rel-links{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--rule);font:400 1rem var(--sans);overflow-wrap:anywhere}
