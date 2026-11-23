@@ -105,4 +105,32 @@ describe('useComments', () => {
     })
     expect(result.current.me.clientIds).toContain(555)
   })
+  it('matchActorName:false keeps only own clientID', () => {
+    const doc = mkDoc()
+    const actors = new Y.Map<string>()
+    doc.getMap('meta').set('actors', actors)
+    actors.set('999', 'An')
+    const a = renderHook(() => useComments(doc, 'An'))
+    expect(a.result.current.me.clientIds).toContain(999)
+    const b = renderHook(() => useComments(doc, 'An', { matchActorName: false }))
+    expect(b.result.current.me.clientIds).toEqual([doc.clientID])
+  })
+
+  it('permission options reflect in me', () => {
+    const doc = mkDoc()
+    const { result } = renderHook(() =>
+      useComments(doc, 'An', { canModerate: false, canResolveAll: false }),
+    )
+    expect(result.current.me.canModerate).toBe(false)
+    expect(result.current.me.canResolveAll).toBe(false)
+  })
+
+  it('create with author override', () => {
+    const doc = mkDoc()
+    const { result } = renderHook(() => useComments(doc, 'An'))
+    act(() => { result.current.create({ from: 0, to: 5 }, 'x', 'Binh') })
+    expect(result.current.threads[0]!.author).toBe('Binh')
+    act(() => { result.current.create({ from: 0, to: 5 }, 'y', '  ') })
+    expect(result.current.threads.map((t) => t.author).sort()).toEqual(['An', 'Binh'])
+  })
 })
