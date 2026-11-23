@@ -943,8 +943,8 @@ export function App(): React.JSX.Element {
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
       />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily} data-width={readerSettings.pageWidth ?? 'medium'} data-doc-style={currentDocStyle}>
-        {currentDocStyle !== 'lesach' && <style data-doc-style-css>{docStyleCss(currentDocStyle, '.md-viewer, .editor-live-sheet')}</style>}
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={currentDocStyle === 'lesach' ? readerSettings.fontFamily : undefined} data-width={readerSettings.pageWidth ?? 'medium'} data-doc-style={currentDocStyle}>
+        {currentDocStyle !== 'lesach' && <style data-doc-style-css>{docStyleCss(currentDocStyle, '.md-viewer:not(.deck-slide-content), .editor-live-sheet')}</style>}
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
           text={content}

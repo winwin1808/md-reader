@@ -1,3 +1,4 @@
+import { getDefaultExportCss } from '@md-reader/ui'
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
@@ -42,7 +43,9 @@ describe('useExport html', () => {
     const { result, getBlob } = setup(undefined, 'business')
     await result.current.exportAs('html')
     const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(getBlob()!) })
-    expect(text).toContain('IBM Plex Sans')
+    expect(text).toContain(':is(.md-viewer)')
+    expect(text).toContain('--body-lh: 1.55')
+    expect(getDefaultExportCss()).not.toContain('--body-lh: 1.55')
   })
 
   it('passes docStyle to mdastToDocx', async () => {

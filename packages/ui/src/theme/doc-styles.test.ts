@@ -23,8 +23,18 @@ describe('docStyleCss', () => {
       for (const x of sel) expect(x.startsWith(':is(.md-viewer)')).toBe(true)
     })
   }
-  it('business uses IBM Plex Sans', () => {
-    expect(docStyleCss('business', '.md-viewer')).toContain('IBM Plex Sans')
+  it('business has its own rules absent from default css', () => {
+    const css = docStyleCss('business', '.md-viewer')
+    expect(css).toContain('--body-lh: 1.55')
+    expect(getDefaultExportCss()).not.toContain('--body-lh: 1.55')
+  })
+  for (const s of ['business', 'technical'] as const) {
+    it(`${s}: h3 is not italic`, () => {
+      expect(docStyleCss(s, '.md-viewer')).toMatch(/:is\(\.md-viewer\) h3[^{]*\{[^}]*font-style: normal/)
+    })
+  }
+  it('academic keeps h3 italic implicitly (no normal override)', () => {
+    expect(docStyleCss('academic', '.md-viewer')).not.toMatch(/h3[^{]*\{[^}]*font-style: normal/)
   })
   it('academic justifies and numbers headings', () => {
     const css = docStyleCss('academic', '.md-viewer')

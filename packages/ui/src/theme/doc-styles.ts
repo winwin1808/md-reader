@@ -25,6 +25,7 @@ ${r} {
   if (style === 'business') {
     return `${base}
 ${r} h1, ${r} h2, ${r} h3 { font-family: ${SANS}; font-weight: 600; color: ${ACCENT}; }
+${r} h3 { font-style: normal; }
 ${r} h1 { padding-bottom: 0.25em; border-bottom: 1px solid ${RULE}; }
 ${r} th { background: ${HI}; font-weight: 700; border-bottom: 2px solid ${RULE}; }
 ${r} blockquote { background: ${HI}; font-style: normal; border-left: 3px solid ${RULE}; padding: 0.6em 1em; }
@@ -46,6 +47,7 @@ ${r} figcaption, ${r} caption { font-size: 0.85em; color: ${MUTED}; }
   return `${base}
 ${r} { counter-reset: ds-h2; }
 ${r} h1, ${r} h2, ${r} h3 { font-family: ${SANS}; font-weight: 600; }
+${r} h3 { font-style: normal; }
 ${r} h2 { counter-increment: ds-h2; border-left: 3px solid ${ACCENT}; padding-left: 0.5em; }
 ${r} h2::before { content: counter(ds-h2) '. '; }
 ${r} pre { border: 1px solid ${RULE}; }
