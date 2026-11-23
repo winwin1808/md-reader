@@ -142,8 +142,10 @@ function newKey(doc: Y.Doc): string {
 }
 
 function requireBody(body: string): string {
-  if (typeof body !== 'string' || body.trim() === '') throw new RangeError('comment_empty')
-  return body.slice(0, COMMENT_BODY_MAX)
+  if (typeof body !== 'string') throw new RangeError('comment_empty')
+  const cut = body.slice(0, COMMENT_BODY_MAX)
+  if (cut.trim() === '') throw new RangeError('comment_empty')
+  return cut
 }
 
 function hasRootThread(map: Y.Map<unknown>, threadId: string): boolean {
@@ -311,10 +313,11 @@ export function listThreads(doc: Y.Doc): CommentThread[] {
     }
   }
   threads.sort((x, y) => {
-    if (x.range && y.range) return x.range.from - y.range.from || x.ts - y.ts
+    const byId = x.id < y.id ? -1 : x.id > y.id ? 1 : 0
+    if (x.range && y.range) return x.range.from - y.range.from || x.ts - y.ts || byId
     if (x.range) return -1
     if (y.range) return 1
-    return x.ts - y.ts
+    return x.ts - y.ts || byId
   })
   return threads
 }

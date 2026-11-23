@@ -187,3 +187,31 @@ describe('validateCommentValue', () => {
     expect(listThreads(d)).toHaveLength(0)
   })
 })
+
+describe('comments review fixes', () => {
+  it('body cắt rồi mới kiểm rỗng', () => {
+    const d = mk()
+    const bad = ' '.repeat(4000) + 'x'
+    expect(() => addComment(d, { author: 'A', body: bad, from: 0, to: 5 })).toThrow(new RangeError('comment_empty'))
+    const id = addComment(d, { author: 'A', body: 'ok', from: 0, to: 5 })
+    expect(() => replyComment(d, id, { author: 'A', body: bad })).toThrow(new RangeError('comment_empty'))
+    expect(getComments(d).size).toBe(1)
+  })
+
+  it('thread cùng from và ts có thứ tự giống nhau trên mọi replica', () => {
+    const a = mk()
+    const b = mk()
+    // cùng nội dung nền: đồng bộ b từ a trước
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a))
+    const ia = addComment(a, { author: 'A', body: 'x', from: 0, to: 5, now: 1 })
+    const ib = addComment(b, { author: 'B', body: 'y', from: 0, to: 5, now: 1 })
+    const ua = Y.encodeStateAsUpdate(a)
+    const ub = Y.encodeStateAsUpdate(b)
+    Y.applyUpdate(b, ua)
+    Y.applyUpdate(a, ub)
+    const oa = listThreads(a).map((t) => t.id)
+    const ob = listThreads(b).map((t) => t.id)
+    expect(oa).toEqual(ob)
+    expect(oa).toEqual([ia, ib].sort())
+  })
+})
