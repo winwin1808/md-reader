@@ -12,6 +12,7 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
   const t = useT()
   const [state, setState] = useState<ShareState>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [rejected, setRejected] = useState(false)
   const { items, push, dismiss } = useNotices()
   const [reporting, setReporting] = useState(false)
   const [reason, setReason] = useState('')
@@ -32,7 +33,10 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     let cancelled = false
     setState({ kind: 'loading' })
     load(token, undefined, t)
-      .then((s) => { if (!cancelled) setState(s) })
+      .then((s) => {
+        if (cancelled) { if (s.kind === 'ready') s.doc.destroy(); return }
+        setState(s)
+      })
       .catch(() => { if (!cancelled) setState({ kind: 'error', message: t('web.errUnknown') }) })
     return () => { cancelled = true }
   }, [token, load, attempt, t])
@@ -46,6 +50,11 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
     const d = state.doc
     return () => d.destroy()
   }, [state])
+  const onRejected = useCallback(() => {
+    push('error', t('web.commentsRejected'))
+    setRejected(true)
+    setAttempt((n) => n + 1)
+  }, [push, t])
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   let body: React.JSX.Element
@@ -60,7 +69,7 @@ export function SharePage(props: { token: string | null; load?: typeof loadShare
       </div>
     )
   } else if (state.info.role === 'edit') body = <EditPage token={token} info={state.info} />
-  else body = <ViewPage token={token} info={state.info} doc={state.doc} mermaid={mermaid} />
+  else body = <ViewPage token={token} info={state.info} doc={state.doc} mermaid={mermaid} rejected={rejected} onRejected={onRejected} />
 
   return (
     <main className="web-page">

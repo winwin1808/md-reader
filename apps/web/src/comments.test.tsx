@@ -5,6 +5,11 @@ import type { ReactNode } from 'react'
 import { listThreads } from '@md-reader/core'
 
 let layerProps: Record<string, any> = {}
+let sharedBind: ((d: Y.Doc, o: { onReject?: () => void }) => unknown) | null = null
+vi.mock('./collab', async (orig) => {
+  const m = await orig<typeof import('./collab')>()
+  return { ...m, bindRoom: (...a: unknown[]) => (sharedBind ? sharedBind(...(a as [Y.Doc, { onReject?: () => void }])) : (m.bindRoom as any)(...a)) }
+})
 vi.mock('@md-reader/ui', async (orig) => ({
   ...(await orig<typeof import('@md-reader/ui')>()),
   // test-only mocks
@@ -15,6 +20,7 @@ vi.mock('@md-reader/ui', async (orig) => ({
   },
 }))
 import { ViewPage } from './ViewPage'
+import { SharePage } from './SharePage'
 import type { bindRoom, SyncStatus } from './collab'
 
 afterEach(() => { cleanup(); localStorage.clear() })
@@ -35,7 +41,7 @@ function setup() {
     }
   }) as unknown as typeof bindRoom
   const ui = (
-    <ViewPage token="tok" info={{ roomId: 'r', role: 'view', title: 'T' } as never} doc={doc} bind={bind} mermaid={false} />
+    <ViewPage token="tok" info={{ roomId: 'r', role: 'view', title: 'T' } as never} doc={doc} bind={bind} mermaid={false} rejected={false} onRejected={() => {}} />
   )
   return { doc, ui, emit: (s: SyncStatus) => act(() => emit(s)), reject: () => act(() => reject()), destroy }
 }
@@ -84,12 +90,19 @@ describe('ViewPage comments', () => {
     expect(layerProps.enabled).toBe(false)
   })
 
-  it('onReject notifies and disables', () => {
-    const { ui, reject } = setup()
-    render(ui)
-    reject()
-    expect(screen.getByText(/chỉ có quyền xem/)).toBeTruthy()
-    expect((screen.getByRole('button', { name: /Bình luận/ }) as HTMLButtonElement).disabled).toBe(true)
+  it('rejected prop disables the button and the layer, calls onRejected once, destroys conn', () => {
+    const onRejected = vi.fn()
+    const s = setup()
+    const el = (r: boolean) => <ViewPage token="tok" info={{ roomId: 'r', role: 'view', title: 'T' } as never} doc={s.doc} bind={(s.ui.props as any).bind} mermaid={false} rejected={r} onRejected={onRejected} />
+    const view = render(el(false))
+    s.reject()
+    expect(s.destroy).toHaveBeenCalledTimes(1)
+    expect(onRejected).toHaveBeenCalledTimes(1)
+    view.rerender(el(true))
+    const b = screen.getByRole('button', { name: /Bình luận/ }) as HTMLButtonElement
+    expect(b.disabled).toBe(true)
+    expect(b.title).toContain('chỉ có quyền xem')
+    expect(layerProps.enabled).toBe(false)
   })
 
   it('renders hostile body as text', () => {
@@ -108,5 +121,44 @@ describe('ViewPage comments', () => {
     render(ui).unmount()
     expect(destroy).toHaveBeenCalled()
     expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('SharePage rejected flow', () => {
+  afterEach(() => { sharedBind = null })
+  it('reload once, one notice, button disabled after reload; cancelled load destroys doc', async () => {
+    const mk = () => { const d = new Y.Doc({ gc: false }); d.getText('source').insert(0, '# Hi'); return d }
+    const destroys: ReturnType<typeof vi.fn>[] = []
+    let reject: () => void = () => {}
+    const connDestroy = vi.fn()
+    sharedBind = (_d, o) => {
+      reject = () => o.onReject?.()
+      return { provider: {}, awareness: {}, status$: () => () => {}, destroy: connDestroy }
+    }
+    const load = vi.fn(async () => {
+      const doc = mk()
+      destroys.push(vi.spyOn(doc, 'destroy') as never)
+      return { kind: 'ready' as const, info: { roomId: 'r', role: 'view', title: 'T' } as never, text: '# Hi', doc }
+    })
+    render(<SharePage token="tok" load={load as never} mermaid={false} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Bình luận/ })).toBeTruthy())
+    expect(load).toHaveBeenCalledTimes(1)
+    act(() => reject())
+    expect(connDestroy).toHaveBeenCalled()
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect((screen.getByRole('button', { name: /Bình luận/ }) as HTMLButtonElement).disabled).toBe(true))
+    expect(screen.getAllByText(/chỉ có quyền xem/).length).toBe(1)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('destroys the doc of a load that resolves after cancel', async () => {
+    const doc = new Y.Doc({ gc: false })
+    const spy = vi.spyOn(doc, 'destroy')
+    let resolve: (v: unknown) => void = () => {}
+    const load = vi.fn(() => new Promise((r) => { resolve = r }))
+    const v = render(<SharePage token="tok" load={load as never} mermaid={false} />)
+    v.unmount()
+    await act(async () => { resolve({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '', doc }) })
+    expect(spy).toHaveBeenCalled()
   })
 })

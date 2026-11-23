@@ -16,43 +16,51 @@ export function ViewPage(props: {
   serverUrl?: string
   bind?: typeof bindRoom
   mermaid?: boolean
+  rejected: boolean
+  onRejected: () => void
 }): React.JSX.Element {
-  const { token, info, doc, serverUrl, bind, mermaid = true } = props
+  const { token, info, doc, serverUrl, bind, mermaid = true, rejected, onRejected } = props
   const t = useT()
   const locale = useLocale()
   const { items, push, dismiss } = useNotices()
   const [name, setName] = useState<string>(() => readName())
   const [status, setStatus] = useState<SyncStatus>('connecting')
-  const [rejected, setRejected] = useState(false)
   const [open, setOpen] = useState(false)
   const [sheet, setSheet] = useState<HTMLElement | null>(null)
-  const [html, setHtml] = useState(() => renderShareHtml(doc.getText('source').toString(), locale, { sourcePositions: true }))
+  const [view, setView] = useState(() => {
+    const src = doc.getText('source').toString()
+    return { html: renderShareHtml(src, locale, { sourcePositions: true }), source: src }
+  })
   const [mathRev, setMathRev] = useState(0)
 
   const nameRef = useRef(name)
   nameRef.current = name
   const tRef = useRef(t)
   tRef.current = t
-  const pushRef = useRef(push)
-  pushRef.current = push
+  const onRejectedRef = useRef(onRejected)
+  onRejectedRef.current = onRejected
 
   useEffect(() => {
     setStatus('connecting')
-    setRejected(false)
-    const conn = (bind ?? bindRoom)(doc, {
+    let fired = false
+    let conn: ReturnType<typeof bindRoom> | null = null
+    conn = (bind ?? bindRoom)(doc, {
       serverUrl: serverUrl ?? location.origin,
       roomId: info.roomId,
       token,
       name: nameRef.current || tRef.current('web.guest'),
       onReject: () => {
-        setRejected(true)
-        pushRef.current('error', tRef.current('web.commentsRejected'))
+        if (fired) return
+        fired = true
+        conn?.destroy()
+        onRejectedRef.current()
       },
     })
     const off = conn.status$(setStatus)
+    const c0 = conn
     return () => {
       off()
-      conn.destroy()
+      c0.destroy()
     }
   }, [doc, token, info.roomId, serverUrl, bind])
 
@@ -60,7 +68,10 @@ export function ViewPage(props: {
 
   useEffect(() => {
     const yText = doc.getText('source')
-    const render = () => setHtml(renderShareHtml(yText.toString(), locale, { sourcePositions: true }))
+    const render = () => {
+      const src = yText.toString()
+      setView({ html: renderShareHtml(src, locale, { sourcePositions: true }), source: src })
+    }
     render()
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
@@ -76,7 +87,7 @@ export function ViewPage(props: {
 
   const c = useComments(doc, name || t('web.guest'), { canModerate: false, canResolveAll: false, matchActorName: false })
   const locked = status === 'full' || status === 'revoked' || rejected
-  const source = doc.getText('source').toString()
+  const source = view.source
   const title = useMemo(() => info.title ?? firstH1(source, t), [info.title, source, t])
 
   const actions = (
@@ -84,7 +95,7 @@ export function ViewPage(props: {
       type="button"
       className="web-comments-toggle"
       disabled={locked}
-      title={locked ? t('web.commentsFull') : undefined}
+      title={rejected ? t('web.commentsRejected') : locked ? t('web.commentsFull') : undefined}
       aria-expanded={open}
       onClick={() => setOpen((v) => !v)}
     >
@@ -96,7 +107,7 @@ export function ViewPage(props: {
     <>
       <PageHeader title={title} status={t('web.statusOnline')} actions={actions} />
       <div className="web-sheet" ref={setSheet}>
-        <Viewer html={html} isAppPage mermaid={mermaid} />
+        <Viewer html={view.html} isAppPage mermaid={mermaid} />
       </div>
       <CommentLayer
         container={sheet}
@@ -123,8 +134,8 @@ export function ViewPage(props: {
             me={c.me}
             activeId={c.activeId}
             onSelect={c.setActive}
-            onReply={c.reply}
-            onResolve={c.resolve}
+            onReply={rejected ? () => {} : c.reply}
+            onResolve={rejected ? () => {} : c.resolve}
             onDelete={c.remove}
             onClose={() => setOpen(false)}
           />

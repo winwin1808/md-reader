@@ -126,7 +126,8 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   const [status, setStatus] = useState<SyncStatus>('connecting')
   const [wasOnline, setWasOnline] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [html, setHtml] = useState('')
+  const [view, setView] = useState<{ html: string; source: string }>({ html: '', source: '' })
+  const html = view.html
   const [, setTick] = useState(0)
   const [mode, setMode] = useState<'edit' | 'view'>('edit')
   const resolved = useResolvedTheme()
@@ -149,7 +150,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     setStatus('connecting')
     setWasOnline(false)
     setFailed(false)
-    setHtml('')
+    setView({ html: '', source: '' })
     const doc = new Y.Doc({ gc: false })
     const yText = doc.getText('source')
     const undo = new Y.UndoManager(yText)
@@ -173,13 +174,13 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     let timer: ReturnType<typeof setTimeout> | null = null
     const onChange = () => {
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => setHtml(renderShareHtml(yText.toString(), locale, { sourcePositions: true })), 120)
+      timer = setTimeout(() => { const src = yText.toString(); setView({ html: renderShareHtml(src, locale, { sourcePositions: true }), source: src }) }, 120)
     }
     const onStack = () => setTick((n) => n + 1)
     yText.observe(onChange)
     undo.on('stack-item-added', onStack)
     undo.on('stack-item-popped', onStack)
-    setHtml(renderShareHtml(yText.toString(), locale, { sourcePositions: true }))
+    { const src = yText.toString(); setView({ html: renderShareHtml(src, locale, { sourcePositions: true }), source: src }) }
     setSession({ doc, yText, undo, conn })
     return () => {
       if (timer) clearTimeout(timer)
@@ -334,7 +335,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
           </div>
           <CommentLayer
             container={sheet}
-            source={session.yText.toString()}
+            source={view.source}
             threads={c.threads}
             activeId={c.activeId}
             enabled={!locked}
