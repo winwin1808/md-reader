@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, onTestFinished } from 'vitest'
 import * as Y from 'yjs'
-import { createDoc, ensureDoc, getHistory, getSource, createCheckpointTracker } from '@md-reader/core'
+import { createDoc, ensureDoc, getHistory, getSource, createCheckpointTracker, addComment, replyComment, setResolved, deleteComment, listThreads } from '@md-reader/core'
 import { textHash, type BridgeRequest } from '@md-reader/core/bridge'
 import { buildShareUrl, type ShareLink } from '@md-reader/core'
 import { createBridgeExecutor as createRaw, DAY_MS, type ExecSession, type ExecShare } from './bridge-executor'
@@ -425,6 +425,86 @@ describe('createBridgeExecutor', () => {
       const d = mk({}, false, [link()])
       expect(await d.run(req('revoke_link', { docId: 'd1', tokenPrefix: 'abcd12' }), 'c')).toMatchObject({ ok: false, error: { code: 'DENIED' } })
       expect(d.share.revoke).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('comment tools', () => {
+    function rig(shared = false) {
+      const doc = createDoc()
+      ensureDoc(doc)
+      const yText = getSource(doc)
+      yText.insert(0, 'alpha beta gamma\nsecond line delta')
+      const open = addComment(doc, { author: 'Bạn', body: 'mở', from: 17, to: 28, now: 1000 })
+      replyComment(doc, open, { author: 'Bạn', body: 'r1', now: 2000 })
+      const done = addComment(doc, { author: 'Bạn', body: 'xong', from: 0, to: 5, now: 3000 })
+      setResolved(doc, done, true, 'Bạn')
+      const gone = addComment(doc, { author: 'Bạn', body: 'xoá', from: 6, to: 10, now: 4000 })
+      replyComment(doc, gone, { author: 'Bạn', body: 'còn trả lời', now: 4100 })
+      deleteComment(doc, gone)
+      const confirm = vi.fn(async () => true)
+      const s: ExecSession = { docId: 'd1', title: 'T', yText, shared, sharedKnown: true, synced: true, checkpoints: null, persisted: null, share: null, confirm }
+      const store: Record<string, unknown> = {}
+      vi.stubGlobal('chrome', { storage: { local: { get: async (k: string) => ({ [k]: store[k] }), set: async (o: Record<string, unknown>) => { Object.assign(store, o) } } } })
+      onTestFinished(() => { vi.unstubAllGlobals() })
+      const run = createRaw(() => s)
+      return { doc, yText, s, open, done, confirm, store, run }
+    }
+    it('list_comments default -> open only, mapped fields', async () => {
+      const { run, open } = rig()
+      const r = await run(req('list_comments', { docId: 'd1' }), 'Claude')
+      expect(r).toMatchObject({ ok: true })
+      const list = (r as { result: { comments: Array<Record<string, unknown>> } }).result.comments
+      expect(list).toHaveLength(1)
+      expect(list[0]).toEqual({
+        threadId: open, quote: 'second line', currentText: 'second line', line: 2, status: 'open', author: 'Bạn',
+        ts: new Date(1000).toISOString(), body: 'mở', replies: [{ author: 'Bạn', ts: new Date(2000).toISOString(), body: 'r1' }],
+      })
+    })
+    it("status 'all' -> 2 threads, no deleted", async () => {
+      const { run } = rig()
+      const r = await run(req('list_comments', { docId: 'd1', status: 'all' }), 'Claude')
+      const list = (r as { result: { comments: Array<{ status: string }> } }).result.comments
+      expect(list.map((c) => c.status).sort()).toEqual(['open', 'resolved'])
+    })
+    it('orphan thread -> currentText/line null', async () => {
+      const { run, yText } = rig()
+      yText.delete(17, 11)
+      const r = await run(req('list_comments', { docId: 'd1' }), 'Claude')
+      const list = (r as { result: { comments: Array<{ currentText: unknown; line: unknown }> } }).result.comments
+      expect(list[0]).toMatchObject({ currentText: null, line: null })
+    })
+    it('reply_comment -> id, author client, own clientId, no confirm even shared', async () => {
+      const { run, doc, open, confirm } = rig(true)
+      const r = await run(req('reply_comment', { docId: 'd1', threadId: open, body: 'hi' }), 'Claude')
+      expect(r).toMatchObject({ ok: true, result: { ok: true, id: expect.any(String) } })
+      const rep = listThreads(doc).find((t) => t.id === open)!.replies.find((x) => x.body === 'hi')!
+      expect(rep.author).toBe('Claude')
+      expect(rep.clientId).not.toBe(doc.clientID)
+      expect(confirm).not.toHaveBeenCalled()
+    })
+    it('resolve_comment with reply -> reply + resolved by client', async () => {
+      const { run, doc, open, confirm } = rig(true)
+      const r = await run(req('resolve_comment', { docId: 'd1', threadId: open, reply: 'đã sửa' }), 'Claude')
+      expect(r).toMatchObject({ ok: true, result: { ok: true } })
+      const t = listThreads(doc).find((x) => x.id === open)!
+      expect(t.resolved).toBe(true)
+      expect(t.resolvedBy).toBe('Claude')
+      expect(t.replies.some((x) => x.body === 'đã sửa' && x.author === 'Claude')).toBe(true)
+      expect(confirm).not.toHaveBeenCalled()
+    })
+    it('wrong threadId -> NOT_FOUND comment_thread', async () => {
+      const { run } = rig()
+      expect(await run(req('reply_comment', { docId: 'd1', threadId: 'nope', body: 'x' }), 'Claude')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND', message: 'comment_thread' } })
+      expect(await run(req('resolve_comment', { docId: 'd1', threadId: 'nope' }), 'Claude')).toMatchObject({ ok: false, error: { code: 'NOT_FOUND', message: 'comment_thread' } })
+    })
+    it('second call by same client reuses clientId via storage key', async () => {
+      const { run, doc, open, store } = rig()
+      await run(req('reply_comment', { docId: 'd1', threadId: open, body: 'a' }), 'Claude')
+      expect(typeof store['mdr-mcp-actor:d1:Claude']).toBe('number')
+      await run(req('reply_comment', { docId: 'd1', threadId: open, body: 'b' }), 'Claude')
+      const ids = listThreads(doc).find((t) => t.id === open)!.replies.filter((x) => x.author === 'Claude').map((x) => x.clientId)
+      expect(ids).toHaveLength(2)
+      expect(ids[0]).toBe(ids[1])
     })
   })
 })

@@ -1,5 +1,5 @@
 import type * as Y from 'yjs'
-import { applyTextChangeAsActor, buildShareUrl, type CheckpointTracker, type CreateLinkRequest, type ShareLink } from '@md-reader/core'
+import { applyTextChangeAsActor, commentAsActor, listThreads, replyComment, setResolved, buildShareUrl, type CheckpointTracker, type CreateLinkRequest, type ShareLink } from '@md-reader/core'
 import type { ConfirmRequest } from '@md-reader/ui'
 import { textHash, validateToolArgs, type BridgeRequest, type BridgeResponse, type BridgeErrorCode } from '@md-reader/core/bridge'
 
@@ -19,6 +19,20 @@ export interface ExecSession {
   docId: string; title: string; yText: Y.Text; shared: boolean; sharedKnown: boolean; synced: boolean; checkpoints: CheckpointTracker | null; persisted: (() => Promise<void>) | null
   share: ExecShare | null
   confirm: ((c: ConfirmRequest, client: string) => Promise<boolean>) | null
+}
+
+const actorFor = (client: string) => client.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) || 'AI'
+const actorKey = (docId: string, actor: string) => `mdr-mcp-actor:${docId}:${actor}`
+async function readActorId(key: string): Promise<number | undefined> {
+  try {
+    const got = (await chrome.storage.local.get(key))[key]
+    if (typeof got === 'number') return got
+  } catch { /* không có storage: tạo id mới */ }
+  return undefined
+}
+async function saveActorId(key: string, id: number, prev: number | undefined): Promise<void> {
+  if (id === prev) return
+  try { await chrome.storage.local.set({ [key]: id }) } catch { /* ignore */ }
 }
 
 const fail = (id: string, code: BridgeErrorCode, message: string): BridgeResponse => ({ type: 'res', id, ok: false, error: { code, message } })
@@ -50,6 +64,50 @@ export function createBridgeExecutor(
       const markdown = s.yText.toString()
       return { type: 'res', id: req.id, ok: true, result: { docId: s.docId, title: s.title, markdown, hash: await textHash(markdown), shared: s.shared } } as BridgeResponse
     }
+    if (req.tool === 'list_comments') {
+      const { status } = v.args as { status: 'open' | 'all' }
+      const doc = s.yText.doc
+      if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
+      const source = s.yText.toString()
+      const iso = (t: number) => new Date(t).toISOString()
+      const comments = listThreads(doc)
+        .filter((t) => !t.deleted && (status === 'all' || !t.resolved))
+        .map((t) => ({
+          threadId: t.id,
+          quote: t.quote,
+          currentText: t.range ? source.slice(t.range.from, t.range.to) : null,
+          line: t.range ? source.slice(0, t.range.from).split('\n').length : null,
+          status: (t.resolved ? 'resolved' : 'open') as 'resolved' | 'open',
+          author: t.author,
+          ts: iso(t.ts),
+          body: t.body,
+          replies: t.replies.map((r) => ({ author: r.author, ts: iso(r.ts), body: r.body })),
+        }))
+      return { type: 'res', id: req.id, ok: true, result: { comments } } as BridgeResponse
+    }
+    if (req.tool === 'reply_comment' || req.tool === 'resolve_comment') {
+      const doc = s.yText.doc
+      if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
+      const { threadId, body, reply } = v.args as { threadId: string; body?: string; reply?: string }
+      const actor = actorFor(client)
+      const key = actorKey(s.docId, actor)
+      const reuseClientId = await readActorId(key)
+      let out: { result: string | null; clientId: number }
+      try {
+        out = commentAsActor(doc, actor, (d) => {
+          if (req.tool === 'reply_comment') return replyComment(d, threadId, { author: actor, body: body as string })
+          if (reply) replyComment(d, threadId, { author: actor, body: reply })
+          setResolved(d, threadId, true, actor)
+          return null
+        }, ORIGIN_MCP, { reuseClientId })
+      } catch (e) {
+        if (e instanceof RangeError) return e.message === 'comment_thread' ? fail(req.id, 'NOT_FOUND', 'comment_thread') : fail(req.id, 'INVALID_ARGS', e.message)
+        return fail(req.id, 'INTERNAL', e instanceof Error ? e.message : String(e))
+      }
+      await saveActorId(key, out.clientId, reuseClientId)
+      await Promise.race([s.persisted?.() ?? Promise.resolve(), sleep(2000)])
+      return { type: 'res', id: req.id, ok: true, result: req.tool === 'reply_comment' ? { ok: true, id: out.result } : { ok: true } } as BridgeResponse
+    }
     if (req.tool === 'update_doc') {
       const { markdown, baseHash } = v.args as { markdown: string; baseHash: string }
       const cur = s.yText.toString()
@@ -75,17 +133,11 @@ export function createBridgeExecutor(
       const doc = s.yText.doc
       if (!doc) return fail(req.id, 'INTERNAL', 'document has no Y.Doc')
       s.checkpoints?.flush('auto', 'Bạn')
-      const actor = client.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) || 'AI'
-      const key = `mdr-mcp-actor:${s.docId}:${actor}`
-      let reuseClientId: number | undefined
-      try {
-        const got = (await chrome.storage.local.get(key))[key]
-        if (typeof got === 'number') reuseClientId = got
-      } catch { /* không có storage: tạo id mới */ }
+      const actor = actorFor(client)
+      const key = actorKey(s.docId, actor)
+      const reuseClientId = await readActorId(key)
       const used = applyTextChangeAsActor(doc, markdown, actor, ORIGIN_MCP, { reuseClientId })
-      if (used !== false && used !== reuseClientId) {
-        try { await chrome.storage.local.set({ [key]: used }) } catch { /* ignore */ }
-      }
+      if (used !== false) await saveActorId(key, used, reuseClientId)
       if (used !== false) s.checkpoints?.flush(AI_CHECKPOINT_LABEL, actor, { force: true })
       const yText = s.yText
       await Promise.race([s.persisted?.() ?? Promise.resolve(), sleep(2000)])
