@@ -33,6 +33,8 @@ export type { FormatOptions } from './format/index.js'
 
 export { exportToHtml, mdastToDocx } from './export/index.js'
 export type { ExportHtmlOptions, ExportDocxOptions } from './export/index.js'
+export type { DocStyle } from './export/index.js'
+export { DOC_STYLES, isDocStyle } from './export/index.js'
 
 export { splitIntoSlides, slideBreakInsertion, paginateBlocks, SMALL_ZOOM } from './slides/index.js'
 export type { Slide, SlideSplitOptions, BlockBox, SlidePage } from './slides/index.js'
