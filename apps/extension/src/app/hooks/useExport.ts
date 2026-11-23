@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { printDocument, printSlides, getDefaultExportCss } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { exportToHtml } from '@md-reader/core'
-import type { ParseResult } from '@md-reader/core'
+import type { ParseResult, DocStyle } from '@md-reader/core'
 
 export const SLIDES_READY_TIMEOUT_MS = 7000
 
@@ -32,6 +32,7 @@ export function useExport(args: {
   parseResult: ParseResult
   resolveImage?: (src: string) => string | Promise<string>
   waitSlidesReady?: (signal: AbortSignal) => Promise<void>
+  docStyle?: DocStyle
 }): {
   exportAs(format: ExportFormat): Promise<void>
   isPrintingSlides: boolean
@@ -88,11 +89,11 @@ export function useExport(args: {
             return null
           }
         }
-        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(), title, fetchImage })
+        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(args.docStyle), title, fetchImage })
         download(new Blob([exportHtml], { type: 'text/html;charset=utf-8' }), `${title}.html`)
       } else if (format === 'docx') {
         const { mdastToDocx } = await import('@md-reader/core/docx')
-        const blob = await mdastToDocx({ mdast: parseResult.tree, title })
+        const blob = await mdastToDocx({ mdast: parseResult.tree, title, docStyle: args.docStyle })
         download(blob, `${title}.docx`)
       }
     } catch (err) {

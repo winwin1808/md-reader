@@ -30,10 +30,30 @@ import type {
   Table as MdastTable,
 } from 'mdast'
 
+import type { DocStyle } from './doc-style.js'
+
 export interface ExportDocxOptions {
   mdast: Root
   title?: string
   imageMap?: Record<string, { buffer: ArrayBuffer; width: number; height: number }>
+  docStyle?: DocStyle
+}
+
+interface WordStyleParams {
+  bodyFont: string
+  headingFont: string
+  line: number
+  headingColor: string
+  justify: boolean
+  h1Center: boolean
+  tableBorder?: string
+}
+
+const WORD_STYLES: Record<DocStyle, WordStyleParams> = {
+  lesach: { bodyFont: 'Literata', headingFont: 'Literata', line: 336, headingColor: '1B2422', justify: false, h1Center: false },
+  business: { bodyFont: 'IBM Plex Sans', headingFont: 'IBM Plex Sans', line: 300, headingColor: '23568C', justify: false, h1Center: false },
+  academic: { bodyFont: 'Literata', headingFont: 'Literata', line: 360, headingColor: '1B2422', justify: true, h1Center: true },
+  technical: { bodyFont: 'IBM Plex Sans', headingFont: 'IBM Plex Sans', line: 288, headingColor: '1B2422', justify: false, h1Center: false, tableBorder: '999999' },
 }
 
 interface PhrasingStyle {
@@ -277,11 +297,16 @@ function convertTable(node: MdastTable, options: ExportDocxOptions): Table {
     )
   }
 
+  const tableBorder = WORD_STYLES[options.docStyle ?? 'lesach'].tableBorder
+  const bs = { style: BorderStyle.SINGLE, size: 4, color: tableBorder ?? '' }
   return new Table({
     width: {
       size: 100,
       type: WidthType.PERCENTAGE,
     },
+    ...(tableBorder
+      ? { borders: { top: bs, bottom: bs, left: bs, right: bs, insideHorizontal: bs, insideVertical: bs } }
+      : {}),
     rows,
   })
 }
@@ -413,6 +438,9 @@ function convertBlockNode(
       )
       return [
         new Paragraph({
+          ...(WORD_STYLES[options.docStyle ?? 'lesach'].justify
+            ? { alignment: AlignmentType.JUSTIFIED }
+            : {}),
           children: runs,
         }),
       ]
@@ -465,6 +493,7 @@ function convertBlockNode(
 
 export async function mdastToDocx(options: ExportDocxOptions): Promise<Blob> {
   const { mdast, title } = options
+  const ws = WORD_STYLES[options.docStyle ?? 'lesach']
   const children: (Paragraph | Table)[] = []
   const numberingConfigs: NumberingConfigItem[] = []
   let listCounter = 0
@@ -496,8 +525,8 @@ export async function mdastToDocx(options: ExportDocxOptions): Promise<Blob> {
     styles: {
       default: {
         document: {
-          run: { font: 'Literata', size: 22 },
-          paragraph: { spacing: { line: 336, lineRule: LineRuleType.AUTO, after: 160 } },
+          run: { font: ws.bodyFont, size: 22 },
+          paragraph: { spacing: { line: ws.line, lineRule: LineRuleType.AUTO, after: 160 } },
         },
         hyperlink: { run: { color: '23568C', underline: { type: UnderlineType.SINGLE } } },
       },
@@ -512,8 +541,11 @@ export async function mdastToDocx(options: ExportDocxOptions): Promise<Blob> {
           basedOn: 'Normal',
           next: 'Normal',
           quickFormat: true,
-          run: { font: 'Literata', bold: true, size, color: '1B2422' },
-          paragraph: { spacing: { before } },
+          run: { font: ws.headingFont, bold: true, size, color: ws.headingColor },
+          paragraph: {
+            spacing: { before },
+            ...(lvl === 1 && ws.h1Center ? { alignment: AlignmentType.CENTER } : {}),
+          },
         })),
         {
           id: 'Quote',

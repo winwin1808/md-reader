@@ -4,6 +4,7 @@ import { useT, useLocale } from '../i18n';
 import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
+import type { DocStyle } from '@md-reader/core';
 import { Icon } from './Icon';
 import { AiSetupGuide } from './AiSetupGuide';
 import { FeedbackForm, type FeedbackFormProps } from './FeedbackForm';
@@ -18,6 +19,7 @@ export interface ReaderSettings {
   contrast: Contrast;
   settingsVersion: number;
   fontFamily?: FontFamily;
+  docStyle?: DocStyle;
   pageWidth?: PageWidth;
   uiLanguage?: 'auto' | 'vi' | 'en';
   autoFormatMd?: boolean;
@@ -614,6 +616,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
   const currentMode = settings?.mode ?? mode;
   const currentContrast: Contrast = settings?.contrast ?? 'standard';
   const currentFontFamily = settings?.fontFamily ?? fontFamily;
+  const currentDocStyle: DocStyle = settings?.docStyle ?? 'lesach';
   const currentAutoFormat =
     typeof settings?.autoFormatMd === 'boolean'
       ? settings.autoFormatMd
@@ -708,6 +711,29 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                     )}
                   </div>
                   <div className="settings-field">
+                    <span id="settings-l-docstyle" className="settings-field-label">{t('settings.docStyle.label')}</span>
+                    <div className="settings-btn-group" role="radiogroup" aria-labelledby="settings-l-docstyle">
+                      {([
+                        { key: 'lesach', label: t('settings.docStyle.lesach'), hint: t('settings.docStyle.lesachHint') },
+                        { key: 'business', label: t('settings.docStyle.business'), hint: t('settings.docStyle.businessHint') },
+                        { key: 'academic', label: t('settings.docStyle.academic'), hint: t('settings.docStyle.academicHint') },
+                        { key: 'technical', label: t('settings.docStyle.technical'), hint: t('settings.docStyle.technicalHint') },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          role="radio"
+                          aria-checked={currentDocStyle === opt.key}
+                          title={opt.hint}
+                          onClick={() => handleSettingChange('docStyle', opt.key)}
+                          className="settings-choice"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-field">
                     <span id="settings-l-font" className="settings-field-label">{t('settings.font.label')}</span>
                     <div className="settings-btn-group" role="group" aria-labelledby="settings-l-font">
                       {([
@@ -724,6 +750,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                               handleSettingChange('fontFamily', opt.key);
                             }}
                             aria-pressed={isSelected}
+                            disabled={currentDocStyle !== 'lesach'}
                             className="settings-choice"
                           >
                             {opt.label}
@@ -731,6 +758,9 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                         );
                       })}
                     </div>
+                    {currentDocStyle !== 'lesach' && (
+                      <p className="settings-hint">{t('settings.docStyle.fontNote')}</p>
+                    )}
                   </div>
                   <div className="settings-field">
                     <span id="settings-l-width" className="settings-field-label">{t('settings.width.label')}</span>

@@ -863,6 +863,25 @@ describe('App', () => {
       const c = await load({ fontFamily: 'sans', settingsVersion: 2 })
       expect(c.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
     })
+    it('docStyle academic sets attribute and style tag; lesach has none; invalid falls back', async () => {
+      const c = await load({ settingsVersion: 2, docStyle: 'academic' })
+      expect(c.querySelector('.app-container[data-doc-style="academic"]')).not.toBeNull()
+      expect(c.querySelector('style[data-doc-style-css]')!.textContent).toContain('text-align: justify')
+      const c2 = await load({ settingsVersion: 2, docStyle: 'lesach' })
+      expect(c2.querySelector('style[data-doc-style-css]')).toBeNull()
+      const c3 = await load({ settingsVersion: 2, docStyle: 'xyz' })
+      expect(c3.querySelector('.app-container')!.getAttribute('data-doc-style')).toBe('lesach')
+      expect(c3.querySelector('style[data-doc-style-css]')).toBeNull()
+    })
+    it('docStyle overrides data-font-family; lesach keeps it; style root excludes slides', async () => {
+      const c = await load({ settingsVersion: 2, fontFamily: 'sans', docStyle: 'academic' })
+      expect(c.querySelector('.app-container')!.hasAttribute('data-font-family')).toBe(false)
+      const css = c.querySelector('style[data-doc-style-css]')!.textContent!
+      expect(css).toContain(':not(.deck-slide-content)')
+      expect(css).not.toContain(':is(.md-viewer, .editor-live-sheet)')
+      const c2 = await load({ settingsVersion: 2, fontFamily: 'sans', docStyle: 'lesach' })
+      expect(c2.querySelector('.app-container')!.getAttribute('data-font-family')).toBe('sans')
+    })
     it('defaults confetti off', async () => {
       const spy = vi.spyOn(ui, 'CelebrationConfetti').mockImplementation((p: any) => { return <div data-active={String(p.active)} /> })
       await load({ settingsVersion: 2 })

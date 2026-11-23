@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Root } from 'mdast'
 import { createRequire } from 'node:module'
 import { mdastToDocx } from './docx.js'
+import { isDocStyle, type DocStyle } from './doc-style.js'
 
 describe('mdastToDocx', () => {
   it('converts headings of depths 1 through 6 to docx Blob', async () => {
@@ -369,5 +370,51 @@ describe('mdastToDocx slide-break marker', () => {
     const zip = await JSZip.loadAsync(await blob.arrayBuffer())
     const doc: string = await zip.file('word/document.xml').async('string')
     expect(doc.toLowerCase()).not.toContain('slide-break')
+  })
+})
+
+describe('mdastToDocx docStyle', () => {
+  const mdast: Root = {
+    type: 'root',
+    children: [
+      { type: 'heading', depth: 1, children: [{ type: 'text', value: 'H' }] },
+      { type: 'paragraph', children: [{ type: 'text', value: 'body' }] },
+    ],
+  }
+  async function xml(docStyle?: DocStyle) {
+    const blob = await mdastToDocx({ mdast, ...(docStyle ? { docStyle } : {}) })
+    const req = createRequire(createRequire(import.meta.url).resolve('docx'))
+    const zip = await req('jszip').loadAsync(await blob.arrayBuffer())
+    return {
+      styles: (await zip.file('word/styles.xml').async('string')) as string,
+      doc: (await zip.file('word/document.xml').async('string')) as string,
+    }
+  }
+  it('isDocStyle', () => {
+    expect(isDocStyle('business')).toBe(true)
+    expect(isDocStyle('x')).toBe(false)
+    expect(isDocStyle(null)).toBe(false)
+  })
+  it('business uses Plex Sans default run', async () => {
+    const { styles } = await xml('business')
+    const def = /<w:docDefaults>[\s\S]*?<\/w:docDefaults>/.exec(styles)?.[0] ?? ''
+    expect(def).toContain('IBM Plex Sans')
+    expect(styles).toContain('23568C')
+  })
+  it('academic justifies body paragraphs', async () => {
+    const { doc } = await xml('academic')
+    expect(doc).toContain('w:val="both"')
+  })
+  it('technical heading font is Plex Sans', async () => {
+    const { styles } = await xml('technical')
+    const hs = styles.match(/<w:style[^>]*w:styleId="Heading1"[\s\S]*?<\/w:style>/g) ?? []
+    expect(hs.some((h) => h.includes('IBM Plex Sans'))).toBe(true)
+  })
+  it('default equals lesach', async () => {
+    const a = await xml()
+    const b = await xml('lesach')
+    expect(a.styles).toBe(b.styles)
+    expect(a.doc).not.toContain('w:val="both"')
+    expect(a.styles).toContain('Literata')
   })
 })

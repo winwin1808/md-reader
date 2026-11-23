@@ -30,7 +30,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments } from '@md-reader/ui'
+import { docStyleCss, GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -47,6 +47,7 @@ import {
   computeBlame,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
+import { isDocStyle } from '@md-reader/core'
 import { defaultRenderPlugins, parseYaml, onMathLoaded, loadMathPlugin } from '@md-reader/core/plugins'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
@@ -90,6 +91,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   contrast: 'standard',
   settingsVersion: 2,
   fontFamily: 'serif',
+  docStyle: 'lesach',
   pageWidth: 'medium',
   autoFormatMd: true,
   alwaysOpenApp: false,
@@ -515,6 +517,7 @@ export function App(): React.JSX.Element {
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
           ...stored,
+          docStyle: isDocStyle(stored.docStyle) ? stored.docStyle : 'lesach',
           mode,
         })
         setFontScale((localRes?.fontScale as FontScale) || (syncRes?.fontScale as FontScale) || 'md')
@@ -732,12 +735,14 @@ export function App(): React.JSX.Element {
     }
   }, [readerSettings.enableMermaid])
 
+  const currentDocStyle = isDocStyle(readerSettings.docStyle) ? readerSettings.docStyle : 'lesach'
   const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
     resolveImage,
     waitSlidesReady,
+    docStyle: currentDocStyle,
   })
 
   const exportAs = async (format: ExportFormat): Promise<void> => {
@@ -938,7 +943,8 @@ export function App(): React.JSX.Element {
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
       />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily} data-width={readerSettings.pageWidth ?? 'medium'}>
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={currentDocStyle === 'lesach' ? readerSettings.fontFamily : undefined} data-width={readerSettings.pageWidth ?? 'medium'} data-doc-style={currentDocStyle}>
+        {currentDocStyle !== 'lesach' && <style data-doc-style-css>{docStyleCss(currentDocStyle, '.md-viewer:not(.deck-slide-content), .editor-live-sheet')}</style>}
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
           text={content}
