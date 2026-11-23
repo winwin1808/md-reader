@@ -20,7 +20,6 @@ function build(cfg: EditorCommentsConfig, len: number): DecorationSet {
     const to = Math.max(0, Math.min(len, t.range.to))
     if (from < to) items.push({ from, to, id: t.id })
   }
-  items.sort((a, b) => a.from - b.from)
   const ranges: Range<Decoration>[] = items.map((i) =>
     Decoration.mark({
       class: i.id === cfg.activeId ? 'cm-comment cm-comment-active' : 'cm-comment',
@@ -40,32 +39,34 @@ export function commentsExtension(get: () => EditorCommentsConfig): Extension {
     provide: (f) => EditorView.decorations.from(f),
   })
 
-  const tipFor = (state: import('@codemirror/state').EditorState): Tooltip | null => {
+  const create = (view: EditorView) => {
+    const dom = document.createElement('div')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'cm-comment-add'
+    btn.textContent = view.state.facet(translateFacet)('comments.add')
+    btn.addEventListener('mousedown', (e) => e.preventDefault())
+    btn.addEventListener('click', () => {
+      const m = view.state.selection.main
+      get().onCreate({ from: m.from, to: m.to })
+    })
+    dom.appendChild(btn)
+    return { dom }
+  }
+
+  const tipFor = (state: import('@codemirror/state').EditorState, prev: Tooltip | null): Tooltip | null => {
     const main = state.selection.main
     if (main.empty || state.readOnly) return null
-    return {
-      pos: main.head,
-      above: true,
-      create(view) {
-        const dom = document.createElement('div')
-        const btn = document.createElement('button')
-        btn.type = 'button'
-        btn.className = 'cm-comment-add'
-        btn.textContent = view.state.facet(translateFacet)('comments.add')
-        btn.addEventListener('mousedown', (e) => e.preventDefault())
-        btn.addEventListener('click', () => {
-          const m = view.state.selection.main
-          get().onCreate({ from: m.from, to: m.to })
-        })
-        dom.appendChild(btn)
-        return { dom }
-      },
-    }
+    if (prev && prev.pos === main.head) return prev
+    return { pos: main.head, above: true, create }
   }
 
   const tipField = StateField.define<Tooltip | null>({
-    create: tipFor,
-    update: (_v, tr) => (tr.docChanged || tr.selection ? tipFor(tr.state) : _v),
+    create: (state) => tipFor(state, null),
+    update: (v, tr) =>
+      tr.docChanged || tr.selection || tr.startState.readOnly !== tr.state.readOnly || tr.reconfigured
+        ? tipFor(tr.state, v)
+        : v,
     provide: (f) => showTooltip.from(f),
   })
 

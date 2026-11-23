@@ -318,3 +318,33 @@ describe('CommentLayer nested triple-click', () => {
     r.remove()
   })
 })
+
+describe('CommentLayer review fixes', () => {
+  it('triple-click p followed by blockquote>p covers only the first block', () => {
+    const src = 'Alpha\n\n> Beta'
+    const r = document.createElement('div')
+    r.innerHTML = '<p data-sp="0:5">Alpha</p><blockquote data-sp="7:13"><p data-sp="9:13">Beta</p></blockquote>'
+    document.body.appendChild(r)
+    const onCreate = vi.fn()
+    render(<CommentLayer {...({ container: r, source: src, threads: [], activeId: null, enabled: true, onCreate, onSelect: vi.fn(), askName: false } as unknown as CommentLayerProps)} />)
+    select(r.querySelector('p')!.firstChild!, 0, r.querySelector('blockquote p')!.firstChild!, 0)
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'x' } })
+    fireEvent.click(sendBtn())
+    expect(onCreate.mock.calls[0]![0]).toEqual({ from: 0, to: 5 })
+    r.remove()
+  })
+
+  it('reopening composer for a new selection starts empty', () => {
+    mount()
+    select(p1(), 0, p1(), 5)
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'nháp' } })
+    expect(ta().value).toBe('nháp')
+    const cancel = Array.from(document.body.querySelectorAll('.comment-composer button')).find((b) => b.textContent !== 'Gửi')
+    if (cancel) fireEvent.click(cancel)
+    select(p1(), 6, p1(), 11)
+    fireEvent.click(addBtn()!)
+    expect(ta().value).toBe('')
+  })
+})

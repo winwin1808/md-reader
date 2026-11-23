@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { EditorState, EditorSelection } from '@codemirror/state'
+import { EditorState, EditorSelection, Compartment } from '@codemirror/state'
 import { EditorView, showTooltip, type Tooltip } from '@codemirror/view'
 import type { CommentThread } from '@md-reader/core'
 import { commentsExtension, refreshComments, type EditorCommentsConfig } from './comments'
@@ -74,5 +74,25 @@ describe('commentsExtension', () => {
     const view = setup(cfg)
     view.contentDOM.querySelector('[data-comment-id]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(cfg.onSelect).toHaveBeenCalledWith('a')
+  })
+  it('tooltip follows readOnly reconfigure', () => {
+    const cfg = mk([])
+    const ro = new Compartment()
+    const view = new EditorView({
+      state: EditorState.create({ doc: DOC, selection: EditorSelection.single(2, 7), extensions: [commentsExtension(() => cfg), ro.of(EditorState.readOnly.of(false))] }),
+      parent: document.body,
+    })
+    expect(tipOf(view)).not.toBeNull()
+    view.dispatch({ effects: ro.reconfigure(EditorState.readOnly.of(true)) })
+    expect(tipOf(view)).toBeNull()
+    view.dispatch({ effects: ro.reconfigure(EditorState.readOnly.of(false)) })
+    expect(tipOf(view)).not.toBeNull()
+  })
+  it('tooltip keeps same object when head unchanged', () => {
+    const view = setup(mk([]))
+    view.dispatch({ selection: EditorSelection.single(2, 7) })
+    const a = tipOf(view)
+    view.dispatch({ selection: EditorSelection.single(3, 7) })
+    expect(tipOf(view)).toBe(a)
   })
 })

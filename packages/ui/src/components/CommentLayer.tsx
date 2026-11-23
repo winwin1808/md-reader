@@ -65,7 +65,7 @@ function computeRange(
       // End point sits at the start of the last block (triple-click): step back.
       const endEl = b.el
       const cands = Array.from(container.querySelectorAll('[data-sp]')).filter(
-        (el) => el !== endEl && !endEl.contains(el) && range.intersectsNode(el),
+        (el) => el !== endEl && !endEl.contains(el) && !el.contains(endEl) && range.intersectsNode(el),
       )
       const prev = cands[cands.length - 1]
       const pb = prev ? blockOf(prev, container) : null
@@ -193,6 +193,7 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const [composer, setComposer] = useState<{ range: { from: number; to: number }; top: number; left: number } | null>(null)
   const [markers, setMarkers] = useState<MarkerInfo[]>([])
+  const openCount = useRef(0)
   const targetsRef = useRef<Map<Element, string[]>>(new Map())
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
@@ -314,6 +315,7 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
     const range = computeRange(r, container, source)
     if (!range) return
     const rect = r.getBoundingClientRect?.()
+    openCount.current += 1
     setComposer({ range, top: (rect?.bottom ?? 0) + 6, left: rect?.left ?? 0 })
   }, [container, source])
 
@@ -356,6 +358,7 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
       )}
       {composer && (
         <CommentComposer
+          key={openCount.current}
           askName={askName}
           style={{ position: 'fixed', top: composer.top, left: composer.left, zIndex: 1000 }}
           onSubmit={(body, author) => {
