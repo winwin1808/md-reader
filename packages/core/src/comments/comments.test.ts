@@ -200,8 +200,8 @@ describe('comments review fixes', () => {
 
   it('thread cùng from và ts có thứ tự giống nhau trên mọi replica', () => {
     const a = mk()
-    const b = mk()
-    // cùng nội dung nền: đồng bộ b từ a trước
+    // b chỉ nhận nội dung nền từ a (không tự chèn lại), nên hai replica chung một bản text
+    const b = new Y.Doc()
     Y.applyUpdate(b, Y.encodeStateAsUpdate(a))
     const ia = addComment(a, { author: 'A', body: 'x', from: 0, to: 5, now: 1 })
     const ib = addComment(b, { author: 'B', body: 'y', from: 0, to: 5, now: 1 })
