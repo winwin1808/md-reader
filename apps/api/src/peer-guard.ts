@@ -176,11 +176,14 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership, role: PeerRol
     if (role === 'view' && r.kind !== 'comments') return 'view_write'
     if (r.kind === 'comments') {
       const ref = s.content.getRef()
-      if (ref === 1) continue // already-deleted content carries no value
-      if (ref !== 8 || s.content.getLength() !== 1) return 'comment_content'
+      // ContentDeleted carries no value to validate, but it still integrates into the map (it can supersede
+      // the key head via origin), so it gets the same key + owner checks as a write.
+      if (ref !== 1 && (ref !== 8 || s.content.getLength() !== 1)) return 'comment_content'
       const key = r.sub ?? s.parentSub ?? '' // origin-chained structs (overwrites) carry no parentSub
-      const bad = validateCommentValue(key, s.content.getContent()[0])
-      if (bad) return bad
+      if (ref !== 1) {
+        const bad = validateCommentValue(key, s.content.getContent()[0])
+        if (bad) return bad
+      }
       if (key.startsWith('s:')) {
         if (role === 'view') {
           const tc = commentKeyClient(key.slice(2))

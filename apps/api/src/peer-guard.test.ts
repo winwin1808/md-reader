@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
+import * as encoding from 'lib0/encoding'
 import { peerTxViolation } from './peer-guard'
 
 function setup() {
@@ -283,6 +284,46 @@ describe('peerUpdateViolation comments (23d1)', () => {
       const doc = setup()
       const u = upd(doc, 37, (p) => p.getText('source').delete(0, 2))
       expect(peerUpdateViolation(u, doc, own([37]), 'view')).toBe('view_write')
+    })
+  })
+  describe('ContentDeleted with origin (23d1-3)', () => {
+    /** Hand-built v1 update: one ContentDeleted struct (info 0x81) from `attacker` whose origin is (originClient, 0). */
+    function forged(attacker: number, originClient: number, clock = 0): Uint8Array {
+      const e = encoding.createEncoder()
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, attacker)
+      encoding.writeVarUint(e, clock)
+      encoding.writeUint8(e, 0x81)
+      encoding.writeVarUint(e, originClient)
+      encoding.writeVarUint(e, 0)
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, 0)
+      return encoding.toUint8Array(e)
+    }
+    function withKey(client: number, k: string) {
+      const doc = setup()
+      const p = new Y.Doc()
+      Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+      p.clientID = client
+      p.getMap('comments').set(k, { v: 1 })
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
+      return doc
+    }
+    it("rejects ContentDeleted chained onto another user's c: item (view and edit)", () => {
+      const doc = withKey(111, 'c:111:aaaaaaaa')
+      for (const role of ['view', 'edit'] as const) {
+        expect(peerUpdateViolation(forged(222, 111), doc, own(), role)).not.toBeNull()
+      }
+    })
+    it("rejects ContentDeleted chained onto another user's thread s: for view", () => {
+      const doc = withKey(111, 's:c:111:aaaaaaaa')
+      expect(peerUpdateViolation(forged(222, 111), doc, own(), 'view')).not.toBeNull()
+    })
+    it('allows ContentDeleted chained onto own c: item', () => {
+      const doc = withKey(222, 'c:222:aaaaaaaa')
+      expect(peerUpdateViolation(forged(222, 222, 1), doc, own([222]), 'view')).toBeNull()
+      expect(peerUpdateViolation(forged(222, 222, 1), doc, own([222]), 'edit')).toBeNull()
     })
   })
   it('rejects a nested Y.Map value', () => {
