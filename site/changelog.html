@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi" data-lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Có gì mới — MD Reader</title>
+<meta name="description" content="Ghi chú phát hành MD Reader: bình luận trên tài liệu, AI xử lý góp ý, kết nối AI gọn hơn. / MD Reader release notes: comments on documents, AI handling feedback, a tidier AI connection.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+<script>
+(function(){var l;try{l=localStorage.getItem("lang")}catch(e){}
+if(l!=="vi"&&l!=="en")l=/^vi\b/i.test(navigator.language||"")?"vi":"en";
+document.documentElement.dataset.lang=l;document.documentElement.lang=l})();
+</script>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="./"><img src="logo.svg" alt="" width="32" height="32"><span>MD Reader</span></a>
+  <nav aria-label="Main"><a href="./"><span lang="vi">Trang chủ</span><span lang="en">Home</span></a>
+  <a href="privacy.html"><span lang="vi">Riêng tư</span><span lang="en">Privacy</span></a>
+  <a href="https://github.com/winwin1808/md-reader">GitHub</a>
+  <button class="lang" type="button" id="langbtn"><span lang="vi">EN</span><span lang="en">VI</span></button></nav>
+</header>
+<main class="doc">
+<h1><span lang="vi">Có gì mới</span><span lang="en">What's new</span></h1>
+
+<section class="rel latest" id="v1.6.0">
+<h2>1.6.0 — <span lang="vi">Bình luận trên tài liệu</span><span lang="en">Comments on documents</span></h2>
+<div class="hl" lang="vi">
+<p><strong>Nổi bật:</strong> bình luận ngay trên tài liệu, và AI đọc, trả lời, đánh dấu Xong giúp bạn.</p>
+</div>
+<div class="hl" lang="en">
+<p><strong>Highlights:</strong> comment right on your document, and let AI read, reply and mark comments Done.</p>
+</div>
+<ul lang="vi">
+<li>Chọn chữ rồi bấm Bình luận (hoặc Cmd/Ctrl+Shift+M), ở cả chế độ Đọc và Sửa.</li>
+<li>Người có link xem hoặc link sửa cũng bình luận, trả lời được ngay trên trang web.</li>
+<li>Tài liệu chưa chia sẻ vẫn bình luận được; bình luận chỉ lưu trên máy bạn.</li>
+<li>AI qua <code>le-sach-mcp</code> 1.4.0 đọc bình luận, trả lời và đánh dấu Xong bằng ba công cụ <code>list_comments</code>, <code>reply_comment</code>, <code>resolve_comment</code> (cần extension 1.6.0 trở lên, không hiện hộp xác nhận).</li>
+</ul>
+<ul lang="en">
+<li>Select text and press Comment (or Cmd/Ctrl+Shift+M), in both Read and Edit modes.</li>
+<li>People with a view or edit link can comment and reply right on the web page.</li>
+<li>Unshared documents can be commented on too; those comments stay on your device.</li>
+<li>AI through <code>le-sach-mcp</code> 1.4.0 reads comments, replies and marks them Done with three tools: <code>list_comments</code>, <code>reply_comment</code>, <code>resolve_comment</code> (needs extension 1.6.0 or newer, no confirmation dialog).</li>
+</ul>
+</section>
+
+<section class="rel" id="v1.5.1">
+<h2>1.5.1 — <span lang="vi">Kết nối AI gọn hơn</span><span lang="en">Tidier AI connection</span></h2>
+<ul lang="vi">
+<li>Không còn mở lặp tab hỏi cho phép khi có nhiều profile Chrome — mỗi ứng dụng AI chỉ hỏi một lần.</li>
+<li>Cài đặt → Kết nối AI hiện ứng dụng AI đang chạy và nút Kết nối để tự kết nối khi cần.</li>
+<li>Bấm Cho phép luôn có kết quả rõ: kết nối được, hoặc báo lý do.</li>
+<li>Muốn chuyển sang profile khác: chạy <code>npx le-sach-mcp unpair</code>.</li>
+</ul>
+<ul lang="en">
+<li>No more repeated permission tabs when several Chrome profiles are open — each AI app asks once.</li>
+<li>Settings → AI connection lists AI apps running on this machine with a Connect button.</li>
+<li>Allow always ends with a clear result: connected, or the reason why not.</li>
+<li>To move to another profile: run <code>npx le-sach-mcp unpair</code>.</li>
+</ul>
+</section>
+
+<section class="rel" id="v1.5.0">
+<h2>1.5.0 — <span lang="vi">Có gì mới ở bản 1.5</span><span lang="en">What's new in 1.5</span></h2>
+<ul lang="vi">
+<li>PDF trình chiếu không còn cắt chữ, slide dài tự chia.</li>
+<li>Dấu <code>&lt;!-- slide-break --&gt;</code> và nút "Ngắt slide tại đây" khi Sửa.</li>
+<li>Trang chào mới, tài liệu mẫu và hướng dẫn từng bước.</li>
+<li>Sao lưu mọi tài liệu ra file .zip.</li>
+<li>Gửi góp ý ngay trong Cài đặt.</li>
+</ul>
+<ul lang="en">
+<li>Slide PDFs no longer clip text; long slides split automatically.</li>
+<li>The <code>&lt;!-- slide-break --&gt;</code> marker and a "Break slide here" button while editing.</li>
+<li>A new welcome page, sample document and step-by-step tour.</li>
+<li>Back up all your documents to a .zip file.</li>
+<li>Send feedback right from Settings.</li>
+</ul>
+</section>
+
+<section class="rel" id="v1.3.0">
+<h2>1.3.0 — <span lang="vi">Bản đầu trên Chrome Web Store</span><span lang="en">First Chrome Web Store release</span></h2>
+<p class="date">2026-10-29</p>
+<ul lang="vi">
+<li>Kết nối AI cục bộ (<code>le-sach-mcp</code>): 7 công cụ, xác thực hai chiều, hộp ghép cặp có mã nhận dạng, hỏi lại trước mọi thao tác chia sẻ hoặc thu hồi. Chỉnh sửa của AI được ghi theo tên ứng dụng (ví dụ "Claude Code") và không tự ghi ra đĩa.</li>
+<li>Xoá dữ liệu trên máy chủ, tự xoá phòng không ai mở sau 90 ngày, "Thu hồi tất cả" chỉ một lần bấm.</li>
+<li>"Làm gọn tài liệu" khi phòng chia sẻ đã đầy.</li>
+<li>Báo rõ khi link bị thu hồi hoặc tài liệu quá lớn (không nối lại vô tận); banner khi tài liệu dùng định dạng mới hơn.</li>
+<li>Xuất Word ghi công thức dạng chỉnh sửa được; xuất HTML nhúng ảnh tương đối; ngăn lịch sử có phân trang.</li>
+<li>Nhận diện file như <code>Readme.Md</code> (viết hoa thường lẫn lộn).</li>
+<li>Tải KaTeX lười nên trang ứng dụng nhẹ hơn; nhiều bản vá bảo mật.</li>
+</ul>
+<ul lang="en">
+<li>Local AI connection (<code>le-sach-mcp</code>): 7 tools, mutual authentication, a pairing dialog with an identifier, confirmation before every share or revoke. AI edits are attributed to the app's name (for example "Claude Code") and do not write to disk by themselves.</li>
+<li>Delete your data from the server, automatic deletion of rooms unopened for 90 days, "Revoke all" in one click.</li>
+<li>"Compact document" when a shared room is full.</li>
+<li>Clear messages when a link is revoked or a document is too large (no endless reconnecting); a banner when a document uses a newer format.</li>
+<li>Word export writes editable equations; HTML export embeds relative images; the history drawer is paginated.</li>
+<li>Recognises mixed-case file names such as <code>Readme.Md</code>.</li>
+<li>KaTeX loads lazily so the app page is lighter; several security fixes.</li>
+</ul>
+</section>
+
+<p class="rel-links">
+<a href="https://github.com/winwin1808/md-reader/blob/main/CHANGELOG.md"><span lang="vi">Xem CHANGELOG đầy đủ trên GitHub</span><span lang="en">See the full CHANGELOG on GitHub</span></a><br>
+<a href="https://chromewebstore.google.com/detail/eolclccibhickmpbpbdodbhopnddcdog"><span lang="vi">Cài từ Chrome Web Store</span><span lang="en">Install from the Chrome Web Store</span></a>
+</p>
+</main>
+</div>
+<script src="lang.js"></script>
+</body>
+</html>

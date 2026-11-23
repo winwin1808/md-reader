@@ -1,6 +1,7 @@
 import React from 'react'
 import { useT } from '@md-reader/ui'
 import type { ReleaseNote } from '../shared/release-notes'
+import { RELEASE_NOTES_URL } from './feedback-client'
 import { compareVersions } from '../worker/lifecycle'
 
 export function WhatsNewPage(props: {
@@ -14,6 +15,8 @@ export function WhatsNewPage(props: {
   const sorted = [...props.notes].sort((a, b) => compareVersions(b.version, a.version))
   const hi = sorted.find((n) => n.version === highlight)
   const ordered = hi ? [hi, ...sorted.filter((n) => n !== hi)] : sorted
+  const newest = sorted[0]?.version
+  const fullNotesHref = newest ? `${RELEASE_NOTES_URL}#v${newest}` : RELEASE_NOTES_URL
   return (
     <main className="welcome whatsnew">
       <h1>{t('ext.whatsnew.title')}</h1>
@@ -35,6 +38,11 @@ export function WhatsNewPage(props: {
           </section>
         )
       })}
+      <p>
+        <a href={fullNotesHref} target="_blank" rel="noopener noreferrer">
+          {t('ext.whatsnew.fullNotes')}
+        </a>
+      </p>
       <button type="button" className="welcome-primary" onClick={props.onDone}>
         {t('ext.welcome.enter')}
       </button>

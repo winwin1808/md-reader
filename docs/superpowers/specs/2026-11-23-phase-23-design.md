@@ -1,5 +1,5 @@
 # Design: Phase 23 — Bình luận + AI xử lý góp ý
-Author: winwin1808. Status: shipped. Phase: 23
+Author: winwin1808. Status: in-progress. Phase: 23
 
 Intent: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai.md
 Brainstorm: docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai-va-xuat-nhe-brainstorm.md
@@ -23,6 +23,8 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23f2 — done — extension: thực thi tool bình luận
 - 23g1 — done — e2e cộng tác + MCP thật
 - 23g2 — done — docs, ROADMAP, phiên bản
+- 23h1 — planned — site: trang ghi chú phát hành `changelog.html`
+- 23h2 — planned — extension: "Có gì mới" trỏ tới trang phát hành + test đồng bộ phiên bản
 
 ## Approach chosen
 
@@ -411,3 +413,18 @@ người có link xem viết được bình luận. Có thể tách 23g2a (docs)
 
 `pnpm --filter core test` · `--filter ui` · `--filter extension` · `--filter web` · `--filter api` ·
 `--filter le-sach-mcp`; typecheck/build 0; content.js gz không tăng so với 13.66 KB; e2e + e2e:collab xanh.
+
+
+## 23h — Trang ghi chú phát hành (bổ sung 2026-11-23, theo yêu cầu người dùng, vào cùng MR #25)
+
+Người dùng cần một trang công khai thông báo tính năng mới mỗi lần đưa bản mới lên store. Đã có sẵn trang "Có gì mới" TRONG extension
+(`app.html?whatsnew=1`, `WhatsNewPage`, dữ liệu `apps/extension/src/shared/release-notes.ts`, tự mở một lần khi cập nhật có `showOnUpdate: true`).
+Thiếu: trang công khai (link được từ store listing, README, GitHub Release) và đường nối giữa hai trang.
+
+- **23h1 — site:** `site/changelog.html` tĩnh, song ngữ vi/en theo khuôn `privacy.html` (cùng `style.css`, `lang.js`, header/nav, script chọn ngôn ngữ).
+  Mỗi phiên bản một `<section id="v<x.y.z>">` (1.6.0 → 1.3.0, lấy từ `CHANGELOG.md` + `release-notes.ts`), 1.6.0 mở đầu bằng khối nổi bật
+  (bình luận, AI xử lý góp ý). Link "Có gì mới / What's new" trong nav của `index.html` và `privacy.html`. Deploy theo workflow Pages có sẵn (`site/**`).
+- **23h2 — extension:** `RELEASE_NOTES_URL = 'https://winwin1808.github.io/md-reader/changelog.html'` cạnh `HELP_URL`; `WhatsNewPage` thêm link
+  "Xem toàn bộ ghi chú phát hành" → `RELEASE_NOTES_URL#v<phiên bản mới nhất>`; test đồng bộ: mọi `version` trong `RELEASE_NOTES` có `id="v<version>"`
+  trong `site/changelog.html` (quên cập nhật trang khi ra bản mới → test đỏ).
+- Ngoài phạm vi: tag `v1.6.0` + GitHub Release (làm sau khi merge vào `main`, trỏ về trang này).
