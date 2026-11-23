@@ -50,6 +50,8 @@ export * from './components/presence'
 export * from './components/blame'
 export * from './components/HistoryTimeline'
 export type { HistoryTimelineProps } from './components/HistoryTimeline'
+export * from './components/CommentsPanel'
+export type { CommentsPanelProps } from './components/CommentsPanel'
 
 export * from './i18n'
 
