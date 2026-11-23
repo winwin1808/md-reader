@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, fireEvent, act, cleanup } from '@testing-library/react'
 import { CommentLayer, type CommentLayerProps } from './CommentLayer'
 
@@ -117,5 +117,111 @@ describe('CommentLayer', () => {
     fireEvent.keyDown(ta(), { key: 'Escape' })
     expect(onCreate).not.toHaveBeenCalled()
     expect(ta()).toBeNull()
+  })
+})
+
+describe('CommentLayer highlights and markers', () => {
+  const g = globalThis as unknown as Record<string, unknown>
+  let origCSS: unknown
+  let origHL: unknown
+  let hmap: Map<string, { ranges: Range[] }>
+  function stub() {
+    hmap = new Map()
+    class FakeHighlight {
+      ranges: Range[] = []
+      constructor(...r: Range[]) { this.ranges.push(...r) }
+      add(r: Range) { this.ranges.push(r); return this }
+    }
+    g.CSS = { ...((origCSS as object) ?? {}), highlights: hmap }
+    g.Highlight = FakeHighlight
+  }
+  function th(id: string, quote: string, from: number, to: number, over: Record<string, unknown> = {}) {
+    return { id, author: 'a', clientId: 1, ts: 1, body: 'b', quote, range: { from, to }, resolved: false, resolvedBy: null, deleted: false, replies: [], ...over }
+  }
+  const T1 = th('t1', 'world', 6, 11)
+  const marker = () => root.querySelector('.comment-marker') as HTMLElement | null
+  beforeEach(() => { origCSS = g.CSS; origHL = g.Highlight; stub() })
+  afterEach(() => {
+    if (origCSS === undefined) delete g.CSS; else g.CSS = origCSS
+    if (origHL === undefined) delete g.Highlight; else g.Highlight = origHL
+  })
+
+  it('open thread with quote -> one range equal to quote', () => {
+    mount({ threads: [T1] })
+    const h = hmap.get('mdr-comment')!
+    expect(h.ranges).toHaveLength(1)
+    expect(h.ranges[0]!.toString()).toBe('world')
+  })
+  it('active thread goes to active highlight', () => {
+    mount({ threads: [T1], activeId: 't1' })
+    expect(hmap.get('mdr-comment-active')!.ranges).toHaveLength(1)
+    expect(hmap.get('mdr-comment')?.ranges ?? []).toHaveLength(0)
+  })
+  it('resolved or orphan -> not painted', () => {
+    mount({ threads: [th('r', 'world', 6, 11, { resolved: true }), th('o', 'world', 6, 11, { range: null })] })
+    expect(hmap.get('mdr-comment')?.ranges ?? []).toHaveLength(0)
+    expect(root.querySelector('.comment-block-marked')).toBeNull()
+    expect(marker()).toBeNull()
+  })
+  it('quote not found -> block marked', () => {
+    mount({ threads: [th('t', 'nope', 0, 5)] })
+    expect(root.children[0]!.classList.contains('comment-block-marked')).toBe(true)
+    expect(hmap.get('mdr-comment')?.ranges ?? []).toHaveLength(0)
+  })
+  it('no CSS.highlights -> class fallback, no throw', () => {
+    delete g.CSS
+    delete g.Highlight
+    mount({ threads: [T1], activeId: 't1' })
+    const b = root.children[0]!
+    expect(b.classList.contains('comment-block-marked')).toBe(true)
+    expect(b.hasAttribute('data-comment-active')).toBe(true)
+  })
+  it('threads -> empty clears highlights and classes', () => {
+    const { rerender } = mount({ threads: [T1, th('t2', 'zzz', 23, 30)], activeId: 't2' })
+    expect(root.querySelector('.comment-block-marked')).toBeTruthy()
+    rerender(<CommentLayer {...({ container: root, source, threads: [], activeId: null, enabled: true, onCreate: vi.fn(), onSelect: vi.fn(), askName: false } as unknown as CommentLayerProps)} />)
+    expect(hmap.has('mdr-comment')).toBe(false)
+    expect(hmap.has('mdr-comment-active')).toBe(false)
+    expect(root.querySelector('.comment-block-marked')).toBeNull()
+    expect(root.querySelector('[data-comment-active]')).toBeNull()
+    expect(marker()).toBeNull()
+  })
+  it('unmount cleans up', () => {
+    const { unmount } = mount({ threads: [th('t2', 'zzz', 23, 30)] })
+    unmount()
+    expect(root.querySelector('.comment-block-marked')).toBeNull()
+    expect(hmap.size).toBe(0)
+  })
+  it('marker shows count and click selects first thread', () => {
+    const onSelect = vi.fn()
+    mount({ threads: [T1, th('t2', 'Hello', 0, 5)], onSelect })
+    const m = root.querySelectorAll('.comment-marker')
+    expect(m).toHaveLength(1)
+    expect(m[0]!.textContent).toBe('2')
+    fireEvent.click(m[0]!)
+    expect(onSelect).toHaveBeenCalledWith('t1')
+  })
+  it('marker data-active when thread active', () => {
+    mount({ threads: [T1], activeId: 't1' })
+    expect(marker()!.hasAttribute('data-active')).toBe(true)
+  })
+  it('click on commented text selects thread', () => {
+    const onSelect = vi.fn()
+    mount({ threads: [T1], onSelect })
+    window.getSelection()!.removeAllRanges()
+    fireEvent.click(p1())
+    expect(onSelect).toHaveBeenCalledWith('t1')
+  })
+  it('click on uncommented text does nothing', () => {
+    const onSelect = vi.fn()
+    mount({ threads: [T1], onSelect })
+    fireEvent.click(root.children[1]!.lastChild!)
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+  it('enabled=false -> no marker, no highlight', () => {
+    mount({ threads: [T1], enabled: false })
+    expect(marker()).toBeNull()
+    expect(hmap.size).toBe(0)
+    expect(root.querySelector('.comment-block-marked')).toBeNull()
   })
 })
