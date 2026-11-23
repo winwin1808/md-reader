@@ -125,6 +125,7 @@ export function App(): React.JSX.Element {
   const [narrow, setNarrow] = useState<boolean>(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1080px)').matches)
   const drawerRef = useRef<HTMLDivElement>(null)
+  const widthBeforeWideRef = useRef<ReaderSettings['pageWidth'] | null>(null)
   const tocWasOpenRef = useRef(false)
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -859,11 +860,22 @@ export function App(): React.JSX.Element {
               ? { kind: 'saved', at: ss.at }
               : { kind: 'none' }
 
+  const isWide = readerSettings.pageWidth === 'wide'
+  const toggleWide = () => {
+    if (isWide) {
+      handleSettingChange('pageWidth', widthBeforeWideRef.current ?? 'medium')
+    } else {
+      const cur = readerSettings.pageWidth
+      widthBeforeWideRef.current = cur && cur !== 'wide' ? cur : 'medium'
+      handleSettingChange('pageWidth', 'wide')
+    }
+  }
   const toolbarActions: ToolbarAction[] = [
     { id: 'open', label: t('ext.menu.open'), icon: 'open-file', onSelect: () => { void handleOpenFile() } },
     { id: 'export', label: t('ext.menu.export'), icon: 'export', onSelect: () => setExportOpen(true) },
     ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? t('ext.menu.blameHide') : t('ext.menu.blameShow'), icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
     { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else { setCommentsOpen(false); setHistoryOpen(true) } } },
+    { id: 'wide', label: isWide ? t('ext.menu.wideOff') : t('ext.menu.wideOn'), icon: 'fullscreen', onSelect: toggleWide },
     { id: 'comments', label: comments.openCount > 0 ? `${t('comments.title')} (${comments.openCount})` : t('comments.title'), icon: 'comment', badge: comments.openCount > 0, onSelect: toggleComments },
     { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true), badge: lifecycle.hasUnseenNotes },
   ]

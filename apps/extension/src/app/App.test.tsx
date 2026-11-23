@@ -1170,6 +1170,35 @@ describe('App', () => {
     )
   })
 
+  describe('wide mode toolbar toggle', () => {
+    const open = async (stored: Record<string, unknown> = {}) => {
+      ;(window as any).chrome.storage.sync.get = vi.fn().mockResolvedValue({ settingsVersion: 2, ...stored })
+      let r: any
+      await act(async () => { r = render(<App />) })
+      return r.container as HTMLElement
+    }
+    const pick = async (name: string) => {
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name })) })
+    }
+    it('medium -> wide -> medium', async () => {
+      const c = await open()
+      expect(c.querySelector('[data-width="medium"]')).not.toBeNull()
+      await pick('Xem rộng (80%)')
+      expect(c.querySelector('[data-width="wide"]')).not.toBeNull()
+      expect((window as any).chrome.storage.sync.set).toHaveBeenCalledWith({ pageWidth: 'wide' })
+      await pick('Thu về độ rộng thường')
+      expect(c.querySelector('[data-width="medium"]')).not.toBeNull()
+    })
+    it('narrow -> wide -> narrow', async () => {
+      const c = await open({ pageWidth: 'narrow' })
+      expect(c.querySelector('[data-width="narrow"]')).not.toBeNull()
+      await pick('Xem rộng (80%)')
+      expect(c.querySelector('[data-width="wide"]')).not.toBeNull()
+      await pick('Thu về độ rộng thường')
+      expect(c.querySelector('[data-width="narrow"]')).not.toBeNull()
+    })
+  })
+
   it('updates settings and persists to chrome.storage.sync.set', async () => {
     let capturedModalProps: any = null
     vi.spyOn(ui, 'SettingsModal').mockImplementation((props: any) => {
