@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import {
   addComment,
+  commentKeyClient,
   deleteComment,
   getComments,
   listThreads,
   replyComment,
   setResolved,
+  validateCommentValue,
 } from './comments.js'
 
 function mk(text = 'hello brave new world'): Y.Doc {
@@ -117,5 +119,71 @@ describe('comments', () => {
     getComments(d).set('c:1:yyyyyyyy', { v: 1 })
     addComment(d, { author: 'A', body: 'x', from: 0, to: 3 })
     expect(listThreads(d)).toHaveLength(1)
+  })
+})
+
+describe('validateCommentValue', () => {
+  const K = 'c:5:abcdefgh'
+  const anchor = { start: 'AAEC', end: 'AAED', quote: 'q' }
+  const root = (o: Record<string, unknown> = {}) => ({
+    v: 1, thread: null, author: 'A', clientId: 5, ts: 1, body: 'x', anchor, ...o,
+  })
+  const reply = (o: Record<string, unknown> = {}) => ({
+    v: 1, thread: K, author: 'A', clientId: 6, ts: 1, body: 'x', ...o,
+  })
+  const state = (o: Record<string, unknown> = {}) => ({ resolved: true, by: 'A', clientId: 1, ts: 1, ...o })
+
+  it('mục từ API hợp lệ', () => {
+    const d = mk()
+    const id = addComment(d, { author: 'An', body: 'ý', from: 0, to: 3 })
+    const rid = replyComment(d, id, { author: 'Bo', body: 'ok' })
+    setResolved(d, id, true, 'An')
+    const m = getComments(d)
+    expect(m.size).toBe(3)
+    for (const [k, v] of m.entries()) expect(validateCommentValue(k, v)).toBeNull()
+    expect(rid).toMatch(/^c:\d+:[a-z0-9]{8}$/)
+  })
+
+  it('hợp lệ thủ công', () => {
+    expect(validateCommentValue(K, root())).toBeNull()
+    expect(validateCommentValue('c:6:abcdefgh', reply())).toBeNull()
+    expect(validateCommentValue(`s:${K}`, state())).toBeNull()
+  })
+
+  it('mã lỗi', () => {
+    expect(validateCommentValue(K, root({ clientId: 6 }))).toBe('comment_client')
+    expect(validateCommentValue(K, root({ body: 'a'.repeat(4001) }))).toBe('comment_body')
+    expect(validateCommentValue(K, root({ body: '   ' }))).toBe('comment_body')
+    expect(validateCommentValue('c:6:abcdefgh', reply({ anchor }))).toBe('comment_anchor')
+    expect(validateCommentValue(K, root({ anchor: undefined }))).toBe('comment_anchor')
+    expect(validateCommentValue(K, (() => { const r: Record<string, unknown> = root(); delete r.anchor; return r })())).toBe('comment_anchor')
+    expect(validateCommentValue(K, root({ anchor: { ...anchor, start: '!!!' } }))).toBe('comment_anchor')
+    expect(validateCommentValue(K, root({ anchor: { ...anchor, quote: 'q'.repeat(301) } }))).toBe('comment_anchor')
+    expect(validateCommentValue(K, root({ extra: 1 }))).toBe('comment_shape')
+    expect(validateCommentValue(K, root({ v: 2 }))).toBe('comment_shape')
+    expect(validateCommentValue(K, null)).toBe('comment_shape')
+    expect(validateCommentValue(K, [])).toBe('comment_shape')
+    expect(validateCommentValue(K, root({ author: 'a'.repeat(41) }))).toBe('comment_shape')
+    expect(validateCommentValue('x:1', root())).toBe('comment_key')
+    expect(validateCommentValue('c:01:abcdefgh', root())).toBe('comment_key')
+    expect(validateCommentValue('s:x:1', state())).toBe('comment_key')
+    const { resolved: _r, ...noResolved } = state()
+    expect(validateCommentValue(`s:${K}`, noResolved)).toBe('comment_shape')
+    expect(validateCommentValue(`s:${K}`, state({ extra: 1 }))).toBe('comment_shape')
+  })
+
+  it('commentKeyClient', () => {
+    expect(commentKeyClient('c:12:abcdefgh')).toBe(12)
+    expect(commentKeyClient('c:0:abcdefgh')).toBe(0)
+    expect(commentKeyClient('s:c:7:abcdefgh')).toBe(7)
+    expect(commentKeyClient('c:012:abcdefgh')).toBeNull()
+    expect(commentKeyClient('c:1:short')).toBeNull()
+    expect(commentKeyClient('x:1:abcdefgh')).toBeNull()
+  })
+
+  it('listThreads bỏ mục clientId lệch khoá', () => {
+    const d = mk()
+    getComments(d).set(K, root({ clientId: 99 }))
+    expect(listThreads(d)).toHaveLength(0)
   })
 })

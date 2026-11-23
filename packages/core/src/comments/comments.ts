@@ -73,22 +73,68 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-function isEntry(v: unknown): v is CommentEntry {
-  if (!isObj(v)) return false
-  if (v.thread !== null && typeof v.thread !== 'string') return false
-  if (typeof v.author !== 'string' || typeof v.body !== 'string') return false
-  if (typeof v.ts !== 'number' || typeof v.clientId !== 'number') return false
-  if (v.thread === null) {
-    const a = v.anchor
-    if (!isObj(a) || typeof a.start !== 'string' || typeof a.end !== 'string' || typeof a.quote !== 'string') {
-      return false
-    }
-  }
-  return true
+const C_KEY = /^c:(0|[1-9]\d{0,15}):[a-z0-9]{8}$/
+const B64 = /^[A-Za-z0-9+/]+={0,2}$/
+
+export function commentKeyClient(key: string): number | null {
+  if (typeof key !== 'string') return null
+  const k = key.startsWith('s:') ? key.slice(2) : key
+  const m = C_KEY.exec(k)
+  return m ? Number(m[1]) : null
 }
 
-function isState(v: unknown): v is CommentState {
-  return isObj(v) && typeof v.resolved === 'boolean' && typeof v.by === 'string'
+function onlyKeys(o: Record<string, unknown>, allowed: string[]): boolean {
+  return Object.keys(o).every((k) => allowed.includes(k))
+}
+
+function isB64(v: unknown): boolean {
+  return typeof v === 'string' && v.length <= 128 && B64.test(v)
+}
+
+export function validateCommentValue(key: string, value: unknown): string | null {
+  try {
+    if (typeof key !== 'string') return 'comment_key'
+    if (key.startsWith('s:')) {
+      if (!C_KEY.test(key.slice(2))) return 'comment_key'
+      const v = value
+      if (!isObj(v) || !onlyKeys(v, ['resolved', 'by', 'clientId', 'ts'])) return 'comment_shape'
+      if (typeof v.resolved !== 'boolean') return 'comment_shape'
+      if (typeof v.by !== 'string' || v.by.length > COMMENT_AUTHOR_MAX) return 'comment_shape'
+      if (typeof v.clientId !== 'number' || !Number.isInteger(v.clientId) || v.clientId < 0) return 'comment_shape'
+      if (typeof v.ts !== 'number' || !Number.isFinite(v.ts) || v.ts < 0) return 'comment_shape'
+      return null
+    }
+    if (!C_KEY.test(key)) return 'comment_key'
+    const v = value
+    if (!isObj(v) || !onlyKeys(v, ['v', 'thread', 'author', 'body', 'ts', 'clientId', 'anchor'])) return 'comment_shape'
+    if (v.v !== 1) return 'comment_shape'
+    if (v.thread !== null && !(typeof v.thread === 'string' && C_KEY.test(v.thread))) return 'comment_shape'
+    if (typeof v.author !== 'string' || v.author.length > COMMENT_AUTHOR_MAX) return 'comment_shape'
+    if (typeof v.body !== 'string') return 'comment_shape'
+    if (v.body.trim() === '' || v.body.length > COMMENT_BODY_MAX) return 'comment_body'
+    if (typeof v.ts !== 'number' || !Number.isFinite(v.ts) || v.ts < 0) return 'comment_shape'
+    if (typeof v.clientId !== 'number' || !Number.isInteger(v.clientId)) return 'comment_shape'
+    if (v.clientId !== commentKeyClient(key)) return 'comment_client'
+    const hasAnchor = Object.prototype.hasOwnProperty.call(v, 'anchor')
+    if (hasAnchor !== (v.thread === null)) return 'comment_anchor'
+    if (hasAnchor) {
+      const a = v.anchor
+      if (!isObj(a) || !onlyKeys(a, ['start', 'end', 'quote'])) return 'comment_anchor'
+      if (!isB64(a.start) || !isB64(a.end)) return 'comment_anchor'
+      if (typeof a.quote !== 'string' || a.quote.length > COMMENT_QUOTE_MAX) return 'comment_anchor'
+    }
+    return null
+  } catch {
+    return 'comment_shape'
+  }
+}
+
+function isEntry(key: string, v: unknown): v is CommentEntry {
+  return key.startsWith('c:') && validateCommentValue(key, v) === null
+}
+
+function isState(key: string, v: unknown): v is CommentState {
+  return key.startsWith('s:') && validateCommentValue(key, v) === null
 }
 
 function newKey(doc: Y.Doc): string {
@@ -105,10 +151,10 @@ function hasRootThread(map: Y.Map<unknown>, threadId: string): boolean {
   const v = map.get(threadId)
   if (v === undefined) {
     // gốc đã xoá nhưng còn trả lời vẫn là thread hợp lệ
-    for (const [, e] of map.entries()) if (isEntry(e) && e.thread === threadId) return true
+    for (const [k, e] of map.entries()) if (isEntry(k, e) && e.thread === threadId) return true
     return false
   }
-  return isEntry(v) && v.thread === null
+  return isEntry(threadId, v) && v.thread === null
 }
 
 export function addComment(
@@ -181,7 +227,7 @@ export function setResolved(doc: Y.Doc, threadId: string, resolved: boolean, by:
 
 function hasReplies(map: Y.Map<unknown>, threadId: string, except?: string): boolean {
   for (const [k, e] of map.entries()) {
-    if (k !== except && isEntry(e) && e.thread === threadId) return true
+    if (k !== except && isEntry(k, e) && e.thread === threadId) return true
   }
   return false
 }
@@ -192,7 +238,7 @@ export function deleteComment(doc: Y.Doc, id: string): void {
   if (v === undefined) return
   doc.transact(() => {
     map.delete(id)
-    if (!isEntry(v)) return
+    if (!isEntry(id, v)) return
     if (v.thread === null) {
       if (!hasReplies(map, id)) map.delete(`s:${id}`)
     } else if (map.get(v.thread) === undefined && !hasReplies(map, v.thread)) {
@@ -217,7 +263,7 @@ export function listThreads(doc: Y.Doc): CommentThread[] {
   const roots = new Map<string, CommentEntry>()
   const replies = new Map<string, CommentReply[]>()
   for (const [key, val] of map.entries()) {
-    if (!key.startsWith('c:') || !isEntry(val)) continue
+    if (!isEntry(key, val)) continue
     if (val.thread === null) {
       roots.set(key, val)
     } else {
@@ -231,7 +277,7 @@ export function listThreads(doc: Y.Doc): CommentThread[] {
   for (const id of ids) {
     const rs = (replies.get(id) ?? []).sort((x, y) => x.ts - y.ts || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0))
     const st = map.get(`s:${id}`)
-    const state = isState(st) ? st : null
+    const state = isState(`s:${id}`, st) ? st : null
     const root = roots.get(id)
     const base = {
       resolved: state?.resolved ?? false,
