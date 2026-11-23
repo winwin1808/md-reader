@@ -3,7 +3,10 @@ import React from 'react'
 import { vi, describe, it, expect, afterEach } from 'vitest'
 import { I18nProvider } from '@md-reader/ui'
 import { WhatsNewPage } from './WhatsNewPage'
-import type { ReleaseNote } from '../shared/release-notes'
+import { RELEASE_NOTES, type ReleaseNote } from '../shared/release-notes'
+import { RELEASE_NOTES_URL } from './feedback-client'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 afterEach(cleanup)
 
@@ -58,5 +61,27 @@ describe('WhatsNewPage', () => {
     const { onDone } = setup(null)
     fireEvent.click(screen.getByRole('button', { name: 'Vào MD Reader' }))
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+  it('full-notes link points at newest version hash', () => {
+    setup('1.3.0')
+    const a = screen.getByRole('link', { name: 'Xem toàn bộ ghi chú phát hành' })
+    expect(a.getAttribute('href')).toBe(`${RELEASE_NOTES_URL}#v1.5.0`)
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+  it('full-notes link has no hash without notes', () => {
+    setup(null, 'en', [])
+    const a = screen.getByRole('link', { name: 'See all release notes' })
+    expect(a.getAttribute('href')).toBe(RELEASE_NOTES_URL)
+  })
+})
+
+describe('site/changelog.html sync', () => {
+  it('has a section for every release note version', () => {
+    // vitest chạy với cwd = apps/extension (pnpm --filter) hoặc gốc repo
+    const file = [resolve(process.cwd(), '../../site/changelog.html'), resolve(process.cwd(), 'site/changelog.html')].find(existsSync)!
+    const html = readFileSync(file, 'utf8')
+    const missing = RELEASE_NOTES.map((n) => n.version).filter((v) => !html.includes(`id="v${v}"`))
+    expect(missing, `site/changelog.html thiếu phiên bản: ${missing.join(', ')} — hãy cập nhật site/changelog.html`).toEqual([])
   })
 })
