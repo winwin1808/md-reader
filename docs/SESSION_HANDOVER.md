@@ -17,7 +17,7 @@ Spec `docs/superpowers/specs/2026-11-23-phase-23-design.md` (shipped) · intent 
 - Test (đo lại 2026-11-23 sau 23i/23j trên `phase-23`): core 383 · ui 721 · extension 722 · web 78 · api 286 · le-sach-mcp 61 (60 + 1 đỏ do hết cổng) · e2e 15 (13 xanh; 2 `mcp.spec` đỏ do hết cổng; `lifecycle.spec` đỏ một lượt dưới tải, chạy lại 4/4 xanh) · e2e:collab 3; typecheck/build 0; content.js gz 13,660 B. Máy tải cao (load ~30) làm vài test core/ui timeout 5 s — chạy lại xanh.
 - e2e MCP cần một cổng trống trong 47821–47830; máy dev hay bị các phiên `le-sach-mcp` khác chiếm hết (`no free port`).
 
-**Người làm:** merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store (mô tả store có thể dẫn link trang phát hành) → tag `v1.6.0` + GitHub Release trỏ về `changelog.html#v1.6.0`.
+**Đã xong 2026-11-23:** MR #25 merge (`02c483f`), Worker `f199d9a4`, `le-sach-mcp@1.4.0` npm, zip 1.6.0 nộp store, tag `v1.6.0` + Release. (Cũ:) merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store (mô tả store có thể dẫn link trang phát hành) → tag `v1.6.0` + GitHub Release trỏ về `changelog.html#v1.6.0`.
 
 Nợ:
 - 23i: độ rộng trước khi bật Rộng chỉ nhớ trong phiên; mục lục mở → tờ giấy ~73–78%; ghi đè `app.css` 721–1080px thừa (app ép single-column).
