@@ -28,14 +28,12 @@ test('Rộng mở tờ giấy ~80% bề ngang, medium hẹp hơn', async ({ cont
   await app.setViewportSize({ width: 1600, height: 900 })
 
   const wide = await measure(app, 'wide')
-  console.log('wide sheet width', wide.sheet, 'scrollWidth', wide.scroll)
   expect(wide.sheet).toBeGreaterThanOrEqual(0.75 * 1600)
   expect(wide.sheet).toBeLessThanOrEqual(0.81 * 1600)
   expect(wide.scroll).toBeLessThanOrEqual(1600)
 
   await app.setViewportSize({ width: 1920, height: 1000 })
   const wide2 = await measure(app, 'wide')
-  console.log('wide sheet width @1920', wide2.sheet, 'scrollWidth', wide2.scroll)
   expect(wide2.sheet).toBeGreaterThanOrEqual(0.75 * 1920)
   expect(wide2.sheet).toBeLessThanOrEqual(0.81 * 1920)
   expect(wide2.scroll).toBeLessThanOrEqual(1920)
@@ -45,6 +43,26 @@ test('Rộng mở tờ giấy ~80% bề ngang, medium hẹp hơn', async ({ cont
   const plain = await openApp(context, `${server.origin}/plain.md`)
   await plain.setViewportSize({ width: 1600, height: 900 })
   const medium = await measure(plain, 'medium')
-  console.log('medium sheet width', medium.sheet)
   expect(medium.sheet).toBeLessThan(0.65 * 1600)
+})
+
+test('Rộng ở 1000px (721–1080) vẫn đạt ~80%, và chế độ Sửa cũng Rộng', async ({ context, server }) => {
+  server.write('wide2.md', '# Rộng\n\nĐoạn.\n\n## Một\n\nA.\n\n## Hai\n\nB.\n\n## Ba\n\nC.\n')
+  const app = await openApp(context, `${server.origin}/wide2.md`)
+  await app.setViewportSize({ width: 1000, height: 800 })
+  const r = await measure(app, 'wide')
+  expect(r.sheet).toBeGreaterThanOrEqual(0.75 * 1000)
+  expect(r.scroll).toBeLessThanOrEqual(1000)
+
+  await app.setViewportSize({ width: 1600, height: 900 })
+  await app.getByRole('radio', { name: 'Sửa' }).click()
+  const sheet = app.locator('.editor-live-sheet').first()
+  await expect(sheet).toBeVisible({ timeout: 10000 })
+  const e = await app.evaluate(() => ({
+    sheet: document.querySelector('.editor-live-sheet')!.getBoundingClientRect().width,
+    scroll: document.documentElement.scrollWidth,
+  }))
+  expect(e.sheet).toBeGreaterThanOrEqual(0.7 * 1600)
+  expect(e.sheet).toBeLessThanOrEqual(0.81 * 1600)
+  expect(e.scroll).toBeLessThanOrEqual(1600)
 })
