@@ -118,3 +118,87 @@ test('view link is read-only; revoke-all kills the edit link page', async ({ con
     await browser.close()
   }
 })
+
+// Selects `text` inside the page's rendered document and fires the events the comment layer listens to.
+async function selectText(page: Page, text: string): Promise<void> {
+  await page.evaluate((t) => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    let n: Node | null
+    while ((n = w.nextNode())) {
+      const i = (n.textContent ?? '').indexOf(t)
+      if (i < 0 || !(n.parentElement as HTMLElement).closest('[data-sp]')) continue
+      const r = document.createRange()
+      r.setStart(n, i)
+      r.setEnd(n, i + t.length)
+      const s = window.getSelection()!
+      s.removeAllRanges()
+      s.addRange(r)
+      document.dispatchEvent(new Event('selectionchange'))
+      ;(n.parentElement as HTMLElement).dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      return
+    }
+    throw new Error('text not found: ' + t)
+  }, text)
+}
+
+test('view link comments; edit link resolves', async ({ context, server }) => {
+  server.write('doc3.md', '# Góp ý\n\nCâu cần sửa.\n')
+  const app = await openViaContentScript(context, `${server.origin}/doc3.md`)
+  await expect(app.getByRole('heading', { level: 1, name: 'Góp ý' })).toBeVisible()
+
+  await app.getByRole('button', { name: 'Cài đặt' }).first().click()
+  const dlg = app.getByRole('dialog')
+  await dlg.getByRole('button', { name: 'Cộng tác' }).click()
+  await dlg.getByLabel('Tên hiển thị').fill('Chủ')
+  await dlg.getByLabel('Máy chủ đồng bộ').fill(apiBase())
+  await dlg.getByRole('button', { name: 'Đóng' }).click()
+  await expect(dlg).toHaveCount(0)
+
+  await app.getByRole('button', { name: 'Chia sẻ' }).first().click()
+  const share = app.getByRole('dialog')
+  await share.getByRole('button', { name: 'Bật chia sẻ' }).click()
+  const viewUrl = await createLink(share, 'Xem')
+  const editUrl = await createLink(share, 'Sửa', viewUrl)
+  await share.getByRole('button', { name: 'Đóng' }).click()
+
+  const browser = await chromium.launch()
+  try {
+    // guest A (view link) comments
+    const a = await (await browser.newContext({ locale: 'vi-VN' })).newPage()
+    await a.goto(viewUrl)
+    await expect(a.getByRole('heading', { level: 1, name: 'Góp ý' })).toBeVisible({ timeout: 15000 })
+    await selectText(a, 'Câu cần sửa')
+    await a.locator('.comment-add-btn').click()
+    const composer = a.locator('.comment-composer')
+    await composer.getByLabel('Tên của bạn').fill('Khách A')
+    await composer.getByLabel('Bình luận').fill('Sửa câu này')
+    await composer.getByRole('button', { name: 'Gửi' }).click()
+    await expect(a.locator('.web-comments-toggle')).toContainText('(1)', { timeout: 15000 })
+
+    // owner sees it
+    await app.keyboard.press('ControlOrMeta+Shift+M')
+    await expect(app.locator('body')).toContainText('Sửa câu này', { timeout: 15000 })
+    await expect(app.locator('body')).toContainText('Khách A', { timeout: 15000 })
+
+    // guest B (edit link) resolves
+    const b = await (await browser.newContext({ locale: 'vi-VN' })).newPage()
+    await b.goto(editUrl)
+    await b.getByLabel('Tên của bạn').fill('Khách B')
+    await b.getByRole('button', { name: 'Bắt đầu sửa' }).click()
+    await expect(b.locator('.cm-content')).toContainText('Câu cần sửa', { timeout: 15000 })
+    await b.locator('.web-comments-toggle').click()
+    const drawer = b.locator('.web-comments-drawer')
+    await expect(drawer).toContainText('Sửa câu này', { timeout: 15000 })
+    await drawer.getByRole('button', { name: 'Xong' }).first().click()
+
+    // guest A sees it resolved
+    await expect(a.locator('.web-comments-toggle')).toContainText('(0)', { timeout: 15000 })
+    await expect(a.locator('.web-comments-drawer')).toBeVisible()
+    const done = a.locator('.web-comments-drawer').getByRole('tab', { name: /Đã xong \(1\)/ })
+    await expect(done).toBeVisible({ timeout: 15000 })
+    await done.click()
+    await expect(a.locator('.web-comments-drawer')).toContainText('Sửa câu này')
+  } finally {
+    await browser.close()
+  }
+})
