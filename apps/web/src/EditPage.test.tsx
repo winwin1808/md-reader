@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 import * as Y from 'yjs'
-import { createDoc } from '@md-reader/core'
+import { createDoc, addComment, listThreads } from '@md-reader/core'
 import { EditorView } from '@codemirror/view'
 import { EditPage, uploadImage } from './EditPage'
 import { SharePage } from './SharePage'
@@ -277,9 +277,44 @@ describe('EditPage', () => {
     }
   })
   it('view link page has no toggle', async () => {
-    render(<SharePage token={TOKEN} load={async () => ({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '# Hi' }) as never} />)
+    render(<SharePage token={TOKEN} load={async () => ({ kind: 'ready', info: { roomId: 'r', role: 'view', title: 'T' }, text: '# Hi', doc: new Y.Doc({ gc: false }) }) as never} />)
     await waitFor(() => expect(screen.getByText('T')).toBeTruthy())
     expect(screen.queryByRole('radio')).toBeNull()
+  })
+})
+
+describe('EditPage comments', () => {
+  async function online() {
+    localStorage.setItem('mdr.displayName', 'Binh')
+    const m = makeBind()
+    const r = render(<EditPage token={TOKEN} info={info} bind={m.bind as never} />)
+    m.emit('online')
+    await waitFor(() => expect(r.container.querySelector('.cm-editor')).toBeTruthy())
+    const doc = m.calls[0]!.doc
+    const other = new Y.Doc({ gc: false })
+    act(() => { doc.getText('source').insert(0, '# Hello world') })
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc))
+    addComment(other, { author: 'Lan', body: 'note', from: 2, to: 7 })
+    act(() => { Y.applyUpdate(doc, Y.encodeStateAsUpdate(other)) })
+    return { m, doc, ...r }
+  }
+  it('resolves another author thread but cannot delete it', async () => {
+    const { doc } = await online()
+    await waitFor(() => expect(screen.getByRole('button', { name: /Bình luận \(1\)/ })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /Bình luận \(1\)/ }))
+    expect(screen.queryByRole('button', { name: 'Xoá' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Xong' }))
+    expect(listThreads(doc)[0]!.resolved).toBe(true)
+  })
+  it('view mode has source-position nodes in the sheet', async () => {
+    const { container } = await online()
+    fireEvent.click(screen.getByRole('radio', { name: 'Xem' }))
+    await waitFor(() => expect(container.querySelector('.web-sheet [data-sp]')).toBeTruthy(), { timeout: 1500 })
+  })
+  it('locked disables the comments button', async () => {
+    const { m } = await online()
+    m.emit('revoked')
+    expect((screen.getByRole('button', { name: /Bình luận/ }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
 

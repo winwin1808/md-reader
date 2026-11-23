@@ -1,9 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { API_PATHS, computeTextChanges, trackLocalActor, type ResolveTokenResponse, type UploadAssetResponse } from '@md-reader/core'
-import { FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme, useT, useLocale, createT } from '@md-reader/ui'
+import { CommentComposer, CommentLayer, CommentsPanel, useComments, FormattingToolbar, PresenceBar, usePeers, Viewer, applyFormat, Logo, useResolvedTheme, useT, useLocale, createT } from '@md-reader/ui'
 import type { TFunction } from '@md-reader/ui'
-import type { EditorView, FormatAction } from '@md-reader/ui'
+import type { EditorCommentsConfig, EditorView, FormatAction } from '@md-reader/ui'
 import { bindRoom, type SyncStatus } from './collab'
 import { renderShareHtml } from './share-client'
 import { readName, writeName } from './name'
@@ -217,6 +217,40 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
     [session],
   )
 
+  const c = useComments(session?.doc ?? null, name, { canModerate: false, canResolveAll: true, matchActorName: false })
+  const [open, setOpen] = useState(false)
+  const [pendingRange, setPendingRange] = useState<{ from: number; to: number } | null>(null)
+  const [sheet, setSheet] = useState<HTMLElement | null>(null)
+  const sheetRef = useCallback((el: HTMLDivElement | null) => setSheet(el), [])
+  const locked = status === 'revoked' || status === 'full'
+
+  useEffect(() => { setPendingRange(null) }, [mode, locked])
+
+  const openThread = (id: string) => {
+    c.setActive(id)
+    setOpen(true)
+    const view = editorViewRef.current
+    const th = c.threads.find((x) => x.id === id)
+    if (mode === 'edit' && view && th?.range) {
+      const len = view.state.doc.length
+      const from = Math.min(th.range.from, len)
+      const to = Math.min(th.range.to, len)
+      view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true })
+    }
+  }
+  const openThreadRef = useRef(openThread)
+  openThreadRef.current = openThread
+
+  const editorComments = useMemo<EditorCommentsConfig>(
+    () => ({
+      threads: c.threads,
+      activeId: c.activeId,
+      onCreate: (range) => setPendingRange(range),
+      onSelect: (id) => openThreadRef.current(id),
+    }),
+    [c.threads, c.activeId],
+  )
+
   if (failed && !wasOnline) {
     return (
       <div className="web-notice">
@@ -227,7 +261,18 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
   }
   if (!wasOnline || !session) return <div className="web-notice"><p role="status">{t('web.loadingDoc')}</p></div>
 
-  const locked = status === 'revoked' || status === 'full'
+  const actions = (
+    <button
+      type="button"
+      className="web-comments-toggle"
+      disabled={locked}
+      title={locked ? t('web.commentsFull') : undefined}
+      aria-expanded={open}
+      onClick={() => setOpen((v) => !v)}
+    >
+      {`${t('comments.title')} (${c.openCount})`}
+    </button>
+  )
 
   return (
     <div className="web-page">
@@ -236,6 +281,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
         status={t(STATUS_KEY[status])}
         presence={<PresenceBar peers={peers} />}
         toggle={locked ? undefined : { value: mode, onChange: setMode }}
+        actions={actions}
       />
       {locked && (
         <p role="alert" className="web-banner">{t(STATUS_KEY[status])}</p>
@@ -249,7 +295,7 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
             onUndo={() => session.undo.undo()}
             onRedo={() => session.undo.redo()}
           />
-          <div className="web-sheet web-sheet-edit">
+          <div className="web-sheet web-sheet-edit" style={{ position: 'relative' }}>
             <Suspense fallback={<div aria-busy="true" />}>
               <Editor
                 variant="live"
@@ -260,14 +306,61 @@ function EditSession(props: EditPageProps & { name: string }): React.JSX.Element
                 editorViewRef={editorViewRef}
                 saveImage={async (file) => ({ src: (await uploadImage(serverUrl ?? location.origin, info.roomId, token, file, t)).url })}
                 onImageMessage={(m) => push('error', m)}
+                comments={editorComments}
               />
             </Suspense>
+            {pendingRange && (
+              <div className="web-comment-composer">
+                <CommentComposer
+                  askName={false}
+                  onCancel={() => setPendingRange(null)}
+                  onSubmit={(body) => {
+                    const id = c.create(pendingRange, body)
+                    if (id === null) push('error', t('web.commentRangeChanged'))
+                    else {
+                      setPendingRange(null)
+                      setOpen(true)
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </>
       ) : (
-        <div className="web-sheet">
-          <Viewer html={html} isAppPage={false} />
-        </div>
+        <>
+          <div className="web-sheet" ref={sheetRef}>
+            <Viewer html={html} isAppPage={false} />
+          </div>
+          <CommentLayer
+            container={sheet}
+            source={session.yText.toString()}
+            threads={c.threads}
+            activeId={c.activeId}
+            enabled={!locked}
+            askName={false}
+            onSelect={openThread}
+            onCreate={(range, body) => {
+              const id = c.create(range, body)
+              if (id === null) push('error', t('web.commentRangeChanged'))
+              else setOpen(true)
+            }}
+          />
+        </>
+      )}
+      {open && (
+        <aside className="web-comments-drawer">
+          <CommentsPanel
+            threads={c.threads}
+            me={c.me}
+            activeId={c.activeId}
+            onSelect={openThread}
+            onReply={c.reply}
+            onResolve={c.resolve}
+            onDelete={c.remove}
+            onClose={() => setOpen(false)}
+          />
+        </aside>
       )}
       {notices.length > 0 && <NoticeStack items={notices} onDismiss={dismiss} />}
     </div>

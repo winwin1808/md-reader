@@ -79,3 +79,4 @@ html, body { margin: 0; background: var(--surface); color: var(--ink); font-fami
   overflow-y: auto; background: var(--paper); border-left: 1px solid var(--rule); color: var(--ink);
 }
 @media (max-width: 640px) { .web-comments-drawer { width: 100vw; border-left: 0; } }
+.web-comment-composer { position: absolute; top: 8px; right: 8px; z-index: 5; width: min(320px, 90%); }
