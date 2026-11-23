@@ -73,9 +73,10 @@ export function CommentsPanel(props: CommentsPanelProps): JSX.Element {
   const bodyRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!activeId) return
-    const el = bodyRef.current?.querySelector(`.comment-thread[data-id="${CSS.escape(activeId)}"]`) as HTMLElement | null
+    const esc = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? (v: string) => CSS.escape(v) : (v: string) => v.replace(/["\\]/g, '\\$&')
+    const el = bodyRef.current?.querySelector(`.comment-thread[data-id="${esc(activeId)}"]`) as HTMLElement | null
     if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'nearest' })
-  }, [activeId])
+  }, [activeId, threads])
   const onBodyKey = (e: React.KeyboardEvent) => {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -102,6 +103,7 @@ export function CommentsPanel(props: CommentsPanelProps): JSX.Element {
       className="comment-thread"
       key={th.id}
       data-id={th.id}
+      data-resolved={th.resolved ? 'true' : undefined}
       aria-current={activeId === th.id || undefined}
       onClick={() => onSelect(th.id)}
     >

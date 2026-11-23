@@ -15,7 +15,7 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23b1 — done — ui: `CommentsPanel`
 - 23b2 — done — ui: `CommentLayer` cho Viewer (chọn chữ, tô, mốc lề)
 - 23b3 — done — ui: bình luận trong editor live preview
-- 23c — pending — extension: `useComments` + gắn App
+- 23c — done — extension: `useComments` + gắn App
 - 23d1 — done — api: luật peer-guard cho bình luận
 - 23d2 — done — api: kết nối link xem được gửi update bình luận
 - 23e — pending — web: bình luận ở `/s/:token` (xem + sửa)

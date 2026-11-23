@@ -9,6 +9,7 @@
 .comments-panel__empty { padding: 12px; color: var(--pencil); }
 .comment-thread { padding: 8px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
 .comment-thread[aria-current] { background: color-mix(in srgb, var(--hl) 28%, var(--paper)); }
+.comment-thread[data-resolved]:not([aria-current]):not(:focus-within) { opacity: 0.6; }
 .comment-thread__quote { margin: 0 0 4px; padding-left: 8px; border-left: 2px solid var(--accent); font-style: italic; opacity: 0.85; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .comment-thread__text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .comment-thread__reply { margin-left: 12px; padding-top: 4px; }
