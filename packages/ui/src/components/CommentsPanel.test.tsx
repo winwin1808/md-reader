@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, fireEvent, cleanup } from '@testing-library/react'
 import type { CommentThread } from '@md-reader/core'
 import { CommentsPanel } from './CommentsPanel'
+import { Icon } from './Icon'
 
 const NOW = 10_000_000
 const th = (o: Partial<CommentThread>): CommentThread => ({
@@ -83,6 +84,40 @@ describe('CommentsPanel', () => {
     expect(x).toContain('vừa xong')
     expect(x).toContain('5 phút trước')
     expect(x).toContain('3 giờ trước')
+  })
+  describe('23c-1 debts', () => {
+    afterEach(() => cleanup())
+    const mk = (threads: CommentThread[], activeId: string | null) => ({ threads, me: { clientIds: [1], canModerate: false, canResolveAll: false }, activeId, onSelect: vi.fn(), onReply: vi.fn(), onResolve: vi.fn(), onDelete: vi.fn(), onClose: vi.fn(), now: () => NOW })
+    it('marks resolved threads with data-resolved', () => {
+      const { container } = setup([th({ id: 'a' }), th({ id: 'b', resolved: true })])
+      expect(container.querySelector('[data-id="a"]')!.hasAttribute('data-resolved')).toBe(false)
+      fireEvent.click(tab(container, 'Đã xong'))
+      expect(container.querySelector('[data-id="b"]')!.getAttribute('data-resolved')).toBe('true')
+    })
+    it('does not throw without CSS.escape and still scrolls', () => {
+      vi.stubGlobal('CSS', {})
+      const spy = vi.fn()
+      Element.prototype.scrollIntoView = spy
+      try {
+        const threads = [th({ id: 'a' }), th({ id: 'b' })]
+        const { rerender } = render(<CommentsPanel {...mk(threads, 'a')} />)
+        spy.mockClear()
+        rerender(<CommentsPanel {...mk(threads, 'b')} />)
+        expect(spy).toHaveBeenCalled()
+      } finally { vi.unstubAllGlobals() }
+    })
+    it('scrolls when threads change so the active thread appears', () => {
+      const spy = vi.fn()
+      Element.prototype.scrollIntoView = spy
+      const { rerender } = render(<CommentsPanel {...mk([th({ id: 'a' })], 'b')} />)
+      spy.mockClear()
+      rerender(<CommentsPanel {...mk([th({ id: 'a' }), th({ id: 'b' })], 'b')} />)
+      expect(spy).toHaveBeenCalled()
+    })
+    it('comment icon renders svg', () => {
+      const { container } = render(<Icon name="comment" />)
+      expect(container.querySelector('svg')).toBeTruthy()
+    })
   })
   describe('reply box + keyboard', () => {
     const setupActive = (threads: CommentThread[], activeId = 'a') => {
