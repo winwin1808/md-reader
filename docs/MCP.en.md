@@ -12,10 +12,10 @@ The bridge is **off by default**. The extension accepts connections only after y
 
 ## 2. Install
 
-Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.3.3` with:
+Requires Node >= 20. Nothing to install beforehand; your client runs `le-sach-mcp@1.4.0` with:
 
 ```
-npx -y le-sach-mcp@1.3.3
+npx -y le-sach-mcp@1.4.0
 ```
 
 ## 3. Client configuration
@@ -27,7 +27,7 @@ npx -y le-sach-mcp@1.3.3
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.3"]
+      "args": ["-y", "le-sach-mcp@1.4.0"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp@1.3.3
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp@1.3.3
+claude mcp add md-reader -- npx -y le-sach-mcp@1.4.0
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.3
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.3"]
+      "args": ["-y", "le-sach-mcp@1.4.0"]
     }
   }
 }
@@ -79,11 +79,11 @@ Each `le-sach-mcp` pairs with **one** extension, which means one Chrome profile.
 **Moving an AI app to another profile:**
 
 1. In the old profile: revoke that AI app in Settings → AI connection (or turn AI connection off). If you skip this, the old profile reconnects by itself and takes the pairing slot first.
-2. Run `npx -y le-sach-mcp@1.3.3 unpair`. It removes the pinned extension key from the pairing file and **keeps the server key**, so the identifier stays the same. It prints one result line and exits.
+2. Run `npx -y le-sach-mcp@1.4.0 unpair`. It removes the pinned extension key from the pairing file and **keeps the server key**, so the identifier stays the same. It prints one result line and exits.
 3. Restart the AI app (the 10-minute pairing window starts when `le-sach-mcp` starts).
 4. In the new profile: Settings → AI connection → **Connect** → Allow.
 
-## 5. The seven tools
+## 5. The ten tools
 
 | Tool | What it does | Confirmation |
 |---|---|---|
@@ -94,8 +94,13 @@ Each `le-sach-mcp` pairs with **one** extension, which means one Chrome profile.
 | `share_doc` | Ask to create a share link (`role`: `view` or `edit`, default `view`; `expiresInDays`: 7, 30 or `null`, default 7). Returns the URL. | **Always asks** |
 | `list_links` | List a document's share links (prefix, role, expiry, revoked). | No |
 | `revoke_link` | Ask to revoke a link by `tokenPrefix` (6 characters). | **Always asks** |
+| `list_comments` | List a document's comments. `status`: `open` (default) or `all`. Each thread returns `threadId`, `quote`, `currentText`, `line`, `status`, `author`, `ts`, `body`, `replies`. | No |
+| `reply_comment` | Reply to a thread (`docId`, `threadId`, `body` up to 4000 characters). The author is the paired AI client's name. | No |
+| `resolve_comment` | Mark a thread Done (`docId`, `threadId`, optional `reply` — if given, the reply is sent first, then the thread is marked). | No |
 
 `share_doc` and `revoke_link` always show a confirmation dialog in MD Reader; nothing happens unless you click Allow. The dialog closes by itself after 100 seconds, which counts as a refusal.
+
+**Handling feedback.** The three comment tools never ask for confirmation, even when the document is shared; the author is the paired AI client's name. Suggested flow: `list_comments` → edit with `update_doc` (locate the spot by `currentText` or `line`) → `resolve_comment` with a short `reply`. Needs extension 1.6.0 or newer; an older one returns the error "This needs MD Reader extension 1.6.0 or newer".
 
 ## 6. Example prompts
 
@@ -104,6 +109,7 @@ Each `le-sach-mcp` pairs with **one** extension, which means one Chrome profile.
 - "List the documents I opened recently."
 - "Create a view-only link that expires in 7 days for this document."
 - "Turn this document into a slide deck with one main point per slide."
+- "Read the open comments in the 'Q4 plan' document, edit it according to the feedback, then mark them done with a short reply."
 
 **Writing Markdown for presenting.** MD Reader splits slides on `---` lines (when the document has them) or on headings. To break a slide at a specific place without adding a rule or a heading, the AI puts `<!-- slide-break -->` on its own line, with a blank line before and after; the line is invisible when reading and dropped from Word export. Speaker notes are written as `<!-- note: ... -->`. Slides that are too long are still split automatically when presenting and exporting to PDF, so manual breaks are not needed just to avoid overflow.
 

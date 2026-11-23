@@ -12,10 +12,10 @@ Cầu nối **tắt mặc định**. Bạn phải bật trong Cài đặt thì e
 
 ## 2. Cài đặt
 
-Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bản `le-sach-mcp@1.3.3` bằng:
+Yêu cầu Node ≥ 20. Không cần cài sẵn, client sẽ chạy bản `le-sach-mcp@1.4.0` bằng:
 
 ```
-npx -y le-sach-mcp@1.3.3
+npx -y le-sach-mcp@1.4.0
 ```
 
 ## 3. Cấu hình client
@@ -27,7 +27,7 @@ npx -y le-sach-mcp@1.3.3
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.3"]
+      "args": ["-y", "le-sach-mcp@1.4.0"]
     }
   }
 }
@@ -36,7 +36,7 @@ npx -y le-sach-mcp@1.3.3
 **Claude Code**:
 
 ```
-claude mcp add md-reader -- npx -y le-sach-mcp@1.3.3
+claude mcp add md-reader -- npx -y le-sach-mcp@1.4.0
 ```
 
 **Cursor** (`.cursor/mcp.json`):
@@ -46,7 +46,7 @@ claude mcp add md-reader -- npx -y le-sach-mcp@1.3.3
   "mcpServers": {
     "md-reader": {
       "command": "npx",
-      "args": ["-y", "le-sach-mcp@1.3.3"]
+      "args": ["-y", "le-sach-mcp@1.4.0"]
     }
   }
 }
@@ -80,11 +80,11 @@ Mỗi `le-sach-mcp` chỉ ghép với **một** extension — tức một profil
 **Chuyển một ứng dụng AI sang profile khác:**
 
 1. Ở profile cũ: thu hồi ứng dụng AI đó trong Cài đặt → Kết nối AI (hoặc tắt Kết nối AI). Nếu bỏ qua bước này, profile cũ sẽ tự nối lại và chiếm chỗ ghép cặp trước.
-2. Chạy `npx -y le-sach-mcp@1.3.3 unpair`. Lệnh này bỏ khoá extension đã ghim trong file ghép cặp và **giữ khoá của máy chủ**, nên mã nhận dạng không đổi. Lệnh in một dòng kết quả rồi thoát.
+2. Chạy `npx -y le-sach-mcp@1.4.0 unpair`. Lệnh này bỏ khoá extension đã ghim trong file ghép cặp và **giữ khoá của máy chủ**, nên mã nhận dạng không đổi. Lệnh in một dòng kết quả rồi thoát.
 3. Khởi động lại ứng dụng AI (cửa sổ ghép cặp 10 phút tính từ lúc `le-sach-mcp` chạy).
 4. Ở profile mới: Cài đặt → Kết nối AI → **Kết nối** → Cho phép.
 
-## 5. Bảy tool
+## 5. Mười tool
 
 | Tool | Việc làm | Xác nhận |
 |---|---|---|
@@ -95,8 +95,13 @@ Mỗi `le-sach-mcp` chỉ ghép với **một** extension — tức một profil
 | `share_doc` | Xin tạo link chia sẻ (`role`: `view` hoặc `edit`, mặc định `view`; `expiresInDays`: 7, 30 hoặc `null`, mặc định 7). Trả URL. | **Luôn hỏi** |
 | `list_links` | Liệt kê link chia sẻ của tài liệu (tiền tố, vai trò, hạn, đã thu hồi). | Không |
 | `revoke_link` | Xin thu hồi link theo `tokenPrefix` (6 ký tự). | **Luôn hỏi** |
+| `list_comments` | Liệt kê bình luận của tài liệu. `status`: `open` (mặc định) hoặc `all`. Mỗi thread trả `threadId`, `quote`, `currentText`, `line`, `status`, `author`, `ts`, `body`, `replies`. | Không |
+| `reply_comment` | Trả lời một thread (`docId`, `threadId`, `body` tối đa 4000 ký tự). Tác giả là tên client AI đã ghép cặp. | Không |
+| `resolve_comment` | Đánh dấu một thread là Xong (`docId`, `threadId`, `reply` tuỳ chọn — nếu có, gửi trả lời trước rồi mới đánh dấu). | Không |
 
 `share_doc` và `revoke_link` luôn hiện hộp xác nhận trong MD Reader; không bấm Cho phép thì không có gì xảy ra. Hộp tự đóng sau 100 giây và được tính là từ chối.
+
+**Xử lý góp ý.** Ba tool bình luận không hỏi xác nhận, kể cả khi tài liệu đang chia sẻ; tác giả là tên client AI đã ghép cặp. Luồng gợi ý: `list_comments` → sửa bằng `update_doc` (định vị chỗ cần sửa bằng `currentText` hoặc `line`) → `resolve_comment` kèm `reply` ngắn. Cần extension 1.6.0 trở lên; bản cũ hơn trả lỗi "This needs MD Reader extension 1.6.0 or newer".
 
 ## 6. Prompt mẫu
 
@@ -105,6 +110,7 @@ Mỗi `le-sach-mcp` chỉ ghép với **một** extension — tức một profil
 - "Liệt kê các tài liệu tôi đã mở gần đây."
 - "Tạo link chỉ xem, hết hạn sau 7 ngày cho tài liệu này."
 - "Biến tài liệu này thành bộ slide trình chiếu, mỗi ý chính một slide."
+- "Đọc bình luận đang mở trong tài liệu 'Kế hoạch Q4', sửa theo góp ý rồi đánh dấu xong kèm trả lời ngắn."
 
 **Viết Markdown cho trình chiếu.** MD Reader tách slide theo dòng `---` (nếu tài liệu có) hoặc theo đề mục. Muốn ngắt slide ở một chỗ cụ thể mà không thêm đường kẻ hay đề mục, AI đặt một dòng riêng `<!-- slide-break -->`, có dòng trống trước và sau; dòng này không hiện khi đọc và bị bỏ khi xuất Word. Ghi chú diễn giả viết bằng `<!-- note: ... -->`. Slide quá dài vẫn được tự chia khi trình chiếu và xuất PDF, nên không cần ngắt thủ công chỉ để tránh tràn.
 
