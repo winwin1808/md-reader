@@ -225,3 +225,35 @@ describe('injected plugins (8h1)', () => {
     expect(parseMarkdown('---\na: 1\n---\nx', { parseYaml: () => ({ injected: true }) }).frontmatter).toEqual({ injected: true })
   })
 })
+
+describe('sourcePositions', () => {
+  const r = (md: string, o: Record<string, unknown> = {}) =>
+    renderToHtml(parseMarkdown(md), { plugins: defaultRenderPlugins(), ...o } as any).html
+  const sps = (html: string) => [...html.matchAll(/<(\w+)[^>]*data-sp="(\d+):(\d+)"/g)].map((m) => ({ tag: m[1]!, s: +m[2]!, e: +m[3]! }))
+
+  it('marks blocks with exact source ranges', () => {
+    const md = '# Title\n\nSome para\n\n- item one\n- item two\n\n> quote\n\n```js\nx\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |\n'
+    const out = sps(r(md, { sourcePositions: true }))
+    const tags = out.map((x) => x.tag)
+    for (const t of ['h1', 'p', 'li', 'blockquote', 'pre', 'table', 'tr']) expect(tags).toContain(t)
+    const h = out.find((x) => x.tag === 'h1')!
+    expect(md.slice(h.s, h.e)).toBe('# Title')
+    const p = out.find((x) => x.tag === 'p')!
+    expect(md.slice(p.s, p.e)).toBe('Some para')
+  })
+  it('offsets stay relative to the original source with frontmatter', () => {
+    const md = '---\ntitle: x\n---\n\n# Head\n\nBody text\n'
+    const out = sps(r(md, { sourcePositions: true }))
+    const p = out.find((x) => x.tag === 'p')!
+    expect(md.slice(p.s, p.e)).toBe('Body text')
+    const h = out.find((x) => x.tag === 'h1')!
+    expect(md.slice(h.s, h.e)).toBe('# Head')
+  })
+  it('drops malformed user data-sp', () => {
+    const html = r('<p data-sp="x">hi</p>', { sourcePositions: true, allowRawHtml: true })
+    expect(html).not.toContain('data-sp')
+  })
+  it('emits nothing when disabled', () => {
+    expect(r('# a\n\ntext')).not.toContain('data-sp')
+  })
+})
