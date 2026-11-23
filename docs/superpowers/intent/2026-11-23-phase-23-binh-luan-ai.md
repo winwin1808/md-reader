@@ -1,5 +1,7 @@
 # Intent: Phase 23 — Bình luận + AI xử lý góp ý
-Author: winwin1808. Status: draft. Phase: 23
+Author: winwin1808. Status: designed. Phase: 23
+
+Design: docs/superpowers/specs/2026-11-23-phase-23-design.md
 
 Brainstorm (đã duyệt): `docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai-va-xuat-nhe-brainstorm.md`.
 Phase 24 (XLSX, xuất từng hình, giao diện tài liệu, Graphviz/Vega-Lite) là vòng pipeline riêng sau phase này.
