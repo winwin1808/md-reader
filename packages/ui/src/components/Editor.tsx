@@ -24,6 +24,7 @@ import { imageResolverFacet } from '../live/widgets'
 import { livePreview, createDefaultRenderers, pasteImages, toDataUrl } from '../live'
 import type { ImageSaver } from '../live'
 import type { BlockRenderers } from '../live'
+import { commentsExtension, refreshComments, type EditorCommentsConfig } from '../live'
 import { translateFacet } from '../live/i18n-facet'
 import { useT, type TFunction } from '../i18n'
 import '../theme/editor.css'
@@ -32,6 +33,7 @@ import '../theme/live.css'
 export type { ImageResolver }
 export { livePreview, createDefaultRenderers, pasteImages, toDataUrl }
 export type { ImageSaver }
+export type { EditorCommentsConfig }
 
 export const lereSachHighlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--ink)', fontWeight: '600' },
@@ -84,6 +86,7 @@ export interface EditorProps {
   onEditorReady?: (view: EditorView) => void
   awareness?: Parameters<typeof yCollab>[1]
   blame?: Array<LineAuthor | null> | null
+  comments?: EditorCommentsConfig
   variant?: 'source' | 'live'
   renderers?: BlockRenderers
   resolveImage?: ImageResolver
@@ -104,6 +107,7 @@ export function Editor({
   editorViewRef,
   awareness,
   blame,
+  comments,
   variant = 'source',
   renderers,
   live: liveOpts,
@@ -117,6 +121,9 @@ export function Editor({
   const blameCompartmentRef = useRef(new Compartment())
   const blameRef = useRef(blame)
   blameRef.current = blame
+  const commentsCompartmentRef = useRef(new Compartment())
+  const commentsRef = useRef(comments)
+  commentsRef.current = comments
   const liveThemeRef = useRef(liveOpts?.theme)
   liveThemeRef.current = liveOpts?.theme
   const resolveImageRef = useRef(resolveImage)
@@ -143,6 +150,21 @@ export function Editor({
       effects: blameCompartmentRef.current.reconfigure(blame ? blameGutter(blame, tr) : []),
     })
   }, [blame])
+
+  const hasComments = Boolean(comments)
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: commentsCompartmentRef.current.reconfigure(
+        commentsRef.current ? commentsExtension(() => commentsRef.current!) : [],
+      ),
+    })
+  }, [hasComments])
+
+  useEffect(() => {
+    if (viewRef.current && commentsRef.current) {
+      viewRef.current.dispatch({ effects: refreshComments.of(null) })
+    }
+  }, [comments?.threads, comments?.activeId])
 
   const tr = useT()
   useEffect(() => {
@@ -173,6 +195,9 @@ export function Editor({
       yCollab(yText, awareness ?? null, undoManager !== undefined ? { undoManager } : undefined),
       readOnlyCompartmentRef.current.of(EditorState.readOnly.of(Boolean(readOnly))),
       blameCompartmentRef.current.of(blameRef.current ? blameGutter(blameRef.current, tr) : []),
+      commentsCompartmentRef.current.of(
+        commentsRef.current ? commentsExtension(() => commentsRef.current!) : [],
+      ),
       EditorView.domEventHandlers({
         scroll: (_event, view) => {
           if (onScrollRef.current) {
