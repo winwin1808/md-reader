@@ -17,7 +17,7 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23b3 — pending — ui: bình luận trong editor live preview
 - 23c — pending — extension: `useComments` + gắn App
 - 23d1 — done — api: luật peer-guard cho bình luận
-- 23d2 — planned — api: kết nối link xem được gửi update bình luận
+- 23d2 — done — api: kết nối link xem được gửi update bình luận
 - 23e — pending — web: bình luận ở `/s/:token` (xem + sửa)
 - 23f1 — pending — core bridge + `le-sach-mcp`: ba tool bình luận
 - 23f2 — pending — extension: thực thi tool bình luận
