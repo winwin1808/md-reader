@@ -21,7 +21,7 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23e — done — web: bình luận ở `/s/:token` (xem + sửa)
 - 23f1 — done — core bridge + `le-sach-mcp`: ba tool bình luận
 - 23f2 — done — extension: thực thi tool bình luận
-- 23g1 — pending — e2e cộng tác + MCP thật
+- 23g1 — planned — e2e cộng tác + MCP thật
 - 23g2 — done — docs, ROADMAP, phiên bản
 
 ## Approach chosen
