@@ -290,13 +290,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   overflow: hidden;
 }
 
-.editor-mode-body > *,
+.editor-mode-body > :not(.editor-comment-composer),
 .split-mode-body > * {
   flex: 1;
   min-height: 0;
 }
 
 .a4-document-container { position: relative; }
+
+.editor-mode-body { position: relative; }
 
 .editor-comment-composer {
   position: absolute;

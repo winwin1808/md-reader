@@ -82,4 +82,27 @@ describe('useComments', () => {
     rerender({ d: b })
     expect(result.current.activeId).toBeNull()
   })
+
+  it('sửa source không đụng bình luận: threads giữ nguyên tham chiếu', () => {
+    vi.useFakeTimers()
+    const doc = mkDoc('hello world, long text here')
+    addComment(doc, { author: 'An', body: 'c', from: 0, to: 5 })
+    const { result } = renderHook(() => useComments(doc, 'An'))
+    const first = result.current.threads
+    act(() => { doc.getText('source').insert(doc.getText('source').length, ' more') })
+    act(() => { vi.advanceTimersByTime(200) })
+    expect(result.current.threads).toBe(first)
+  })
+
+  it('meta.actors đổi cập nhật me.clientIds', () => {
+    const doc = mkDoc()
+    const { result } = renderHook(() => useComments(doc, 'An'))
+    expect(result.current.me.clientIds).not.toContain(555)
+    act(() => {
+      const actors = new Y.Map<string>()
+      doc.getMap('meta').set('actors', actors)
+      actors.set('555', 'An')
+    })
+    expect(result.current.me.clientIds).toContain(555)
+  })
 })

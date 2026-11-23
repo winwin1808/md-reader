@@ -51,11 +51,6 @@ export function useShortcuts(map: {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
         if (e.shiftKey) {
-          const target = e.target as HTMLElement | null
-          const isInput =
-            target &&
-            (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-          if (isInput) return
           e.preventDefault()
           onToggleComments()
         } else {

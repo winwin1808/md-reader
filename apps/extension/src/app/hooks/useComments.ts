@@ -14,6 +14,10 @@ import type { CommentsPanelProps } from '@md-reader/ui'
 const DEBOUNCE_MS = 120
 const EMPTY: CommentThread[] = []
 
+function sameThreads(a: CommentThread[], b: CommentThread[]): boolean {
+  return a === b || JSON.stringify(a) === JSON.stringify(b)
+}
+
 interface State {
   doc: Y.Doc | null
   threads: CommentThread[]
@@ -46,7 +50,11 @@ export function useComments(
   if (current !== state) setState(current)
 
   const refresh = useCallback(() => {
-    setState((s) => (s.doc === doc ? { ...s, threads: doc ? listThreads(doc) : EMPTY } : s))
+    setState((s) => {
+      if (s.doc !== doc) return s
+      const next = doc ? listThreads(doc) : EMPTY
+      return sameThreads(s.threads, next) ? s : { ...s, threads: next }
+    })
   }, [doc])
 
   useEffect(() => {
@@ -63,10 +71,13 @@ export function useComments(
     const text = doc.getText('source')
     comments.observeDeep(schedule)
     text.observe(schedule)
+    const meta = doc.getMap('meta')
+    meta.observeDeep(schedule)
     return () => {
       if (timer) clearTimeout(timer)
       comments.unobserveDeep(schedule)
       text.unobserve(schedule)
+      meta.unobserveDeep(schedule)
     }
   }, [doc, refresh])
 
@@ -123,6 +134,15 @@ export function useComments(
     () => threads.filter((t) => !t.deleted && !t.resolved).length,
     [threads],
   )
+
+  const [, bumpMeta] = useState(0)
+  useEffect(() => {
+    if (!doc) return
+    const meta = doc.getMap('meta')
+    const bump = () => bumpMeta((n) => n + 1)
+    meta.observeDeep(bump)
+    return () => meta.unobserveDeep(bump)
+  }, [doc])
 
   const actorsKey = (() => {
     if (!doc) return ''

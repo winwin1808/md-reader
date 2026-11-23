@@ -301,6 +301,11 @@ export function App(): React.JSX.Element {
     return () => { cancelled = true }
   }, [sessionDocId])
 
+  const docContainerCallback = useCallback((el: HTMLDivElement | null) => {
+    docContainerRef.current = el
+    setDocContainerEl((p) => (p === el ? p : el))
+  }, [])
+
   const changeViewMode = useCallback((next: ViewMode) => {
     if (next === viewMode) return
     userSwitchedRef.current = true
@@ -628,16 +633,21 @@ export function App(): React.JSX.Element {
     })
     ;(best as Element | null)?.scrollIntoView?.({ block: 'center' })
   }
+  const openThreadRef = useRef(openThread)
+  openThreadRef.current = openThread
   const commentsConfig = useMemo(
     () => ({
       threads: comments.threads,
       activeId: comments.activeId,
       onCreate: (r: { from: number; to: number }) => setPendingRange(r),
-      onSelect: (id: string) => openThread(id),
+      onSelect: (id: string) => openThreadRef.current(id),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [comments.threads, comments.activeId],
   )
+  const historyPreviewing = previewHtml !== null
+  useEffect(() => {
+    setPendingRange(null)
+  }, [sessionDocId, viewMode, historyOpen, historyPreviewing])
 
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
     if (!content) {
@@ -1086,7 +1096,7 @@ export function App(): React.JSX.Element {
             <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 {previewBanner}
-                <div ref={(el) => { docContainerRef.current = el; setDocContainerEl((p) => (p === el ? p : el)) }} className="a4-document-container">
+                <div ref={docContainerCallback} className="a4-document-container">
                   <Viewer html={previewHtml ?? html} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
                   <CommentLayer container={docContainerEl} source={content} threads={comments.threads} activeId={comments.activeId} enabled={previewHtml === null} onCreate={(r, body) => { comments.create(r, body) }} onSelect={openThread} askName={false} />
                 </div>
@@ -1142,7 +1152,10 @@ export function App(): React.JSX.Element {
               <div className="editor-mode-body">
                 {pendingRange && previewHtml === null && (
                   <div className="editor-comment-composer">
-                    <CommentComposer askName={false} onSubmit={(body) => { comments.create(pendingRange, body); setPendingRange(null) }} onCancel={() => setPendingRange(null)} />
+                    <CommentComposer askName={false} onSubmit={(body) => {
+                      if (comments.create(pendingRange, body) === null) { setImageNotice('Đoạn đã chọn đã thay đổi — chọn lại.'); return }
+                      setPendingRange(null)
+                    }} onCancel={() => setPendingRange(null)} />
                   </div>
                 )}
                 {previewHtml !== null ? (
