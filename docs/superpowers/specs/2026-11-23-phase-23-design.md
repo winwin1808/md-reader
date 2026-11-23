@@ -28,10 +28,10 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 - 23i1 — done — ui: độ rộng "Rộng" = ~80% bề ngang màn hình (Đọc + Sửa)
 - 23i2 — done — extension: nút toolbar bật/tắt chế độ rộng
 - 23i3 — done — ui/extension: sửa sau review 23i
-- 23j1 — pending — core: `DocStyle` + Word theo kiểu tài liệu
-- 23j2 — pending — ui: `docStyleCss` + export HTML theo kiểu
-- 23j3 — pending — ui: chọn kiểu tài liệu trong Cài đặt
-- 23j4 — pending — extension: áp kiểu tài liệu cho đọc, sửa, PDF, HTML, Word
+- 23j1 — planned — core: `DocStyle` + Word theo kiểu tài liệu
+- 23j2 — planned — ui: `docStyleCss` + export HTML theo kiểu
+- 23j3 — planned — ui: chọn kiểu tài liệu trong Cài đặt
+- 23j4 — planned — extension: áp kiểu tài liệu cho đọc, sửa, PDF, HTML, Word
 
 ## Approach chosen
 
