@@ -4,7 +4,8 @@ import * as Y from 'yjs'
 import type { EditorView } from '@codemirror/view'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { Editor, lereSachHighlight } from './Editor'
+import { Editor, lereSachHighlight, type EditorCommentsConfig } from './Editor'
+import type { CommentThread } from '@md-reader/core'
 
 // jsdom lacks layout APIs CodeMirror's scroll-into-view measurement uses
 if (!Range.prototype.getClientRects) {
@@ -249,3 +250,44 @@ describe('Editor live variant', () => {
   })
 })
 
+
+describe('Editor comments', () => {
+  const thread = (id: string, from: number, to: number): CommentThread => ({
+    id, author: 'a', clientId: 1, ts: 0, body: 'b', quote: '', range: { from, to },
+    resolved: false, resolvedBy: null, deleted: false, replies: [],
+  })
+  const cfg = (threads: CommentThread[]): EditorCommentsConfig => ({
+    threads, activeId: null, onCreate: () => {}, onSelect: () => {},
+  })
+  const mk = () => {
+    const ydoc = new Y.Doc()
+    const yText = ydoc.getText('source')
+    yText.insert(0, 'hello world again')
+    return yText
+  }
+
+  for (const variant of ['source', 'live'] as const) {
+    it(`highlights, re-highlights without rebuilding, and clears (${variant})`, () => {
+      const yText = mk()
+      let view: EditorView | undefined
+      const ready = (v: EditorView) => { view = v }
+      const { container, rerender } = render(
+        <Editor yText={yText} variant={variant} onEditorReady={ready} comments={cfg([thread('t1', 0, 5)])} />,
+      )
+      const first = view
+      expect(container.querySelector('.cm-comment')?.textContent).toBe('hello')
+      const t2 = cfg([thread('t2', 6, 11)])
+      rerender(<Editor yText={yText} variant={variant} onEditorReady={ready} comments={t2} />)
+      expect(container.querySelector('.cm-comment')?.textContent).toBe('world')
+      expect(view).toBe(first)
+      rerender(<Editor yText={yText} variant={variant} onEditorReady={ready} />)
+      expect(container.querySelector('.cm-comment')).toBeNull()
+      expect(view).toBe(first)
+    })
+  }
+
+  it('works without comments', () => {
+    const { container } = render(<Editor yText={mk()} />)
+    expect(container.querySelector('.cm-comment')).toBeNull()
+  })
+})

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, fireEvent, act, cleanup } from '@testing-library/react'
-import { CommentLayer, type CommentLayerProps } from './CommentLayer'
+import { CommentLayer, CommentComposer, type CommentLayerProps } from './CommentLayer'
 
 const source = 'Hello world foo world\n\nA **bold** b'
 // block1 [0,21) block2 [23,35)
@@ -265,5 +265,86 @@ describe('CommentLayer highlights and markers', () => {
     expect(marker()).toBeNull()
     expect(hmap.size).toBe(0)
     expect(root.querySelector('.comment-block-marked')).toBeNull()
+  })
+})
+
+describe('CommentComposer', () => {
+  const area = () => document.body.querySelector('textarea') as HTMLTextAreaElement
+  const btn = (label: string) => Array.from(document.body.querySelectorAll('button')).find((b) => b.textContent === label) as HTMLElement
+  it('submit sends body without author', () => {
+    const onSubmit = vi.fn()
+    render(<CommentComposer askName={false} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    fireEvent.change(area(), { target: { value: 'hi' } })
+    fireEvent.click(btn('Gửi'))
+    expect(onSubmit).toHaveBeenCalledWith('hi', undefined)
+  })
+  it('askName sends trimmed name', () => {
+    const onSubmit = vi.fn()
+    render(<CommentComposer askName onSubmit={onSubmit} onCancel={vi.fn()} />)
+    fireEvent.change(document.body.querySelector('input')!, { target: { value: ' Lan ' } })
+    fireEvent.change(area(), { target: { value: 'b' } })
+    fireEvent.click(btn('Gửi'))
+    expect(onSubmit).toHaveBeenCalledWith('b', 'Lan')
+  })
+  it('empty body not sent; cancel calls onCancel', () => {
+    const onSubmit = vi.fn()
+    const onCancel = vi.fn()
+    render(<CommentComposer askName={false} onSubmit={onSubmit} onCancel={onCancel} />)
+    fireEvent.click(btn('Gửi'))
+    expect(onSubmit).not.toHaveBeenCalled()
+    fireEvent.click(btn('Huỷ'))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('CommentLayer nested triple-click', () => {
+  it('li with nested ul>li stays within outer block', () => {
+    const src = '- outer\n  - inner'
+    const r = document.createElement('div')
+    r.innerHTML = '<ul><li data-sp="0:17">outer<ul><li data-sp="10:17">inner</li></ul></li></ul>'
+    document.body.appendChild(r)
+    const onCreate = vi.fn()
+    render(<CommentLayer {...({ container: r, source: src, threads: [], activeId: null, enabled: true, onCreate, onSelect: vi.fn(), askName: false } as unknown as CommentLayerProps)} />)
+    const outer = r.querySelector('li')!.firstChild!
+    const inner = r.querySelectorAll('li')[1]!.firstChild!
+    select(outer, 0, inner, 0)
+    expect(addBtn()).toBeTruthy()
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'x' } })
+    fireEvent.click(sendBtn())
+    const range = onCreate.mock.calls[0]![0]
+    expect(range.from).toBe(0)
+    expect(range.to).toBe(17)
+    r.remove()
+  })
+})
+
+describe('CommentLayer review fixes', () => {
+  it('triple-click p followed by blockquote>p covers only the first block', () => {
+    const src = 'Alpha\n\n> Beta'
+    const r = document.createElement('div')
+    r.innerHTML = '<p data-sp="0:5">Alpha</p><blockquote data-sp="7:13"><p data-sp="9:13">Beta</p></blockquote>'
+    document.body.appendChild(r)
+    const onCreate = vi.fn()
+    render(<CommentLayer {...({ container: r, source: src, threads: [], activeId: null, enabled: true, onCreate, onSelect: vi.fn(), askName: false } as unknown as CommentLayerProps)} />)
+    select(r.querySelector('p')!.firstChild!, 0, r.querySelector('blockquote p')!.firstChild!, 0)
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'x' } })
+    fireEvent.click(sendBtn())
+    expect(onCreate.mock.calls[0]![0]).toEqual({ from: 0, to: 5 })
+    r.remove()
+  })
+
+  it('reopening composer for a new selection starts empty', () => {
+    mount()
+    select(p1(), 0, p1(), 5)
+    fireEvent.click(addBtn()!)
+    fireEvent.change(ta(), { target: { value: 'nháp' } })
+    expect(ta().value).toBe('nháp')
+    const cancel = Array.from(document.body.querySelectorAll('.comment-composer button')).find((b) => b.textContent !== 'Gửi')
+    if (cancel) fireEvent.click(cancel)
+    select(p1(), 6, p1(), 11)
+    fireEvent.click(addBtn()!)
+    expect(ta().value).toBe('')
   })
 })

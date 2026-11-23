@@ -30,7 +30,7 @@
 .comment-markers { position: absolute; inset: 0 0 auto auto; pointer-events: none; z-index: 5; }
 .comment-marker { position: absolute; right: -28px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--paper)); color: var(--ink); font: inherit; font-size: 0.7rem; line-height: 1; cursor: pointer; pointer-events: auto; }
 .comment-marker[data-active] { background: var(--accent); color: var(--paper); font-weight: 700; }
-.comment-add-btn { font: inherit; font-size: 0.85rem; color: var(--paper); background: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; cursor: pointer; box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent); }
+.comment-add-btn, .cm-comment-add { font: inherit; font-size: 0.85rem; color: var(--paper); background: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; cursor: pointer; box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 20%, transparent); }
 .comment-composer { width: min(320px, 90vw); box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 4px 16px color-mix(in srgb, var(--ink) 22%, transparent); font-family: var(--font-ui); }
 .comment-composer input, .comment-composer textarea { font: inherit; font-size: 0.9rem; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; box-sizing: border-box; width: 100%; }
 .comment-composer textarea { min-height: 4.5em; resize: vertical; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { JSX } from 'react'
+import type { CSSProperties, JSX } from 'react'
 import { createPortal } from 'react-dom'
 import {
   parseSourcePos,
@@ -65,12 +65,11 @@ function computeRange(
       // End point sits at the start of the last block (triple-click): step back.
       const endEl = b.el
       const cands = Array.from(container.querySelectorAll('[data-sp]')).filter(
-        (el) => el !== endEl && !el.contains(endEl) && range.intersectsNode(el),
+        (el) => el !== endEl && !endEl.contains(el) && !el.contains(endEl) && range.intersectsNode(el),
       )
       const prev = cands[cands.length - 1]
       const pb = prev ? blockOf(prev, container) : null
-      if (!pb) return null
-      b = pb
+      b = pb ?? a
       work = range.cloneRange()
       work.setEnd(b.el, b.el.childNodes.length)
     }
@@ -138,14 +137,63 @@ function getHighlights(): { reg: HighlightRegistry; Ctor: HighlightCtor } | null
   return reg && Ctor ? { reg, Ctor } : null
 }
 
+export interface CommentComposerProps {
+  askName: boolean
+  onSubmit(body: string, author?: string): void
+  onCancel(): void
+  style?: CSSProperties
+}
+
+export function CommentComposer(props: CommentComposerProps): JSX.Element {
+  const { askName, onSubmit, onCancel, style } = props
+  const t = useT()
+  const [body, setBody] = useState('')
+  const [name, setName] = useState('')
+  const send = () => {
+    if (!body.trim()) return
+    onSubmit(body, askName ? name.trim() || undefined : undefined)
+  }
+  return (
+    <div className="comment-composer" style={style}>
+      {askName && (
+        <input
+          aria-label={t('comments.yourName')}
+          maxLength={COMMENT_AUTHOR_MAX}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      )}
+      <textarea
+        autoFocus
+        aria-label={t('comments.add')}
+        maxLength={COMMENT_BODY_MAX}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            onCancel()
+          } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault()
+            send()
+          }
+        }}
+      />
+      <div className="comment-composer-actions">
+        <button type="button" onClick={send}>{t('comments.send')}</button>
+        <button type="button" onClick={onCancel}>{t('comments.cancel')}</button>
+      </div>
+    </div>
+  )
+}
+
 export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
   const { container, source, enabled, onCreate, askName, threads, activeId, onSelect } = props
   const t = useT()
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const [composer, setComposer] = useState<{ range: { from: number; to: number }; top: number; left: number } | null>(null)
-  const [body, setBody] = useState('')
-  const [name, setName] = useState('')
   const [markers, setMarkers] = useState<MarkerInfo[]>([])
+  const openCount = useRef(0)
   const targetsRef = useRef<Map<Element, string[]>>(new Map())
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
@@ -267,19 +315,13 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
     const range = computeRange(r, container, source)
     if (!range) return
     const rect = r.getBoundingClientRect?.()
+    openCount.current += 1
     setComposer({ range, top: (rect?.bottom ?? 0) + 6, left: rect?.left ?? 0 })
-    setBody('')
-    setName('')
   }, [container, source])
 
   if (!enabled || !container) return null
   const host = container.ownerDocument.body
   const close = () => setComposer(null)
-  const send = () => {
-    if (!composer || !body.trim()) return
-    onCreate(composer.range, body, askName ? name.trim() || undefined : undefined)
-    close()
-  }
 
   return (
     <>
@@ -315,39 +357,16 @@ export function CommentLayer(props: CommentLayerProps): JSX.Element | null {
         </button>
       )}
       {composer && (
-        <div
-          className="comment-composer"
+        <CommentComposer
+          key={openCount.current}
+          askName={askName}
           style={{ position: 'fixed', top: composer.top, left: composer.left, zIndex: 1000 }}
-        >
-          {askName && (
-            <input
-              aria-label={t('comments.yourName')}
-              maxLength={COMMENT_AUTHOR_MAX}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          )}
-          <textarea
-            autoFocus
-            aria-label={t('comments.add')}
-            maxLength={COMMENT_BODY_MAX}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault()
-                close()
-              } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault()
-                send()
-              }
-            }}
-          />
-          <div className="comment-composer-actions">
-            <button type="button" onClick={send}>{t('comments.send')}</button>
-            <button type="button" onClick={close}>{t('comments.cancel')}</button>
-          </div>
-        </div>
+          onSubmit={(body, author) => {
+            onCreate(composer.range, body, author)
+            close()
+          }}
+          onCancel={close}
+        />
       )}
         </>,
         host,
