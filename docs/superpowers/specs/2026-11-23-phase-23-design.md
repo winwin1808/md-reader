@@ -10,7 +10,7 @@ sửa nội dung, trả lời và resolve.* Phiên bản: extension 1.6.0, `le-s
 ## Sub-phase queue
 
 - 23a1 — done — core: mô hình bình luận + neo
-- 23a2 — pending — core: `formatVersion` 3, migration, làm gọn giữ bình luận
+- 23a2 — planned — core: `formatVersion` 3, migration, làm gọn giữ bình luận
 - 23a3 — pending — core: `data-sp` trong render + ánh xạ vùng chọn → source
 - 23b1 — pending — ui: `CommentsPanel`
 - 23b2 — pending — ui: `CommentLayer` cho Viewer (chọn chữ, tô, mốc lề)
