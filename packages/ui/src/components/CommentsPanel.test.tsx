@@ -84,4 +84,84 @@ describe('CommentsPanel', () => {
     expect(x).toContain('5 phút trước')
     expect(x).toContain('3 giờ trước')
   })
+  describe('reply box + keyboard', () => {
+    const setupActive = (threads: CommentThread[], activeId = 'a') => {
+      const props = { threads, me: { clientIds: [1], canModerate: false, canResolveAll: false }, activeId, onSelect: vi.fn(), onReply: vi.fn(), onResolve: vi.fn(), onDelete: vi.fn(), onClose: vi.fn(), now: () => NOW }
+      const r = render(<CommentsPanel {...props} />)
+      return { ...r, props }
+    }
+    const ta = (c: HTMLElement) => c.querySelector('textarea') as HTMLTextAreaElement
+    const type = (el: HTMLTextAreaElement, v: string) => fireEvent.change(el, { target: { value: v } })
+
+    it('reply box only on active thread', () => {
+      const { container } = setupActive([th({ id: 'a' }), th({ id: 'b' })])
+      expect(container.querySelectorAll('textarea')).toHaveLength(1)
+      expect(container.querySelector('[data-id="a"] textarea')).toBeTruthy()
+      expect(ta(container).getAttribute('aria-label')).toBe('Trả lời')
+      expect(ta(container).maxLength).toBe(4000)
+    })
+    it('Enter sends and clears', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), 'xin chào')
+      fireEvent.keyDown(ta(container), { key: 'Enter' })
+      expect(props.onReply).toHaveBeenCalledWith('a', 'xin chào')
+      expect(ta(container).value).toBe('')
+    })
+    it('Send button sends', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), 'hi')
+      fireEvent.click(btn(container, 'Gửi')[0]!)
+      expect(props.onReply).toHaveBeenCalledWith('a', 'hi')
+    })
+    it('Shift+Enter does not send', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), 'x')
+      fireEvent.keyDown(ta(container), { key: 'Enter', shiftKey: true })
+      expect(props.onReply).not.toHaveBeenCalled()
+      expect(ta(container).value).toBe('x')
+    })
+    it('whitespace-only does not send', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), '   \n ')
+      fireEvent.keyDown(ta(container), { key: 'Enter' })
+      expect(props.onReply).not.toHaveBeenCalled()
+    })
+    it('composing does not send', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), 'x')
+      fireEvent.keyDown(ta(container), { key: 'Enter', isComposing: true })
+      expect(props.onReply).not.toHaveBeenCalled()
+    })
+    it('deleted root still replyable', () => {
+      const { container, props } = setupActive([th({ id: 'a', deleted: true })])
+      type(ta(container), 'r')
+      fireEvent.keyDown(ta(container), { key: 'Enter' })
+      expect(props.onReply).toHaveBeenCalledWith('a', 'r')
+    })
+    it('arrow keys move selection incl. orphans', () => {
+      const { container, props } = setupActive([th({ id: 'a' }), th({ id: 'b' }), th({ id: 'o', range: null })], 'b')
+      const body = container.querySelector('.comments-panel__body') as HTMLElement
+      expect(body.tabIndex).toBe(0)
+      fireEvent.keyDown(body, { key: 'ArrowDown' })
+      expect(props.onSelect).toHaveBeenLastCalledWith('o')
+      fireEvent.keyDown(body, { key: 'ArrowUp' })
+      expect(props.onSelect).toHaveBeenLastCalledWith('a')
+    })
+    it('arrows inside textarea do not move selection', () => {
+      const { container, props } = setupActive([th({ id: 'a' }), th({ id: 'b' })])
+      fireEvent.keyDown(ta(container), { key: 'ArrowDown' })
+      expect(props.onSelect).not.toHaveBeenCalled()
+    })
+    it('Esc closes; with text only clears', () => {
+      const { container, props } = setupActive([th({ id: 'a' })])
+      type(ta(container), 'abc')
+      fireEvent.keyDown(ta(container), { key: 'Escape' })
+      expect(props.onClose).not.toHaveBeenCalled()
+      expect(ta(container).value).toBe('')
+      fireEvent.keyDown(ta(container), { key: 'Escape' })
+      expect(props.onClose).toHaveBeenCalledTimes(1)
+      fireEvent.keyDown(container.querySelector('.comments-panel__body')!, { key: 'Escape' })
+      expect(props.onClose).toHaveBeenCalledTimes(2)
+    })
+  })
 })
