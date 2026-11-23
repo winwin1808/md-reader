@@ -13,6 +13,7 @@ export interface FeedbackInput {
 
 export const FEEDBACK_EMAIL = 'qhao.work@gmail.com'
 export const HELP_URL = 'https://winwin1808.github.io/md-reader/'
+export const RELEASE_NOTES_URL = 'https://winwin1808.github.io/md-reader/changelog.html'
 export const PRIVACY_URL = 'https://winwin1808.github.io/md-reader/privacy.html'
 
 interface NavLike {

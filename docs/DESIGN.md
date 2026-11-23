@@ -661,6 +661,30 @@ Spec: `docs/superpowers/specs/2026-11-13-phase-22-design.md`. Không đổi sche
 | 22g | Mã khoá máy chủ + zod | `le-sach-mcp` in mã nhận dạng; `zod` 4.6.6 |
 | 22h | Tài liệu | `docs/MCP.md`, changelog, handover |
 
+### Phase 23 — Bình luận + AI xử lý góp ý
+
+Ship: *chọn chữ → bình luận; bình luận đồng bộ cho chủ, link sửa, link xem (cả web); AI qua MCP đọc bình luận,
+sửa nội dung, trả lời và resolve.* Spec: `docs/superpowers/specs/2026-11-23-phase-23-design.md`.
+Đổi schema: root `Y.Map "comments"` (khoá phẳng `c:<clientID>:<rand8>` / `s:<threadId>`, neo `Y.RelativePosition`),
+`formatVersion` 3 + migration v2→v3 + fixture v2. Extension 1.6.0, `le-sach-mcp` 1.4.0.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 23a1 | core: mô hình bình luận | Thêm/trả lời/resolve/xoá/liệt kê; neo bám đúng khi sửa; hội tụ hai replica |
+| 23a2 | core: formatVersion 3 | Migration v2→v3 + fixture; Làm gọn giữ bình luận |
+| 23a3 | core: `data-sp` + ánh xạ | Render tuỳ chọn gắn vị trí nguồn; vùng chọn DOM → offset source |
+| 23b1 | ui: `CommentsPanel` | Lọc mở/xong, trả lời, quyền nút, nội dung là chữ thuần |
+| 23b2 | ui: `CommentLayer` | Chọn chữ ở chế độ Đọc → bình luận; tô + mốc lề; không sửa `Viewer.tsx` |
+| 23b3 | ui: editor | Decoration + tooltip "Bình luận" trong live preview |
+| 23c | extension: gắn App | `useComments`, drawer, phím tắt, cuộn tới đoạn |
+| 23d1 | api: luật peer-guard | Link xem chỉ ghi bình luận của mình; link sửa resolve được mọi thread |
+| 23d2 | api: nối dây room | Kết nối link xem gửi update bình luận qua guard trước khi áp |
+| 23e | web: `/s/:token` | Panel bình luận cho link xem + link sửa |
+| 23f1 | bridge + MCP | `list_comments` / `reply_comment` / `resolve_comment`, `le-sach-mcp` 1.4.0 |
+| 23f2 | extension: thực thi tool | Tác giả là client AI; `commentAsActor` |
+| 23g1 | E2E | Cộng tác (xem bình luận, sửa resolve, xem ghi `source` → 4403) + MCP thật |
+| 23g2 | Tài liệu + phiên bản | `docs/MCP.md`, ROADMAP, privacy, extension 1.6.0 |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh

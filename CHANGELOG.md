@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Security
+- Sharing server: a view-link connection can only write its own comments; any other write is reverted and the connection closed with 4403.
 - Sharing server: an edit-link update can no longer hang a room with a cyclic origin/parent chain, put non-text content into the document source, or park clock-gapped structs outside the 64 MiB room cap.
 - Sharing server: a WebSocket room name that is not in canonical form is rejected (404), so revoke, purge and cleanup always reach the room a link connects to.
 - Sharing server: image upload, report, feedback and link-creation bodies are read through a byte cap instead of being buffered first; an upload racing a room delete no longer leaves a publicly served image behind.
@@ -17,6 +18,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Clicking Allow in the pairing dialog always ends with a visible result: connected, paired elsewhere, refused, or no longer running. A late Allow reconnects instead of being dropped silently.
 
 ### Added
+- Comments: select text, then Comment, in Read and Edit modes of the extension and on the web view/edit-link page (view links can write, reply and resolve their own comments; edit links can resolve any thread); unshared documents can be commented on too (stored on this device only).
+- AI connection: three new MCP tools `list_comments`, `reply_comment`, `resolve_comment` (`le-sach-mcp` 1.4.0, needs extension 1.6.0 or newer); no confirmation dialog.
+- Document `formatVersion` 3 stores comments in the Y.Doc, with a migration from version 2.
+- Document styles: Business, Academic, Technical (Settings → Display), applied to reading, Edit mode, PDF, HTML and Word export. Lề sách stays the default.
+- Wide view: the page opens up to ~80% of the screen width; toggle from the toolbar.
+- Redesigned History panel.
 - Settings → AI connection lists the AI apps running on this machine with their state ("Not connected" / "Paired with another browser or Chrome profile") and a Connect button for manual pairing.
 - `le-sach-mcp` 1.3.3: `hello` carries an optional `pinnedExt` fingerprint (older extensions ignore it; the extension still works with 1.3.2), and a new `le-sach-mcp unpair` command removes the pinned extension key while keeping the server key.
 

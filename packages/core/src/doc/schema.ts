@@ -1,6 +1,6 @@
 import * as Y from 'yjs'
 
-export const FORMAT_VERSION = 2
+export const FORMAT_VERSION = 3 // v3 thêm root Y.Map "comments", tạo lười (không khởi tạo sẵn)
 
 export const DOC_KEYS = {
   source: 'source',

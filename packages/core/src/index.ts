@@ -25,7 +25,7 @@ export {
   ensureDoc,
 } from './doc/doc.js'
 export * from './doc/apply.js'
-export { applyTextChangeAsActor } from './doc/apply-as.js'
+export { applyTextChangeAsActor, commentAsActor } from './doc/apply-as.js'
 export { appendHistory, listHistory, sourceClientIds } from './doc/history.js'
 
 export { defaultFormatOptions, formatMarkdown } from './format/index.js'
@@ -33,6 +33,8 @@ export type { FormatOptions } from './format/index.js'
 
 export { exportToHtml, mdastToDocx } from './export/index.js'
 export type { ExportHtmlOptions, ExportDocxOptions } from './export/index.js'
+export type { DocStyle } from './export/index.js'
+export { DOC_STYLES, isDocStyle } from './export/index.js'
 
 export { splitIntoSlides, slideBreakInsertion, paginateBlocks, SMALL_ZOOM } from './slides/index.js'
 export type { Slide, SlideSplitOptions, BlockBox, SlidePage } from './slides/index.js'
@@ -53,3 +55,5 @@ export { textAtCheckpoint, restoreCheckpoint } from './doc/restore.js'
 export * from './bridge/protocol.js'
 export * from './bridge/auth.js'
 export { compactDoc, COMPACT_DROPPED_META_KEYS } from './doc/compact.js'
+export * from './comments/comments.js'
+export * from './comments/anchor-map.js'

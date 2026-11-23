@@ -1,5 +1,8 @@
-export function getDefaultExportCss(): string {
-  return `
+import type { DocStyle } from '@md-reader/core'
+import { docStyleCss } from '../theme/doc-styles'
+
+export function getDefaultExportCss(style?: DocStyle): string {
+  const base = `
 body {
   margin: 0;
   padding: 32px 24px;
@@ -162,4 +165,6 @@ img {
   margin: 1em 0;
 }
 `.trim()
+  const extra = style ? docStyleCss(style, '.md-viewer') : ''
+  return extra ? `${base}\n${extra.trim()}` : base
 }

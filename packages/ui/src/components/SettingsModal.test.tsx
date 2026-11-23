@@ -24,6 +24,37 @@ describe('SettingsModal', () => {
     onFontFamilyChange: vi.fn(),
   };
 
+  describe('docStyle group', () => {
+    const renderWith = (settings: any, onSettingChange = vi.fn()) => {
+      render(<SettingsModal {...defaultProps} open settings={settings} onSettingChange={onSettingChange} />)
+      return onSettingChange
+    }
+    const group = () => within(section('Chữ và màu')).getByRole('radiogroup', { name: 'Kiểu tài liệu' })
+    it('has 4 radios, Lề sách checked by default', () => {
+      renderWith({ settingsVersion: 2 })
+      const radios = within(group()).getAllByRole('radio')
+      expect(radios.map((r) => r.textContent)).toEqual(['Lề sách', 'Kinh doanh', 'Học thuật', 'Kỹ thuật'])
+      expect(radios[0]!.getAttribute('aria-checked')).toBe('true')
+      expect(radios[2]!.getAttribute('aria-checked')).toBe('false')
+    })
+    it('clicking Học thuật fires onSettingChange', () => {
+      const on = renderWith({ settingsVersion: 2 })
+      fireEvent.click(within(group()).getByRole('radio', { name: 'Học thuật' }))
+      expect(on).toHaveBeenCalledWith('docStyle', 'academic')
+    })
+    it('business disables font buttons and shows the note; lesach does not', () => {
+      renderWith({ settingsVersion: 2, docStyle: 'business' })
+      const look = section('Chữ và màu')
+      expect((within(look).getByRole('button', { name: 'Có chân (Literata)' }) as HTMLButtonElement).disabled).toBe(true)
+      expect(within(look).getByText('Kiểu tài liệu đã chọn phông chữ.')).toBeTruthy()
+      cleanup()
+      renderWith({ settingsVersion: 2, docStyle: 'lesach' })
+      const look2 = section('Chữ và màu')
+      expect((within(look2).getByRole('button', { name: 'Có chân (Literata)' }) as HTMLButtonElement).disabled).toBe(false)
+      expect(within(look2).queryByText('Kiểu tài liệu đã chọn phông chữ.')).toBeNull()
+    })
+  })
+
   describe('slideAutoSplit toggle', () => {
     const renderWith = (settings: any, onSettingChange = vi.fn()) => {
       render(<SettingsModal {...defaultProps} open settings={settings} onSettingChange={onSettingChange} />)
@@ -342,8 +373,8 @@ describe('SettingsModal', () => {
     const onSettingChange = vi.fn();
     render(<SettingsModal {...defaultProps} open onSettingChange={onSettingChange} />);
     const look = section('Chữ và màu');
-    expect(within(look).getAllByRole('radio', { name: /^(Hẹp|Vừa|Rộng|Toàn khung)$/ })).toHaveLength(4);
-    fireEvent.click(within(look).getByRole('radio', { name: 'Rộng' }));
+    expect(within(look).getAllByRole('radio', { name: /^(Hẹp|Vừa|Rộng \(80%\)|Toàn khung)$/ })).toHaveLength(4);
+    fireEvent.click(within(look).getByRole('radio', { name: 'Rộng (80%)' }));
     expect(onSettingChange).toHaveBeenCalledWith('pageWidth', 'wide');
   });
 

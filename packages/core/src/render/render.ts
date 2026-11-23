@@ -60,6 +60,25 @@ import type { ParseResult } from '../parse/index.js'
 import { sanitizeSchema } from '../parse/index.js'
 import { LANG_CLASS } from '../parse/sanitize-schema.js'
 
+const SP_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre', 'table', 'tr', 'hr', 'div'])
+
+function rehypeSourcePositions() {
+  return (tree: any) => {
+    const walk = (node: any) => {
+      if (node.type === 'element' && SP_TAGS.has(node.tagName)) {
+        const pos = node.position
+        const s = pos?.start?.offset
+        const e = pos?.end?.offset
+        if (typeof s === 'number' && typeof e === 'number') {
+          node.properties = { ...(node.properties ?? {}), dataSp: `${s}:${e}` }
+        }
+      }
+      if (Array.isArray(node.children)) node.children.forEach(walk)
+    }
+    walk(tree)
+  }
+}
+
 export function renderToHtml(parsed: ParseResult, options?: RenderOptions): RenderResult {
   const highlight = options?.highlight ?? true
   const allowRawHtml = options?.allowRawHtml ?? false
@@ -69,6 +88,9 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
   const processor = unified()
   
   processor.use(remarkRehype, { allowDangerousHtml: allowRawHtml, clobberPrefix: '' })
+  if (options?.sourcePositions === true) {
+    processor.use(rehypeSourcePositions)
+  }
   processor.use(rehypeSlug)
   
   if (allowRawHtml && options?.plugins?.raw) {

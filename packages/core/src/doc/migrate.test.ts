@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { UnsupportedFormatVersionError } from './schema.js'
+import fixture from './fixtures/v2-doc.json'
+import { listThreads } from '../comments/comments.js'
 import { migrateDoc, ensureDoc, getMeta, getSource, getHistory, readMeta } from './doc.js'
 
 function v1Fixture(): Y.Doc {
@@ -18,7 +20,7 @@ function v1Fixture(): Y.Doc {
 describe('migrateDoc v1 -> v2', () => {
   it('migrates legacy meta', () => {
     const doc = v1Fixture()
-    expect(migrateDoc(doc)).toEqual({ from: 1, to: 2 })
+    expect(migrateDoc(doc)).toEqual({ from: 1, to: 3 })
     const m = getMeta(doc)
     expect(m.get('title')).toBe('a.md')
     expect(m.has('name')).toBe(false)
@@ -28,7 +30,7 @@ describe('migrateDoc v1 -> v2', () => {
     expect(readMeta(doc).actors).toEqual({})
     expect(m.get('originPath')).toBeNull()
     expect(m.get('originHash')).toBe('abc')
-    expect(m.get('formatVersion')).toBe(2)
+    expect(m.get('formatVersion')).toBe(3)
     expect(getSource(doc).toString()).toBe('# Hi')
   })
 
@@ -37,13 +39,13 @@ describe('migrateDoc v1 -> v2', () => {
     migrateDoc(doc)
     let updates = 0
     doc.on('update', () => updates++)
-    expect(migrateDoc(doc)).toEqual({ from: 2, to: 2 })
+    expect(migrateDoc(doc)).toEqual({ from: 3, to: 3 })
     expect(updates).toBe(0)
   })
 
   it('throws on future versions', () => {
     const doc = v1Fixture()
-    getMeta(doc).set('formatVersion', 3)
+    getMeta(doc).set('formatVersion', 4)
     expect(() => migrateDoc(doc)).toThrow(UnsupportedFormatVersionError)
   })
 
@@ -75,7 +77,7 @@ describe('ensureDoc', () => {
     expect(r).toEqual({ migrated: false, newer: false })
     const m = readMeta(doc)
     expect(m.title).toBe('T')
-    expect(m.formatVersion).toBe(2)
+    expect(m.formatVersion).toBe(3)
     expect(getSource(doc).toString()).toBe('x')
   })
 
@@ -99,5 +101,25 @@ describe('ensureDoc', () => {
     const doc = v1Fixture()
     getMeta(doc).set('formatVersion', 99)
     expect(() => ensureDoc(doc)).toThrow(UnsupportedFormatVersionError)
+  })
+})
+
+describe('fixture v2 thật', () => {
+  it('nạp được và giữ nguyên dữ liệu', () => {
+    const bin = atob(fixture.update)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const doc = new Y.Doc({ gc: false })
+    Y.applyUpdate(doc, bytes)
+    expect(getMeta(doc).get('formatVersion')).toBe(2)
+    expect(migrateDoc(doc)).toEqual({ from: 2, to: 3 })
+    expect(getMeta(doc).get('formatVersion')).toBe(3)
+    expect(getSource(doc).toString()).toBe(fixture.source)
+    expect(getHistory(doc).length).toBe(1)
+    expect(Object.values(readMeta(doc).actors)).toContain('Fixture')
+    expect(listThreads(doc)).toEqual([])
+    const sv = Y.encodeStateVector(doc)
+    expect(migrateDoc(doc)).toEqual({ from: 3, to: 3 })
+    expect(Y.encodeStateVector(doc)).toEqual(sv)
   })
 })

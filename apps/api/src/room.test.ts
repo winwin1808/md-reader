@@ -5,6 +5,7 @@ import * as decoding from 'lib0/decoding'
 import * as syncProtocol from 'y-protocols/sync'
 import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
 import { YServer } from 'y-partyserver'
+import { addComment, listThreads } from '@md-reader/core'
 import { DocRoom, MAX_MESSAGE_BYTES, MAX_ROOM_BYTES, AWARENESS_STALE_MS } from './room'
 
 function spyOnSuper(stub: boolean) {
@@ -747,5 +748,120 @@ describe('DocRoom 15b', () => {
     expect(r.status).toBe(204)
     expect([...st.m.keys()].filter((k) => k.startsWith('owner:'))).toEqual(['owner:2'])
     expect([...(room as unknown as { clientOwners: Map<number, string> }).clientOwners.keys()]).toEqual([2])
+  })
+})
+
+describe('DocRoom view-link comments (23d2-1)', () => {
+  function server() {
+    const room = makeRoom()
+    const doc = room.document
+    doc.getMap('meta').set('formatVersion', 2)
+    doc.getMap('meta').set('actors', new Y.Map())
+    doc.getText('source').insert(0, 'hello world')
+    doc.getArray('history')
+    ;(room as unknown as { installPeerGuard: () => void }).installPeerGuard()
+    return { room, doc }
+  }
+  function peerOf(doc: Y.Doc, fn: (p: Y.Doc) => void): Uint8Array {
+    const p = new Y.Doc()
+    Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+    let u: Uint8Array = new Uint8Array()
+    p.on('update', (x: Uint8Array) => (u = x))
+    fn(p)
+    return u
+  }
+  const wrap = (u: Uint8Array, inner = 2) => {
+    const e = encoding.createEncoder()
+    encoding.writeVarUint(e, 0)
+    encoding.writeVarUint(e, inner)
+    encoding.writeVarUint8Array(e, u)
+    return encoding.toUint8Array(e)
+  }
+  const mk = (role: string, prefix: string) => ({ id: 'v', state: { role, prefix }, close: vi.fn(), send: () => undefined })
+  const comment = (p: Y.Doc) => addComment(p, { author: 'A', body: 'hi', from: 0, to: 5 })
+
+  it('view conn with prefix: own comment is applied and forwarded', () => {
+    const { room, doc } = server()
+    // super.handleMessage stub applies the update like YServer would
+    const spy = spyOnSuper(true).mockImplementation(((_c: unknown, m: unknown) => {
+      const d = decoding.createDecoder(m as Uint8Array)
+      decoding.readVarUint(d)
+      decoding.readVarUint(d)
+      Y.applyUpdate(doc, decoding.readVarUint8Array(d))
+    }) as never)
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(listThreads(doc).length).toBe(1)
+    spy.mockRestore()
+  })
+  it('view conn editing source -> 4403, not forwarded, source unchanged', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, (p) => p.getText('source').insert(0, 'x'))))
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    expect(spy).not.toHaveBeenCalled()
+    expect(doc.getText('source').toString()).toBe('hello world')
+    spy.mockRestore()
+  })
+  it('view conn step2 is dropped without closing', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment), 1))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(spy).not.toHaveBeenCalled()
+    expect(room.droppedWrites).toBe(1)
+    spy.mockRestore()
+  })
+  it('revoked view prefix -> 4410, not applied', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    ;(room as unknown as { revoked: Set<string> }).revoked.add('p')
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).toHaveBeenCalledWith(4410, 'revoked')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+  it('edit conn comment still applied', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = mk('edit', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  it('view conn without prefix: update dropped as before', () => {
+    const { room, doc } = server()
+    const spy = spyOnSuper(true)
+    const c = mk('view', '')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(spy).not.toHaveBeenCalled()
+    expect(room.droppedWrites).toBe(1)
+    spy.mockRestore()
+  })
+  it('real path (no super stub): view link comment is applied to the room doc', () => {
+    const { room, doc } = server()
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, comment)))
+    expect(c.close).not.toHaveBeenCalled()
+    expect(listThreads(doc).length).toBe(1)
+  })
+  it('real path: view link source edit -> 4403 and doc unchanged', () => {
+    const { room, doc } = server()
+    const c = mk('view', 'p')
+    room.handleMessage(c as never, wrap(peerOf(doc, (p) => p.getText('source').insert(0, 'x'))))
+    expect(c.close).toHaveBeenCalledWith(4403, 'forbidden write')
+    expect(doc.getText('source').toString()).toBe('hello world')
+  })
+  it('real path: view link without prefix stays read-only', () => {
+    const { room, doc } = server()
+    room.handleMessage(mk('view', '') as never, wrap(peerOf(doc, comment)))
+    expect(listThreads(doc).length).toBe(0)
   })
 })

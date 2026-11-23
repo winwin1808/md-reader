@@ -126,4 +126,26 @@ describe('HistoryTimeline', () => {
     fireEvent.click(getByText('Xem thêm'))
     expect(opts(container)).toHaveLength(120)
   })
+  it('nhóm theo ngày: Hôm nay / Hôm qua', () => {
+    const now = new Date(2026, 10, 23, 15, 0).getTime()
+    const day = [
+      { id: 't', actor: 'An', ts: new Date(2026, 10, 23, 9, 5).getTime(), label: 'save', clientIds: [1], snapshot: snap },
+      { id: 'y', actor: 'An', ts: new Date(2026, 10, 22, 20, 0).getTime(), label: 'auto', clientIds: [1], snapshot: snap },
+      { id: 'o', actor: 'An', ts: new Date(2026, 10, 1, 8, 0).getTime(), label: 'auto', clientIds: [1], snapshot: snap },
+    ]
+    const { container } = setup({ entries: day, now: () => now })
+    const heads = Array.from(container.querySelectorAll('.history-day')).map((h) => h.textContent)
+    expect(heads).toHaveLength(3)
+    expect(heads[0]).toBe('Hôm nay')
+    expect(heads[1]).toBe('Hôm qua')
+    expect(container.textContent).toContain('3 mốc')
+  })
+  it('bấm vào hàng để xem; hàng không có ảnh chụp thì không', () => {
+    const { container, props } = setup()
+    fireEvent.click(opts(container)[1]!.querySelector('.history-row__label')!)
+    expect(props.onPreview).toHaveBeenCalledWith('c')
+    const r2 = setup({ entries: [{ ...entries[0], snapshot: undefined }] })
+    fireEvent.click(opts(r2.container)[0]!)
+    expect(r2.props.onPreview).not.toHaveBeenCalled()
+  })
 })

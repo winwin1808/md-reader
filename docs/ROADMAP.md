@@ -7,7 +7,7 @@
 **Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
 Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
 
-## Đã xong (phase 1 đến 21, phiên bản 1.5.1)
+## Đã xong (phase 1 đến 23, phiên bản 1.6.0)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -30,6 +30,7 @@ Yêu cầu từ người dùng thật chạy **song song** với thứ tự này
 - [x] **P19 PDF trình chiếu không cắt chữ:** slide dài tự chia theo chiều cao thật (danh sách, bảng tách theo mục/hàng, bảng lặp tiêu đề), khối không tách được thì thu nhỏ và cảnh báo; dấu ngắt thủ công `<!-- slide-break -->` và nút "Ngắt slide tại đây" khi Sửa; công tắc "Tự chia slide" trong Cài đặt; trang PDF đúng 1280×720.
 - [x] **P20 Trang chào mới và hướng dẫn từng bước:** trang chào dạng tờ giấy có checklist, tour 9 bước tô sáng nút thật, xem lại trong Cài đặt → Trợ giúp.
 - [x] **P21 Ghép cặp MCP một profile, không hỏi lặp:** hộp ghép cặp tự mở tối đa một lần cho mỗi ứng dụng AI, từ chối được ghi nhớ; profile Chrome khác với profile đã ghép không mở tab nào; Cài đặt → Kết nối AI liệt kê ứng dụng AI đang chạy kèm nút Kết nối; bấm Cho phép luôn có kết quả rõ; lệnh `le-sach-mcp unpair` (1.3.3) để chuyển sang profile khác.
+- [x] **P23 Bình luận trên tài liệu:** chọn chữ rồi Bình luận ở chế độ Đọc và Sửa; người có link xem/sửa bình luận trên web, tài liệu chưa chia sẻ vẫn bình luận được (lưu trên máy); bình luận nằm trong Y.Doc (`formatVersion` 3, có migration); AI đọc, trả lời, đánh dấu Xong qua ba tool MCP mới (`le-sach-mcp` 1.4.0). Cùng bản 1.6.0: kiểu tài liệu Kinh doanh / Học thuật / Kỹ thuật (áp cả HTML, PDF, Word), xem rộng ~80%, panel Lịch sử mới.
 - [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)
@@ -46,33 +47,25 @@ Người dùng mục tiêu: người nhờ AI viết tài liệu Markdown (báo 
 
 Sơ đồ và biểu đồ:
 
-- [ ] PlantUML
 - [ ] Graphviz / dot
 - [ ] Vega / Vega-Lite
-- [ ] ECharts
-- [ ] draw.io
-- [ ] Infographic
-- [ ] OpenAPI / Swagger (YAML) hiển thị thành tài liệu API
 
 Xuất bản:
 
-- [ ] EPUB
 - [ ] XLSX cho bảng
 - [ ] Xuất riêng từng hình (SVG / PNG)
 - [x] Công thức sửa được trong Word (OMML)
 
 Giao diện và hiệu năng:
 
-- [ ] Thêm giao diện tài liệu: business, academic, technical
-- [ ] Tài liệu lớn: cache và render tăng dần
-- [ ] Thêm ngôn ngữ giao diện ngoài Việt / Anh
+- [x] Thêm giao diện tài liệu: business, academic, technical (1.6.0)
 - [x] Xuất qua bộ phân giải ảnh (export HTML nhúng ảnh đường dẫn tương đối)
 
 ## v1.5 Cộng tác hoàn thiện và phát hành rộng
 
 Cộng tác:
 
-- [ ] Bình luận và đề xuất chỉnh sửa (suggestions)
+- [x] Bình luận (link xem, link sửa, cả tài liệu chưa chia sẻ); AI đọc, trả lời và resolve qua MCP (phase 23)
 - [x] Endpoint xoá dữ liệu phòng (nút "Xoá dữ liệu trên máy chủ") và tự xoá phòng bỏ không 90 ngày
 - [x] Giới hạn theo ngày cho Worker (khoá bản cài ẩn danh, IP, trần ảnh toàn cục)
 - [ ] Deploy một chạm lên Cloudflare (nút "Deploy to Cloudflare")
@@ -81,8 +74,16 @@ Cộng tác:
 Phát hành:
 
 - [x] Chrome Web Store
-- [ ] Microsoft Edge Add-ons
-- [ ] Firefox AMO (kèm đường thay thế cho File System Access ở Firefox)
+
+## Đã cân nhắc, không làm
+
+Loại ngày 2026-11-23 vì build nặng, vướng cam kết riêng tư hoặc quy tắc extension, hoặc ít nhu cầu thật. Chỉ mở lại khi người dùng yêu cầu.
+
+- PlantUML (cần Java hoặc gửi nội dung lên máy chủ render bên thứ ba), draw.io (cần script viewer từ xa ~2 MB), Infographic, OpenAPI / Swagger, ECharts (trùng vai Vega-Lite)
+- Xuất EPUB
+- Render tăng dần cho tài liệu lớn (vỡ re-parse toàn bộ, mục lục, tìm kiếm, cuộn đồng bộ; chưa ai báo chậm)
+- Thêm ngôn ngữ giao diện (mỗi chuỗi mới phải dịch thêm; thay bằng dịch trang store)
+- Microsoft Edge Add-ons (Edge cài thẳng từ Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (bản trả phí)
 

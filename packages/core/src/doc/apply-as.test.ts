@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { createDoc, getSource } from './doc.js'
-import { applyTextChangeAsActor } from './apply-as.js'
+import { applyTextChangeAsActor, commentAsActor } from './apply-as.js'
+import { addComment, replyComment, listThreads } from '../comments/comments.js'
 
 const actors = (d: Y.Doc) => d.getMap('meta').get('actors') as Y.Map<string> | undefined
 
@@ -113,5 +114,23 @@ describe('applyTextChangeAsActor', () => {
     expect(id).not.toBe(d.clientID)
     expect(getSource(d).toString()).toBe('abd')
     expect(actors(d)!.get(String(d.clientID))).toBe('Human')
+  })
+})
+
+describe('commentAsActor', () => {
+  it('writes under actor clientID, reuses id, rolls back on throw', () => {
+    const d = seeded('hello world foo')
+    const id = addComment(d, { author: 'Me', body: 'hi', from: 0, to: 5 })
+    const r = commentAsActor(d, 'Claude', (x) => replyComment(x, id, { author: 'Claude', body: 'ok' }))
+    const rep = listThreads(d)[0]!.replies[0]!
+    expect(rep.author).toBe('Claude')
+    expect(rep.clientId).toBe(r.clientId)
+    expect(r.clientId).not.toBe(d.clientID)
+    expect(actors(d)!.get(String(r.clientId))).toBe('Claude')
+    const r2 = commentAsActor(d, 'Claude', (x) => replyComment(x, id, { author: 'Claude', body: 'again' }), undefined, { reuseClientId: r.clientId })
+    expect(r2.clientId).toBe(r.clientId)
+    const sv = Y.encodeStateVector(d)
+    expect(() => commentAsActor(d, 'Claude', (x) => replyComment(x, 'nope', { author: 'Claude', body: 'x' }))).toThrow(RangeError)
+    expect(Y.encodeStateVector(d)).toEqual(sv)
   })
 })

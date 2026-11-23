@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as Y from 'yjs'
-import { getHistory, listHistory, textAtCheckpoint, restoreCheckpoint } from '@md-reader/core'
+import { computeLineDiff, getHistory, listHistory, textAtCheckpoint, restoreCheckpoint } from '@md-reader/core'
 import type { HistoryEntry, CheckpointTracker } from '@md-reader/core'
 
 function readActors(doc: Y.Doc | null): Record<string, string> {
@@ -14,6 +14,8 @@ function readActors(doc: Y.Doc | null): Record<string, string> {
 export function useHistory(doc: Y.Doc | null, tracker: CheckpointTracker | null, actor: string): {
   entries: HistoryEntry[]; actors: Record<string, string>
   previewId: string | null; previewText: string | null
+  /** Lines the current text adds / removes relative to the previewed checkpoint. */
+  previewStats: { added: number; removed: number } | null
   preview(id: string | null): void; restore(id: string): boolean
 } {
   const [entries, setEntries] = useState<HistoryEntry[]>(() => (doc ? listHistory(doc) : []))
@@ -49,5 +51,16 @@ export function useHistory(doc: Y.Doc | null, tracker: CheckpointTracker | null,
     return ok
   }, [doc, tracker, actor])
 
-  return { entries, actors, previewId: prev.id, previewText: prev.text, preview, restore }
+  const previewStats = useMemo(() => {
+    if (!doc || prev.text === null) return null
+    let added = 0
+    let removed = 0
+    for (const l of computeLineDiff(prev.text, doc.getText('source').toString())) {
+      if (l.type === 'added') added++
+      else if (l.type === 'removed') removed++
+    }
+    return { added, removed }
+  }, [doc, prev.text])
+
+  return { entries, actors, previewId: prev.id, previewText: prev.text, previewStats, preview, restore }
 }

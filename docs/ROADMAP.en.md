@@ -7,7 +7,7 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 **Order from here:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Beyond the browser.
 Requests from real users run **in parallel** with this order (see [User requests](#user-requests-in-parallel)).
 
-## Done (phases 1 to 21, version 1.5.1)
+## Done (phases 1 to 23, version 1.6.0)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -30,6 +30,7 @@ Requests from real users run **in parallel** with this order (see [User requests
 - [x] **P19 Slide PDF without clipped text:** long slides split automatically by their real height (lists and tables split by item/row, tables repeat their header), blocks that cannot be split are scaled down with a warning; manual `<!-- slide-break -->` marker and a "Break slide here" button in Edit mode; a "Split long slides automatically" switch in Settings; PDF pages are exactly 1280×720.
 - [x] **P20 New welcome page and guided tour:** paper-style welcome page with a checklist, a 9-step tour that highlights the real buttons, replayable from Settings → Help.
 - [x] **P21 MCP pairing for one profile, no repeated prompts:** the pairing dialog opens by itself at most once per AI app and a Deny is remembered; a Chrome profile other than the paired one opens no tab; Settings → AI connection lists running AI apps with a Connect button; Allow always gives a clear result; `le-sach-mcp unpair` (1.3.3) moves the pairing to another profile.
+- [x] **P23 Comments on documents:** select text, then Comment, in Read and Edit modes; people with a view/edit link comment on the web, and unshared documents can be commented on too (stored on this device); comments live in the Y.Doc (`formatVersion` 3, with migration); AI reads, replies and resolves via three new MCP tools (`le-sach-mcp` 1.4.0). Also in 1.6.0: Business / Academic / Technical document styles (applied to HTML, PDF and Word too), ~80% wide view, a new History panel.
 - [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
@@ -46,33 +47,25 @@ Ideas inspired by the feature lists of other Markdown viewers, notably docu.md (
 
 Diagrams and charts:
 
-- [ ] PlantUML
 - [ ] Graphviz / dot
 - [ ] Vega / Vega-Lite
-- [ ] ECharts
-- [ ] draw.io
-- [ ] Infographic
-- [ ] OpenAPI / Swagger (YAML) rendered as API docs
 
 Export:
 
-- [ ] EPUB
 - [ ] XLSX for tables
 - [ ] Export individual figures (SVG / PNG)
 - [x] Editable formulas in Word (OMML)
 
 Look and performance:
 
-- [ ] More document themes: business, academic, technical
-- [ ] Large documents: caching and incremental rendering
-- [ ] More interface languages beyond Vietnamese / English
+- [x] More document themes: business, academic, technical (1.6.0)
 - [x] Export through the image resolver (HTML export embeds relative images)
 
 ## v1.5 Finished collaboration and wide release
 
 Collaboration:
 
-- [ ] Comments and suggested edits
+- [x] Comments (view and edit links, unshared docs too); AI reads, answers and resolves them via MCP (phase 23)
 - [x] Room-data deletion endpoint ("Delete data from server" button) and automatic deletion of rooms unopened for 90 days
 - [x] Daily limits for the Worker (anonymous install key, IP, global image caps)
 - [ ] One-click deploy to Cloudflare ("Deploy to Cloudflare" button)
@@ -81,8 +74,16 @@ Collaboration:
 Release:
 
 - [x] Chrome Web Store
-- [ ] Microsoft Edge Add-ons
-- [ ] Firefox AMO (with a replacement for File System Access on Firefox)
+
+## Considered, not doing
+
+Dropped on 2026-11-23 as heavy to build, at odds with the privacy promise or the extension rules, or with little real demand. Reopen only if users ask for them.
+
+- PlantUML (needs Java or sending content to a third-party render server), draw.io (needs a ~2 MB remote viewer script), Infographic, OpenAPI / Swagger, ECharts (overlaps Vega-Lite)
+- EPUB export
+- Incremental rendering for large documents (would break full re-parse, outline, search and scroll sync; no reports of slowness yet)
+- More interface languages (ongoing translation cost for every new string; the store listing is translated instead)
+- Microsoft Edge Add-ons (Edge installs from the Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (paid)
 

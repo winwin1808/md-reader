@@ -7,7 +7,7 @@ import { startBridgeServer } from './bridge-server'
 import { loadOrCreateIdentity, unpairIdentity } from './pairing'
 import { registerTools } from './tools'
 
-export const VERSION = '1.3.3'
+export const VERSION = '1.4.0'
 
 export function startupLine(version: string, port: number, code: string): string {
   return `le-sach-mcp ${version} listening on 127.0.0.1:${port} · mã máy chủ ${code}\n`

@@ -1,6 +1,30 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-13. **Phase 21 + 22 đã merge vào `main`** (MR #23 → `phase-21`, MR #22 → `main`, `93e5918`). Worker đã deploy bản `0cc7bcd7` (kèm migration remote `0005_feedback`); `le-sach-mcp@1.3.3` đã có trên npm; zip `docs/store/md-reader-1.5.1.zip` đã build. Các nhánh phase đã xoá — chỉ còn `main`.
+Cập nhật: 2026-11-23. **Phase 23 HOÀN TẤT trên `phase-23`**, MR #25 → `main` đã mở (https://github.com/winwin1808/md-reader/pull/25), **chưa merge**. Phase 21 + 22 đã merge vào `main` trước đó (`93e5918`).
+
+## Phase 23 — Bình luận + AI xử lý góp ý qua MCP, v1.6.0 (2026-11-23)
+
+Spec `docs/superpowers/specs/2026-11-23-phase-23-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-23-phase-23-binh-luan-ai.md` · plan `docs/superpowers/plans/2026-11-23-phase-23-<sub>-plan.md`. MR #25.
+
+- core: root `Y.Map "comments"` phẳng, mục JSON bất biến neo `Y.RelativePosition` trên `Y.Text "source"`; `formatVersion` 3 + migration + fixture; "Làm gọn" giữ bình luận; `data-sp` trong render + ánh xạ vùng chọn DOM → offset source; `commentAsActor` (fork dưới clientID tác giả AI).
+- ui: `CommentsPanel` (tab Đang mở / Đã xong), `CommentLayer` (chọn chữ → `.comment-add-btn` → composer, tô, mốc lề), bình luận trong editor live preview; `useComments` chung ở `@md-reader/ui`.
+- extension: nút toolbar "Bình luận (n)", Ctrl/Cmd+Shift+M, composer ở Đọc và Sửa; executor `list_comments` / `reply_comment` / `resolve_comment` (không hỏi xác nhận, chờ IDB).
+- api: peer-guard cho mục bình luận (chỉ mục của clientID mình); link xem gửi update chỉ chứa bình luận — **23g1 phát hiện** y-partyserver `isReadOnly` vứt im lặng update của link xem → `room.ts` bật cờ `applyingViewUpdate` quanh `super.handleMessage` sau peer-guard. Step2 từ link xem vẫn bỏ.
+- web `/s/:token`: bình luận cho link xem (tên khách lưu cục bộ) và link sửa; 4403 → khoá bình luận, không nối lại vòng.
+- Trang ghi chú phát hành công khai `site/changelog.html` (vi/en, mỗi bản một `#v<x.y.z>`; deploy Pages khi merge) — URL `https://winwin1808.github.io/md-reader/changelog.html`. "Có gì mới" trong extension (tự mở một lần khi cập nhật có `showOnUpdate`) có link "Xem toàn bộ ghi chú phát hành" tới đúng anchor. **Mỗi lần ra bản:** thêm mục vào `release-notes.ts` VÀ `site/changelog.html` — test `WhatsNewPage.test.tsx` đỏ nếu thiếu section.
+- Bổ sung cùng MR #25 (yêu cầu người dùng): panel Lịch sử mới (merge nhánh `history-panel-ui`); **23i** chế độ Rộng = tờ giấy tối đa 80vw (Đọc + Sửa) + nút toolbar bật/tắt (nhớ độ rộng trước trong phiên); **23j** kiểu tài liệu `docStyle: lesach|business|academic|technical` (Cài đặt → Hiển thị, khoá nhóm Phông khi khác lesach): `DocStyle`/`isDocStyle` ở core, Word theo bảng `WORD_STYLES`, `docStyleCss(style, root)` ở ui dùng chung cho app (`<style data-doc-style-css>` root `.md-viewer:not(.deck-slide-content), .editor-live-sheet` — slide không bị ảnh hưởng) và export HTML (`getDefaultExportCss(style)`); PDF in trang sống nên kế thừa (print.css vẫn ép chữ đen).
+- `le-sach-mcp` 1.4.0: 10 tool; extension 1.6.0, RELEASE_NOTES `showOnUpdate`; docs MCP vi/en, ROADMAP P23 `[x]`, CHANGELOG, quyền riêng tư.
+- Test (đo lại 2026-11-23 sau 23i/23j trên `phase-23`): core 383 · ui 721 · extension 722 · web 78 · api 286 · le-sach-mcp 61 (60 + 1 đỏ do hết cổng) · e2e 15 (13 xanh; 2 `mcp.spec` đỏ do hết cổng; `lifecycle.spec` đỏ một lượt dưới tải, chạy lại 4/4 xanh) · e2e:collab 3; typecheck/build 0; content.js gz 13,660 B. Máy tải cao (load ~30) làm vài test core/ui timeout 5 s — chạy lại xanh.
+- e2e MCP cần một cổng trống trong 47821–47830; máy dev hay bị các phiên `le-sach-mcp` khác chiếm hết (`no free port`).
+
+**Người làm:** merge MR #25 → deploy Worker (`room.ts` đổi) → publish `le-sach-mcp@1.4.0` → build zip 1.6.0 → nộp store (mô tả store có thể dẫn link trang phát hành) → tag `v1.6.0` + GitHub Release trỏ về `changelog.html#v1.6.0`.
+
+Nợ:
+- 23i: độ rộng trước khi bật Rộng chỉ nhớ trong phiên; mục lục mở → tờ giấy ~73–78%; ghi đè `app.css` 721–1080px thừa (app ép single-column).
+- 23j: test docx "default equals lesach" chưa ghim giá trị cũ; Word academic chưa căn đều mục danh sách/trích dẫn/ô bảng; editor live chỉ nhận token phông (heading/đánh số không vào dòng CM); `.settings-hint` chưa có CSS; kiểu tài liệu chưa có ở web `/s/:token`.
+- Unit test api chưa kiểm phát lại/lưu của update link xem (e2e phủ).
+- e2e: `mcp.spec` `nameBox.count()` không chờ, chỉ bắn `mouseup` (nên dùng chung `selectText` của collab.spec); collab.spec bấm Ctrl+Shift+M trên trang chủ không `bringToFront()`.
+- Tên awareness ở link xem cố định lúc bind; panel link xem bị khoá vẫn hiện nút Trả lời/Xong; observer `meta` thừa ở `useComments`; `forkAsActor` tạo fork ngoài `try`.
 
 ## Phase 22 — Vá bảo mật sau audit run-2 (2026-11-13)
 

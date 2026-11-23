@@ -35,6 +35,10 @@ export const vi = {
   'web.reportSent': 'Đã gửi báo cáo. Cảm ơn bạn.',
   'web.reportLimited': 'Bạn đã gửi quá nhiều báo cáo hôm nay',
   'web.reportFailed': 'Không gửi được báo cáo',
+  'web.guest': 'Khách',
+  'web.commentsRejected': 'Không gửi được bình luận — link này chỉ có quyền xem.',
+  'web.commentsFull': 'Tài liệu đã đầy — không thể bình luận.',
+  'web.commentRangeChanged': 'Đoạn đã chọn đã thay đổi — chọn lại.',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -74,4 +78,8 @@ export const en: Record<keyof typeof vi, string> = {
   'web.reportSent': 'Report sent. Thank you.',
   'web.reportLimited': 'Too many reports today',
   'web.reportFailed': 'Could not send the report',
+  'web.guest': 'Guest',
+  'web.commentsRejected': "Couldn't send the comment — this link is view-only.",
+  'web.commentsFull': 'The document is full — commenting is off.',
+  'web.commentRangeChanged': 'The selected text changed — select again.',
 }

@@ -23,11 +23,14 @@ import {
   HistoryTimeline,
   historyLabel,
   ConfirmAgentDialog,
+  CommentsPanel,
+  CommentLayer,
+  CommentComposer,
 } from "@md-reader/ui"
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale } from '@md-reader/ui'
+import { docStyleCss, GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -44,6 +47,7 @@ import {
   computeBlame,
 } from '@md-reader/core'
 import type { MindNode, RoomBinding } from '@md-reader/core'
+import { isDocStyle } from '@md-reader/core'
 import { defaultRenderPlugins, parseYaml, onMathLoaded, loadMathPlugin } from '@md-reader/core/plugins'
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
@@ -87,6 +91,7 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
   contrast: 'standard',
   settingsVersion: 2,
   fontFamily: 'serif',
+  docStyle: 'lesach',
   pageWidth: 'medium',
   autoFormatMd: true,
   alwaysOpenApp: false,
@@ -122,6 +127,7 @@ export function App(): React.JSX.Element {
   const [narrow, setNarrow] = useState<boolean>(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1080px)').matches)
   const drawerRef = useRef<HTMLDivElement>(null)
+  const widthBeforeWideRef = useRef<ReaderSettings['pageWidth'] | null>(null)
   const tocWasOpenRef = useRef(false)
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -192,6 +198,9 @@ export function App(): React.JSX.Element {
   const steps = useMemo(() => tourSteps(t as (key: string) => string), [t])
   const docTitle = session.title
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [pendingRange, setPendingRange] = useState<{ from: number; to: number } | null>(null)
+  const [docContainerEl, setDocContainerEl] = useState<HTMLDivElement | null>(null)
   const imageOriginUrl = session.record?.originKind === 'url' ? session.record.originPath : fileUrlParam
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | undefined>(undefined)
   const [imageNotice, setImageNotice] = useState<string | null>(null)
@@ -234,6 +243,7 @@ export function App(): React.JSX.Element {
   )
   useEffect(() => () => resolveImage?.dispose(), [resolveImage])
   const history = useHistory(doc, session.checkpoints, displayName)
+  const comments = useComments(doc, displayName)
   const fileSave = useFileSave(session, { formatOnSave: readerSettings.formatOnSave ?? (readerSettings.autoFormatMd !== false) })
   const [viewMode, setViewMode] = useState<ViewMode>('reading')
   const pendingAnchorRef = useRef<{ to: ViewMode; id: string | null } | null>(null)
@@ -292,6 +302,11 @@ export function App(): React.JSX.Element {
     }).catch(() => {})
     return () => { cancelled = true }
   }, [sessionDocId])
+
+  const docContainerCallback = useCallback((el: HTMLDivElement | null) => {
+    docContainerRef.current = el
+    setDocContainerEl((p) => (p === el ? p : el))
+  }, [])
 
   const changeViewMode = useCallback((next: ViewMode) => {
     if (next === viewMode) return
@@ -502,6 +517,7 @@ export function App(): React.JSX.Element {
         setReaderSettings({
           ...DEFAULT_READER_SETTINGS,
           ...stored,
+          docStyle: isDocStyle(stored.docStyle) ? stored.docStyle : 'lesach',
           mode,
         })
         setFontScale((localRes?.fontScale as FontScale) || (syncRes?.fontScale as FontScale) || 'md')
@@ -570,7 +586,7 @@ export function App(): React.JSX.Element {
   const [mathRev, setMathRev] = useState(0)
   useEffect(() => onMathLoaded(() => setMathRev((n) => n + 1)), [])
 
-  const renderHtmlFor = useCallback((text: string) => {
+  const renderHtmlFor = useCallback((text: string, opts?: { sourcePositions?: boolean }) => {
     const parsed = parseMarkdown(text, { math: readerSettings?.enableMath !== false, parseYaml })
     const rendered = renderToHtml(parsed, {
       math: readerSettings?.enableMath !== false,
@@ -581,6 +597,7 @@ export function App(): React.JSX.Element {
       githubAlerts: readerSettings?.githubAlerts,
       localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
       plugins: PLUGINS,
+      sourcePositions: opts?.sourcePositions,
     })
     return { parsed, rendered }
   }, [readerSettings, mathRev])
@@ -591,11 +608,58 @@ export function App(): React.JSX.Element {
   const previewEntry = history.previewId ? history.entries.find((e) => e.id === history.previewId) : undefined
   const previewBanner = previewHtml !== null && previewEntry ? (
     <div role="status" className="history-preview-banner">
-      {t('ext.history.previewing', { label: historyLabel(previewEntry.label), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+      <span className="history-preview-banner__text">
+        {t('ext.history.previewing', { label: historyLabel(previewEntry.label, t), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+      </span>
+      {history.previewStats && (
+        <span className="history-preview-banner__stats" title={t('ext.history.statsTitle')}>
+          {history.previewStats.added === 0 && history.previewStats.removed === 0
+            ? t('ext.history.same')
+            : `+${history.previewStats.added} −${history.previewStats.removed}`}
+        </span>
+      )}
       <button type="button" onClick={() => history.preview(null)}>{t('ext.history.exitPreview')}</button>
     </div>
   ) : null
   const closeHistory = () => { history.preview(null); setHistoryOpen(false) }
+  const toggleComments = () => {
+    if (commentsOpen) { setCommentsOpen(false); return }
+    closeHistory()
+    setCommentsOpen(true)
+  }
+  const openThread = (id: string) => {
+    comments.setActive(id)
+    setCommentsOpen(true)
+    closeHistory()
+    const th = comments.threads.find((x) => x.id === id)
+    const from = th?.range?.from
+    if (from == null) return
+    if (viewMode === 'live') {
+      editorViewRef.current?.dispatch({ selection: { anchor: from }, scrollIntoView: true })
+      return
+    }
+    let best: Element | null = null
+    docContainerRef.current?.querySelectorAll('[data-sp]').forEach((el) => {
+      const start = Number((el.getAttribute('data-sp') ?? '').split(':')[0])
+      if (Number.isFinite(start) && start <= from) best = el
+    })
+    ;(best as Element | null)?.scrollIntoView?.({ block: 'center' })
+  }
+  const openThreadRef = useRef(openThread)
+  openThreadRef.current = openThread
+  const commentsConfig = useMemo(
+    () => ({
+      threads: comments.threads,
+      activeId: comments.activeId,
+      onCreate: (r: { from: number; to: number }) => setPendingRange(r),
+      onSelect: (id: string) => openThreadRef.current(id),
+    }),
+    [comments.threads, comments.activeId],
+  )
+  const historyPreviewing = previewHtml !== null
+  useEffect(() => {
+    setPendingRange(null)
+  }, [sessionDocId, viewMode, historyOpen, historyPreviewing])
 
   const { html, toc, parseResult, parsedDoc } = useMemo(() => {
     if (!content) {
@@ -607,7 +671,7 @@ export function App(): React.JSX.Element {
         parsedDoc: { tree: emptyTree },
       }
     }
-    const { parsed, rendered } = renderHtmlFor(content)
+    const { parsed, rendered } = renderHtmlFor(content, { sourcePositions: true })
     return {
       html: rendered.html,
       toc: rendered.toc,
@@ -671,12 +735,14 @@ export function App(): React.JSX.Element {
     }
   }, [readerSettings.enableMermaid])
 
+  const currentDocStyle = isDocStyle(readerSettings.docStyle) ? readerSettings.docStyle : 'lesach'
   const { exportAs: baseExportAs, isPrintingSlides } = useExport({
     html,
     title: docTitle,
     parseResult,
     resolveImage,
     waitSlidesReady,
+    docStyle: currentDocStyle,
   })
 
   const exportAs = async (format: ExportFormat): Promise<void> => {
@@ -759,6 +825,7 @@ export function App(): React.JSX.Element {
     onCloseSearch: () => setIsSearchOpen(false),
     isSearchOpen,
     onToggleMindmap: () => setIsMindmapOpen((prev) => !prev),
+    onToggleComments: toggleComments,
     onPresent: () => setIsPresenting(true),
     presentEnabled: !isPresenting && !isSpeakerMode,
   })
@@ -798,11 +865,23 @@ export function App(): React.JSX.Element {
               ? { kind: 'saved', at: ss.at }
               : { kind: 'none' }
 
+  const isWide = readerSettings.pageWidth === 'wide'
+  const toggleWide = () => {
+    if (isWide) {
+      handleSettingChange('pageWidth', widthBeforeWideRef.current ?? 'medium')
+    } else {
+      const cur = readerSettings.pageWidth
+      widthBeforeWideRef.current = cur && cur !== 'wide' ? cur : 'medium'
+      handleSettingChange('pageWidth', 'wide')
+    }
+  }
   const toolbarActions: ToolbarAction[] = [
     { id: 'open', label: t('ext.menu.open'), icon: 'open-file', onSelect: () => { void handleOpenFile() } },
     { id: 'export', label: t('ext.menu.export'), icon: 'export', onSelect: () => setExportOpen(true) },
     ...(viewMode !== 'reading' ? [{ id: 'blame', label: blameOn ? t('ext.menu.blameHide') : t('ext.menu.blameShow'), icon: 'person' as const, onSelect: () => setBlameOn((v) => !v) }] : []),
-    { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else setHistoryOpen(true) } },
+    { id: 'history', label: t('ext.menu.history'), icon: 'history', onSelect: () => { if (historyOpen) closeHistory(); else { setCommentsOpen(false); setHistoryOpen(true) } } },
+    { id: 'wide', label: isWide ? t('ext.menu.wideOff') : t('ext.menu.wideOn'), icon: 'fullscreen', onSelect: toggleWide },
+    { id: 'comments', label: comments.openCount > 0 ? `${t('comments.title')} (${comments.openCount})` : t('comments.title'), icon: 'comment', badge: comments.openCount > 0, onSelect: toggleComments },
     { id: 'settings', label: t('ext.menu.settings'), icon: 'settings', onSelect: () => setSettingsOpen(true), badge: lifecycle.hasUnseenNotes },
   ]
 
@@ -864,7 +943,8 @@ export function App(): React.JSX.Element {
         onRevertToDisk={fileSave.revertToDisk}
         onClose={fileSave.closeConflict}
       />
-      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={readerSettings.fontFamily} data-width={readerSettings.pageWidth ?? 'medium'}>
+      <div className={`app-container${isReadingMode ? ' reading-mode' : ''}`} data-font-scale={fontScale} data-font-family={currentDocStyle === 'lesach' ? readerSettings.fontFamily : undefined} data-width={readerSettings.pageWidth ?? 'medium'} data-doc-style={currentDocStyle}>
+        {currentDocStyle !== 'lesach' && <style data-doc-style-css>{docStyleCss(currentDocStyle, '.md-viewer:not(.deck-slide-content), .editor-live-sheet')}</style>}
         {readerSettings.showReadingProgress !== false && <ReadingProgress />}
         <WordCountBar
           text={content}
@@ -1042,8 +1122,9 @@ export function App(): React.JSX.Element {
             <div className={`app-layout ${(!(narrow ? false : tocRailOpen) || isReadingMode || !toc || toc.length === 0) ? 'single-column' : ''}`}>
               <div className="main-content" data-font-scale={fontScale}>
                 {previewBanner}
-                <div ref={docContainerRef} className="a4-document-container">
+                <div ref={docContainerCallback} className="a4-document-container">
                   <Viewer html={previewHtml ?? html} resolveImage={resolveImage} mermaid={readerSettings.enableMermaid !== false} onActiveHeadingChange={setActiveHeadingId} />
+                  <CommentLayer container={docContainerEl} source={content} threads={comments.threads} activeId={comments.activeId} enabled={previewHtml === null} onCreate={(r, body) => { comments.create(r, body) }} onSelect={openThread} askName={false} />
                 </div>
               </div>
               {toc && toc.length > 0 && tocRailOpen && !isReadingMode && !narrow && (
@@ -1076,10 +1157,33 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
+          {commentsOpen && (
+            <div className="comments-drawer">
+              <CommentsPanel
+                threads={comments.threads}
+                activeId={comments.activeId}
+                me={comments.me}
+                onSelect={openThread}
+                onReply={comments.reply}
+                onResolve={comments.resolve}
+                onDelete={comments.remove}
+                onClose={() => setCommentsOpen(false)}
+              />
+            </div>
+          )}
+
           {viewMode === 'live' && (
             <div className="editor-mode-container">
               {previewHtml === null && <FormattingToolbar onAction={handleFormatAction} />}
               <div className="editor-mode-body">
+                {pendingRange && previewHtml === null && (
+                  <div className="editor-comment-composer">
+                    <CommentComposer askName={false} onSubmit={(body) => {
+                      if (comments.create(pendingRange, body) === null) { setImageNotice('Đoạn đã chọn đã thay đổi — chọn lại.'); return }
+                      setPendingRange(null)
+                    }} onCancel={() => setPendingRange(null)} />
+                  </div>
+                )}
                 {previewHtml !== null ? (
                   <div className="history-preview-scroll">
                     {previewBanner}
@@ -1091,7 +1195,7 @@ export function App(): React.JSX.Element {
                   </div>
                 ) : (
                 <Suspense fallback={<LazyFallback />}>
-                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} />
+                  <Editor awareness={session.awareness ?? undefined} yText={yText} undoManager={undoManager} editorViewRef={editorViewRef} blame={blameOn ? blameLines : null} variant="live" live={liveOpts} resolveImage={resolveImage} saveImage={saveImage} onImageMessage={setImageNotice} comments={commentsConfig} />
                 </Suspense>
                 )}
               </div>

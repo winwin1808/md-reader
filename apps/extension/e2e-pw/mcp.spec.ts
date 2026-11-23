@@ -75,7 +75,7 @@ test.describe('MCP CLI <-> extension', () => {
       expect(init.result).toBeTruthy()
       mcp.notify('notifications/initialized')
       const list = await mcp.request('tools/list', {})
-      expect(list.result.tools).toHaveLength(7)
+      expect(list.result.tools).toHaveLength(10)
 
       // Enable the bridge from an extension page.
       const page = await context.newPage()
@@ -113,6 +113,57 @@ test.describe('MCP CLI <-> extension', () => {
       const upd = await mcp.call('update_doc', { docId, markdown: g.markdown.replace('đoạn một', 'đoạn hai'), baseHash: g.hash })
       expect(upd.isError, upd.text).toBe(false)
       await expect(docPage.getByText('đoạn hai')).toBeVisible({ timeout: 30_000 })
+
+      // Comment on "đoạn hai" in Read mode, then let the AI read, fix and resolve it.
+      await docPage.bringToFront()
+      await docPage.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('[data-sp]')).find((e) => (e.textContent ?? '').includes('đoạn hai'))!
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        let n: Node | null
+        while ((n = walker.nextNode())) {
+          const i = (n.textContent ?? '').indexOf('đoạn hai')
+          if (i >= 0) {
+            const r = document.createRange()
+            r.setStart(n, i)
+            r.setEnd(n, i + 'đoạn hai'.length)
+            const sel = window.getSelection()!
+            sel.removeAllRanges()
+            sel.addRange(r)
+            el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+            return
+          }
+        }
+      })
+      await docPage.locator('.comment-add-btn').getByText('Bình luận').click()
+      const composer = docPage.locator('.comment-composer')
+      const nameBox = composer.getByLabel('Tên của bạn')
+      if (await nameBox.count()) await nameBox.fill('Chủ')
+      await composer.getByLabel('Bình luận').fill('Viết hoa chữ đầu')
+      await composer.getByRole('button', { name: 'Gửi' }).click()
+
+      let open: { comments: Array<{ threadId: string; quote: string; currentText: string; status: string }> } = { comments: [] }
+      await expect.poll(async () => {
+        const r = await mcp.call('list_comments', { docId })
+        open = JSON.parse(r.text)
+        return open.comments.length
+      }, { timeout: 30_000 }).toBe(1)
+      expect(open.comments[0].quote + open.comments[0].currentText).toContain('đoạn hai')
+      expect(open.comments[0].status).toBe('open')
+
+      const g2 = JSON.parse((await mcp.call('get_doc', { docId })).text) as { markdown: string; hash: string }
+      const upd2 = await mcp.call('update_doc', { docId, markdown: g2.markdown.replace('đoạn hai', 'Đoạn hai'), baseHash: g2.hash })
+      expect(upd2.isError, upd2.text).toBe(false)
+      const res = await mcp.call('resolve_comment', { docId, threadId: open.comments[0].threadId, reply: 'Đã viết hoa' })
+      expect(res.isError, res.text).toBe(false)
+      expect(JSON.parse((await mcp.call('list_comments', { docId })).text).comments).toHaveLength(0)
+      const all = JSON.parse((await mcp.call('list_comments', { docId, status: 'all' })).text) as { comments: Array<{ status: string; replies: Array<{ author: string }> }> }
+      expect(all.comments[0].status).toBe('resolved')
+      expect(all.comments[0].replies[0].author).toBe('e2e')
+      await docPage.keyboard.press('ControlOrMeta+Shift+M')
+      const doneTab = docPage.getByRole('tab', { name: 'Đã xong (1)' })
+      await expect(doneTab).toBeVisible({ timeout: 30_000 })
+      await doneTab.click()
+      await expect(docPage.getByText('Đã viết hoa')).toBeVisible()
 
       const stale = await mcp.call('update_doc', { docId, markdown: '# x', baseHash: g.hash })
       expect(stale.isError).toBe(true)

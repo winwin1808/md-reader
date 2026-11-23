@@ -1,4 +1,7 @@
 import * as Y from 'yjs'
+import { COMMENTS_ROOT, commentKeyClient, validateCommentValue } from '@md-reader/core'
+
+export type PeerRole = 'view' | 'edit'
 
 /** Reason a link-edit peer's transaction is not allowed, or null. Peers may only write `source` and their own `meta.actors` entry. */
 export function peerTxViolation(tr: Y.Transaction, doc: Y.Doc): string | null {
@@ -6,9 +9,11 @@ export function peerTxViolation(tr: Y.Transaction, doc: Y.Doc): string | null {
   const meta = doc.getMap('meta')
   const actorsRaw = meta.get('actors')
   const actors = actorsRaw instanceof Y.Map ? actorsRaw : null
+  const comments = doc.share.get(COMMENTS_ROOT) as unknown
   for (const [t, keys] of tr.changed) {
     const type = t as unknown
     if (type === source) continue
+    if (comments && type === comments) continue // shape/owner already enforced pre-apply by peerUpdateViolation
     if (actors && type === actors) {
       for (const k of keys) {
         if (k === null) return 'actors: unexpected change'
@@ -28,7 +33,8 @@ export function peerTxViolation(tr: Y.Transaction, doc: Y.Doc): string | null {
 export const MAX_CLIENT_IDS_PER_CONN = 4
 
 type Struct = Y.Item | InstanceType<typeof Y.GC> | InstanceType<typeof Y.Skip>
-type Res = { kind: 'source' | 'meta' | 'actors' | 'other'; sub: string | null } | null
+type Kind = 'source' | 'meta' | 'actors' | 'comments' | 'comments_nested' | 'other'
+type Res = { kind: Kind; sub: string | null } | null
 
 export interface PeerOwnership {
   /** clientID -> link prefix that first introduced it. */
@@ -44,15 +50,15 @@ const CONTENT_TYPE_REF = 7
  * Pre-apply check of a Yjs update (v1) sent over a link-edit connection. Returns a reason when it must not be
  * applied, otherwise null (and records new clientID claims in `own`). Anything that cannot be resolved is a violation.
  */
-export function peerUpdateViolation(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | null {
+export function peerUpdateViolation(update: Uint8Array, doc: Y.Doc, own: PeerOwnership, role: PeerRole = 'edit'): string | null {
   try {
-    return check(update, doc, own)
+    return check(update, doc, own, role)
   } catch {
     return 'undecodable update'
   }
 }
 
-function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | null {
+function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership, role: PeerRole): string | null {
   const { structs, ds } = Y.decodeUpdate(update)
   const byClient = new Map<number, Struct[]>()
   for (const s of structs as Struct[]) {
@@ -102,17 +108,18 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
   }
 
   const memo = new Map<Struct, Res>()
-  const rootKind = (name: string): 'source' | 'meta' | 'other' => (name === 'source' ? 'source' : name === 'meta' ? 'meta' : 'other')
-  const containerOf = (s: Struct): 'source' | 'meta' | 'actors' | 'other' | null => {
+  const rootKind = (name: string): Kind => (name === 'source' ? 'source' : name === 'meta' ? 'meta' : name === COMMENTS_ROOT ? 'comments' : 'other')
+  const containerOf = (s: Struct): Kind | null => {
     // kind of the type held by item s
     if (!(s instanceof Y.Item) || s.content.getRef() !== CONTENT_TYPE_REF) return null
     const r = resolve(s)
     if (!r) return null
+    if (r.kind === 'comments' || r.kind === 'comments_nested') return 'comments_nested'
     return r.kind === 'meta' && r.sub === 'actors' ? 'actors' : 'other'
   }
   const direct = (item: Y.Item): Res => {
     const p = item.parent as unknown
-    let kind: 'source' | 'meta' | 'actors' | 'other' | null
+    let kind: Kind | null
     if (typeof p === 'string') kind = rootKind(p)
     else if (p instanceof Y.ID) {
       const ps = find(p.client, p.clock)
@@ -165,6 +172,29 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
     if (!(s instanceof Y.Item)) continue
     const r = resolve(s)
     if (!r) return 'unresolved parent'
+    if (r.kind === 'comments_nested') return 'comment_nested'
+    if (role === 'view' && r.kind !== 'comments') return 'view_write'
+    if (r.kind === 'comments') {
+      const ref = s.content.getRef()
+      // ContentDeleted carries no value to validate, but it still integrates into the map (it can supersede
+      // the key head via origin), so it gets the same key + owner checks as a write.
+      if (ref !== 1 && (ref !== 8 || s.content.getLength() !== 1)) return 'comment_content'
+      const key = r.sub ?? s.parentSub ?? '' // origin-chained structs (overwrites) carry no parentSub
+      if (ref !== 1) {
+        const bad = validateCommentValue(key, s.content.getContent()[0])
+        if (bad) return bad
+      }
+      if (key.startsWith('s:')) {
+        if (role === 'view') {
+          const tc = commentKeyClient(key.slice(2))
+          if (tc === null || !owns(tc)) return 'comment_owner'
+        }
+        continue
+      }
+      const kc = commentKeyClient(key)
+      if (kc === null || kc !== s.id.client || !owns(kc)) return 'comment_owner'
+      continue
+    }
     if (s.content.getRef() === CONTENT_TYPE_REF) return 'nested type'
     if (r.kind === 'source') {
       const ref = s.content.getRef()
@@ -193,7 +223,15 @@ function check(update: Uint8Array, doc: Y.Doc, own: PeerOwnership): string | nul
         }
         const r = resolve(s)
         if (!r) return 'unresolved parent'
+        if (role === 'view' && r.kind !== 'comments') return 'view_write'
         if (r.kind === 'source') continue
+        if (r.kind === 'comments') {
+          const key = r.sub ?? ''
+          const owner = commentKeyClient(key.startsWith('s:') ? key.slice(2) : key)
+          if (key.startsWith('s:') && role === 'edit') continue
+          if (owner === null || !owns(owner)) return 'comment_delete'
+          continue
+        }
         if (r.kind === 'actors' && r.sub !== null && owns(Number(r.sub)) && String(Number(r.sub)) === r.sub) continue
         return 'forbidden delete'
       }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
+import * as encoding from 'lib0/encoding'
 import { peerTxViolation } from './peer-guard'
 
 function setup() {
@@ -169,5 +170,171 @@ describe('peerUpdateViolation (14a)', () => {
     const doc = setup()
     expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').insert(2, 'zz')), doc, own())).toBeNull()
     expect(peerUpdateViolation(upd(doc, (p) => p.getText('source').delete(0, 2)), doc, own())).toBeNull()
+  })
+})
+
+import { addComment, setResolved } from '@md-reader/core'
+
+describe('peerUpdateViolation comments (23d1)', () => {
+  const own = (ids: number[] = []) => ({ owners: new Map<number, string>(ids.map((i) => [i, 'p'])), claimed: new Set<number>(ids), prefix: 'p' })
+  /** Build an update by running fn on a temp doc (given clientID) synced from the room doc. */
+  function upd(doc: Y.Doc, clientID: number, fn: (p: Y.Doc) => void): Uint8Array {
+    const p = new Y.Doc()
+    Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+    p.clientID = clientID
+    fn(p)
+    return Y.encodeStateAsUpdate(p, Y.encodeStateVector(doc))
+  }
+  const value = (key: string, clientId: number, body = 'hi') => ({ v: 1, thread: 'c:1:abcdefgh', author: 'A', body, ts: 1, clientId })
+  const key = (c: number, r = 'abcdefgh') => `c:${c}:${r}`
+
+  it('edit and view add an own comment via core addComment', () => {
+    const doc = setup()
+    for (const role of ['edit', 'view'] as const) {
+      const u = upd(doc, 11, (p) => addComment(p, { author: 'A', body: 'x', from: 0, to: 3 }))
+      expect(peerUpdateViolation(u, doc, own(), role)).toBeNull()
+    }
+  })
+  it('no role argument behaves as edit', () => {
+    const doc = setup()
+    expect(peerUpdateViolation(upd(doc, 12, (p) => p.getText('source').insert(0, 'z')), doc, own())).toBeNull()
+    expect(peerUpdateViolation(upd(doc, 12, (p) => p.getText('source').insert(0, 'z')), doc, own(), 'view')).toBe('view_write')
+  })
+  it('view cannot write source or meta.actors', () => {
+    const doc = setup()
+    expect(peerUpdateViolation(upd(doc, 13, (p) => p.getText('source').insert(0, 'z')), doc, own(), 'view')).toBe('view_write')
+    expect(peerUpdateViolation(upd(doc, 13, (p) => (p.getMap('meta').get('actors') as Y.Map<string>).set('13', 'B')), doc, own(), 'view')).toBe('view_write')
+    expect(peerUpdateViolation(upd(doc, 13, (p) => p.getArray('history').push([1])), doc, own(), 'view')).toBe('view_write')
+  })
+  it('rejects a c: key whose client differs from the struct client', () => {
+    const doc = setup()
+    const u = upd(doc, 14, (p) => p.getMap('comments').set(key(50), value(key(50), 50)))
+    expect(peerUpdateViolation(u, doc, own())).toBe('comment_owner')
+  })
+  it('rejects a c: key for a clientID outside own', () => {
+    const doc = setup()
+    const u = upd(doc, 15, (p) => p.getMap('comments').set(key(15), value(key(15), 15)))
+    const o = own()
+    o.owners.set(15, 'other')
+    expect(peerUpdateViolation(u, doc, o)).toBe('foreign clientID 15')
+  })
+  it('rejects a value clientId that differs from the key', () => {
+    const doc = setup()
+    const u = upd(doc, 16, (p) => p.getMap('comments').set(key(16), value(key(16), 17)))
+    expect(peerUpdateViolation(u, doc, own())).toBe('comment_client')
+  })
+  it('rejects a 4001 char body', () => {
+    const doc = setup()
+    const u = upd(doc, 18, (p) => p.getMap('comments').set(key(18), value(key(18), 18, 'a'.repeat(4001))))
+    expect(peerUpdateViolation(u, doc, own())).toBe('comment_body')
+  })
+  describe('thread state s:', () => {
+    function withThread() {
+      const doc = setup()
+      const id = (() => {
+        const p = new Y.Doc()
+        Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+        p.clientID = 21
+        const i = addComment(p, { author: 'A', body: 'x', from: 0, to: 3 })
+        Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
+        return i
+      })()
+      return { doc, id }
+    }
+    it('view sets s: only for own thread; edit for any', () => {
+      const { doc, id } = withThread()
+      const mine = upd(doc, 21, (p) => setResolved(p, id, true, 'A'))
+      expect(peerUpdateViolation(mine, doc, own([21]), 'view')).toBeNull()
+      const theirs = upd(doc, 22, (p) => setResolved(p, id, true, 'B'))
+      expect(peerUpdateViolation(theirs, doc, own(), 'view')).toBe('comment_owner')
+      expect(peerUpdateViolation(theirs, doc, own(), 'edit')).toBeNull()
+    })
+  })
+  describe('delete (23d1-2)', () => {
+    function threadBy(client: number) {
+      const doc = setup()
+      const p = new Y.Doc()
+      Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+      p.clientID = client
+      const id = addComment(p, { author: 'A', body: 'x', from: 0, to: 3 })
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
+      return { doc, id }
+    }
+    it('deleting own comment is allowed', () => {
+      const { doc, id } = threadBy(31)
+      const u = upd(doc, 31, (p) => p.getMap('comments').delete(id))
+      expect(peerUpdateViolation(u, doc, own([31]), 'edit')).toBeNull()
+      expect(peerUpdateViolation(u, doc, own([31]), 'view')).toBeNull()
+    })
+    it("deleting another user's comment is comment_delete for view and edit", () => {
+      const { doc, id } = threadBy(32)
+      const u = upd(doc, 33, (p) => p.getMap('comments').delete(id))
+      expect(peerUpdateViolation(u, doc, own([33]), 'edit')).toBe('comment_delete')
+      expect(peerUpdateViolation(u, doc, own([33]), 'view')).toBe('comment_delete')
+    })
+    it('edit overwriting a foreign s: state is allowed; view is a violation', () => {
+      const { doc, id } = threadBy(34)
+      const first = upd(doc, 35, (p) => setResolved(p, id, true, 'B'))
+      Y.applyUpdate(doc, first)
+      const reopen = upd(doc, 36, (p) => setResolved(p, id, false, 'C'))
+      expect(peerUpdateViolation(reopen, doc, own([36]), 'edit')).toBeNull()
+      expect(peerUpdateViolation(reopen, doc, own([36]), 'view')).not.toBeNull()
+    })
+    it('view deleting source text is view_write', () => {
+      const doc = setup()
+      const u = upd(doc, 37, (p) => p.getText('source').delete(0, 2))
+      expect(peerUpdateViolation(u, doc, own([37]), 'view')).toBe('view_write')
+    })
+  })
+  describe('ContentDeleted with origin (23d1-3)', () => {
+    /** Hand-built v1 update: one ContentDeleted struct (info 0x81) from `attacker` whose origin is (originClient, 0). */
+    function forged(attacker: number, originClient: number, clock = 0): Uint8Array {
+      const e = encoding.createEncoder()
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, attacker)
+      encoding.writeVarUint(e, clock)
+      encoding.writeUint8(e, 0x81)
+      encoding.writeVarUint(e, originClient)
+      encoding.writeVarUint(e, 0)
+      encoding.writeVarUint(e, 1)
+      encoding.writeVarUint(e, 0)
+      return encoding.toUint8Array(e)
+    }
+    function withKey(client: number, k: string) {
+      const doc = setup()
+      const p = new Y.Doc()
+      Y.applyUpdate(p, Y.encodeStateAsUpdate(doc))
+      p.clientID = client
+      p.getMap('comments').set(k, { v: 1 })
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(p))
+      return doc
+    }
+    it("rejects ContentDeleted chained onto another user's c: item (view and edit)", () => {
+      const doc = withKey(111, 'c:111:aaaaaaaa')
+      for (const role of ['view', 'edit'] as const) {
+        expect(peerUpdateViolation(forged(222, 111), doc, own(), role)).not.toBeNull()
+      }
+    })
+    it("rejects ContentDeleted chained onto another user's thread s: for view", () => {
+      const doc = withKey(111, 's:c:111:aaaaaaaa')
+      expect(peerUpdateViolation(forged(222, 111), doc, own(), 'view')).not.toBeNull()
+    })
+    it('allows ContentDeleted chained onto own c: item', () => {
+      const doc = withKey(222, 'c:222:aaaaaaaa')
+      expect(peerUpdateViolation(forged(222, 222, 1), doc, own([222]), 'view')).toBeNull()
+      expect(peerUpdateViolation(forged(222, 222, 1), doc, own([222]), 'edit')).toBeNull()
+    })
+  })
+  it('rejects a nested Y.Map value', () => {
+    const doc = setup()
+    const u = upd(doc, 19, (p) => p.getMap('comments').set(key(19), new Y.Map()))
+    expect(['comment_content', 'comment_nested']).toContain(peerUpdateViolation(u, doc, own()))
+    const u2 = upd(doc, 19, (p) => {
+      const m = new Y.Map<unknown>()
+      p.getMap('comments').set(key(19), m)
+      m.set('a', 1)
+    })
+    expect(['comment_content', 'comment_nested']).toContain(peerUpdateViolation(u2, doc, own()))
   })
 })
