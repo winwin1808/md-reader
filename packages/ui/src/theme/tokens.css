@@ -190,15 +190,3 @@
 .history-panel ul { list-style: none; margin: 0; padding: 0; }
 .history-panel .history-row { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
 .history-panel .history-row[aria-selected='true'] { background: var(--hl); color: var(--hl-ink); }
-
-.comments-panel { width: 320px; display: flex; flex-direction: column; height: 100%; border-left: 1px solid var(--rule); background: var(--paper); color: var(--ink); }
-.comments-panel__head { flex: none; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
-.comments-panel__head h2 { display: inline; font-size: 1rem; margin: 0; }
-.comments-panel__body { flex: 1; overflow-y: auto; }
-.comments-panel [role='tab'][aria-selected='true'] { font-weight: 600; text-decoration: underline; }
-.comment-thread { padding: 8px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
-.comment-thread[aria-current] { background: var(--hl); color: var(--hl-ink); }
-.comment-thread__quote { margin: 0 0 4px; padding-left: 8px; border-left: 2px solid var(--rule); opacity: 0.8; white-space: pre-wrap; }
-.comment-thread__text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.comment-thread__reply { margin-left: 12px; padding-top: 4px; }
-.comments-orphans h3 { font-size: 0.85rem; padding: 8px 12px 0; margin: 0; }
