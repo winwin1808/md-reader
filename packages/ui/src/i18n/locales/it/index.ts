@@ -7,5 +7,6 @@ import { it as shell } from './shell'
 import { it as ext } from './ext'
 import { it as web } from './web'
 
+// Completeness is enforced by catalog-parity.test.ts.
 const messages: PartialMessages = { ...common, ...settings, ...present, ...live, ...shell, ...ext, ...web }
 export default messages
