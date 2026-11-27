@@ -86,7 +86,7 @@ export const it: PartialMessages = {
   'share.revokeAllQ': 'Revocare tutti i link?',
   'share.compact': 'Compatta documento',
   'share.compact.full': 'La stanza condivisa è piena e non può più sincronizzare.',
-  'share.compact.confirm': 'I vecchi link smettono di funzionare e vengono eliminati la cronologia delle modifiche e gli autori di ogni riga; il contenuto resta. Poi riattiva la condivisione per ottenere un nuovo link.',
+  'share.compact.confirm': 'I vecchi link smettono di funzionare e vengono eliminati cronologia delle modifiche e autori di ogni riga; il contenuto resta. Poi riattiva la condivisione per ottenere un nuovo link.',
   'share.compact.yes': 'Conferma compattazione',
   'ext.compact.failed': 'La stanza condivisa è stata eliminata ma non è stato possibile compattare il documento. Il contenuto è intatto; puoi condividerlo di nuovo.',
   'ext.export.mathFailed': 'Impossibile caricare il motore delle formule; le formule verranno esportate come TeX.',
