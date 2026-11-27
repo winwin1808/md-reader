@@ -33,6 +33,7 @@ export function useExport(args: {
   resolveImage?: (src: string) => string | Promise<string>
   waitSlidesReady?: (signal: AbortSignal) => Promise<void>
   docStyle?: DocStyle
+  locale?: string
 }): {
   exportAs(format: ExportFormat): Promise<void>
   isPrintingSlides: boolean
@@ -89,7 +90,7 @@ export function useExport(args: {
             return null
           }
         }
-        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(args.docStyle), title, fetchImage })
+        const exportHtml = await exportToHtml({ html, cssContent: getDefaultExportCss(args.docStyle), title, fetchImage, lang: args.locale })
         download(new Blob([exportHtml], { type: 'text/html;charset=utf-8' }), `${title}.html`)
       } else if (format === 'docx') {
         const { mdastToDocx } = await import('@md-reader/core/docx')
