@@ -1,6 +1,9 @@
 import { DEFAULT_SERVER_URL } from '../shared/collab'
 
 // Khai lại tương ứng apps/api/src/feedback.ts (không import apps/api).
+export type FeedbackLocale = 'vi' | 'en' | 'it' | 'fr' | 'de'
+const LOCALES: readonly string[] = ['vi', 'en', 'it', 'fr', 'de']
+
 export interface FeedbackInput {
   kind: 'uninstall' | 'bug' | 'idea'
   reason: 'not_needed' | 'missing_feature' | 'bugs' | 'hard_to_use' | 'privacy' | 'switched' | 'other' | null
@@ -8,7 +11,7 @@ export interface FeedbackInput {
   email: string | null
   version: string | null
   browser: string | null
-  locale: 'vi' | 'en' | null
+  locale: FeedbackLocale | null
 }
 
 export const FEEDBACK_EMAIL = 'qhao.work@gmail.com'
@@ -44,7 +47,8 @@ export function diagnostics(): { version: string; browser: string; locale: strin
   const version = chrome.runtime?.getManifest?.().version ?? 'unknown'
   const browser = browserLabel(typeof navigator !== 'undefined' ? (navigator as NavLike) : undefined)
   const lang = chrome.i18n?.getUILanguage?.() ?? ''
-  return { version, browser, locale: lang.startsWith('vi') ? 'vi' : 'en' }
+  const primary = lang.split('-')[0]!.toLowerCase()
+  return { version, browser, locale: LOCALES.includes(primary) ? primary : 'en' }
 }
 
 export async function sendFeedback(
@@ -86,6 +90,6 @@ export function toFeedbackInput(d: Draft, diag: Diag): FeedbackInput {
     email: d.email.trim() || null,
     version: diag.version,
     browser: diag.browser,
-    locale: diag.locale === 'vi' ? 'vi' : 'en',
+    locale: LOCALES.includes(diag.locale) ? (diag.locale as FeedbackLocale) : 'en',
   }
 }

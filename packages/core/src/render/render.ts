@@ -158,7 +158,7 @@ export function renderToHtml(parsed: ParseResult, options?: RenderOptions): Rend
     : widened
 
   if (options?.githubAlerts === true) {
-    processor.use(rehypeGithubAlerts, { locale: options?.localizeAlerts === 'vi' ? 'vi' : 'en' })
+    processor.use(rehypeGithubAlerts, { locale: options?.localizeAlerts ?? 'en' })
   }
   if (options?.externalLinks === true) {
     processor.use(rehypeExternalLinks)

@@ -31,7 +31,7 @@ describe('ContentApp', () => {
     const send = vi.fn((_m: any, cb: any) => cb?.({ success: true }))
     const setMock = setupChrome(send)
 
-    render(<ContentApp markdown="# Test" />)
+    render(<ContentApp locale="vi" markdown="# Test" />)
     fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/i }))
 
     await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
@@ -49,7 +49,7 @@ describe('ContentApp', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     setupChrome(vi.fn((_m: any, cb: any) => cb?.({ success: false })))
 
-    render(<ContentApp markdown="# Test" />)
+    render(<ContentApp locale="vi" markdown="# Test" />)
     fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/i }))
 
     expect(await screen.findByText(FAIL)).toBeTruthy()
@@ -60,7 +60,7 @@ describe('ContentApp', () => {
 
   it('renders tab; Ẩn writes collapsed=true and shows strip', async () => {
     const setMock = setupChrome(vi.fn())
-    render(<ContentApp markdown="# T" />)
+    render(<ContentApp locale="vi" markdown="# T" />)
     expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ẩn' }))
     expect(setMock).toHaveBeenCalledWith({ 'mdr.widget.collapsed': true })
@@ -70,7 +70,7 @@ describe('ContentApp', () => {
 
   it('stored true on mount collapses', async () => {
     setupChrome(vi.fn(), vi.fn().mockResolvedValue({ 'mdr.widget.collapsed': true }))
-    render(<ContentApp markdown="# T" />)
+    render(<ContentApp locale="vi" markdown="# T" />)
     expect(await screen.findByRole('button', { name: /Mở MD Reader/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Đọc trong MD Reader/ })).toBeNull()
   })
@@ -78,7 +78,7 @@ describe('ContentApp', () => {
   it('renders nothing until stored state resolves', async () => {
     let resolve!: (v: any) => void
     setupChrome(vi.fn(), vi.fn(() => new Promise((r) => (resolve = r))))
-    const { container } = render(<ContentApp markdown="# T" />)
+    const { container } = render(<ContentApp locale="vi" markdown="# T" />)
     expect(container.innerHTML).toBe('')
     resolve({ 'mdr.widget.collapsed': true })
     expect(await screen.findByRole('button', { name: /Mở MD Reader/ })).toBeTruthy()
@@ -86,7 +86,7 @@ describe('ContentApp', () => {
 
   it('storage error stays expanded', async () => {
     setupChrome(vi.fn(), vi.fn().mockRejectedValue(new Error('x')))
-    render(<ContentApp markdown="# T" />)
+    render(<ContentApp locale="vi" markdown="# T" />)
     expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
   })
 
@@ -95,7 +95,7 @@ describe('ContentApp', () => {
 
     it('shows article and bar', async () => {
       setupChrome(vi.fn())
-      const { container } = render(<ContentApp markdown="# Hi" render={R} />)
+      const { container } = render(<ContentApp locale="vi" markdown="# Hi" render={R} />)
       expect(await screen.findByRole('button', { name: /Đọc trong MD Reader/ })).toBeTruthy()
       expect(container.querySelector('article.doc h1')?.textContent).toBe('Hi')
       expect(container.querySelector('header.bar')?.textContent).toContain('Hi')
@@ -105,7 +105,7 @@ describe('ContentApp', () => {
     it('toggles raw view', async () => {
       setupChrome(vi.fn())
       const onShowRaw = vi.fn()
-      render(<ContentApp markdown="# Hi" render={R} onShowRaw={onShowRaw} />)
+      render(<ContentApp locale="vi" markdown="# Hi" render={R} onShowRaw={onShowRaw} />)
       fireEvent.click(await screen.findByRole('button', { name: 'Xem bản thô' }))
       expect(onShowRaw).toHaveBeenLastCalledWith(true)
       fireEvent.click(screen.getByRole('button', { name: 'Xem bản đọc' }))
@@ -117,7 +117,7 @@ describe('ContentApp', () => {
       const A = { html: '<a id="l1" href="#sec">go</a><a id="l2" href="#">top</a><a id="l3" href="#missing">m</a><h2 id="sec">S</h2>', title: 'T' }
       const setup = () => {
         setupChrome(vi.fn())
-        const { container } = render(<ContentApp markdown="# T" render={A} />)
+        const { container } = render(<ContentApp locale="vi" markdown="# T" render={A} />)
         const target = container.querySelector('#sec') as HTMLElement
         target.scrollIntoView = vi.fn()
         return { container, target }
@@ -153,7 +153,7 @@ describe('ContentApp', () => {
     it('open button sends openApp', async () => {
       const send = vi.fn((_m: any, cb: any) => cb?.({ success: true }))
       setupChrome(send)
-      render(<ContentApp markdown="# Hi" render={R} />)
+      render(<ContentApp locale="vi" markdown="# Hi" render={R} />)
       fireEvent.click(await screen.findByRole('button', { name: /Đọc trong MD Reader/ }))
       await waitFor(() => expect(send).toHaveBeenCalled())
       expect(send.mock.calls[0]![0]).toMatchObject({ action: 'openApp' })

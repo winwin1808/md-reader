@@ -654,3 +654,23 @@ describe('useDocSession formatVersion tolerance (11h)', () => {
     } finally { ensureFail.on = false }
   })
 })
+
+describe('useDocSession file URL error localisation (24b2)', () => {
+  async function failWith(locale: 'vi' | 'en') {
+    const { I18nProvider, loadLocale } = await import('@md-reader/ui')
+    await loadLocale(locale)
+    const React = await import('react')
+    vi.stubGlobal('chrome', { storage: { local: { get: async () => ({}), remove: async () => {} } } })
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('x') }))
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(I18nProvider, { locale, children })
+    return renderHook(() => useDocSession({ docId: null, fileUrl: 'https://x.test/a.md' }), { wrapper })
+  }
+  it('vi', async () => {
+    const { result } = await failWith('vi')
+    await waitFor(() => expect(result.current.error).toContain('Không đọc được file: https://x.test/a.md'), LOAD_WAIT)
+  })
+  it('en', async () => {
+    const { result } = await failWith('en')
+    await waitFor(() => expect(result.current.error).toContain('Cannot read file: https://x.test/a.md'), LOAD_WAIT)
+  })
+})

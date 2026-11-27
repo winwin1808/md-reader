@@ -5,7 +5,7 @@ import { inlineWidgets } from './widgets'
 import { blockWidgets, type BlockRenderers } from './block-widgets'
 import { livePreviewTheme, livePreviewWidgetTheme, livePreviewBlockTheme } from './theme'
 
-export function livePreview(r: BlockRenderers, opts?: { theme?: () => 'default' | 'dark' }): Extension[] {
+export function livePreview(r: BlockRenderers, opts?: { theme?: () => 'default' | 'dark'; lang?: string }): Extension[] {
   return [
     hideMarks(),
     inlineWidgets(),
@@ -14,7 +14,7 @@ export function livePreview(r: BlockRenderers, opts?: { theme?: () => 'default' 
     livePreviewWidgetTheme,
     livePreviewBlockTheme,
     EditorView.lineWrapping,
-    EditorView.contentAttributes.of({ class: 'cm-live', spellcheck: 'true', lang: 'vi' }),
+    EditorView.contentAttributes.of({ class: 'cm-live', spellcheck: 'true', lang: opts?.lang ?? 'vi' }),
   ]
 }
 

@@ -5,6 +5,9 @@ export const MAX_FEEDBACK_BODY = 8192
 export const FEEDBACK_TTL_MS = 180 * 86_400_000
 export const FEEDBACK_PRUNE_BATCH = 500
 
+export const FEEDBACK_LOCALES = ['vi', 'en', 'it', 'fr', 'de'] as const
+export type FeedbackLocale = (typeof FEEDBACK_LOCALES)[number]
+
 export interface FeedbackInput {
   kind: (typeof FEEDBACK_KINDS)[number]
   reason: (typeof UNINSTALL_REASONS)[number] | null
@@ -12,7 +15,7 @@ export interface FeedbackInput {
   email: string | null
   version: string | null
   browser: string | null
-  locale: 'vi' | 'en' | null
+  locale: FeedbackLocale | null
 }
 export interface FeedbackRow extends FeedbackInput { id: number; createdAt: number }
 
@@ -62,7 +65,7 @@ export function parseFeedback(body: unknown): FeedbackInput | null {
     kind, reason, message, email,
     version: short(b.version),
     browser: short(b.browser),
-    locale: b.locale === 'vi' || b.locale === 'en' ? b.locale : null,
+    locale: has(FEEDBACK_LOCALES, b.locale) ? b.locale : null,
   }
 }
 

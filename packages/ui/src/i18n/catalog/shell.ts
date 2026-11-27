@@ -175,6 +175,7 @@ export const vi = {
   'comments.add': 'Bình luận',
   'comments.yourName': 'Tên của bạn',
   'comments.cancel': 'Huỷ',
+  'shell.untitled': 'Tài liệu không tên',
 } as const
 
 export const en: Record<keyof typeof vi, string> = {
@@ -354,4 +355,5 @@ export const en: Record<keyof typeof vi, string> = {
   'comments.add': 'Comment',
   'comments.yourName': 'Your name',
   'comments.cancel': 'Cancel',
+  'shell.untitled': 'Untitled',
 }

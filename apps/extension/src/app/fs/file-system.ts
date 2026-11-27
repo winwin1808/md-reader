@@ -1,4 +1,5 @@
 import { listRecent, getHandle, createRecord, writeDocText, storeHandle } from '../doc-registry'
+import { MARKDOWN_EXTENSIONS, FileFormatError, checkFileMeta, checkFileText } from './file-check'
 
 export interface StoredFileEntry {
   id: string
@@ -7,11 +8,21 @@ export interface StoredFileEntry {
   lastModified: number
 }
 
-const MARKDOWN_PICKER_TYPES = [
+const MARKDOWN_SAVE_TYPES = [
   {
     description: 'Markdown Files',
     accept: {
       'text/markdown': ['.md', '.markdown'],
+    },
+  },
+]
+
+const MARKDOWN_PICKER_TYPES = [
+  {
+    description: 'Markdown Files',
+    accept: {
+      'text/markdown': MARKDOWN_EXTENSIONS.filter((e) => e !== '.txt'),
+      'text/plain': ['.txt'],
     },
   },
 ]
@@ -33,14 +44,19 @@ export async function openLocalFile(): Promise<{
     const [handle] = await (window as any).showOpenFilePicker({
       types: MARKDOWN_PICKER_TYPES,
       multiple: false,
+      excludeAcceptAllOption: true,
     })
 
     if (!handle) {
       return null
     }
 
-    const file = await handle.getFile()
+    const file: File = await handle.getFile()
+    const metaProblem = checkFileMeta(file)
+    if (metaProblem) throw new FileFormatError(metaProblem)
     const content = await file.text()
+    const textProblem = checkFileText(content)
+    if (textProblem) throw new FileFormatError(textProblem)
 
     return { handle, file, content }
   } catch (error: any) {
@@ -74,7 +90,7 @@ export async function saveFileAs(
   try {
     const handle: FileSystemFileHandle = await (window as any).showSaveFilePicker({
       suggestedName,
-      types: MARKDOWN_PICKER_TYPES,
+      types: MARKDOWN_SAVE_TYPES,
     })
 
     if (!handle) {

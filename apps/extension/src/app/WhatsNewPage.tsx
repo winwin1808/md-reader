@@ -1,12 +1,12 @@
 import React from 'react'
-import { useT } from '@md-reader/ui'
-import type { ReleaseNote } from '../shared/release-notes'
+import { useT, type Locale } from '@md-reader/ui'
+import { noteText, type ReleaseNote } from '../shared/release-notes'
 import { RELEASE_NOTES_URL } from './feedback-client'
 import { compareVersions } from '../worker/lifecycle'
 
 export function WhatsNewPage(props: {
   notes: readonly ReleaseNote[]
-  locale: 'vi' | 'en'
+  locale: Locale
   highlight: string | null
   onDone(): void
 }): React.JSX.Element {
@@ -25,13 +25,13 @@ export function WhatsNewPage(props: {
         const isHi = n === hi
         return (
           <section key={n.version} data-version={n.version} data-highlight={isHi ? 'true' : undefined}>
-            <h2>{n.title[locale]}</h2>
+            <h2>{noteText(n.title, locale)}</h2>
             <p className="whatsnew-version">
               {isHi && <span className="whatsnew-badge">{t('ext.whatsnew.new')}</span>}{' '}
               {t('ext.whatsnew.version', { version: n.version })}
             </p>
             <ul>
-              {n.items[locale].map((it, i) => (
+              {noteText(n.items, locale).map((it, i) => (
                 <li key={i}>{it}</li>
               ))}
             </ul>

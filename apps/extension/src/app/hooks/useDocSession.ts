@@ -398,16 +398,16 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
               if ((xhr.status === 200 || xhr.status === 0) && xhr.responseText) {
                 loadContent(xhr.responseText)
               } else {
-                setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+                setError(tRef.current('ext.session.fileAccess', { url: fileUrl }))
               }
             }
             xhr.onerror = () => {
-              setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+              setError(tRef.current('ext.session.fileAccess', { url: fileUrl }))
             }
             xhr.send()
           } catch (err) {
             console.error('XHR file read error:', err)
-            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+            setError(tRef.current('ext.session.fileAccess', { url: fileUrl }))
           }
           return
         }
@@ -424,7 +424,7 @@ export function useDocSession(opts: { docId: string | null; fileUrl: string | nu
           .then(loadContent)
           .catch(err => {
             console.error('Failed to load file from URL:', err)
-            setError(`Cannot read file: ${fileUrl}. Make sure "Allow access to file URLs" is enabled in extension settings.`)
+            setError(tRef.current('ext.session.fileAccess', { url: fileUrl }))
           })
       }
 

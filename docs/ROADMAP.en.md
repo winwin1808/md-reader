@@ -7,7 +7,7 @@ This is a plan, not a delivery-date commitment. Order and scope may change with 
 **Order from here:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Beyond the browser.
 Requests from real users run **in parallel** with this order (see [User requests](#user-requests-in-parallel)).
 
-## Done (phases 1 to 23, version 1.6.0)
+## Done (phases 1 to 24, version 1.7.0)
 
 - [x] **P1 Foundation and reader:** `unified`/`remark` parser, Yjs document model, content script, app page.
 - [x] **P2 Export:** single-file HTML, PDF (print CSS), Word `.docx`, the first five palettes.
@@ -31,7 +31,8 @@ Requests from real users run **in parallel** with this order (see [User requests
 - [x] **P20 New welcome page and guided tour:** paper-style welcome page with a checklist, a 9-step tour that highlights the real buttons, replayable from Settings → Help.
 - [x] **P21 MCP pairing for one profile, no repeated prompts:** the pairing dialog opens by itself at most once per AI app and a Deny is remembered; a Chrome profile other than the paired one opens no tab; Settings → AI connection lists running AI apps with a Connect button; Allow always gives a clear result; `le-sach-mcp unpair` (1.3.3) moves the pairing to another profile.
 - [x] **P23 Comments on documents:** select text, then Comment, in Read and Edit modes; people with a view/edit link comment on the web, and unshared documents can be commented on too (stored on this device); comments live in the Y.Doc (`formatVersion` 3, with migration); AI reads, replies and resolves via three new MCP tools (`le-sach-mcp` 1.4.0). Also in 1.6.0: Business / Academic / Technical document styles (applied to HTML, PDF and Word too), ~80% wide view, a new History panel.
-- [x] Vietnamese / English UI, CI, MIT license, Firefox build (limited).
+- [x] **P24 Five languages:** Vietnamese, English, Italian, French and German UI that follows your Chrome language, switchable in Settings → Fonts and colors; the welcome page, sample document, What's new, the reading tab on `.md` pages and the store name are translated too; opening a non-Markdown/text file shows a clear error (1.7.0).
+- [x] CI, MIT license, Firefox build (limited).
 
 ## v1.3 Local MCP (done)
 
@@ -82,7 +83,6 @@ Dropped on 2026-11-23 as heavy to build, at odds with the privacy promise or the
 - PlantUML (needs Java or sending content to a third-party render server), draw.io (needs a ~2 MB remote viewer script), Infographic, OpenAPI / Swagger, ECharts (overlaps Vega-Lite)
 - EPUB export
 - Incremental rendering for large documents (would break full re-parse, outline, search and scroll sync; no reports of slowness yet)
-- More interface languages (ongoing translation cost for every new string; the store listing is translated instead)
 - Microsoft Edge Add-ons (Edge installs from the Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (paid)

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import type { HistoryEntry } from '@md-reader/core'
+import { I18nProvider } from '../i18n'
 import { HistoryTimeline, historyLabel } from './HistoryTimeline'
 
 const snap = new Uint8Array([1])
@@ -22,6 +23,13 @@ const btn = (el: HTMLElement, t: string) =>
   Array.from(el.querySelectorAll('button')).find((b) => b.textContent === t) as HTMLButtonElement
 
 describe('HistoryTimeline', () => {
+  it('formats dates with the locale tag (fr)', () => {
+    const props = { entries: [entries[1]!], actors: {}, previewId: null, previewText: null, onPreview: vi.fn(), onRestore: vi.fn(), onClose: vi.fn() }
+    const { container } = render(<I18nProvider locale="fr"><HistoryTimeline {...(props as any)} /></I18nProvider>)
+    const expected = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(3000))
+    expect(container.textContent).toContain(expected)
+  })
+
   it('renders newest first with translated labels', () => {
     const { container } = setup()
     const o = opts(container)

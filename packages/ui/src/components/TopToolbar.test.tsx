@@ -1,6 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { I18nProvider } from '../i18n'
 import { TopToolbar, type FontScale } from './TopToolbar'
 
 function openMenu() {
@@ -36,6 +37,11 @@ describe('TopToolbar', () => {
     expect(screen.getByText('My Notes')).toBeTruthy()
 
     rerender(<TopToolbar {...defaultProps} title="" />)
+    expect(screen.getByText('Tài liệu không tên')).toBeTruthy()
+  })
+
+  it('untitled fallback follows locale', () => {
+    render(<I18nProvider locale="en"><TopToolbar {...defaultProps} title="" /></I18nProvider>)
     expect(screen.getByText('Untitled')).toBeTruthy()
   })
 

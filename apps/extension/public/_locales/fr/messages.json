@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "LeSach – Lecteur Markdown et éditeur IA"
+  },
+  "extDescription": {
+    "message": "Ouvrez un .md et lisez-le avec élégance. Édition, présentation, cartes mentales, export PDF/Word. Hors ligne, partage optionnel."
+  },
+  "actionTitle": {
+    "message": "Ouvrir MD Reader"
+  }
+}

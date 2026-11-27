@@ -59,7 +59,7 @@ function BookIcon() {
   )
 }
 
-export function ContentApp({ markdown, initialError = null, render = null, locale = 'vi', onShowRaw }: ContentAppProps) {
+export function ContentApp({ markdown, initialError = null, render = null, locale = 'en', onShowRaw }: ContentAppProps) {
   const S = CONTENT_STRINGS[locale]
   const [raw, setRaw] = useState(false)
   const [isOpening, setIsOpening] = useState(false)

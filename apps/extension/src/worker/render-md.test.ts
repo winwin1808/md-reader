@@ -19,6 +19,11 @@ describe('renderMarkdownForPage', () => {
     expect(en).not.toContain('Ghi chú')
     expect(renderMarkdownForPage(md, { alertLang: 'vi' }).html).toContain('Ghi chú')
   })
+  it('alert label follows any locale code, falls back to English', () => {
+    const md = '> [!NOTE]\n> x'
+    expect(renderMarkdownForPage(md, { alertLang: 'de' }).html).toContain('Hinweis')
+    expect(renderMarkdownForPage(md).html).toContain('Note')
+  })
   it('title is null without H1', () => {
     expect(renderMarkdownForPage('## only h2').title).toBeNull()
   })

@@ -15,6 +15,12 @@ vi.mock('./hooks/useBridgeSettings', () => ({
   useBridgeSettings: () => ({ enabled: false, clients: bridge.clients, setEnabled: vi.fn(), revoke: vi.fn() }),
 }))
 
+const loc = vi.hoisted(() => ({ override: null as string | null }))
+vi.mock('@md-reader/ui', async (orig) => {
+  const actual = await orig<typeof import('@md-reader/ui')>()
+  return { ...actual, useLocale: () => { const a = actual.useLocale(); return (loc.override ?? a) as typeof a } }
+})
+
 import { WelcomeRoute } from './WelcomeRoute'
 import { LocaleRoot } from './LocaleRoot'
 
@@ -43,6 +49,7 @@ function renderRoute(): ReturnType<typeof render> {
 beforeEach(() => {
   vi.clearAllMocks()
   bridge.clients = []
+  loc.override = null
   reg.listRecent.mockResolvedValue([])
   reg.findOrCreateByOrigin.mockResolvedValue({ docId: 'abc', originPath: 'mdr://welcome/vi' })
   reg.writeDocText.mockResolvedValue(undefined)
@@ -57,10 +64,22 @@ afterEach(() => {
 })
 
 describe('WelcomeRoute', () => {
+  it('opens the fr sample under locale fr', async () => {
+    loc.override = 'fr'
+    renderRoute()
+    await waitFor(() => expect(document.querySelector('.welcome-primary')).toBeTruthy())
+    fireEvent.click(document.querySelector('.welcome-primary') as HTMLElement)
+    await waitFor(() => expect(assign).toHaveBeenCalled())
+    const arg = reg.findOrCreateByOrigin.mock.calls[0]![0]
+    expect(arg.originPath).toBe('mdr://welcome/fr')
+    expect(arg.title).toBe('Bienvenue dans MD Reader')
+    expect(String(reg.writeDocText.mock.calls[0]![1]).startsWith('# Bienvenue dans MD Reader')).toBe(true)
+  })
+
   it('opens the sample doc then navigates to app.html', async () => {
     renderRoute()
+    await waitFor(() => expect(document.querySelector('.welcome-primary')).toBeTruthy())
     const btn = document.querySelector('.welcome-primary') as HTMLElement
-    expect(btn).toBeTruthy()
     fireEvent.click(btn)
     await waitFor(() => expect(assign).toHaveBeenCalled())
     const arg = reg.findOrCreateByOrigin.mock.calls[0]![0]
