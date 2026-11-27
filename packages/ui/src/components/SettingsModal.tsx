@@ -464,7 +464,7 @@ function BackupSection({ backup }: { backup: SettingsBackupProps }): React.JSX.E
     <>
       <p className="settings-row-desc">{t('settings.backup.warning')}</p>
       <div className="settings-row">
-        <button type="button" className="settings-btn" disabled={busy} onClick={run}>
+        <button type="button" className="settings-btn is-primary" disabled={busy} onClick={run}>
           {busy ? t('settings.backup.busy') : t('settings.backup.button')}
         </button>
       </div>
@@ -1017,7 +1017,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                           <div className="settings-row-label">{c.client}</div>
                           <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(localeTag(locale))} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
                         </div>
-                        <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
+                        <button type="button" className="settings-btn is-danger" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
                           {t('settings.ai.revoke')}
                         </button>
                       </div>
@@ -1035,7 +1035,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                             </div>
                           </div>
                           {d.status === 'waiting' && (
-                            <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onConnect?.(d.keyHash)}>
+                            <button type="button" className="settings-btn is-primary" onClick={() => props.aiBridge!.onConnect?.(d.keyHash)}>
                               {t('settings.ai.connect')}
                             </button>
                           )}
