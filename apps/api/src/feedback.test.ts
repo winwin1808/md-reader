@@ -62,12 +62,15 @@ describe('parseFeedback', () => {
     expect(parseFeedback(ok({ email: ' a@b.c ' }))?.email).toBe('a@b.c')
   })
   it('version/browser/locale/extras', () => {
-    const r = parseFeedback(ok({ browser: 'b'.repeat(100), version: 3, locale: 'fr', ip: '1.2.3.4' }))!
+    const r = parseFeedback(ok({ browser: 'b'.repeat(100), version: 3, locale: 'xx', ip: '1.2.3.4' }))!
     expect(r.browser).toHaveLength(64)
     expect(r.version).toBeNull()
     expect(r.locale).toBeNull()
     expect('ip' in r).toBe(false)
     expect(parseFeedback(ok({ locale: 'vi' }))?.locale).toBe('vi')
+    expect(parseFeedback(ok({ locale: 'de' }))?.locale).toBe('de')
+    expect(parseFeedback(ok({ locale: 'it' }))?.locale).toBe('it')
+    expect(parseFeedback(ok({ locale: 'fr' }))?.locale).toBe('fr')
     expect(parseFeedback(ok({ version: '' }))?.version).toBeNull()
   })
 })

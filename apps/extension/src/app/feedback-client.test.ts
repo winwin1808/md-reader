@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { browserLabel, feedbackMailto, sendFeedback, toFeedbackInput, type FeedbackInput } from './feedback-client'
+import { browserLabel, diagnostics, feedbackMailto, sendFeedback, toFeedbackInput, type FeedbackInput } from './feedback-client'
 
 const input: FeedbackInput = {
   kind: 'bug',
@@ -71,5 +71,25 @@ describe('toFeedbackInput / feedbackMailto', () => {
     expect(u.startsWith('mailto:qhao.work@gmail.com?subject=')).toBe(true)
     expect(u).toContain(encodeURIComponent('MD Reader feedback (bug)'))
     expect(u).toContain(encodeURIComponent('a&b\nc\n\n---\nVersion: 1.4.0 · Browser: Chrome 130 · Language: vi'))
+  })
+})
+
+describe('locale 5 mã', () => {
+  const withLang = (lang: string, fn: () => void) => {
+    const g = globalThis as unknown as { chrome?: unknown }
+    const old = g.chrome
+    g.chrome = { runtime: { getManifest: () => ({ version: '1' }) }, i18n: { getUILanguage: () => lang } }
+    try { fn() } finally { g.chrome = old }
+  }
+  it('fr-FR -> fr, de -> de, ja -> en', () => {
+    withLang('fr-FR', () => expect(diagnostics().locale).toBe('fr'))
+    withLang('DE', () => expect(diagnostics().locale).toBe('de'))
+    withLang('it-IT', () => expect(diagnostics().locale).toBe('it'))
+    withLang('ja', () => expect(diagnostics().locale).toBe('en'))
+  })
+  it('payload giữ mã hợp lệ, lạ -> en', () => {
+    const d = { version: '1', browser: 'b' }
+    expect(toFeedbackInput({ kind: 'idea', message: 'm', email: '' }, { ...d, locale: 'fr' }).locale).toBe('fr')
+    expect(toFeedbackInput({ kind: 'idea', message: 'm', email: '' }, { ...d, locale: 'xx' }).locale).toBe('en')
   })
 })
