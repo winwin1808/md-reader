@@ -7,7 +7,7 @@
 **Thứ tự làm tiếp:** v1.4 → v1.5 → Lề sách Cloud → v2.0 Ra khỏi trình duyệt.
 Yêu cầu từ người dùng thật chạy **song song** với thứ tự này (mục [Yêu cầu người dùng](#yêu-cầu-người-dùng-song-song)).
 
-## Đã xong (phase 1 đến 23, phiên bản 1.6.0)
+## Đã xong (phase 1 đến 24, phiên bản 1.7.0)
 
 - [x] **P1 Nền tảng và trình đọc:** parser `unified`/`remark`, mô hình tài liệu Yjs, content script, app page.
 - [x] **P2 Xuất bản:** HTML một file, PDF (print CSS), Word `.docx`, năm bảng màu ban đầu.
@@ -31,7 +31,8 @@ Yêu cầu từ người dùng thật chạy **song song** với thứ tự này
 - [x] **P20 Trang chào mới và hướng dẫn từng bước:** trang chào dạng tờ giấy có checklist, tour 9 bước tô sáng nút thật, xem lại trong Cài đặt → Trợ giúp.
 - [x] **P21 Ghép cặp MCP một profile, không hỏi lặp:** hộp ghép cặp tự mở tối đa một lần cho mỗi ứng dụng AI, từ chối được ghi nhớ; profile Chrome khác với profile đã ghép không mở tab nào; Cài đặt → Kết nối AI liệt kê ứng dụng AI đang chạy kèm nút Kết nối; bấm Cho phép luôn có kết quả rõ; lệnh `le-sach-mcp unpair` (1.3.3) để chuyển sang profile khác.
 - [x] **P23 Bình luận trên tài liệu:** chọn chữ rồi Bình luận ở chế độ Đọc và Sửa; người có link xem/sửa bình luận trên web, tài liệu chưa chia sẻ vẫn bình luận được (lưu trên máy); bình luận nằm trong Y.Doc (`formatVersion` 3, có migration); AI đọc, trả lời, đánh dấu Xong qua ba tool MCP mới (`le-sach-mcp` 1.4.0). Cùng bản 1.6.0: kiểu tài liệu Kinh doanh / Học thuật / Kỹ thuật (áp cả HTML, PDF, Word), xem rộng ~80%, panel Lịch sử mới.
-- [x] Giao diện Việt / Anh, CI, giấy phép MIT, bản build Firefox (có giới hạn).
+- [x] **P24 Năm ngôn ngữ:** giao diện tiếng Việt, Anh, Ý, Pháp, Đức, tự theo ngôn ngữ của Chrome, đổi được trong Cài đặt → Chữ và màu; trang chào, tài liệu mẫu, Có gì mới, thẻ đọc trên trang `.md`, tên extension trên store đều đã dịch; mở file không phải Markdown/văn bản thì báo lỗi rõ (1.7.0).
+- [x] CI, giấy phép MIT, bản build Firefox (có giới hạn).
 
 ## v1.3 MCP cục bộ (đã xong)
 
@@ -82,7 +83,6 @@ Loại ngày 2026-11-23 vì build nặng, vướng cam kết riêng tư hoặc q
 - PlantUML (cần Java hoặc gửi nội dung lên máy chủ render bên thứ ba), draw.io (cần script viewer từ xa ~2 MB), Infographic, OpenAPI / Swagger, ECharts (trùng vai Vega-Lite)
 - Xuất EPUB
 - Render tăng dần cho tài liệu lớn (vỡ re-parse toàn bộ, mục lục, tìm kiếm, cuộn đồng bộ; chưa ai báo chậm)
-- Thêm ngôn ngữ giao diện (mỗi chuỗi mới phải dịch thêm; thay bằng dịch trang store)
 - Microsoft Edge Add-ons (Edge cài thẳng từ Chrome Web Store), Firefox AMO
 
 ## Lề sách Cloud (bản trả phí)

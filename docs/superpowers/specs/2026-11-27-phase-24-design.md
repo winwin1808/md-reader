@@ -1,5 +1,5 @@
 # Phase 24 — Đa ngôn ngữ (vi · en · it · fr · de)
-Author: winwin1808. Status: designed. Phase: 24
+Author: winwin1808. Status: shipped. Phase: 24
 
 Intent: `docs/superpowers/intent/2026-11-27-phase-24-da-ngon-ngu.md`
 
