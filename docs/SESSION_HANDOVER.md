@@ -1,6 +1,8 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-27. **Phase 24 HOÀN TẤT trên `phase-24`**, MR #26 → `main` đã mở (https://github.com/winwin1808/md-reader/pull/26), **chưa merge**. Phase 23 (1.6.0) đã phát hành.
+Cập nhật: 2026-11-27. **1.7.0 đã phát hành phía repo**: MR #26 đã merge (`8eadbf40`), Worker deploy version `b3679693`, zip `docs/store/md-reader-1.7.0.zip`, tag `v1.7.0` + GitHub Release. Còn lại: nộp zip lên store.
+
+Deploy Worker: `set -a; . ~/.config/md-reader/cloudflare.env; set +a; pnpm --filter api run deploy`. Build zip: `pnpm --filter extension package`, đọc `VITE_MDR_SERVER_URL` từ `apps/extension/.env.local`.
 
 ## Phase 24 — Đa ngôn ngữ vi · en · it · fr · de, v1.7.0 (2026-11-27)
 
@@ -21,7 +23,7 @@ Spec `docs/superpowers/specs/2026-11-27-phase-24-design.md` (shipped) · intent 
 - Phiên bản 1.7.0, có ghi chú 1.7.0 bằng 5 ngôn ngữ, và `site/changelog.html#v1.7.0` (site chỉ vi/en).
 - Test (guard 2026-11-27 trên `phase-24-i-release`): core 384 · ui 723 · extension 758 · web 79 · api 286 · le-sach-mcp 60; typecheck/build 0; content.js gz 14,149 B; app.js gz 473 KB; chunk it/fr/de gz ~10.7/11.0/11.1 KB. Khi máy tải nặng, ui gặp "Timeout waiting for worker" hoặc test `SettingsModal … lifecycle` hết 5 s; chạy lại riêng thì xanh. e2e chưa chạy lại.
 
-**Người làm sau merge:** deploy Worker → merge MR #26 (Pages cập nhật changelog) → build `docs/store/md-reader-1.7.0.zip` → nộp store (có thể dịch mô tả store sang it/fr/de) → tag `v1.7.0` + GitHub Release.
+**Đã xong 2026-11-27:** merge MR #26 (`8eadbf40`), Worker `b3679693`, zip 1.7.0, tag `v1.7.0` + Release (có đính zip). **Còn lại:** nộp zip 1.7.0 lên store; có thể dịch mô tả store sang it/fr/de.
 
 Nợ:
 - Chưa có người bản ngữ đọc lại it/fr/de. fr `share.setup.serverPlaceholder` vẫn còn `<your-name>`. de `ext.share.revokeFailed` "konnte(n)" đọc gượng. Vài nhãn fr/de dài như `toolbar.status.error` và `share.setup.saveRetry`, cần nhìn tận mắt.
@@ -247,7 +249,7 @@ Branch `phase-11` (11a..11k), MR `phase-11` → `main` mở, **chưa merge**. Sp
 kết quả audit + trạng thái từng mục ở `docs/research/security-audit-2026-10-27.md`.
 
 **Sau khi merge (theo thứ tự):**
-1. Deploy Worker: `source ~/.config/md-reader/cloudflare.env && pnpm --filter api deploy` (không migration mới). Smoke: mở link chia sẻ, thu hồi → tab đang mở bị ngắt ngay.
+1. Deploy Worker: `source ~/.config/md-reader/cloudflare.env && pnpm --filter api run deploy` (phải có `run`: `pnpm deploy` là lệnh có sẵn của pnpm) (không migration mới). Smoke: mở link chia sẻ, thu hồi → tab đang mở bị ngắt ngay.
 2. Build lại gói store 1.3.0 (`docs/store/md-reader-1.3.0.zip`, bỏ `key`).
 3. Publish npm: `cd packages/mcp && pnpm publish --access public --no-git-checks --otp=<mã>` — giao thức cầu nối **v2**, không tương thích bản trước (chưa ai dùng).
 4. Sinh lại `site/privacy.html` từ `docs/store/privacy-policy.md` (đã sửa câu thu hồi tức thì + IPv6 /64).
