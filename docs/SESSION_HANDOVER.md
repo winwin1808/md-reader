@@ -1,6 +1,35 @@
 # Session Handover — md-reader
 
-Cập nhật: 2026-11-23. **Phase 23 HOÀN TẤT trên `phase-23`**, MR #25 → `main` đã mở (https://github.com/winwin1808/md-reader/pull/25), **chưa merge**. Phase 21 + 22 đã merge vào `main` trước đó (`93e5918`).
+Cập nhật: 2026-11-27. **Phase 24 HOÀN TẤT trên `phase-24`**, MR #26 → `main` đã mở (https://github.com/winwin1808/md-reader/pull/26), **chưa merge**. Phase 23 (1.6.0) đã phát hành.
+
+## Phase 24 — Đa ngôn ngữ vi · en · it · fr · de, v1.7.0 (2026-11-27)
+
+Spec `docs/superpowers/specs/2026-11-27-phase-24-design.md` (shipped) · intent `docs/superpowers/intent/2026-11-27-phase-24-da-ngon-ngu.md` · plan `docs/superpowers/plans/2026-11-27-phase-24-{24a,24c,24f,24i}-plan.md`. MR #26 gồm cả fix `ff040200` (mở file sai định dạng → báo lỗi `ext.file.binary`, trước đó im lặng).
+
+- ui `i18n/`: `types.ts` (`Locale` 5 mã, `LocalePref = 'auto' | Locale`), `resolve.ts` (`resolveLocale(pref, navigator.languages)` theo subtag chính, mặc định en; `localeTag` vi-VN/en-US/it-IT/fr-FR/de-DE), `translate.ts` (`catalogs`, `createT` rơi locale → en → vi → khoá, `loadLocale` import lười `./locales/<l>`), `LocaleRoot` render null tới khi catalog nạp, giữ locale cũ lúc đổi.
+- Nguồn chuỗi: `catalog/<area>.ts` (`vi` as const + `en`), area = common, settings, present, live, shell, ext, web. Bản dịch: `locales/<l>/<area>.ts` export `<l>`, `index.ts` gộp. **Thêm khoá mới → thêm vào cả năm ngôn ngữ**, nếu không `catalog-parity.test.ts` sẽ đỏ. Kiểm nhanh bằng `node scripts/i18n-keys.mjs <l> [area…]`.
+- Giọng: it xưng "tu", fr xưng "vous", de xưng "Sie". Đã một lần lỡ trộn "voi" ở it/ext và sửa ở `af64d2be`.
+- core: `alertLocale` / `ALERT_TITLES` 5 ngôn ngữ. Ở extension, `localizeAlerts` (boolean) khi bật dùng locale giao diện (content, worker, app).
+- extension:
+  - content script có `content/strings.ts` 5 ngôn ngữ, mặc định en, kèm chữ pseudo trong `content.css`;
+  - `_locales/{it,fr,de}`;
+  - trang chào và tài liệu mẫu `welcome/{it,fr,de}.ts`;
+  - `release-notes.ts` dùng `Localized<T>` + `noteText`: bản cũ chỉ có vi/en, bản thiếu ngôn ngữ thì rơi về en;
+  - `feedback-client` gửi 5 mã;
+  - `uninstallUrl` vẫn chỉ vi/en vì `site/` chỉ có hai ngôn ngữ.
+- api: `feedback.ts` nhận it/fr/de. **Cần deploy Worker.**
+- Phiên bản 1.7.0, có ghi chú 1.7.0 bằng 5 ngôn ngữ, và `site/changelog.html#v1.7.0` (site chỉ vi/en).
+- Test (guard 2026-11-27 trên `phase-24-i-release`): core 384 · ui 723 · extension 758 · web 79 · api 286 · le-sach-mcp 60; typecheck/build 0; content.js gz 14,149 B; app.js gz 473 KB; chunk it/fr/de gz ~10.7/11.0/11.1 KB. Khi máy tải nặng, ui gặp "Timeout waiting for worker" hoặc test `SettingsModal … lifecycle` hết 5 s; chạy lại riêng thì xanh. e2e chưa chạy lại.
+
+**Người làm sau merge:** deploy Worker → merge MR #26 (Pages cập nhật changelog) → build `docs/store/md-reader-1.7.0.zip` → nộp store (có thể dịch mô tả store sang it/fr/de) → tag `v1.7.0` + GitHub Release.
+
+Nợ:
+- Chưa có người bản ngữ đọc lại it/fr/de. fr `share.setup.serverPlaceholder` vẫn còn `<your-name>`. de `ext.share.revokeFailed` "konnte(n)" đọc gượng. Vài nhãn fr/de dài như `toolbar.status.error` và `share.setup.saveRetry`, cần nhìn tận mắt.
+- Không khoá được catalog bằng kiểu, vì file vùng là `PartialMessages`. Chỉ có test chặn. Ngưỡng giống-en 15% mới là heuristic.
+- Editor `lang` không cập nhật khi đổi ngôn ngữ giữa phiên. Đường render web `main.tsx` chưa có test. `I18nProvider` không render lại nếu bên gọi render trước khi catalog nạp xong.
+- Parity giữa resolve ở content script và ở ui chưa có test trực tiếp. Cũng chưa có test cho mặc định `'en'` của `ContentApp` hay cho chữ pseudo trong CSS. Test trang chào không bắt được đoạn văn còn để tiếng Anh.
+- `feedback diagnostics()` dùng ngôn ngữ Chrome thay vì `uiLanguage` (nợ có từ trước).
+- app.js gz tăng ~436 → 473 KB, chưa đo phần tăng nằm ở đâu. `site/` chỉ vi/en. Section 1.6.0 của changelog vẫn ghi "Cài đặt → Hiển thị".
 
 ## Phase 23 — Bình luận + AI xử lý góp ý qua MCP, v1.6.0 (2026-11-23)
 
