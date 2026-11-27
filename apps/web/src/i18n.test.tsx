@@ -11,4 +11,9 @@ describe('web i18n', () => {
     render(<I18nProvider locale={webLocale('?lang=en', ['vi'])}><SharePage token={null} /></I18nProvider>)
     expect(screen.getByText('Page not found')).toBeTruthy()
   })
+
+  it('accepts all supported languages', () => {
+    expect(webLocale('?lang=fr', ['en'])).toBe('fr')
+    expect(webLocale('', ['it-CH'])).toBe('it')
+  })
 })

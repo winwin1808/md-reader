@@ -27,6 +27,12 @@ function setup(resolveImage?: (s: string) => string, docStyle?: 'business') {
   return { result, fetchMock, getBlob: () => captured as Blob | null }
 }
 
+const exportSpy = vi.hoisted(() => vi.fn())
+vi.mock('@md-reader/core', async (orig) => {
+  const a = await orig<typeof import('@md-reader/core')>()
+  return { ...a, exportToHtml: ((...x: Parameters<typeof a.exportToHtml>) => { exportSpy(...x); return a.exportToHtml(...x) }) as typeof a.exportToHtml }
+})
+
 describe('useExport html', () => {
   afterEach(() => vi.unstubAllGlobals())
 
@@ -37,6 +43,15 @@ describe('useExport html', () => {
     const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(getBlob()!) })
     expect(text).toContain('data:image/png;base64,')
     expect(text).not.toContain('src="img/a.png"')
+  })
+
+  it('passes locale as lang to exportToHtml', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    URL.createObjectURL = (() => 'blob:dl') as typeof URL.createObjectURL
+    URL.revokeObjectURL = () => {}
+    const { result } = renderHook(() => useExport({ html: '<p>x</p>', title: 't', parseResult: {} as never, locale: 'de' }))
+    await result.current.exportAs('html')
+    expect(exportSpy).toHaveBeenCalledWith(expect.objectContaining({ lang: 'de' }))
   })
 
   it('uses docStyle css in html export', async () => {

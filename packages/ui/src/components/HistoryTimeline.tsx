@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, JSX } from 'react'
 import type { HistoryEntry } from '@md-reader/core'
-import { createT, useLocale, useT, type TFunction } from '../i18n'
+import { createT, useLocale, useT, localeTag, type TFunction } from '../i18n'
 
 export interface HistoryTimelineProps {
   entries: HistoryEntry[]
@@ -28,9 +28,9 @@ export function historyLabel(label: string, t: TFunction = createT('vi')): strin
 export function HistoryTimeline(props: HistoryTimelineProps): JSX.Element {
   const t = useT()
   const locale = useLocale()
-  const fmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }), [locale])
-  const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' }), [locale])
-  const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' }), [locale])
+  const fmt = useMemo(() => new Intl.DateTimeFormat(localeTag(locale), { dateStyle: 'short', timeStyle: 'short' }), [locale])
+  const timeFmt = useMemo(() => new Intl.DateTimeFormat(localeTag(locale), { hour: '2-digit', minute: '2-digit' }), [locale])
+  const dayFmt = useMemo(() => new Intl.DateTimeFormat(localeTag(locale), { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' }), [locale])
   const { entries, actors, previewId, onPreview, onRestore, onClose, now = Date.now } = props
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)

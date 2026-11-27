@@ -89,25 +89,25 @@ shell, ext, web; mỗi file `export const <l>: PartialMessages = { … }` chỉ 
 
 | # | Phase con | Status |
 |---|---|---|
-| 24a1 | ui: nền locale 5 ngôn ngữ | pending |
-| 24a2 | gắn locale: extension + web + bộ chọn | pending |
-| 24b1 | ui: ngày/số theo locale + `lang` + Untitled | pending |
-| 24b2 | extension: chuỗi cứng app page vào catalog | pending |
-| 24b3 | core: alert 5 ngôn ngữ | pending |
-| 24b4 | extension: chuỗi `localizeAlerts` theo locale | pending |
-| 24c | content script 5 ngôn ngữ | pending |
-| 24d | `_locales` it/fr/de + feedback locale | pending |
-| 24e1 | trang chào it/fr/de | pending |
-| 24e2 | "Có gì mới" + lifecycle 5 ngôn ngữ | pending |
-| 24f1 | it: common/settings/present/live | pending |
-| 24f2 | it: shell | pending |
-| 24f3 | it: ext/web | pending |
-| 24g1 | fr: common/settings/present/live | pending |
-| 24g2 | fr: shell | pending |
-| 24g3 | fr: ext/web | pending |
-| 24h1 | de: common/settings/present/live | pending |
-| 24h2 | de: shell | pending |
-| 24h3 | de: ext/web | pending |
+| 24a1 | ui: nền locale 5 ngôn ngữ | done |
+| 24a2 | gắn locale: extension + web + bộ chọn | done |
+| 24b1 | ui: ngày/số theo locale + `lang` + Untitled | done |
+| 24b2 | extension: chuỗi cứng app page vào catalog | done |
+| 24b3 | core: alert 5 ngôn ngữ | done |
+| 24b4 | extension: chuỗi `localizeAlerts` theo locale | done |
+| 24c | content script 5 ngôn ngữ | planned |
+| 24d | `_locales` it/fr/de + feedback locale | planned |
+| 24e1 | trang chào it/fr/de | planned |
+| 24e2 | "Có gì mới" + lifecycle 5 ngôn ngữ | planned |
+| 24f1 | it: common/settings/present/live | planned |
+| 24f2 | it: shell | planned |
+| 24f3 | it: ext/web | planned |
+| 24g1 | fr: common/settings/present/live | planned |
+| 24g2 | fr: shell | planned |
+| 24g3 | fr: ext/web | planned |
+| 24h1 | de: common/settings/present/live | planned |
+| 24h2 | de: shell | planned |
+| 24h3 | de: ext/web | planned |
 | 24i1 | khoá đủ khoá + placeholder | pending |
 | 24i2 | phiên bản 1.7.0 + ghi chú phát hành | pending |
 

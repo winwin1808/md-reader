@@ -30,7 +30,7 @@ import {
 const Editor = React.lazy(() => import('@md-reader/ui/editor').then(m => ({ default: m.Editor })))
 const Deck = React.lazy(() => import('@md-reader/ui/deck').then(m => ({ default: m.Deck })))
 const LazyFallback = () => <div className="lazy-fallback" aria-busy="true" />
-import { docStyleCss, GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments } from '@md-reader/ui'
+import { docStyleCss, GuidedTour, ReviewPrompt, inlineMermaid, usePeers, useSlidePagination, SlideContent, lineAuthors, useT, useLocale, useComments, localeTag } from '@md-reader/ui'
 import type { LineAuthor } from '@md-reader/ui'
 import type { ExportFormat } from '@md-reader/ui'
 import { flushSync } from 'react-dom'
@@ -599,7 +599,7 @@ export function App(): React.JSX.Element {
       typographer: readerSettings?.typographer,
       externalLinks: readerSettings?.externalLinks,
       githubAlerts: readerSettings?.githubAlerts,
-      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
+      localizeAlerts: readerSettings?.localizeAlerts ? locale : 'en',
       plugins: PLUGINS,
       sourcePositions: opts?.sourcePositions,
     })
@@ -613,7 +613,7 @@ export function App(): React.JSX.Element {
   const previewBanner = previewHtml !== null && previewEntry ? (
     <div role="status" className="history-preview-banner">
       <span className="history-preview-banner__text">
-        {t('ext.history.previewing', { label: historyLabel(previewEntry.label, t), date: new Date(previewEntry.ts).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) })}
+        {t('ext.history.previewing', { label: historyLabel(previewEntry.label, t), date: new Date(previewEntry.ts).toLocaleString(localeTag(locale), { dateStyle: 'short', timeStyle: 'short' }) })}
       </span>
       {history.previewStats && (
         <span className="history-preview-banner__stats" title={t('ext.history.statsTitle')}>
@@ -747,6 +747,7 @@ export function App(): React.JSX.Element {
     resolveImage,
     waitSlidesReady,
     docStyle: currentDocStyle,
+    locale,
   })
 
   const exportAs = async (format: ExportFormat): Promise<void> => {
@@ -777,11 +778,11 @@ export function App(): React.JSX.Element {
               typographer: readerSettings.typographer,
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              localizeAlerts: readerSettings.localizeAlerts ? locale : 'en',
               plugins: PLUGINS,
             },
           }) : []),
-    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
+    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts, locale],
   )
 
   const presentationSettings = useMemo(
@@ -1183,7 +1184,7 @@ export function App(): React.JSX.Element {
                 {pendingRange && previewHtml === null && (
                   <div className="editor-comment-composer">
                     <CommentComposer askName={false} onSubmit={(body) => {
-                      if (comments.create(pendingRange, body) === null) { setImageNotice('Đoạn đã chọn đã thay đổi — chọn lại.'); return }
+                      if (comments.create(pendingRange, body) === null) { setImageNotice(t('ext.app.selectionChanged')); return }
                       setPendingRange(null)
                     }} onCancel={() => setPendingRange(null)} />
                   </div>

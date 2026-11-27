@@ -4,7 +4,7 @@ export interface PageRender {
 }
 
 /** Ask our own worker to render markdown. Resolves null on any failure or timeout. */
-export function requestPageRender(markdown: string, timeoutMs = 4000, alertLang: 'vi' | 'en' = 'en'): Promise<PageRender | null> {
+export function requestPageRender(markdown: string, timeoutMs = 4000, alertLang: string = 'en'): Promise<PageRender | null> {
   return new Promise((resolve) => {
     let done = false
     const finish = (v: PageRender | null) => {

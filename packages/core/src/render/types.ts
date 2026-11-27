@@ -25,7 +25,7 @@ export interface RenderOptions {
   typographer?: boolean
   externalLinks?: boolean
   githubAlerts?: boolean
-  localizeAlerts?: 'vi' | 'en' | string
+  localizeAlerts?: string
   /** Attach data-sp="start:end" source offsets to block elements. Default: false */
   sourcePositions?: boolean
 }

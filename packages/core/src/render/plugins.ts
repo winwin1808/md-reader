@@ -10,19 +10,27 @@ const ALERT_PATHS: Record<string, string> = {
   CAUTION: 'M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'
 }
 
-const TITLES_VI: Record<string, string> = {
-  NOTE: 'Ghi chú',
-  TIP: 'Mẹo',
-  IMPORTANT: 'Quan trọng',
-  WARNING: 'Cảnh báo',
-  CAUTION: 'Chú ý',
+export type AlertLocale = 'vi' | 'en' | 'it' | 'fr' | 'de'
+
+const t = (note: string, tip: string, important: string, warning: string, caution: string): Record<string, string> => ({
+  NOTE: note,
+  TIP: tip,
+  IMPORTANT: important,
+  WARNING: warning,
+  CAUTION: caution,
+})
+
+const ALERT_TITLES: Record<AlertLocale, Record<string, string>> = {
+  vi: t('Ghi chú', 'Mẹo', 'Quan trọng', 'Cảnh báo', 'Chú ý'),
+  en: t('Note', 'Tip', 'Important', 'Warning', 'Caution'),
+  it: t('Nota', 'Suggerimento', 'Importante', 'Avviso', 'Attenzione'),
+  fr: t('Remarque', 'Astuce', 'Important', 'Avertissement', 'Attention'),
+  de: t('Hinweis', 'Tipp', 'Wichtig', 'Warnung', 'Vorsicht'),
 }
-const TITLES_EN: Record<string, string> = {
-  NOTE: 'Note',
-  TIP: 'Tip',
-  IMPORTANT: 'Important',
-  WARNING: 'Warning',
-  CAUTION: 'Caution',
+
+export function alertLocale(code: string | undefined): AlertLocale {
+  const primary = (code ?? '').toLowerCase().split(/[-_]/)[0] ?? ''
+  return primary in ALERT_TITLES ? (primary as AlertLocale) : 'en'
 }
 
 const EXTERNAL_LINK_PATH = 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3'
@@ -53,8 +61,8 @@ function classList(node: Element): string[] {
   return []
 }
 
-export function rehypeGithubAlerts(options: { locale: 'vi' | 'en' }) {
-  const titles = options.locale === 'vi' ? TITLES_VI : TITLES_EN
+export function rehypeGithubAlerts(options: { locale: string }) {
+  const titles = ALERT_TITLES[alertLocale(options.locale)]
   return (tree: Root) => {
     walk(tree, (node, parent, index) => {
       if (node.tagName !== 'blockquote') return

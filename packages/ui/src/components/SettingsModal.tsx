@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useT, useLocale } from '../i18n';
+import { useT, useLocale, localeTag, SUPPORTED_LOCALES, LOCALE_NAMES, type LocalePref } from '../i18n';
 import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
@@ -21,7 +21,7 @@ export interface ReaderSettings {
   fontFamily?: FontFamily;
   docStyle?: DocStyle;
   pageWidth?: PageWidth;
-  uiLanguage?: 'auto' | 'vi' | 'en';
+  uiLanguage?: LocalePref;
   autoFormatMd?: boolean;
   formatOnSave?: boolean;
   alwaysOpenApp?: boolean;
@@ -789,24 +789,18 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                   </div>
                   <div className="settings-field">
                     <span id="settings-l-lang" className="settings-field-label">{t('settings.lang.label')}</span>
-                    <div className="settings-btn-group" role="radiogroup" aria-labelledby="settings-l-lang">
-                      {([
-                        { key: 'auto', label: t('settings.lang.auto') },
-                        { key: 'vi', label: 'Tiếng Việt' },
-                        { key: 'en', label: 'English' },
-                      ] as const).map((opt) => (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          role="radio"
-                          aria-checked={(settings?.uiLanguage ?? 'auto') === opt.key}
-                          onClick={() => handleSettingChange('uiLanguage', opt.key)}
-                          className="settings-choice"
-                        >
-                          {opt.label}
-                        </button>
+                    <select
+                      id="settings-lang"
+                      aria-labelledby="settings-l-lang"
+                      className="settings-select"
+                      value={settings?.uiLanguage ?? 'auto'}
+                      onChange={(e) => handleSettingChange('uiLanguage', e.target.value as LocalePref)}
+                    >
+                      <option value="auto">{t('settings.lang.auto')}</option>
+                      {SUPPORTED_LOCALES.map((l) => (
+                        <option key={l} value={l}>{LOCALE_NAMES[l]}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
 </section>
 <section aria-labelledby="settings-h-content" id="settings-sec-content" data-section={"content"} className="settings-group" ref={(el) => { sectionRefs.current['content'] = el }}>
@@ -1021,7 +1015,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       <div className="settings-row" key={c.keyHash}>
                         <div className="settings-row-info">
                           <div className="settings-row-label">{c.client}</div>
-                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(locale)} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
+                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(localeTag(locale))} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
                         </div>
                         <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
                           {t('settings.ai.revoke')}

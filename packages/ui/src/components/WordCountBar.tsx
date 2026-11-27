@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useT, useLocale } from '../i18n'
+import { useT, useLocale, localeTag } from '../i18n'
 
 export interface WordCountBarProps {
   text: string
@@ -60,7 +60,7 @@ export function WordCountBar({
     .filter(Boolean)
     .join(' ')
 
-  const formattedText = t('settings.wordcount', { words: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN').format(words), minutes: readingTime })
+  const formattedText = t('settings.wordcount', { words: new Intl.NumberFormat(localeTag(locale)).format(words), minutes: readingTime })
 
   return (
     <div

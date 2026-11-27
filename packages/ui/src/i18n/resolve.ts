@@ -1,11 +1,15 @@
 import type { Locale, LocalePref } from './types'
+import { isLocale } from './types'
 
-/** 'auto' → vi when the first browser language starts with "vi", else en. */
+/** Explicit pref wins; otherwise the first browser language we support, else en. */
 export function resolveLocale(
   pref: LocalePref | undefined,
   navigatorLanguages: readonly string[] | undefined,
 ): Locale {
-  if (pref === 'vi' || pref === 'en') return pref
-  const first = (navigatorLanguages ?? [])[0]
-  return first && first.toLowerCase().startsWith('vi') ? 'vi' : 'en'
+  if (isLocale(pref)) return pref
+  for (const lang of navigatorLanguages ?? []) {
+    const primary = lang.split('-')[0]?.toLowerCase()
+    if (isLocale(primary)) return primary
+  }
+  return 'en'
 }
