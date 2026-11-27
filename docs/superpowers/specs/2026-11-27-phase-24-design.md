@@ -99,15 +99,15 @@ shell, ext, web; mỗi file `export const <l>: PartialMessages = { … }` chỉ 
 | 24d | `_locales` it/fr/de + feedback locale | done |
 | 24e1 | trang chào it/fr/de | done |
 | 24e2 | "Có gì mới" + lifecycle 5 ngôn ngữ | done |
-| 24f1 | it: common/settings/present/live | planned |
-| 24f2 | it: shell | planned |
-| 24f3 | it: ext/web | planned |
-| 24g1 | fr: common/settings/present/live | planned |
-| 24g2 | fr: shell | planned |
-| 24g3 | fr: ext/web | planned |
-| 24h1 | de: common/settings/present/live | planned |
-| 24h2 | de: shell | planned |
-| 24h3 | de: ext/web | planned |
+| 24f1 | it: common/settings/present/live | done |
+| 24f2 | it: shell | done |
+| 24f3 | it: ext/web | done |
+| 24g1 | fr: common/settings/present/live | done |
+| 24g2 | fr: shell | done |
+| 24g3 | fr: ext/web | done |
+| 24h1 | de: common/settings/present/live | done |
+| 24h2 | de: shell | done |
+| 24h3 | de: ext/web | done |
 | 24i1 | khoá đủ khoá + placeholder | pending |
 | 24i2 | phiên bản 1.7.0 + ghi chú phát hành | pending |
 
