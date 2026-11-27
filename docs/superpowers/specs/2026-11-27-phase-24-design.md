@@ -89,12 +89,12 @@ shell, ext, web; mỗi file `export const <l>: PartialMessages = { … }` chỉ 
 
 | # | Phase con | Status |
 |---|---|---|
-| 24a1 | ui: nền locale 5 ngôn ngữ | pending |
-| 24a2 | gắn locale: extension + web + bộ chọn | pending |
-| 24b1 | ui: ngày/số theo locale + `lang` + Untitled | pending |
-| 24b2 | extension: chuỗi cứng app page vào catalog | pending |
-| 24b3 | core: alert 5 ngôn ngữ | pending |
-| 24b4 | extension: chuỗi `localizeAlerts` theo locale | pending |
+| 24a1 | ui: nền locale 5 ngôn ngữ | planned |
+| 24a2 | gắn locale: extension + web + bộ chọn | planned |
+| 24b1 | ui: ngày/số theo locale + `lang` + Untitled | planned |
+| 24b2 | extension: chuỗi cứng app page vào catalog | planned |
+| 24b3 | core: alert 5 ngôn ngữ | planned |
+| 24b4 | extension: chuỗi `localizeAlerts` theo locale | planned |
 | 24c | content script 5 ngôn ngữ | pending |
 | 24d | `_locales` it/fr/de + feedback locale | pending |
 | 24e1 | trang chào it/fr/de | pending |
