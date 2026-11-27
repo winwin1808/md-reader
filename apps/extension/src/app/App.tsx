@@ -599,7 +599,7 @@ export function App(): React.JSX.Element {
       typographer: readerSettings?.typographer,
       externalLinks: readerSettings?.externalLinks,
       githubAlerts: readerSettings?.githubAlerts,
-      localizeAlerts: readerSettings?.localizeAlerts ? 'vi' : 'en',
+      localizeAlerts: readerSettings?.localizeAlerts ? locale : 'en',
       plugins: PLUGINS,
       sourcePositions: opts?.sourcePositions,
     })
@@ -778,11 +778,11 @@ export function App(): React.JSX.Element {
               typographer: readerSettings.typographer,
               externalLinks: readerSettings.externalLinks,
               githubAlerts: readerSettings.githubAlerts,
-              localizeAlerts: readerSettings.localizeAlerts ? 'vi' : 'en',
+              localizeAlerts: readerSettings.localizeAlerts ? locale : 'en',
               plugins: PLUGINS,
             },
           }) : []),
-    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts],
+    [content, mathRev, exportOpen, isPresenting, isPrintingSlides, isSpeakerMode, readerSettings.enableMath, readerSettings.typographer, readerSettings.externalLinks, readerSettings.githubAlerts, readerSettings.localizeAlerts, locale],
   )
 
   const presentationSettings = useMemo(

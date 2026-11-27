@@ -130,7 +130,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError
     return
   }
 
-  const render = await requestPageRender(markdownText, undefined, localizeAlerts ? 'vi' : 'en')
+  const render = await requestPageRender(markdownText, undefined, localizeAlerts ? locale : 'en')
   // Another run may have mounted while we awaited the worker.
   if (document.getElementById('md-reader-root')) {
     return
