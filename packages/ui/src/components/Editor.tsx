@@ -26,7 +26,7 @@ import type { ImageSaver } from '../live'
 import type { BlockRenderers } from '../live'
 import { commentsExtension, refreshComments, type EditorCommentsConfig } from '../live'
 import { translateFacet } from '../live/i18n-facet'
-import { useT, type TFunction } from '../i18n'
+import { useT, useLocale, type TFunction } from '../i18n'
 import '../theme/editor.css'
 import '../theme/live.css'
 
@@ -167,6 +167,7 @@ export function Editor({
   }, [comments?.threads, comments?.activeId])
 
   const tr = useT()
+  const locale = useLocale()
   useEffect(() => {
     if (!containerRef.current) return
     const live = variant === 'live'
@@ -174,7 +175,7 @@ export function Editor({
     const extensions = [
       live ? markdown({ base: markdownLanguage }) : markdown(),
       ...(live ? [] : [lineNumbers(), highlightActiveLine()]),
-      ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default' }) : []),
+      ...(live ? livePreview(renderers ?? createDefaultRenderers(), { theme: () => liveThemeRef.current?.() ?? 'default', lang: locale }) : []),
       imageResolverFacet.of(resolveImage ? (src) => resolveImageRef.current!(src) : null),
       ...(live && saveImage
         ? [pasteImages((f) => saveImageRef.current!(f), {

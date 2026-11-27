@@ -293,7 +293,7 @@ export function TopToolbar(props: TopToolbarProps): React.JSX.Element {
           <Icon name="toc" size={20} />
         </button>
         <Logo size={20} />
-        <span className="tb-title">{props.title || 'Untitled'}</span>
+        <span className="tb-title">{props.title || t('shell.untitled')}</span>
         <StatusView status={status} />
         {props.presence !== undefined && props.presence.length > 0 && <PresenceBar peers={props.presence} />}
         <SyncStatusView status={props.syncStatus ?? 'off'} />
