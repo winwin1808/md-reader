@@ -415,7 +415,7 @@ describe('SettingsModal', () => {
     render(<SettingsModal {...defaultProps} open settings={{ contrast: 'standard', settingsVersion: 2 }} />);
     const labels = [
       'Ẩn phần thông tin đầu file (frontmatter)', 'Hiện thông tin đầu file thành thẻ', 'Hiển thị công thức toán',
-      'Vẽ sơ đồ Mermaid', 'Hộp ghi chú kiểu GitHub ([!NOTE], [!WARNING]…)', 'Tiêu đề ghi chú bằng tiếng Việt',
+      'Vẽ sơ đồ Mermaid', 'Hộp ghi chú kiểu GitHub ([!NOTE], [!WARNING]…)', 'Tiêu đề ghi chú theo ngôn ngữ giao diện',
       'Dấu câu đẹp (ngoặc kép cong, gạch dài)', 'Đánh dấu và mở liên kết ngoài ở thẻ mới',
       'Luôn mở file .md trong MD Reader', 'Tự động hiển thị file .md đẹp', 'Chỉnh lại Markdown khi bấm Lưu',
       'Hiện số từ và thời gian đọc', 'Tự ẩn khi đọc tới cuối', 'Thanh tiến độ đọc', 'Pháo giấy khi đọc xong',

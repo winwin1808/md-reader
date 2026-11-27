@@ -90,17 +90,18 @@ describe('lazy locales', () => {
     const other = Object.keys(en).find((k) => k !== key) as any
     expect(createT('it')(key)).toBe(en[key])
     const t = createT('it')
+    const prevIt = catalogs.it
     catalogs.it = { [key]: 'X' }
     try {
       expect(t(key)).toBe('X')
       expect(t(other)).toBe(en[other])
     } finally {
-      delete catalogs.it
+      if (prevIt === undefined) delete catalogs.it
+      else catalogs.it = prevIt
     }
     await loadLocale('it')
     expect(isLocaleLoaded('it')).toBe(true)
     await loadLocale('vi')
     expect(isLocaleLoaded('vi')).toBe(true)
-    delete catalogs.it
   })
 })

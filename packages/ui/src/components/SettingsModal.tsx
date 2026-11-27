@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useT, useLocale, SUPPORTED_LOCALES, LOCALE_NAMES, type LocalePref } from '../i18n';
+import { useT, useLocale, localeTag, SUPPORTED_LOCALES, LOCALE_NAMES, type LocalePref } from '../i18n';
 import type { Contrast } from '../theme/ThemeProvider';
 import { PalettePicker } from './ThemePicker';
 import { normalizeServerUrl } from '@md-reader/core';
@@ -1015,7 +1015,7 @@ export function SettingsModal(props: SettingsModalProps): React.JSX.Element {
                       <div className="settings-row" key={c.keyHash}>
                         <div className="settings-row-info">
                           <div className="settings-row-label">{c.client}</div>
-                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(locale)} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
+                          <div className="settings-row-desc">{new Date(c.at).toLocaleDateString(localeTag(locale))} · {c.keyHash.slice(0, 4).toUpperCase()}-{c.keyHash.slice(4, 8).toUpperCase()}</div>
                         </div>
                         <button type="button" className="settings-btn" onClick={() => props.aiBridge!.onRevoke(c.keyHash)}>
                           {t('settings.ai.revoke')}
