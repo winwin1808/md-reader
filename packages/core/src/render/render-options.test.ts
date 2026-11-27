@@ -58,6 +58,14 @@ describe('Render Options', () => {
       expect(result).toContain('markdown-alert-tip')
       expect(result).toContain('Mẹo')
     })
+    it('localizes alert titles for it/fr/de and falls back to en', () => {
+      const t = (md: string, loc?: string) => r(md, { githubAlerts: true, localizeAlerts: loc })
+      expect(t('> [!NOTE]\n> x', 'fr-FR')).toContain('Remarque')
+      expect(t('> [!WARNING]\n> x', 'de')).toContain('Warnung')
+      expect(t('> [!TIP]\n> x', 'it')).toContain('Suggerimento')
+      expect(t('> [!NOTE]\n> x', 'ja')).toContain('>Note<')
+      expect(t('> [!NOTE]\n> x', undefined)).toContain('>Note<')
+    })
     it('renders alert svg icons with attributes', () => {
       const result = r('> [!WARNING]\n> Watch out!', { githubAlerts: true })
       expect(result).toContain('markdown-alert-warning')
