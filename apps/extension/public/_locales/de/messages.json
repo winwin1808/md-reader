@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "LeSach – Markdown-Reader & KI-Editor"
+  },
+  "extDescription": {
+    "message": "Öffne eine .md-Datei und lies sie schön. Bearbeiten, präsentieren, Mindmaps, Export als PDF/Word. Offline nutzbar, Teilen optional."
+  },
+  "actionTitle": {
+    "message": "MD Reader öffnen"
+  }
+}

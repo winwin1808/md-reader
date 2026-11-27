@@ -1,8 +1,16 @@
+import type { Locale } from '@md-reader/ui';
+
+export type Localized<T> = { vi: T; en: T } & Partial<Record<'it' | 'fr' | 'de', T>>;
+
 export interface ReleaseNote {
   version: string;
   showOnUpdate: boolean;
-  title: { vi: string; en: string };
-  items: { vi: string[]; en: string[] };
+  title: Localized<string>;
+  items: Localized<string[]>;
+}
+
+export function noteText<T>(v: Localized<T>, locale: Locale): T {
+  return v[locale] ?? v.en;
 }
 
 /** Mới nhất trước. */

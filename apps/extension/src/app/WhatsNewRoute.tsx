@@ -52,8 +52,7 @@ function markSeen(highlight: string | null): Promise<void> {
 }
 
 export function WhatsNewRoute(): React.JSX.Element {
-  const loc = useLocale()
-  const locale: 'vi' | 'en' = String(loc).startsWith('vi') ? 'vi' : 'en'
+  const locale = useLocale()
   const highlight = new URLSearchParams(window.location.search).get('v')
   const marked = useRef<Promise<void> | null>(null)
 

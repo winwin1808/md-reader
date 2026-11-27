@@ -1,7 +1,15 @@
-export const WELCOME_ORIGIN = {
+import type { Locale } from '@md-reader/ui';
+import { IT } from './welcome/it';
+import { FR } from './welcome/fr';
+import { DE } from './welcome/de';
+
+export const WELCOME_ORIGIN: Record<Locale, string> = {
   vi: 'mdr://welcome/vi',
   en: 'mdr://welcome/en',
-} as const;
+  it: 'mdr://welcome/it',
+  fr: 'mdr://welcome/fr',
+  de: 'mdr://welcome/de',
+};
 
 const VI = `# Chào mừng đến MD Reader
 
@@ -159,6 +167,13 @@ Press Present to turn the document into slides, open Mind map to see its structu
 <!-- note: This is a speaker note, only shown in speaker view. -->
 `;
 
-export function welcomeMarkdown(locale: 'vi' | 'en'): string {
-  return locale === 'vi' ? VI : EN;
+const BY_LOCALE: Record<Locale, string> = { vi: VI, en: EN, it: IT, fr: FR, de: DE };
+
+export function welcomeMarkdown(locale: Locale): string {
+  return BY_LOCALE[locale] ?? EN;
+}
+
+export function welcomeTitle(locale: Locale): string {
+  const first = welcomeMarkdown(locale).split('\n', 1)[0] ?? '';
+  return first.replace(/^# /, '');
 }

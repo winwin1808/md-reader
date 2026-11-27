@@ -95,10 +95,10 @@ shell, ext, web; mỗi file `export const <l>: PartialMessages = { … }` chỉ 
 | 24b2 | extension: chuỗi cứng app page vào catalog | done |
 | 24b3 | core: alert 5 ngôn ngữ | done |
 | 24b4 | extension: chuỗi `localizeAlerts` theo locale | done |
-| 24c | content script 5 ngôn ngữ | planned |
-| 24d | `_locales` it/fr/de + feedback locale | planned |
-| 24e1 | trang chào it/fr/de | planned |
-| 24e2 | "Có gì mới" + lifecycle 5 ngôn ngữ | planned |
+| 24c | content script 5 ngôn ngữ | done |
+| 24d | `_locales` it/fr/de + feedback locale | done |
+| 24e1 | trang chào it/fr/de | done |
+| 24e2 | "Có gì mới" + lifecycle 5 ngôn ngữ | done |
 | 24f1 | it: common/settings/present/live | planned |
 | 24f2 | it: shell | planned |
 | 24f3 | it: ext/web | planned |
