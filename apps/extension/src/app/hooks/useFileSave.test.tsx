@@ -485,7 +485,7 @@ describe('openLocalFileAsDoc', () => {
     listRecent.mockImplementation(async () => records)
     getHandle.mockImplementation(async (id: unknown) => (records.find(r => r.docId === id) ? stored : null))
     const stored: any = {
-      name: 'n.md', getFile: async () => ({ text: async () => 'hello' }),
+      name: 'n.md', getFile: async () => ({ name: 'n.md', size: 5, text: async () => 'hello' }),
       isSameEntry: async () => true,
     }
     createRecord.mockImplementation(async (i: any) => {
@@ -516,7 +516,7 @@ describe('openLocalFileAsDoc', () => {
       if (id === 'r1') return { isSameEntry: async () => false }
       return { isSameEntry: async () => true }
     })
-    const picked: any = { name: 'n.md', getFile: async () => ({ text: async () => 'hi' }) }
+    const picked: any = { name: 'n.md', getFile: async () => ({ name: 'n.md', size: 2, text: async () => 'hi' }) }
     ;(window as any).showOpenFilePicker = vi.fn(async () => [picked])
     expect(await openLocalFileAsDoc()).toEqual({ docId: 'r2', kept: false })
     expect(createRecord).not.toHaveBeenCalled()
@@ -529,9 +529,22 @@ describe('openLocalFileAsDoc', () => {
     listRecent.mockReset(); listRecent.mockResolvedValue([])
     createRecord.mockReset(); createRecord.mockImplementation(async (i: any) => ({ docId: 'k1', persistenceName: 'p', hasHandle: false, ...i }))
     writeDocText.mockResolvedValueOnce('kept')
-    const picked: any = { name: 'n.md', getFile: async () => ({ text: async () => 'hi' }) }
+    const picked: any = { name: 'n.md', getFile: async () => ({ name: 'n.md', size: 2, text: async () => 'hi' }) }
     ;(window as any).showOpenFilePicker = vi.fn(async () => [picked])
     expect(await openLocalFileAsDoc()).toEqual({ docId: 'k1', kept: true })
+    delete (window as any).showOpenFilePicker
+  })
+
+  it('wrong-format file -> FileFormatError, nothing created', async () => {
+    const { openLocalFileAsDoc } = await vi.importActual<typeof import('../fs/file-system')>('../fs/file-system')
+    createRecord.mockClear(); writeDocText.mockClear(); storeHandle.mockClear()
+    listRecent.mockReset(); listRecent.mockResolvedValue([])
+    const picked: any = { name: 'n.md', getFile: async () => ({ name: 'n.md', size: 4, text: async () => 'PK\u0003\u0004\u0000' }) }
+    ;(window as any).showOpenFilePicker = vi.fn(async () => [picked])
+    await expect(openLocalFileAsDoc()).rejects.toMatchObject({ name: 'FileFormatError', problem: 'binary' })
+    expect(createRecord).not.toHaveBeenCalled()
+    expect(writeDocText).not.toHaveBeenCalled()
+    expect(storeHandle).not.toHaveBeenCalled()
     delete (window as any).showOpenFilePicker
   })
 

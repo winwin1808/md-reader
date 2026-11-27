@@ -164,11 +164,13 @@ describe('file-system', () => {
           {
             description: 'Markdown Files',
             accept: {
-              'text/markdown': ['.md', '.markdown'],
+              'text/markdown': ['.md', '.markdown', '.mdown', '.mkd', '.mdx'],
+              'text/plain': ['.txt'],
             },
           },
         ],
         multiple: false,
+        excludeAcceptAllOption: true,
       })
       expect(result).toEqual({
         handle: mockHandle,
@@ -184,6 +186,37 @@ describe('file-system', () => {
 
       const result = await openLocalFile()
       expect(result).toBeNull()
+    })
+
+    function pick(file: File) {
+      ;(window as any).showOpenFilePicker = vi.fn().mockResolvedValue([
+        { kind: 'file', name: file.name, getFile: vi.fn().mockResolvedValue(file) },
+      ])
+    }
+
+    it('rejects a file whose extension is not Markdown/text', async () => {
+      pick(new File(['%PDF-1.7'], 'report.pdf'))
+      await expect(openLocalFile()).rejects.toMatchObject({ name: 'FileFormatError', problem: 'extension' })
+    })
+
+    it('rejects a binary file renamed to .md', async () => {
+      pick(new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x1a])], 'image.md'))
+      await expect(openLocalFile()).rejects.toMatchObject({ name: 'FileFormatError', problem: 'binary' })
+    })
+
+    it('rejects a file that is not UTF-8', async () => {
+      // "Tiếng Việt có dấu" style bytes in a legacy single-byte encoding: invalid UTF-8
+      pick(new File([new Uint8Array([0x54, 0xe9, 0xe8, 0x20, 0xf4, 0xe0, 0x20, 0xfa, 0xf9, 0x0a])], 'notes.md'))
+      await expect(openLocalFile()).rejects.toMatchObject({ name: 'FileFormatError', problem: 'encoding' })
+    })
+
+    it('rejects a file over the size limit without reading it', async () => {
+      const big = new File(['x'], 'big.md')
+      Object.defineProperty(big, 'size', { value: 21 * 1024 * 1024 })
+      const text = vi.spyOn(big, 'text')
+      pick(big)
+      await expect(openLocalFile()).rejects.toMatchObject({ name: 'FileFormatError', problem: 'tooLarge' })
+      expect(text).not.toHaveBeenCalled()
     })
 
     it('returns null when showOpenFilePicker returns empty array', async () => {

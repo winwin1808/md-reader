@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '@md-reader/ui';
 import { createRecord, deleteRecord, writeDocText, docParam } from './doc-registry';
+import { checkFileMeta, checkFileText, fileProblemMessage } from './fs/file-check';
 
 interface FileDropProps {
   children: React.ReactNode;
@@ -36,11 +37,15 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
       const file = e.dataTransfer?.files?.[0];
       if (!file) return;
 
-      const validExtensions = ['.md', '.markdown', '.mdown', '.mkd', '.mdx', '.txt'];
-      const isValid = validExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
-
-      if (!isValid) {
+      const metaProblem = checkFileMeta(file);
+      if (metaProblem === 'extension') {
+        setError(null);
         setNotice(true);
+        return;
+      }
+      if (metaProblem) {
+        setNotice(false);
+        setError(fileProblemMessage(metaProblem, t));
         return;
       }
 
@@ -52,6 +57,13 @@ export function FileDrop({ children, navigate = defaultNavigate }: FileDropProps
       reader.onload = async (event) => {
         const content = event.target?.result as string;
         if (typeof content !== 'string') {
+          setError(t('ext.drop.openFailed', { reason: t('ext.drop.unreadable') }));
+          finish();
+          return;
+        }
+        const textProblem = checkFileText(content);
+        if (textProblem) {
+          setError(fileProblemMessage(textProblem, t));
           finish();
           return;
         }

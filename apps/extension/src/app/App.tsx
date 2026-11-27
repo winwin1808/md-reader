@@ -52,6 +52,7 @@ import { defaultRenderPlugins, parseYaml, onMathLoaded, loadMathPlugin } from '@
 import { FileDrop } from './FileDrop'
 import { RecentFiles } from './RecentFiles'
 import { openLocalFileAsDoc } from './fs/file-system'
+import { FileFormatError, fileProblemMessage } from './fs/file-check'
 import { useDocSession } from './hooks/useDocSession'
 import { useFileSave } from './hooks/useFileSave'
 import { useHistory } from './hooks/useHistory'
@@ -534,7 +535,10 @@ export function App(): React.JSX.Element {
       const res = await openLocalFileAsDoc()
       if (res) window.location.assign((await docQuery(res.docId)) + (res.kept ? '&kept=1' : ''))
     } catch (err) {
-      setError((err as Error)?.message || t('ext.app.openFailed'))
+      console.error('Failed to open local file', err)
+      setError(err instanceof FileFormatError
+        ? fileProblemMessage(err.problem, t)
+        : (err as Error)?.message ? t('ext.drop.openFailed', { reason: (err as Error).message }) : t('ext.app.openFailed'))
     }
   }
 

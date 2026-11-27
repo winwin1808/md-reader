@@ -93,6 +93,41 @@ describe('FileDrop', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('binary content dropped as .md is refused with a message, no import', async () => {
+    const navigate = vi.fn();
+    const { container, findByText } = render(<FileDrop navigate={navigate}><div /></FileDrop>);
+    const r = stubReader();
+    fireEvent.drop(container.firstChild as Element, { dataTransfer: { files: [new File(['x'], 'photo.md')], types: ['Files'] } });
+    await r.fire('\u0089PNG\u0000\u0000IHDR');
+    await findByText('Không mở được tệp: đây không phải tệp văn bản (có thể là ảnh, PDF hoặc tệp nén)');
+    expect(await listRecent()).toHaveLength(0);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('non-UTF-8 content is refused with an encoding message', async () => {
+    const navigate = vi.fn();
+    const { container, findByText } = render(<FileDrop navigate={navigate}><div /></FileDrop>);
+    const r = stubReader();
+    fireEvent.drop(container.firstChild as Element, { dataTransfer: { files: [new File(['x'], 'notes.md')], types: ['Files'] } });
+    await r.fire('Ti\uFFFDng Vi\uFFFDt c\uFFFD d\uFFFDu');
+    await findByText(/UTF-8/);
+    expect(await listRecent()).toHaveLength(0);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('a file over the size limit is refused before reading', async () => {
+    const r = stubReader();
+    const navigate = vi.fn();
+    const { container, findByText } = render(<FileDrop navigate={navigate}><div /></FileDrop>);
+    const big = new File(['x'], 'big.md');
+    Object.defineProperty(big, 'size', { value: 21 * 1024 * 1024 });
+    fireEvent.drop(container.firstChild as Element, { dataTransfer: { files: [big], types: ['Files'] } });
+    await findByText('Không mở được tệp: tệp lớn hơn 20 MB');
+    expect(r).toBeDefined();
+    expect(await listRecent()).toHaveLength(0);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('failed write deletes the record and shows inline error', async () => {
     vi.spyOn(registry, 'writeDocText').mockRejectedValue(new Error('boom'));
     const navigate = vi.fn();
