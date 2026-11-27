@@ -108,8 +108,8 @@ shell, ext, web; mỗi file `export const <l>: PartialMessages = { … }` chỉ 
 | 24h1 | de: common/settings/present/live | done |
 | 24h2 | de: shell | done |
 | 24h3 | de: ext/web | done |
-| 24i1 | khoá đủ khoá + placeholder | pending |
-| 24i2 | phiên bản 1.7.0 + ghi chú phát hành | pending |
+| 24i1 | khoá đủ khoá + placeholder | done |
+| 24i2 | phiên bản 1.7.0 + ghi chú phát hành | done |
 
 Song song: sau 24b2 (mọi khoá mới đã vào catalog vi/en), ba làn **24f\*, 24g\*, 24h\*** chạy song song (file
 rời nhau theo ngôn ngữ), trong mỗi làn tuần tự 1→2→3 (chung `index.ts`). 24b3→24b4 tuần tự. 24c, 24d, 24e1,
