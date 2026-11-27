@@ -3,7 +3,8 @@ import React from 'react'
 import { vi, describe, it, expect, afterEach } from 'vitest'
 import { I18nProvider } from '@md-reader/ui'
 import { WhatsNewPage } from './WhatsNewPage'
-import { RELEASE_NOTES, type ReleaseNote } from '../shared/release-notes'
+import { RELEASE_NOTES, noteText, type ReleaseNote } from '../shared/release-notes'
+import type { Locale } from '@md-reader/ui'
 import { RELEASE_NOTES_URL } from './feedback-client'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -18,7 +19,7 @@ const mk = (version: string): ReleaseNote => ({
 })
 const notes = [mk('1.3.0'), mk('1.5.0'), mk('1.4.0')]
 
-function setup(highlight: string | null, locale: 'vi' | 'en' = 'vi', list = notes) {
+function setup(highlight: string | null, locale: Locale = 'vi', list = notes) {
   const onDone = vi.fn()
   const r = render(
     <I18nProvider locale={locale}>
@@ -73,6 +74,24 @@ describe('WhatsNewPage', () => {
     setup(null, 'en', [])
     const a = screen.getByRole('link', { name: 'See all release notes' })
     expect(a.getAttribute('href')).toBe(RELEASE_NOTES_URL)
+  })
+})
+
+describe('WhatsNewPage 5 locales', () => {
+  it('it without translation falls back to en', () => {
+    setup(null, 'it')
+    expect(screen.getByText('Title 1.5.0')).toBeTruthy()
+    expect(screen.getByText('Item en 1.5.0')).toBeTruthy()
+  })
+  it('it with translation shows it', () => {
+    const n: ReleaseNote = { ...mk('2.0.0'), title: { vi: 'v', en: 'Title en', it: 'Titolo it' }, items: { vi: ['v'], en: ['e'], it: ['Voce it'] } }
+    setup(null, 'it', [n])
+    expect(screen.getByText('Titolo it')).toBeTruthy()
+    expect(screen.getByText('Voce it')).toBeTruthy()
+  })
+  it('noteText falls back to en', () => {
+    expect(noteText({ vi: 'a', en: 'b' }, 'de')).toBe('b')
+    expect(noteText({ vi: 'a', en: 'b', de: 'c' }, 'de')).toBe('c')
   })
 })
 
