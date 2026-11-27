@@ -84,7 +84,7 @@ export function FeedbackForm({ diagnostics, onSubmit, fallbackMailto }: Feedback
         <p>{t('feedback.attached', diagnostics)}</p>
         <p>{t('feedback.noContent')}</p>
       </div>
-      <button type="submit" disabled={invalid || sending}>
+      <button type="submit" className="settings-btn is-primary" disabled={invalid || sending}>
         {t('feedback.submit')}
       </button>
       <p role="status" aria-live="polite">

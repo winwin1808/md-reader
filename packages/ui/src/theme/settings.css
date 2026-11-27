@@ -184,8 +184,9 @@
 }
 
 .settings-input-field {
-  padding: 6px 10px;
-  border-radius: var(--r-s);
+  padding: 0 10px;
+  height: 32px;
+  border-radius: var(--r-m);
   border: 1px solid var(--rule);
   background: var(--paper);
   color: var(--ink);
@@ -210,8 +211,10 @@
 .settings-btn-group { display: flex; gap: 8px; }
 .settings-choice {
   flex: 1;
-  padding: 6px 12px;
-  border-radius: var(--r-s);
+  padding: 0 12px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: var(--r-m);
   border: 1px solid var(--rule);
   background: transparent;
   color: var(--ink);
@@ -219,10 +222,38 @@
   font: 13px var(--font-ui);
 }
 .settings-choice[aria-pressed='true'] {
-  border: 2px solid var(--accent);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
   background: var(--surface);
   font-weight: 600;
 }
+.settings-choice:focus-visible, .settings-icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.settings-btn {
+  font: inherit;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-m);
+  padding: 0 12px;
+  height: 32px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.settings-btn:hover:not(:disabled) { border-color: var(--pencil); }
+.settings-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-btn:disabled { opacity: .5; cursor: default; }
+.settings-btn.is-primary { background: var(--accent); color: var(--paper); border-color: var(--accent); font-weight: 600; }
+.settings-btn.is-primary:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.08); }
+.settings-btn.is-danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+.settings-btn.is-danger:hover:not(:disabled) { border-color: var(--danger); filter: brightness(1.15); }
 .settings-row-top { align-items: flex-start; }
 .settings-swatches, .settings-chips { display: flex; gap: 4px; margin-top: 6px; }
 .settings-chips { flex-wrap: wrap; }
@@ -272,7 +303,7 @@
   padding: 4px 6px;
   line-height: 1;
 }
-.settings-icon-btn.is-bordered { border: 1px solid var(--rule); border-radius: var(--r-s); padding: 4px 8px; }
+.settings-icon-btn.is-bordered { border: 1px solid var(--rule); border-radius: var(--r-m); padding: 0 8px; height: 32px; box-sizing: border-box; }
 .settings-font-ctl { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .settings-image-ctl { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; width: 220px; }
 .settings-image-line { display: flex; width: 100%; gap: 4px; }
@@ -322,10 +353,10 @@
 
 .feedback-form { display: block; }
 .feedback-form fieldset { border: 0; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
-.feedback-form textarea, .feedback-form input[type=email] { width: 100%; box-sizing: border-box; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); padding: 8px; margin-bottom: 8px; }
-.feedback-form button[type=submit] { border: 1px solid var(--rule); background: var(--surface); color: var(--ink); padding: 6px 14px; cursor: pointer; font: inherit; }
+.feedback-form textarea, .feedback-form input[type=email] { width: 100%; box-sizing: border-box; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-m); padding: 8px; margin-bottom: 8px; }
+.feedback-form input[type=email] { height: 32px; padding: 0 8px; }
 .feedback-attached { font-size: 12px; color: var(--pencil); }
 .settings-backup-shared-title { margin: 16px 0 4px; font-size: 14px; color: var(--ink); }
 .settings-backup-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .settings-backup-link { border: 0; background: none; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; cursor: pointer; text-align: left; }
-.settings-select { font: inherit; padding: 6px 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); min-width: 160px; }
+.settings-select { font: inherit; height: 32px; box-sizing: border-box; border-radius: var(--r-m); padding: 0 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); min-width: 160px; }
