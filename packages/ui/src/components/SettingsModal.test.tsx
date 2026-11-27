@@ -55,6 +55,17 @@ describe('SettingsModal', () => {
     })
   })
 
+  describe('language select', () => {
+    it('lists auto + 5 locales and reports a change', () => {
+      const on = vi.fn()
+      render(<SettingsModal {...defaultProps} open settings={{ settingsVersion: 2 } as any} onSettingChange={on} />)
+      const sel = document.getElementById('settings-lang') as HTMLSelectElement
+      expect(sel.options.length).toBe(6)
+      fireEvent.change(sel, { target: { value: 'it' } })
+      expect(on).toHaveBeenCalledWith('uiLanguage', 'it')
+    })
+  })
+
   describe('slideAutoSplit toggle', () => {
     const renderWith = (settings: any, onSettingChange = vi.fn()) => {
       render(<SettingsModal {...defaultProps} open settings={settings} onSettingChange={onSettingChange} />)

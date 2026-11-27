@@ -1,13 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { I18nProvider, resolveLocale, type LocalePref } from '@md-reader/ui'
+import { I18nProvider, isLocale, loadLocale, resolveLocale, type Locale, type LocalePref } from '@md-reader/ui'
 
 function asPref(v: unknown): LocalePref {
-  return v === 'vi' || v === 'en' ? v : 'auto'
+  return v === 'auto' || isLocale(v) ? v : 'auto'
 }
 
 /** Reads the `uiLanguage` setting (local wins over sync) and keeps it live. */
 export function LocaleRoot({ children }: { children: ReactNode }) {
   const [pref, setPref] = useState<LocalePref>('auto')
+  const [shown, setShown] = useState<Locale | null>(null)
 
   useEffect(() => {
     let live = true
@@ -31,10 +32,21 @@ export function LocaleRoot({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const locale = resolveLocale(pref, navigator.languages)
+  const wanted = resolveLocale(pref, navigator.languages)
   useEffect(() => {
-    document.documentElement.lang = locale
-  }, [locale])
+    let live = true
+    void loadLocale(wanted).then(() => {
+      if (live) setShown(wanted)
+    })
+    return () => {
+      live = false
+    }
+  }, [wanted])
 
-  return <I18nProvider locale={locale}>{children}</I18nProvider>
+  useEffect(() => {
+    if (shown) document.documentElement.lang = shown
+  }, [shown])
+
+  if (shown === null) return null
+  return <I18nProvider locale={shown}>{children}</I18nProvider>
 }

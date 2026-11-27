@@ -59,8 +59,8 @@ afterEach(() => {
 describe('WelcomeRoute', () => {
   it('opens the sample doc then navigates to app.html', async () => {
     renderRoute()
+    await waitFor(() => expect(document.querySelector('.welcome-primary')).toBeTruthy())
     const btn = document.querySelector('.welcome-primary') as HTMLElement
-    expect(btn).toBeTruthy()
     fireEvent.click(btn)
     await waitFor(() => expect(assign).toHaveBeenCalled())
     const arg = reg.findOrCreateByOrigin.mock.calls[0]![0]
