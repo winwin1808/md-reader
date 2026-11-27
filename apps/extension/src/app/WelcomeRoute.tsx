@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useLocale } from '@md-reader/ui'
 import { WelcomePage, type WelcomeStatus } from './WelcomePage'
-import { WELCOME_ORIGIN, welcomeMarkdown } from './welcome-doc'
+import { WELCOME_ORIGIN, welcomeMarkdown, welcomeTitle } from './welcome-doc'
 import { findOrCreateByOrigin, writeDocText, docQuery, listRecent } from './doc-registry'
 import { useBridgeSettings } from './hooks/useBridgeSettings'
 import './welcome.css'
@@ -31,8 +31,7 @@ async function readOpenedFile(): Promise<boolean> {
 }
 
 export function WelcomeRoute(): React.JSX.Element {
-  const loc = useLocale()
-  const locale: 'vi' | 'en' = String(loc).startsWith('vi') ? 'vi' : 'en'
+  const locale = useLocale()
   const { clients } = useBridgeSettings()
   const [base, setBase] = useState<Omit<WelcomeStatus, 'aiConnected'>>({ pinned: null, fileAccess: false, openedFile: false })
 
@@ -47,7 +46,7 @@ export function WelcomeRoute(): React.JSX.Element {
   const onOpenSample = async (): Promise<void> => {
     try {
       const rec = await findOrCreateByOrigin({
-        title: locale === 'vi' ? 'Chào mừng đến MD Reader' : 'Welcome to MD Reader',
+        title: welcomeTitle(locale),
         originKind: 'drop',
         originPath: WELCOME_ORIGIN[locale],
       })

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseMarkdown, splitIntoSlides } from '@md-reader/core';
-import { WELCOME_ORIGIN, welcomeMarkdown } from './welcome-doc';
+import { WELCOME_ORIGIN, welcomeMarkdown, welcomeTitle } from './welcome-doc';
 
 const locales = ['vi', 'en'] as const;
 
@@ -59,4 +59,27 @@ describe('welcomeMarkdown', () => {
       });
     });
   }
+});
+
+describe('welcome it/fr/de', () => {
+  const h1 = { it: '# Benvenuto in MD Reader', fr: '# Bienvenue dans MD Reader', de: '# Willkommen bei MD Reader' } as const;
+  const en = welcomeMarkdown('en');
+  const urls = (s: string) => [...s.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]);
+  for (const l of ['it', 'fr', 'de'] as const) {
+    it(`${l} mirrors the EN structure`, () => {
+      const md = welcomeMarkdown(l);
+      expect(md.startsWith(h1[l] + '\n')).toBe(true);
+      expect(urls(md)).toEqual(urls(en));
+      expect(count(md, /^#/gm)).toBe(count(en, /^#/gm));
+      expect(count(md, /^```/gm)).toBe(count(en, /^```/gm));
+      expect(count(md, /^---$/gm)).toBe(count(en, /^---$/gm));
+      expect(WELCOME_ORIGIN[l]).toBe(`mdr://welcome/${l}`);
+      expect(() => parseMarkdown(md)).not.toThrow();
+    });
+  }
+  it('welcomeTitle', () => {
+    expect(welcomeTitle('de')).toBe('Willkommen bei MD Reader');
+    expect(welcomeTitle('vi')).toBe('Chào mừng đến MD Reader');
+    expect(welcomeTitle('en')).toBe('Welcome to MD Reader');
+  });
 });
