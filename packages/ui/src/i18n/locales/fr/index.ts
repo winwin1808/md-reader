@@ -1,1 +1,11 @@
-import type { PartialMessages } from '../../translate'; const messages: PartialMessages = {}; export default messages
+import type { PartialMessages } from '../../translate'
+import { fr as common } from './common'
+import { fr as settings } from './settings'
+import { fr as present } from './present'
+import { fr as live } from './live'
+import { fr as shell } from './shell'
+import { fr as ext } from './ext'
+import { fr as web } from './web'
+
+const messages: PartialMessages = { ...common, ...settings, ...present, ...live, ...shell, ...ext, ...web }
+export default messages
