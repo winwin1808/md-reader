@@ -182,4 +182,10 @@ button:disabled {
 .doc[lang="en"] code.language-math::before { content: "Formula — open in MD Reader to view"; }
 .doc code.language-mermaid::before { content: "Sơ đồ — mở trong MD Reader để xem"; }
 .doc[lang="en"] code.language-mermaid::before { content: "Diagram — open in MD Reader to view"; }
+.doc[lang="it"] code.language-math::before { content: "Formula — apri in MD Reader per vederla"; }
+.doc[lang="it"] code.language-mermaid::before { content: "Diagramma — apri in MD Reader per vederlo"; }
+.doc[lang="fr"] code.language-math::before { content: "Formule — ouvrez dans MD Reader pour l'afficher"; }
+.doc[lang="fr"] code.language-mermaid::before { content: "Diagramme — ouvrez dans MD Reader pour l'afficher"; }
+.doc[lang="de"] code.language-math::before { content: "Formel — in MD Reader öffnen, um sie anzuzeigen"; }
+.doc[lang="de"] code.language-mermaid::before { content: "Diagramm — in MD Reader öffnen, um es anzuzeigen"; }
 .doc pre:has(> code.language-mermaid) { padding: 0; border: 0; }
