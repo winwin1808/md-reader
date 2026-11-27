@@ -685,6 +685,30 @@ sửa nội dung, trả lời và resolve.* Spec: `docs/superpowers/specs/2026-1
 | 23g1 | E2E | Cộng tác (xem bình luận, sửa resolve, xem ghi `source` → 4403) + MCP thật |
 | 23g2 | Tài liệu + phiên bản | `docs/MCP.md`, ROADMAP, privacy, extension 1.6.0 |
 
+### Phase 24 — Đa ngôn ngữ (vi · en · it · fr · de)
+
+Ship: *giao diện theo ngôn ngữ Chrome (vi/en/it/fr/de, khác → en), đổi được trong Cài đặt; chuỗi cứng còn sót
+đã vào catalog.* Spec: `docs/superpowers/specs/2026-11-27-phase-24-design.md`. Catalog it/fr/de nạp lười
+(`loadLocale`), khoá thiếu rơi về en. Không đổi schema Y.Doc. Extension 1.7.0.
+
+| # | Phase con | Xong nghĩa là |
+|---|---|---|
+| 24a1 | ui: nền locale | `Locale` 5 mã, `resolveLocale` duyệt `navigator.languages`, `loadLocale`, rơi về en |
+| 24a2 | gắn locale | LocaleRoot/web chờ nạp catalog; Cài đặt chọn 6 mục |
+| 24b1 | ui: định dạng | Ngày/số theo `localeTag`; `lang` editor; Untitled qua catalog |
+| 24b2 | extension: chuỗi cứng | Lỗi file URL, thông báo vùng chọn, `lang` export HTML |
+| 24b3 | core: alert | Tiêu đề alert 5 ngôn ngữ, mã lạ → en |
+| 24b4 | extension: alert | `localizeAlerts` bật → theo locale giao diện ở content/worker/app |
+| 24c | content script | 8 chuỗi × 5 ngôn ngữ; CSS pseudo-text; ≤ 60 KB gz |
+| 24d | `_locales` + feedback | Tên/mô tả extension it/fr/de; api nhận 5 mã locale |
+| 24e1 | trang chào | Tài liệu mẫu it/fr/de |
+| 24e2 | Có gì mới | Release notes rơi về en; lifecycle 5 ngôn ngữ |
+| 24f1..3 | dịch it | common/settings/present/live · shell · ext/web |
+| 24g1..3 | dịch fr | như trên |
+| 24h1..3 | dịch de | như trên |
+| 24i1 | khoá catalog | Test đủ khoá, placeholder khớp, bắt quên dịch |
+| 24i2 | 1.7.0 | Phiên bản, ghi chú phát hành, changelog site |
+
 ## 5. Rủi ro
 
 ### 5.1 CSP chặn mermaid trong content script — rủi ro cao, chưa xác minh
